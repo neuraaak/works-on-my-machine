@@ -1,0 +1,263 @@
+# 🟨 Guide de Développement - {{PROJECT_NAME}}
+
+> Guide complet pour contribuer au projet **{{PROJECT_NAME}}**
+
+## 🚀 Installation et Configuration
+
+### Prérequis
+- **Node.js** >= 18.0.0
+- **npm** >= 9.0.0 (ou **yarn**, **pnpm**)
+- **Git** pour la gestion de versions
+
+### Installation
+```bash
+# Cloner le projet
+git clone <repository-url>
+cd {{PROJECT_NAME}}
+
+# Installer les dépendances
+npm install
+
+# Installer les hooks pre-commit
+npm run prepare
+```
+
+## 🛠️ Environnement de Développement
+
+### Scripts Disponibles
+```bash
+# Développement
+npm run dev              # Serveur de développement
+npm run build            # Build de production
+npm run start            # Serveur de production
+
+# Qualité du code
+npm run lint             # Vérification ESLint
+npm run lint:fix         # Correction automatique ESLint
+npm run format           # Formatage Prettier
+npm run format:check     # Vérification formatage
+
+# Tests
+npm test                 # Tests Jest
+npm run test:watch       # Tests en mode watch
+npm run test:coverage    # Tests avec couverture
+```
+
+### Structure du Projet
+```
+{{PROJECT_NAME}}/
+├── src/                 # Code source principal
+│   ├── components/      # Composants réutilisables
+│   ├── pages/          # Pages/Vues principales
+│   ├── utils/          # Utilitaires et helpers
+│   ├── hooks/          # Hooks personnalisés (React)
+│   ├── services/       # Services API
+│   └── styles/         # Styles globaux
+├── tests/              # Tests unitaires et d'intégration
+├── public/             # Assets statiques
+├── docs/               # Documentation
+└── config/             # Configuration build/dev
+```
+
+## 📋 Standards de Code
+
+### ESLint
+- **Règles** : Standard + TypeScript + React/Vue
+- **Extensions** : Sécurité, bonnes pratiques
+- **Auto-fix** activé pour les erreurs corrigeables
+
+### Prettier
+- **Print Width** : 80 caractères
+- **Quotes** : Simple quotes
+- **Semicolons** : Activés
+- **Tab Width** : 2 espaces
+
+### TypeScript (si applicable)
+- **Strict mode** activé
+- **Types explicites** pour les APIs publiques
+- **Interfaces** préférées aux types pour les objets
+
+## 🧪 Tests
+
+### Structure des Tests
+```
+tests/
+├── unit/               # Tests unitaires
+├── integration/        # Tests d'intégration
+├── e2e/               # Tests end-to-end (si applicable)
+└── __mocks__/         # Mocks globaux
+```
+
+### Conventions de Nommage
+- **Fichiers de test** : `*.test.js/ts` ou `*.spec.js/ts`
+- **Dossiers** : Même structure que `src/`
+- **Mocks** : `__mocks__/nom-du-module.js`
+
+### Types de Tests
+```javascript
+// Test unitaire
+describe('UtilityFunction', () => {
+  it('should return expected result', () => {
+    expect(utilityFunction(input)).toBe(expectedOutput);
+  });
+});
+
+// Test de composant (React)
+import { render, screen } from '@testing-library/react';
+describe('MyComponent', () => {
+  it('renders correctly', () => {
+    render(<MyComponent />);
+    expect(screen.getByText('Expected Text')).toBeInTheDocument();
+  });
+});
+```
+
+## 🔄 Workflow Git
+
+### Branches
+- **main** : Code de production
+- **develop** : Intégration des features
+- **feature/nom-feature** : Nouvelles fonctionnalités
+- **fix/nom-fix** : Corrections de bugs
+- **hotfix/nom-hotfix** : Corrections urgentes
+
+### Commits
+Convention **Conventional Commits** :
+```bash
+# Format
+type(scope): description
+
+# Exemples
+feat(auth): add user authentication
+fix(api): resolve data fetching error
+docs(readme): update installation guide
+style(button): improve hover effects
+refactor(utils): optimize data processing
+test(user): add login flow tests
+```
+
+### Pull Requests
+1. **Créer une branche** depuis `develop`
+2. **Développer** la fonctionnalité
+3. **Tester** localement (lint + tests)
+4. **Créer la PR** vers `develop`
+5. **Code Review** obligatoire
+6. **Merge** après validation
+
+## 🏗️ Architecture
+
+### Patterns Recommandés
+- **Composants fonctionnels** (React)
+- **Composition API** (Vue.js)
+- **Custom Hooks** pour la logique réutilisable
+- **Services** pour les appels API
+- **State management** centralisé si nécessaire
+
+### Gestion d'État
+```javascript
+// État local (useState, ref)
+const [state, setState] = useState(initialValue);
+
+// État global (Context, Redux, Zustand, Pinia)
+const { user, updateUser } = useUserStore();
+
+// État serveur (React Query, SWR)
+const { data, error, isLoading } = useQuery('users', fetchUsers);
+```
+
+### API et Services
+```javascript
+// Structure service
+export const userService = {
+  async getAll() {
+    const response = await fetch('/api/users');
+    return response.json();
+  },
+  
+  async getById(id) {
+    const response = await fetch(`/api/users/${id}`);
+    return response.json();
+  }
+};
+```
+
+## 🔒 Sécurité
+
+### Bonnes Pratiques
+- **Validation** des inputs utilisateur
+- **Sanitization** des données
+- **HTTPS** en production
+- **Variables d'environnement** pour les secrets
+- **CSP** (Content Security Policy)
+
+### Variables d'Environnement
+```bash
+# .env.local
+NEXT_PUBLIC_API_URL=http://localhost:3001
+DATABASE_URL=postgresql://user:pass@localhost/db
+JWT_SECRET=your-secret-key
+```
+
+## 📦 Build et Déploiement
+
+### Build de Production
+```bash
+# Build optimisé
+npm run build
+
+# Vérification du build
+npm run start
+
+# Analyse du bundle (si disponible)
+npm run analyze
+```
+
+### Optimisations
+- **Code splitting** automatique
+- **Tree shaking** activé
+- **Compression** des assets
+- **Lazy loading** des composants
+- **Service Worker** (PWA)
+
+## 🐛 Debugging
+
+### Outils de Développement
+- **React DevTools** / **Vue DevTools**
+- **Redux DevTools** (si applicable)
+- **Network tab** pour les API
+- **Console** pour les logs
+- **Sources** pour le debugging
+
+### Logs et Monitoring
+```javascript
+// Logs structurés
+console.group('User Action');
+console.log('Action:', action);
+console.log('Payload:', payload);
+console.groupEnd();
+
+// Monitoring d'erreurs
+try {
+  // Code à risque
+} catch (error) {
+  console.error('Error:', error);
+  // Envoyer à service de monitoring
+}
+```
+
+## 📚 Ressources
+
+### Documentation
+- **README.md** : Vue d'ensemble du projet
+- **CHANGELOG.md** : Historique des versions
+- **API.md** : Documentation API (si applicable)
+- **DEPLOYMENT.md** : Guide de déploiement
+
+### Liens Utiles
+- [Documentation Framework](#)
+- [Guide des bonnes pratiques](#)
+- [Standards de l'équipe](#)
+
+---
+
+🟨 **Happy JavaScript Development!** 🚀

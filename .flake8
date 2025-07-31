@@ -1,0 +1,123 @@
+[flake8]
+# Configuration flake8 pour le projet works-on-my-machine
+
+# Longueur maximale des lignes
+max-line-length = 88
+
+# Codes d'erreur à ignorer
+ignore =
+    # E501: line too long (géré par black)
+    E501,
+    # W503: line break before binary operator (géré par black)
+    W503,
+    # E203: whitespace before ':' (géré par black)
+    E203,
+    # F401: imported but unused (pour les imports de type hints)
+    F401,
+    # F403: wildcard import (pour certains patterns)
+    F403,
+    # F811: redefinition of unused import (pour les imports conditionnels)
+    F811,
+    # F841: local variable assigned but never used (pour les variables temporaires)
+    F841,
+    # E722: do not use bare except (pour certains cas)
+    E722,
+    # W291: trailing whitespace (géré par l'éditeur/script)
+    W291,
+    # W292: no newline at end of file (géré par l'éditeur/script)
+    W292,
+    # W293: blank line contains whitespace (géré par le script)
+    W293,
+    # D202: no blank lines allowed after function docstring (style personnel)
+    D202,
+    # D205: 1 blank line required between summary line and description (style personnel)
+    D205
+
+# Exclure les dossiers
+exclude =
+    .venv,
+    venv,
+    env,
+    .env,
+    __pycache__,
+    *.pyc,
+    .git,
+    .hg,
+    .mypy_cache,
+    .pytest_cache,
+    .tox,
+    dist,
+    build,
+    *.egg-info,
+    htmlcov,
+    .coverage,
+    coverage.xml,
+    .DS_Store,
+    Thumbs.db,
+    # Exclure les fichiers sensibles selon la mémoire
+    .secret*,
+    *password*,
+    *.key,
+    *.pem,
+    *.crt
+
+# Fichiers à analyser
+filename = *.py
+
+# Statistiques
+statistics = True
+count = True
+
+# Format de sortie
+format = %(path)s:%(row)d:%(col)d: %(code)s %(text)s
+
+# Niveau de verbosité
+verbose = False
+
+# Afficher les codes d'erreur
+show-source = True
+
+# Afficher les statistiques
+show-pep8 = False
+
+# Configuration spécifique pour les tests
+[flake8:tests/]
+# Ignorer certaines erreurs dans les tests
+ignore =
+    E501,
+    W503,
+    E203,
+    F401,
+    F403,
+    E722,
+    W291,
+    W292,
+    # S101: assert_used (pour les tests pytest)
+    S101,
+    # S106: hardcoded_password_funcarg (pour les fixtures)
+    S106
+
+# Configuration spécifique pour init.py et scripts
+[flake8:init.py]
+ignore =
+    E501,
+    W503,
+    E203,
+    F401,
+    F403,
+    E722,
+    W291,
+    W292,
+    T201  # print statements ok
+
+[flake8:*/scripts/*]
+ignore =
+    E501,
+    W503,
+    E203,
+    F401,
+    F403,
+    E722,
+    W291,
+    W292,
+    T201  # print statements ok dans les scripts

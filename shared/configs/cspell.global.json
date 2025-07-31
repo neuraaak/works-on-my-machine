@@ -1,0 +1,282 @@
+{
+    "version": "0.2",
+    "language": "en,fr",
+    "description": "Configuration CSpell globale pour dev-tools",
+    "words": [
+        "axios",
+        "eslint",
+        "prettier",
+        "typescript",
+        "javascript",
+        "webpack",
+        "vite",
+        "rollup",
+        "babel",
+        "nodejs",
+        "npm",
+        "yarn",
+        "pnpm",
+        "pytest",
+        "flake8",
+        "isort",
+        "mypy",
+        "pytest",
+        "django",
+        "flask",
+        "fastapi",
+        "sqlalchemy",
+        "pydantic",
+        "uvicorn",
+        "gunicorn",
+        "redis",
+        "mongodb",
+        "postgresql",
+        "sqlite",
+        "jupyter",
+        "pandas",
+        "numpy",
+        "matplotlib",
+        "scikit",
+        "tensorflow",
+        "pytorch",
+        "opencv",
+        "pillow",
+        "requests",
+        "aiohttp",
+        "httpx",
+        "celery",
+        "rabbitmq",
+        "kafka",
+        "elasticsearch",
+        "grafana",
+        "prometheus",
+        "kubernetes",
+        "kubectl",
+        "dockerfile",
+        "nginx",
+        "apache",
+        "uwsgi",
+        "github",
+        "gitlab",
+        "bitbucket",
+        "jenkins",
+        "circleci",
+        "travis",
+        "vscode",
+        "pycharm",
+        "intellij",
+        "webstorm"
+    ],
+    "ignoreWords": [
+        "Lorem",
+        "ipsum",
+        "amet",
+        "consectetur",
+        "adipiscing",
+        "elit"
+    ],
+    "patterns": [
+        {
+            "name": "URL patterns",
+            "pattern": "https?://\\S+",
+            "description": "Ignore URLs"
+        },
+        {
+            "name": "Email patterns",
+            "pattern": "\\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Z|a-z]{2,}\\b",
+            "description": "Ignore email addresses"
+        },
+        {
+            "name": "Base64 patterns",
+            "pattern": "\\b[A-Za-z0-9+/]{20,}={0,2}\\b",
+            "description": "Ignore base64 strings"
+        },
+        {
+            "name": "Hex colors",
+            "pattern": "#[0-9a-fA-F]{3,8}",
+            "description": "Ignore hex color codes"
+        },
+        {
+            "name": "UUIDs",
+            "pattern": "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}",
+            "description": "Ignore UUIDs"
+        },
+        {
+            "name": "Markdown code blocks",
+            "pattern": "```[\\s\\S]*?```",
+            "description": "Ignore markdown code blocks"
+        },
+        {
+            "name": "Inline code",
+            "pattern": "`[^`]+`",
+            "description": "Ignore inline code"
+        },
+        {
+            "name": "Markdown links",
+            "pattern": "\\[.*?\\]\\(.*?\\)",
+            "description": "Ignore markdown links"
+        }
+    ],
+    "overrides": [
+        {
+            "filename": "**/*.{js,jsx,ts,tsx}",
+            "dictionaries": [
+                "typescript",
+                "node",
+                "npm",
+                "html",
+                "css",
+                "companies",
+                "softwareTerms"
+            ],
+            "includeRegExpList": [
+                "CStyleComment",
+                "string"
+            ]
+        },
+        {
+            "filename": "**/*.{py,pyi}",
+            "dictionaries": [
+                "python",
+                "django",
+                "flask",
+                "companies",
+                "softwareTerms"
+            ],
+            "includeRegExpList": [
+                "PythonDocString",
+                "string"
+            ]
+        },
+        {
+            "filename": "**/*.{md,mdx}",
+            "dictionaries": [
+                "lorem-ipsum",
+                "companies",
+                "softwareTerms",
+                "typescript",
+                "python"
+            ]
+        },
+        {
+            "filename": "**/*.{html,htm}",
+            "dictionaries": [
+                "html",
+                "css",
+                "companies",
+                "lorem-ipsum"
+            ]
+        },
+        {
+            "filename": "**/*.{css,scss,sass,less}",
+            "dictionaries": [
+                "css",
+                "html",
+                "companies"
+            ]
+        },
+        {
+            "filename": "**/*.{json,jsonc}",
+            "dictionaries": [
+                "node",
+                "npm",
+                "softwareTerms"
+            ]
+        },
+        {
+            "filename": "**/package.json",
+            "words": [
+                "devdependencies",
+                "peerdependencies",
+                "optionaldependencies",
+                "browserslist",
+                "workspaces"
+            ]
+        },
+        {
+            "filename": "**/pyproject.toml",
+            "words": [
+                "setuptools",
+                "buildbackend",
+                "sdist",
+                "wheel",
+                "pypi"
+            ]
+        },
+        {
+            "filename": "**/*.{yml,yaml}",
+            "dictionaries": [
+                "softwareTerms",
+                "companies"
+            ],
+            "words": [
+                "gitlab",
+                "circleci",
+                "github",
+                "workflows",
+                "dockerfile"
+            ]
+        }
+    ],
+    "dictionaries": [
+        "typescript",
+        "node",
+        "npm",
+        "html",
+        "css",
+        "python",
+        "django",
+        "flask",
+        "companies",
+        "softwareTerms",
+        "lorem-ipsum"
+    ],
+    "import": [
+        "@cspell/dict-typescript/cspell-ext.json",
+        "@cspell/dict-node/cspell-ext.json",
+        "@cspell/dict-npm/cspell-ext.json",
+        "@cspell/dict-html/cspell-ext.json",
+        "@cspell/dict-css/cspell-ext.json",
+        "@cspell/dict-python/cspell-ext.json",
+        "@cspell/dict-django/cspell-ext.json",
+        "@cspell/dict-flask/cspell-ext.json",
+        "@cspell/dict-companies/cspell-ext.json",
+        "@cspell/dict-software-terms/cspell-ext.json",
+        "@cspell/dict-lorem-ipsum/cspell-ext.json"
+    ],
+    "ignorePaths": [
+        "node_modules/**",
+        ".git/**",
+        "dist/**",
+        "build/**",
+        "coverage/**",
+        "__pycache__/**",
+        "*.egg-info/**",
+        ".pytest_cache/**",
+        ".mypy_cache/**",
+        ".tox/**",
+        "venv/**",
+        ".venv/**",
+        "*.min.js",
+        "*.min.css",
+        "package-lock.json",
+        "yarn.lock",
+        "pnpm-lock.yaml",
+        "**/.env*",
+        "**/.secret*",
+        "**/*password*",
+        "**/*secret*",
+        "**/*.key",
+        "**/*.pem",
+        "**/*.crt",
+        "**/credentials/**"
+    ],
+    "allowCompoundWords": true,
+    "caseSensitive": false,
+    "minWordLength": 3,
+    "maxNumberOfProblems": 100,
+    "numSuggestions": 8,
+    "suggestionsTimeout": 400,
+    "loadDefaultConfiguration": true,
+    "enableGlobDot": true
+}

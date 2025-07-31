@@ -1,0 +1,145 @@
+{
+    // Auto-formatting sur sauvegarde
+    "editor.formatOnSave": true,
+    "editor.formatOnPaste": true,
+    "editor.codeActionsOnSave": {
+        "source.organizeImports": "explicit"
+    },
+    // Configuration Python Cross-Platform
+    // VSCode détecte automatiquement l'interpréteur Python depuis ces emplacements :
+    // Windows: "./venv/Scripts/python.exe", "./.venv/Scripts/python.exe"
+    // Linux/Mac: "./venv/bin/python", "./.venv/bin/python"
+    "python.defaultInterpreterPath": "${workspaceFolder}/venv/bin/python",
+    "python.terminal.activateEnvironment": true,
+    // Configuration Linting
+    "python.linting.enabled": true,
+    "python.linting.flake8Enabled": true,
+    "python.linting.flake8Args": [
+        "--config=.flake8"
+    ],
+    // Configuration Black (formatage)
+    "python.formatting.provider": "black",
+    "python.formatting.blackArgs": [
+        "--line-length=88",
+        "--target-version=py39"
+    ],
+    // Configuration isort (organisation des imports)
+    "python.sortImports.args": [
+        "--profile=black",
+        "--line-length=88"
+    ],
+    // Extensions à utiliser pour le formatage
+    "[python]": {
+        "editor.defaultFormatter": "ms-python.black-formatter",
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+            "source.organizeImports": "explicit"
+        }
+    },
+    // Configuration pour les tests
+    "python.testing.pytestEnabled": true,
+    "python.testing.pytestArgs": [
+        "tests",
+        "--tb=short",
+        "--strict-markers"
+    ],
+    "python.testing.autoTestDiscoverOnSaveEnabled": true,
+    // Paramètres d'affichage
+    "editor.rulers": [
+        88
+    ],
+    "editor.tabSize": 4,
+    "editor.insertSpaces": true,
+    "files.trimTrailingWhitespace": true,
+    "files.insertFinalNewline": true,
+    "files.trimFinalNewlines": true,
+    // Exclusions pour la recherche et surveillance
+    "files.exclude": {
+        "**/__pycache__": true,
+        "**/*.pyc": true,
+        "**/.pytest_cache": true,
+        "**/htmlcov": true,
+        "**/.coverage": true,
+        "**/build": true,
+        "**/dist": true,
+        "**/*.egg-info": true,
+        "**/.mypy_cache": true,
+        "**/.tox": true,
+        "**/venv": true,
+        "**/.venv": true,
+        "**/.env*": true,
+        "**/.secret*": true,
+        "**/*password*": true,
+        "**/*secret*": true,
+        "**/*.key": true,
+        "**/*.pem": true,
+        "**/*.crt": true,
+        "**/credentials": true
+    },
+    // Configuration Files Watcher (performance)
+    "files.watcherExclude": {
+        "**/.git/objects/**": true,
+        "**/.git/subtree-cache/**": true,
+        "**/node_modules/**": true,
+        "**/venv/**": true,
+        "**/.venv/**": true,
+        "**/__pycache__/**": true,
+        "**/.pytest_cache/**": true,
+        "**/htmlcov/**": true,
+        "**/.env*": true,
+        "**/.secret*": true,
+        "**/*password*": true,
+        "**/*secret*": true,
+        "**/*.key": true,
+        "**/*.pem": true,
+        "**/*.crt": true,
+        "**/credentials/**": true
+    },
+    // Configuration Git
+    "git.ignoreLimitWarning": true,
+    // Configuration Terminal
+    "terminal.integrated.env.windows": {
+        "PYTHONPATH": "${workspaceFolder}/src"
+    },
+    "terminal.integrated.env.linux": {
+        "PYTHONPATH": "${workspaceFolder}/src"
+    },
+    "terminal.integrated.env.osx": {
+        "PYTHONPATH": "${workspaceFolder}/src"
+    },
+    // Configuration IntelliSense
+    "python.analysis.extraPaths": [
+        "./src"
+    ],
+    "python.analysis.autoSearchPaths": true,
+    "python.analysis.typeCheckingMode": "basic",
+    // Configuration CSpell
+    "cSpell.enabled": true,
+    "cSpell.language": "en,fr",
+    "cSpell.enableFiletypes": [
+        "python",
+        "markdown",
+        "text",
+        "yaml",
+        "json"
+    ],
+    "cSpell.words": [],
+    "cSpell.userWords": [],
+    "cSpell.ignorePaths": [
+        "**/__pycache__/**",
+        "**/*.egg-info/**",
+        "**/.pytest_cache/**",
+        "**/.mypy_cache/**",
+        "**/.tox/**",
+        "**/venv/**",
+        "**/.venv/**",
+        "**/.env*",
+        "**/.secret*",
+        "**/*password*",
+        "**/*secret*",
+        "**/*.key",
+        "**/*.pem",
+        "**/*.crt",
+        "**/credentials/**"
+    ]
+}

@@ -1,0 +1,164 @@
+# ===================================
+# Python
+# ===================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Distribution / packaging
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# ===================================
+# Virtual environments
+# ===================================
+.venv/
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.conda/
+
+# ===================================
+# Testing
+# ===================================
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+.tox/
+.cache
+nosetests.xml
+*.cover
+*.py,cover
+.hypothesis/
+.nox/
+
+# ===================================
+# Development Tools
+# ===================================
+# Linting et formatage
+.mypy_cache/
+.ruff_cache/
+.bandit/
+
+# Pre-commit
+.pre-commit-cache/
+
+# Benchmarks
+.benchmarks/
+
+# ===================================
+# Éditeurs et IDEs
+# ===================================
+# VSCode - Configuration partagée incluse
+# .vscode/
+
+# Autres éditeurs
+.idea/
+*.swp
+*.swo
+*~
+
+# ===================================
+# OS
+# ===================================
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# macOS
+.DS_Store
+.DS_Store?
+._*
+.AppleDouble
+.LSOverride
+
+# Linux
+*~
+.directory
+.Trash-*
+
+# ===================================
+# Logs et données temporaires
+# ===================================
+*.log
+*.pid
+*.tmp
+*.temp
+_temp/
+
+# ===================================
+# Fichiers sensibles (selon mémoire)
+# ===================================
+.env
+.env.*
+.env.local
+.env.*.local
+.secret*
+*password*
+*secret*
+*.key
+*.pem
+*.crt
+credentials/
+keys/
+
+# ===================================
+# Backup et archives
+# ===================================
+*.bak
+*.backup
+*.orig
+*.rej
+
+# ===================================
+# Spécifique au projet works-on-my-machine
+# ===================================
+# Répertoire d'installation dans le home de l'utilisateur
+# (on ignore la copie locale mais pas les sources)
+/.dev-tools
+
+# Fichiers de test temporaires
+test_output/
+temp_projects/
+works-on-my-machine-temp/
+
+# Sauvegardes automatiques
+*.backup/
+
+# Fichiers de configuration locale générés
+local_config/
+user_settings/
+
+# Cache du gestionnaire de dépendances
+.pip-cache/
+node_modules/
+.npm/
+.yarn/
+
+# Fichiers de compilation et build
+*.pyc
+*.pyo
+*.pyd
+.Python

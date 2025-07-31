@@ -1,0 +1,153 @@
+# Guide de Développement - {{PROJECT_NAME}}
+
+## 🚀 Configuration de l'Environnement
+
+### Installation rapide
+```bash
+# Installation du package en mode développement
+pip install -e ".[dev]"
+```
+
+## 🛠️ Outils de Développement
+
+### Formatage Automatique
+
+#### VSCode (Recommandé)
+Le projet inclut une configuration VSCode complète dans `.vscode/settings.json` qui active :
+- **Formatage automatique à la sauvegarde** avec Black
+- **Organisation automatique des imports** avec isort
+- **Linting en temps réel** avec flake8
+- **Détection des tests** avec pytest
+
+### Commandes de Développement
+
+#### Scripts de développement
+```bash
+# Formatage et qualité
+python .devtools/scripts/lint.py        # Vérifier la qualité
+python .devtools/scripts/lint.py --fix  # Corriger automatiquement
+
+# Tests
+pytest                                   # Lancer les tests
+pytest --cov                           # Tests avec couverture
+```
+
+#### Avec Make (Linux/Mac/WSL)
+```bash
+make help           # Afficher l'aide
+make format         # Formater le code (black + isort)
+make lint           # Vérifier la qualité du code
+make test           # Lancer les tests
+make clean          # Nettoyer les fichiers temporaires
+```
+
+## 📏 Standards de Code
+
+### Configuration Black
+- **Longueur de ligne** : 88 caractères
+- **Versions Python** : 3.9+
+- **Formatage automatique** activé à la sauvegarde
+
+### Configuration isort
+- **Profile** : black (compatible)
+- **Longueur de ligne** : 88
+- **Organisation automatique** des imports
+
+### Configuration flake8
+- **Longueur max** : 88 caractères
+- **Configuration** : `.flake8`
+
+## 🔒 Hooks Pre-commit
+
+### Installation
+```bash
+# Installer pre-commit
+pip install pre-commit
+
+# Installer les hooks
+pre-commit install
+```
+
+### Vérifications automatiques
+Les hooks s'exécutent avant chaque commit :
+- Formatage avec Black
+- Organisation des imports avec isort
+- Linting avec flake8
+- Vérifications générales
+
+## 🧪 Tests
+
+### Structure des tests
+```
+tests/
+├── conftest.py                 # Configuration pytest
+├── test_*.py                   # Tests unitaires
+└── ...
+```
+
+### Exécution
+```bash
+# Tests rapides
+pytest
+
+# Tests avec couverture
+pytest --cov={{PROJECT_NAME}}
+
+# Tests spécifiques
+pytest tests/test_specific.py -v
+```
+
+## 🔧 Workflow de Développement Recommandé
+
+### 1. Avant de commencer
+```bash
+# Mettre à jour les dépendances
+pip install -e ".[dev]"
+
+# Installer les hooks
+pre-commit install
+```
+
+### 2. Pendant le développement
+- **VSCode** formatera automatiquement à la sauvegarde
+- **Ou manuellement** : `python .devtools/scripts/lint.py --fix`
+- **Tests** : `pytest`
+
+### 3. Avant de committer
+```bash
+# Vérification complète
+python .devtools/scripts/lint.py
+pytest
+```
+
+### 4. Les hooks pre-commit s'exécutent automatiquement
+
+## 📁 Structure du Projet
+
+```
+{{PROJECT_NAME}}/
+├── .devtools/              # Outils de développement
+├── .vscode/               # Configuration VSCode
+├── docs/                  # Documentation
+├── {{PROJECT_NAME}}/      # Code source
+├── tests/                 # Suite de tests
+├── pyproject.toml         # Configuration du projet
+├── .flake8               # Configuration linting
+├── .pre-commit-config.yaml # Hooks pre-commit
+└── .gitignore            # Fichiers ignorés par Git
+```
+
+## 📝 Conventions
+
+### Commits
+- **Format** : `type: description claire`
+- **Types** : `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`
+
+### Code
+- **Type hints** recommandés
+- **Docstrings** format standard
+- **Tests** pour les nouvelles fonctionnalités
+
+### Documentation
+- **Commentaires** en français ou anglais selon le contexte
+- **README** en anglais pour la compatibilité internationale

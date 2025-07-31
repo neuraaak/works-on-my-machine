@@ -1,0 +1,126 @@
+# Makefile pour {{PROJECT_NAME}}
+# Usage: make <target>
+
+.PHONY: help install dev build start lint format test test-cov clean setup-hooks
+
+# Configuration
+NODE := node
+NPM := npm
+PACKAGE := {{PROJECT_NAME}}
+
+# Couleurs pour l'affichage
+BLUE := \033[34m
+GREEN := \033[32m
+YELLOW := \033[33m
+RED := \033[31m
+RESET := \033[0m
+
+# Aide par défaut
+help:
+	@echo "$(BLUE){{PROJECT_NAME}} - Commandes de développement$(RESET)"
+	@echo ""
+	@echo "$(GREEN)Installation:$(RESET)"
+	@echo "  install      - Installer les dépendances"
+	@echo "  setup-hooks  - Installer les hooks pre-commit"
+	@echo ""
+	@echo "$(GREEN)Développement:$(RESET)"
+	@echo "  dev          - Serveur de développement"
+	@echo "  build        - Build de production"
+	@echo "  start        - Serveur de production"
+	@echo ""
+	@echo "$(GREEN)Formatage et qualité:$(RESET)"
+	@echo "  format       - Formater le code (Prettier)"
+	@echo "  lint         - Vérifier la qualité du code"
+	@echo "  fix          - Corriger automatiquement les problèmes"
+	@echo ""
+	@echo "$(GREEN)Tests:$(RESET)"
+	@echo "  test         - Lancer les tests"
+	@echo "  test-cov     - Tests avec couverture"
+	@echo "  test-watch   - Tests en mode watch"
+	@echo ""
+	@echo "$(GREEN)Nettoyage:$(RESET)"
+	@echo "  clean        - Nettoyer les fichiers temporaires"
+
+# Installation
+install:
+	@echo "$(BLUE)Installation des dépendances...$(RESET)"
+	$(NPM) install
+
+# Développement
+dev:
+	@echo "$(BLUE)Démarrage du serveur de développement...$(RESET)"
+	$(NPM) run dev
+
+build:
+	@echo "$(BLUE)Build de production...$(RESET)"
+	$(NPM) run build
+
+start:
+	@echo "$(BLUE)Démarrage du serveur de production...$(RESET)"
+	$(NPM) start
+
+# Formatage automatique
+format:
+	@echo "$(BLUE)Formatage du code avec Prettier...$(RESET)"
+	$(NPM) run format
+
+# Correction automatique
+fix:
+	@echo "$(BLUE)Correction automatique avec ESLint...$(RESET)"
+	$(NPM) run lint:fix
+	@echo "$(BLUE)Formatage du code...$(RESET)"
+	$(NPM) run format
+	@echo "$(GREEN)Code corrigé automatiquement !$(RESET)"
+
+# Linting
+lint:
+	@echo "$(BLUE)Vérification de la qualité du code...$(RESET)"
+	$(NPM) run lint
+	@echo "$(BLUE)Vérification du formatage...$(RESET)"
+	$(NPM) run format:check
+
+# Tests
+test:
+	@echo "$(BLUE)Lancement des tests...$(RESET)"
+	$(NPM) test
+
+test-cov:
+	@echo "$(BLUE)Tests avec couverture...$(RESET)"
+	$(NPM) run test:coverage
+
+test-watch:
+	@echo "$(BLUE)Tests en mode watch...$(RESET)"
+	$(NPM) run test:watch
+
+# Hooks pre-commit
+setup-hooks:
+	@echo "$(BLUE)Installation des hooks pre-commit...$(RESET)"
+	$(NPM) run prepare
+	@echo "$(GREEN)Hooks pre-commit installés !$(RESET)"
+
+# Nettoyage
+clean:
+	@echo "$(BLUE)Nettoyage des fichiers temporaires...$(RESET)"
+	rm -rf node_modules/.cache 2>/dev/null || true
+	rm -rf .next 2>/dev/null || true
+	rm -rf dist 2>/dev/null || true
+	rm -rf build 2>/dev/null || true
+	rm -rf coverage 2>/dev/null || true
+	rm -rf .nyc_output 2>/dev/null || true
+	@echo "$(GREEN)Nettoyage terminé !$(RESET)"
+
+# Commande complète de vérification
+check: lint test
+	@echo "$(GREEN)Toutes les vérifications sont terminées !$(RESET)"
+
+# Préparation pour un commit
+prepare: fix test
+	@echo "$(GREEN)Code prêt pour le commit !$(RESET)"
+
+# Réinstallation complète
+reinstall: clean
+	@echo "$(BLUE)Suppression de node_modules...$(RESET)"
+	rm -rf node_modules package-lock.json yarn.lock pnpm-lock.yaml 2>/dev/null || true
+	@echo "$(BLUE)Réinstallation des dépendances...$(RESET)"
+	$(NPM) install
+	@echo "$(GREEN)Réinstallation terminée !$(RESET)"

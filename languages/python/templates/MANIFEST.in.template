@@ -1,0 +1,93 @@
+# MANIFEST.in pour {{PROJECT_NAME}}
+# Ce fichier spécifie quels fichiers inclure dans la distribution source
+
+# Fichiers de documentation
+include README.md
+include CHANGELOG.md
+include LICENSE
+include AUTHORS.md
+include CONTRIBUTING.md
+include SECURITY.md
+
+# Configuration de développement
+include pyproject.toml
+include setup.cfg
+include tox.ini
+include .pre-commit-config.yaml
+include Makefile
+
+# Configuration d'éditeurs
+recursive-include .vscode *.json
+recursive-include .idea *.xml *.iml
+
+# Fichiers de données du package
+recursive-include src/{{PROJECT_NAME}}/data *
+recursive-include src/{{PROJECT_NAME}}/templates *
+recursive-include src/{{PROJECT_NAME}}/static *
+recursive-include src/{{PROJECT_NAME}}/assets *
+recursive-include src/{{PROJECT_NAME}}/resources *
+
+# Configuration et schémas
+recursive-include src/{{PROJECT_NAME}}/schemas *.json *.yaml *.yml
+recursive-include src/{{PROJECT_NAME}}/config *.ini *.cfg *.conf *.json *.yaml *.yml
+
+# Documentation Sphinx
+recursive-include docs *.rst *.md *.py *.txt *.png *.jpg *.svg
+include docs/Makefile
+include docs/make.bat
+
+# Tests (pour la distribution source)
+recursive-include tests *.py *.json *.yaml *.yml *.txt *.csv
+recursive-include tests/data *
+recursive-include tests/fixtures *
+recursive-include tests/samples *
+
+# Scripts et outils
+recursive-include scripts *.py *.sh *.bat *.ps1
+recursive-include tools *.py
+
+# Fichiers de traduction/localisation
+recursive-include src/{{PROJECT_NAME}}/locale *.po *.pot *.mo
+
+# Fichiers de type MIME et icônes
+recursive-include src/{{PROJECT_NAME}}/icons *.png *.ico *.svg
+recursive-include src/{{PROJECT_NAME}}/images *.png *.jpg *.jpeg *.gif *.svg
+
+# Exclusions globales
+global-exclude *.pyc
+global-exclude *.pyo
+global-exclude *.pyd
+global-exclude __pycache__
+global-exclude .DS_Store
+global-exclude Thumbs.db
+global-exclude *.so
+global-exclude *.dylib
+global-exclude *.dll
+
+# Exclusions de développement
+global-exclude .git*
+global-exclude .pytest_cache
+global-exclude .mypy_cache
+global-exclude .coverage
+global-exclude htmlcov
+global-exclude .tox
+global-exclude build
+global-exclude dist
+global-exclude *.egg-info
+
+# Exclusions d'environnements virtuels
+global-exclude venv
+global-exclude .venv
+global-exclude env
+global-exclude .env
+
+# Exclusions d'éditeurs
+global-exclude *.swp
+global-exclude *.swo
+global-exclude *~
+global-exclude .#*
+
+# Exclusions de sauvegardes
+global-exclude *.bak
+global-exclude *.backup
+global-exclude *.orig
