@@ -249,21 +249,25 @@ class PrerequisiteInstaller:
             "chocolatey": {
                 "python": ["choco", "install", "python", "-y"],
                 "node": ["choco", "install", "nodejs", "-y"],
+                "npm": ["choco", "install", "nodejs", "-y"],  # npm comes with nodejs
                 "git": ["choco", "install", "git", "-y"],
             },
             "winget": {
                 "python": ["winget", "install", "Python.Python.3.12"],
                 "node": ["winget", "install", "OpenJS.NodeJS"],
+                "npm": ["winget", "install", "OpenJS.NodeJS"],  # npm comes with nodejs
                 "git": ["winget", "install", "Git.Git"],
             },
             "scoop": {
                 "python": ["scoop", "install", "python"],
                 "node": ["scoop", "install", "nodejs"],
+                "npm": ["scoop", "install", "nodejs"],  # npm comes with nodejs
                 "git": ["scoop", "install", "git"],
             },
             "homebrew": {
                 "python": ["brew", "install", "python@3.12"],
                 "node": ["brew", "install", "node"],
+                "npm": ["brew", "install", "node"],  # npm comes with nodejs
                 "git": ["brew", "install", "git"],
             },
             "apt": {
@@ -289,6 +293,17 @@ class PrerequisiteInstaller:
                     "install",
                     "-y",
                     "nodejs",
+                    "npm",
+                ],
+                "npm": [
+                    "sudo",
+                    "apt",
+                    "update",
+                    "&&",
+                    "sudo",
+                    "apt",
+                    "install",
+                    "-y",
                     "npm",
                 ],
                 "git": [
@@ -327,6 +342,8 @@ class PrerequisiteInstaller:
             return self.install_python_manually(custom_path)
         elif prereq == "node":
             return self.install_node_manually(custom_path)
+        elif prereq == "npm":
+            return self.install_node_manually(custom_path)  # npm comes with nodejs
         elif prereq == "git":
             return self.install_git_manually(custom_path)
 
@@ -540,7 +557,7 @@ def main():
     parser.add_argument(
         "--install",
         nargs="*",
-        choices=["python", "node", "git", "all"],
+        choices=["python", "node", "git", "npm", "all"],
         help="Install specific prerequisites",
     )
     parser.add_argument("--interactive", action="store_true", help="Interactive mode")
@@ -562,7 +579,7 @@ def main():
 
     if args.install:
         to_install = (
-            args.install if "all" not in args.install else ["python", "node", "git"]
+            args.install if "all" not in args.install else ["python", "node", "git", "npm"]
         )
         for prereq in to_install:
             installer.install_prerequisite(prereq, args.path)

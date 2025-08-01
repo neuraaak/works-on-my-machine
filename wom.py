@@ -218,7 +218,7 @@ def system_detect(export):
 @system.command("install")
 @click.option("--check", is_flag=True, help="Only check prerequisites")
 @click.option("--interactive", is_flag=True, help="Interactive installation mode")
-@click.argument("tools", nargs=-1, type=click.Choice(["python", "node", "git", "all"]))
+@click.argument("tools", nargs=-1, type=click.Choice(["python", "node", "git", "npm", "all"]))
 def system_install(check, interactive, tools):
     """Install system prerequisites."""
     script_path = Path(__file__).parent / "shared" / "prerequisite_installer.py"

@@ -37,7 +37,7 @@ python .dev-tools/init.py
 dev-tools-install --check
 
 # Specific installation
-dev-tools-install --install python node git
+dev-tools-install --install python node git npm
 dev-tools-install --install all
 
 # Interactive mode
