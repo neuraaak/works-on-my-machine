@@ -30,7 +30,15 @@ help:
 	@echo ""
 	@echo "$(GREEN)Tests:$(RESET)"
 	@echo "  test         - Lancer les tests unitaires"
+	@echo "  test-all     - Lancer tous les tests"
+	@echo "  test-integration - Lancer les tests d'intégration"
+	@echo "  test-security - Lancer les tests de sécurité"
 	@echo "  test-cov     - Tests avec couverture"
+	@echo "  test-fast    - Tests rapides (sans tests lents)"
+	@echo "  test-parallel - Tests en parallèle"
+	@echo "  test-debug   - Tests en mode debug"
+	@echo "  test-check-deps - Vérifier les dépendances"
+	@echo "  test-summary - Afficher le résumé des tests"
 	@echo ""
 	@echo "$(GREEN)Hooks et outils:$(RESET)"
 	@echo "  setup-hooks  - Installer les hooks pre-commit"
@@ -70,11 +78,43 @@ lint:
 # Tests
 test:
 	@echo "$(BLUE)Lancement des tests unitaires...$(RESET)"
-	pytest tests/ 2>/dev/null || echo "$(YELLOW)Pas de tests configurés pour le moment$(RESET)"
+	$(PYTHON) run_tests.py --unit
+
+test-all:
+	@echo "$(BLUE)Lancement de tous les tests...$(RESET)"
+	$(PYTHON) run_tests.py --all
+
+test-integration:
+	@echo "$(BLUE)Lancement des tests d'intégration...$(RESET)"
+	$(PYTHON) run_tests.py --integration
+
+test-security:
+	@echo "$(BLUE)Lancement des tests de sécurité...$(RESET)"
+	$(PYTHON) run_tests.py --security
 
 test-cov:
 	@echo "$(BLUE)Tests avec couverture...$(RESET)"
-	pytest --cov=shared --cov=languages --cov-report=html --cov-report=term 2>/dev/null || echo "$(YELLOW)Pas de tests configurés$(RESET)"
+	$(PYTHON) run_tests.py --coverage
+
+test-fast:
+	@echo "$(BLUE)Lancement des tests rapides...$(RESET)"
+	$(PYTHON) run_tests.py --fast
+
+test-parallel:
+	@echo "$(BLUE)Lancement des tests en parallèle...$(RESET)"
+	$(PYTHON) run_tests.py --parallel
+
+test-debug:
+	@echo "$(BLUE)Lancement des tests en mode debug...$(RESET)"
+	$(PYTHON) run_tests.py --debug
+
+test-check-deps:
+	@echo "$(BLUE)Vérification des dépendances de test...$(RESET)"
+	$(PYTHON) run_tests.py --check-deps
+
+test-summary:
+	@echo "$(BLUE)Résumé des tests disponibles...$(RESET)"
+	$(PYTHON) run_tests.py --summary
 
 # Hooks pre-commit
 setup-hooks:
