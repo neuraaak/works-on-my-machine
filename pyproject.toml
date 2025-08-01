@@ -31,7 +31,7 @@ classifiers = [
 keywords = ["development-tools", "python", "javascript", "automation", "project-setup"]
 requires-python = ">=3.8"
 dependencies = [
-    # Pas de dépendances principales pour l'instant - le projet utilise stdlib
+    "click>=8.0.0",
 ]
 
 [project.optional-dependencies]
@@ -64,7 +64,9 @@ test = [
 "Bug Tracker" = "https://github.com/neuraaak/works-on-my-machine/issues"
 
 [project.scripts]
-# Scripts en ligne de commande principaux
+# Main CLI commands
+wom = "wom:wom"
+works-on-my-machine = "wom:wom"
 "works-on-my-machine-init" = "init:main"
 
 [tool.setuptools]

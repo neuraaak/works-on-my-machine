@@ -2,7 +2,11 @@
 
 ## Overview
 
-The Works On My Machine project has been refactored to use a centralized CLI system through the `shared/cli_manager.py` module. This architecture replaces scattered `subprocess.run()` calls with a consistent and robust API.
+The Works On My Machine project uses a **dual CLI architecture**:
+1. **User-facing CLI** with Click (`wom.py`) - Modern, user-friendly command interface
+2. **System command manager** (`shared/cli_manager.py`) - Centralized subprocess execution
+
+This architecture provides both excellent UX and robust system command handling.
 
 ## 🎯 Objectives
 
@@ -24,28 +28,30 @@ The Works On My Machine project has been refactored to use a centralized CLI sys
 
 ### File Structure
 ```
-shared/
-├── cli_manager.py          # Main CLI module
-├── CLI_ARCHITECTURE.md     # This documentation
-└── [other modules...]      # Use the CLI manager
+works-on-my-machine/
+├── wom.py                  # Main CLI entry point (Click)
+├── shared/
+│   ├── cli_manager.py      # System command manager
+│   ├── CLI_ARCHITECTURE.md # This documentation
+│   └── [other modules...]  # Use the CLI manager
+└── languages/              # Language-specific tools
 ```
 
 ### Main Components
 
-#### 1. `CommandResult`
-Class for command results:
-```python
-class CommandResult:
-    returncode: int     # Return code
-    stdout: str         # Standard output
-    stderr: str         # Error output
-    command: List[str]  # Executed command
-    cwd: Path          # Execution directory
-    success: bool      # True if returncode == 0
+#### 1. Click CLI (`wom.py`)
+Modern command-line interface:
+```bash
+# Main commands
+wom new python my-project          # Create Python project
+wom new javascript --type=react    # Create React project
+wom lint python --fix             # Lint and fix Python code
+wom spell check ./src              # Spell check files
+wom system install python node    # Install prerequisites
 ```
 
-#### 2. `CLIManager`
-Main manager:
+#### 2. System Command Manager (`cli_manager.py`)
+Centralized subprocess execution:
 ```python
 class CLIManager:
     def run(command, description, **options) -> CommandResult
@@ -55,14 +61,23 @@ class CLIManager:
     def get_command_version(command) -> Optional[str]
 ```
 
-#### 3. Convenience Functions
+#### 3. Command Groups Structure
 ```python
-# Global instance for simple usage
-run_command(cmd, desc)      # Execution with logging
-run_silent(cmd)            # Silent execution
-run_interactive(cmd)       # Interactive execution
-check_tool_available(tool) # Availability check
-get_tool_version(tool)     # Version retrieval
+@click.group()
+def wom():              # Main entry point
+    pass
+
+@wom.group()
+def new():              # Project creation
+    pass
+
+@wom.group() 
+def lint():             # Code quality
+    pass
+
+@wom.group()
+def spell():            # Spell checking
+    pass
 ```
 
 ## 🔄 Completed Migration
@@ -108,38 +123,38 @@ else:
 
 ## 💡 Usage Guide
 
-### 1. Basic Execution
+### 1. User Commands (Click CLI)
+```bash
+# Project creation
+wom new python my-api                    # New Python project
+wom new javascript --current-dir         # Setup current directory
+wom new detect my-project                # Auto-detect project type
+
+# Code quality
+wom lint python --fix                    # Fix Python code issues
+wom lint all ./src                       # Lint all code in src/
+
+# Spell checking
+wom spell install                        # Install CSpell globally
+wom spell setup my-project --type=python # Setup for project
+wom spell check --fix                    # Interactive spell fix
+
+# System management
+wom system detect --export=report.json   # System detection
+wom system install python node git       # Install prerequisites
+
+# Deployment
+wom deploy tools --global                # Deploy to global directory
+```
+
+### 2. System Commands (CLI Manager)
 ```python
 from shared.cli_manager import run_command
 
-# With automatic logging
-result = run_command(
-    ["git", "status"], 
-    "Checking Git status"
-)
-
+# For script development - internal use
+result = run_command(["git", "status"], "Checking Git status")
 if result.success:
     print("Git OK")
-else:
-    print(f"Git Error: {result.stderr}")
-```
-
-### 2. Silent Execution
-```python
-from shared.cli_manager import run_silent
-
-# For checks without display
-result = run_silent(["npm", "--version"])
-if result.success:
-    version = result.stdout.strip()
-```
-
-### 3. Interactive Execution
-```python
-from shared.cli_manager import run_interactive
-
-# For commands requiring user interaction
-result = run_interactive(["npm", "init"])
 ```
 
 ### 4. Tool Verification
