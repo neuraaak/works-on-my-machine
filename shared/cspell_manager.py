@@ -203,9 +203,7 @@ def main():
         metavar="PROJECT_NAME",
         help="Configure CSpell for current project",
     )
-    parser.add_argument(
-        "--check", metavar="PATH", help="Check spelling of file/folder"
-    )
+    parser.add_argument("--check", metavar="PATH", help="Check spelling of file/folder")
     parser.add_argument(
         "--fix", metavar="PATH", help="Fix spelling in interactive mode"
     )

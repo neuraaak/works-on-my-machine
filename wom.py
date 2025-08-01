@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Works On My Machine (WOM) - Main CLI Entry Point
+Works On My Machine (WOM) - Main CLI Entry Point.
 Universal development tools for Python and JavaScript projects.
 """
 
@@ -8,18 +8,17 @@ import sys
 from pathlib import Path
 
 import click
+from shared.cli_manager import run_command
 
 # Add shared modules to path
 sys.path.insert(0, str(Path(__file__).parent / "shared"))
-
-from shared.cli_manager import run_command
 
 
 @click.group()
 @click.version_option(version="1.0.0")
 def wom():
     """🛠️ Works On My Machine - Universal development tools.
-    
+
     Automatic installation, cross-platform configuration, global commands
     for Python and JavaScript projects.
     """
@@ -34,38 +33,59 @@ def new():
 
 @new.command("python")
 @click.argument("project_name", required=False)
-@click.option("--current-dir", is_flag=True, help="Configure current directory instead of creating new one")
+@click.option(
+    "--current-dir",
+    is_flag=True,
+    help="Configure current directory instead of creating new one",
+)
 def new_python(project_name, current_dir):
     """Create a new Python project with full development environment."""
-    script_path = Path(__file__).parent / "languages" / "python" / "scripts" / "setup_project.py"
-    
+    script_path = (
+        Path(__file__).parent / "languages" / "python" / "scripts" / "setup_project.py"
+    )
+
     cmd = [sys.executable, str(script_path)]
     if current_dir:
         cmd.append("--current-dir")
     elif project_name:
         cmd.append(project_name)
-    
+
     result = run_command(cmd, "Setting up Python project")
     sys.exit(0 if result.success else 1)
 
 
 @new.command("javascript")
 @click.argument("project_name", required=False)
-@click.option("--current-dir", is_flag=True, help="Configure current directory instead of creating new one")
-@click.option("--type", "project_type", type=click.Choice(["node", "react", "vue", "express"]), 
-    default="node", help="JavaScript project type")
+@click.option(
+    "--current-dir",
+    is_flag=True,
+    help="Configure current directory instead of creating new one",
+)
+@click.option(
+    "--type",
+    "project_type",
+    type=click.Choice(["node", "react", "vue", "express"]),
+    default="node",
+    help="JavaScript project type",
+)
 def new_javascript(project_name, current_dir, project_type):
     """Create a new JavaScript/Node.js project with development tools."""
-    script_path = Path(__file__).parent / "languages" / "javascript" / "scripts" / "setup_project.py"
-    
+    script_path = (
+        Path(__file__).parent
+        / "languages"
+        / "javascript"
+        / "scripts"
+        / "setup_project.py"
+    )
+
     cmd = [sys.executable, str(script_path)]
     if current_dir:
         cmd.append("--current-dir")
     elif project_name:
         cmd.append(project_name)
-    
+
     cmd.extend(["--type", project_type])
-    
+
     result = run_command(cmd, f"Setting up {project_type} project")
     sys.exit(0 if result.success else 1)
 
@@ -76,13 +96,13 @@ def new_javascript(project_name, current_dir, project_type):
 def new_detect(project_name, current_dir):
     """Auto-detect project type and create appropriate setup."""
     script_path = Path(__file__).parent / "shared" / "project_detector.py"
-    
+
     cmd = [sys.executable, str(script_path)]
     if current_dir:
         cmd.append("--current-dir")
     elif project_name:
         cmd.append(project_name)
-    
+
     result = run_command(cmd, "Auto-detecting and setting up project")
     sys.exit(0 if result.success else 1)
 
@@ -99,11 +119,11 @@ def lint():
 def lint_python(path, fix):
     """Lint Python code with flake8, black, and isort."""
     script_path = Path(__file__).parent / "languages" / "python" / "scripts" / "lint.py"
-    
+
     cmd = [sys.executable, str(script_path), path]
     if fix:
         cmd.append("--fix")
-    
+
     result = run_command(cmd, f"Linting Python code in {path}")
     sys.exit(0 if result.success else 1)
 
@@ -114,11 +134,11 @@ def lint_python(path, fix):
 def lint_all(path, fix):
     """Lint all supported code in project."""
     script_path = Path(__file__).parent / "lint.py"
-    
+
     cmd = [sys.executable, str(script_path), path]
     if fix:
         cmd.append("--fix")
-    
+
     result = run_command(cmd, f"Linting all code in {path}")
     sys.exit(0 if result.success else 1)
 
@@ -133,7 +153,7 @@ def spell():
 def spell_install():
     """Install CSpell and dictionaries globally."""
     script_path = Path(__file__).parent / "shared" / "cspell_manager.py"
-    
+
     cmd = [sys.executable, str(script_path), "--install"]
     result = run_command(cmd, "Installing CSpell globally")
     sys.exit(0 if result.success else 1)
@@ -141,16 +161,20 @@ def spell_install():
 
 @spell.command("setup")
 @click.argument("project_name")
-@click.option("--type", "project_type", type=click.Choice(["python", "javascript"]), 
-              help="Force project type")
+@click.option(
+    "--type",
+    "project_type",
+    type=click.Choice(["python", "javascript"]),
+    help="Force project type",
+)
 def spell_setup(project_name, project_type):
-    """Setup CSpell for current project."""
+    """Set CSpell for current project."""
     script_path = Path(__file__).parent / "shared" / "cspell_manager.py"
-    
+
     cmd = [sys.executable, str(script_path), "--setup-project", project_name]
     if project_type:
         cmd.extend(["--type", project_type])
-    
+
     result = run_command(cmd, f"Setting up CSpell for {project_name}")
     sys.exit(0 if result.success else 1)
 
@@ -161,12 +185,12 @@ def spell_setup(project_name, project_type):
 def spell_check(path, fix):
     """Check spelling in files."""
     script_path = Path(__file__).parent / "shared" / "cspell_manager.py"
-    
+
     if fix:
         cmd = [sys.executable, str(script_path), "--fix", path]
     else:
         cmd = [sys.executable, str(script_path), "--check", path]
-    
+
     result = run_command(cmd, f"Spell checking {path}")
     sys.exit(0 if result.success else 1)
 
@@ -182,11 +206,11 @@ def system():
 def system_detect(export):
     """Detect system information and available tools."""
     script_path = Path(__file__).parent / "shared" / "system_detector.py"
-    
+
     cmd = [sys.executable, str(script_path)]
     if export:
         cmd.extend(["--export", export])
-    
+
     result = run_command(cmd, "Detecting system information")
     sys.exit(0 if result.success else 1)
 
@@ -198,7 +222,7 @@ def system_detect(export):
 def system_install(check, interactive, tools):
     """Install system prerequisites."""
     script_path = Path(__file__).parent / "shared" / "prerequisite_installer.py"
-    
+
     cmd = [sys.executable, str(script_path)]
     if check:
         cmd.append("--check")
@@ -206,7 +230,7 @@ def system_install(check, interactive, tools):
         cmd.append("--interactive")
     if tools:
         cmd.extend(["--install"] + list(tools))
-    
+
     result = run_command(cmd, "Managing system prerequisites")
     sys.exit(0 if result.success else 1)
 
@@ -218,18 +242,21 @@ def deploy():
 
 
 @deploy.command("tools")
-@click.option("--target", type=click.Path(), default="~/.dev-tools", 
-              help="Target directory for deployment")
-@click.option("--global", "create_global", is_flag=True, 
-              help="Create global commands")
+@click.option(
+    "--target",
+    type=click.Path(),
+    default="~/.dev-tools",
+    help="Target directory for deployment",
+)
+@click.option("--global", "create_global", is_flag=True, help="Create global commands")
 def deploy_tools(target, create_global):
     """Deploy development tools to global directory."""
     script_path = Path(__file__).parent / "shared" / "deploy-devtools.py"
-    
+
     cmd = [sys.executable, str(script_path), "--target", target]
     if create_global:
         cmd.append("--install-global")
-    
+
     result = run_command(cmd, f"Deploying tools to {target}")
     sys.exit(0 if result.success else 1)
 
@@ -245,11 +272,11 @@ def context():
 def context_register(backup):
     """Register WOM tools in Windows context menu."""
     script_path = Path(__file__).parent / "shared" / "system" / "register_wom_tools.py"
-    
+
     cmd = [sys.executable, str(script_path), "--register"]
     if backup:
         cmd.append("--backup")
-    
+
     result = run_command(cmd, "Registering context menu tools")
     sys.exit(0 if result.success else 1)
 
@@ -258,7 +285,7 @@ def context_register(backup):
 def context_unregister():
     """Unregister WOM tools from Windows context menu."""
     script_path = Path(__file__).parent / "shared" / "system" / "register_wom_tools.py"
-    
+
     cmd = [sys.executable, str(script_path), "--unregister"]
     result = run_command(cmd, "Unregistering context menu tools")
     sys.exit(0 if result.success else 1)
@@ -268,7 +295,7 @@ def context_unregister():
 def context_list():
     """List registered context menu entries."""
     script_path = Path(__file__).parent / "shared" / "system" / "registrator.py"
-    
+
     cmd = [sys.executable, str(script_path), "--list"]
     result = run_command(cmd, "Listing context menu entries")
     sys.exit(0 if result.success else 1)

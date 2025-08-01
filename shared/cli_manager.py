@@ -240,9 +240,7 @@ class CLIManager:
 
         except subprocess.TimeoutExpired as e:
             if self.verbose:
-                print(
-                    f"⏱️ Timeout after {run_timeout}s for: {description or 'command'}"
-                )
+                print(f"⏱️ Timeout after {run_timeout}s for: {description or 'command'}")
             cmd_result = CommandResult(
                 returncode=-1,
                 stderr=f"Timeout after {run_timeout}s",
