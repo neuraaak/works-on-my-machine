@@ -137,9 +137,7 @@ class SystemDetector:
         # MacPorts
         if shutil.which("port"):
             try:
-                result = subprocess.run(
-                    ["port", "version"], capture_output=True, text=True
-                )
+                result = run_silent(["port", "version"])
                 managers["macports"] = {
                     "available": True,
                     "version": result.stdout.strip() if result.success else None,
@@ -160,9 +158,7 @@ class SystemDetector:
         # APT (Debian/Ubuntu)
         if check_tool_available("apt"):
             try:
-                result = subprocess.run(
-                    ["apt", "--version"], capture_output=True, text=True
-                )
+                result = run_silent(["apt", "--version"])
                 managers["apt"] = {
                     "available": True,
                     "version": result.stdout.split("\n")[0],
@@ -177,9 +173,7 @@ class SystemDetector:
         # DNF (Fedora)
         if shutil.which("dnf"):
             try:
-                result = subprocess.run(
-                    ["dnf", "--version"], capture_output=True, text=True
-                )
+                result = run_silent(["dnf", "--version"])
                 managers["dnf"] = {
                     "available": True,
                     "version": result.stdout.split("\n")[0],
@@ -194,9 +188,7 @@ class SystemDetector:
         # YUM (CentOS/RHEL)
         if shutil.which("yum"):
             try:
-                result = subprocess.run(
-                    ["yum", "--version"], capture_output=True, text=True
-                )
+                result = run_silent(["yum", "--version"])
                 managers["yum"] = {
                     "available": True,
                     "version": result.stdout.split("\n")[0],
@@ -211,9 +203,7 @@ class SystemDetector:
         # Pacman (Arch)
         if shutil.which("pacman"):
             try:
-                result = subprocess.run(
-                    ["pacman", "--version"], capture_output=True, text=True
-                )
+                result = run_silent(["pacman", "--version"])
                 managers["pacman"] = {
                     "available": True,
                     "version": result.stdout.split("\n")[0],
@@ -228,9 +218,7 @@ class SystemDetector:
         # Snap
         if shutil.which("snap"):
             try:
-                result = subprocess.run(
-                    ["snap", "--version"], capture_output=True, text=True
-                )
+                result = run_silent(["snap", "--version"])
                 managers["snap"] = {
                     "available": True,
                     "version": result.stdout.split("\n")[0],
@@ -263,9 +251,7 @@ class SystemDetector:
         for cmd, name in editors.items():
             if shutil.which(cmd):
                 try:
-                    result = subprocess.run(
-                        [cmd, "--version"], capture_output=True, text=True, timeout=5
-                    )
+                    result = run_silent([cmd, "--version"])
                     envs[cmd] = {
                         "available": True,
                         "name": name,

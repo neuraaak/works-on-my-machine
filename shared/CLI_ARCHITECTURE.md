@@ -74,7 +74,7 @@ get_tool_version(tool)     # Version retrieval
 - ✅ `shared/cspell_manager.py` - CSpell management
 - ✅ `shared/prerequisite_installer.py` - Prerequisites installation
 - ✅ `shared/environment_manager.py` - Environment management
-- ✅ `shared/system_detector.py` - System detection
+- ✅ `shared/system_detector.py` - System detection (migrated)
 - ✅ `init.py` - Initialization script
 
 ### Migration Patterns
