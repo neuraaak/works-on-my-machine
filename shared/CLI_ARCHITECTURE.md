@@ -13,7 +13,7 @@ This architecture provides both excellent UX and robust system command handling.
 ```
 works-on-my-machine/
 ├── womm.py                  # Main CLI entry point (Click)
-├── init.py                  # Initialization script
+├── init.py                  # Installation wrapper (delegates to womm:install)
 ├── shared/
 │   ├── cli_manager.py       # System command execution
 │   ├── system_detector.py   # System detection (migrated)
@@ -30,13 +30,15 @@ works-on-my-machine/
 **Purpose**: Modern, user-friendly command interface with automatic help generation.
 
 **Features**:
-- Command grouping (`new`, `lint`, `spell`, `system`, `deploy`, `context`)
+- Command grouping (`install`, `uninstall`, `new`, `lint`, `spell`, `system`, `deploy`, `context`)
 - Automatic argument parsing and validation
 - Built-in help system
 - Cross-platform compatibility
 
 **Example Usage**:
 ```bash
+womm install                        # Install WOMM
+womm uninstall                      # Remove WOMM
 womm new python my-project          # Create Python project
 womm new javascript --type=react    # Create React project
 womm lint python --fix             # Lint and fix Python code

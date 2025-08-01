@@ -3,7 +3,7 @@ title Dev Tools - Smart Init
 echo 🚀 Smart Init Dev Tools (Windows)
 echo.
 
-python "%~dp0init.py"
+python "%~dp0womm.py" install
 
 if errorlevel 1 (
     echo.

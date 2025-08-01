@@ -7,15 +7,15 @@
 
 ```bash
 # Create a new Python project
-new-python-project my-project
+womm new python my-project
 
 # In an existing project
 cd my-existing-project
-new-python-project --current-dir
+womm new python --current-dir
 
 # Linting and formatting
-lint-project      # Auto-detection if in a Python project
-format-project    # Automatic formatting (coming soon)
+womm lint python  # Auto-detection if in a Python project
+womm lint python --fix  # Automatic formatting
 ```
 
 ## 📁 Python Tools Structure
@@ -70,19 +70,19 @@ languages/python/
 ### 🆕 **Project Creation**
 ```bash
 # Complete assistant
-new-python-project my-app
+womm new python my-app
 
 # Existing project configuration
-new-python-project --current-dir
+womm new python --current-dir
 ```
 
 ### 🔧 **Development**
 ```bash
 # Complete linting
-lint-project
+womm lint python
 
 # Automatic correction
-format-project
+womm lint python --fix
 
 # Tests
 pytest
@@ -143,7 +143,7 @@ Automatic configuration:
 
 ### 1. **Initialization**
 ```bash
-new-python-project my-project
+womm new python my-project
 cd my-project
 ```
 

@@ -26,11 +26,11 @@ The Works On My Machine system includes an **automatic development environment m
 ### **Automatic Integration**
 ```bash
 # When creating a project
-new-python-project MyProject
+womm new python MyProject
 # → Automatic prompt to install environment
 # → Creates venv + installs all tools
 
-new-js-project MyJSApp  
+womm new javascript MyJSApp  
 # → Automatic prompt to install environment
 # → npm install + configures all tools
 ```
@@ -38,12 +38,12 @@ new-js-project MyJSApp
 ### **Dedicated Command**
 ```bash
 # Manual configuration of existing project
-setup-dev-env . python --no-prompt
-setup-dev-env . javascript
+womm system setup python --no-prompt
+womm system setup javascript
 
 # Test from any project
 cd my-python-project
-setup-dev-env . python
+womm system setup python
 ```
 
 ## 🐍 **Python Environment**
@@ -83,7 +83,7 @@ my-project/
 ### **Python Workflow**
 ```bash
 # 1. Create the project
-new-python-project MyProject
+womm new python MyProject
 # → "Install development tools? (Y/n): [Enter]"
 # → ✅ venv created + tools installed
 
@@ -184,7 +184,7 @@ npm run dev
 
 ### **Scenario 1: New Python Project**
 ```bash
-new-python-project MyAPI
+womm new python MyAPI
 ```
 ```
 🐍 Configuring Python environment for 'MyAPI'
@@ -230,7 +230,7 @@ new-python-project MyAPI
 
 ### **Scenario 2: JavaScript TypeScript Project**
 ```bash
-new-js-project MyAppTS --type typescript
+womm new javascript MyAppTS --type typescript
 ```
 ```
 🟨 Configuring JavaScript environment for 'MyAppTS'

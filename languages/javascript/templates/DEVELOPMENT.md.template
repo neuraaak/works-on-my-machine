@@ -1,108 +1,108 @@
-# 🟨 Guide de Développement - {{PROJECT_NAME}}
+# 🟨 Development Guide - {{PROJECT_NAME}}
 
-> Guide complet pour contribuer au projet **{{PROJECT_NAME}}**
+> Complete guide for contributing to **{{PROJECT_NAME}}** project
 
-## 🚀 Installation et Configuration
+## 🚀 Installation and Setup
 
-### Prérequis
+### Prerequisites
 - **Node.js** >= 18.0.0
-- **npm** >= 9.0.0 (ou **yarn**, **pnpm**)
-- **Git** pour la gestion de versions
+- **npm** >= 9.0.0 (or **yarn**, **pnpm**)
+- **Git** for version control
 
 ### Installation
 ```bash
-# Cloner le projet
+# Clone the project
 git clone <repository-url>
 cd {{PROJECT_NAME}}
 
-# Installer les dépendances
+# Install dependencies
 npm install
 
-# Installer les hooks pre-commit
+# Install pre-commit hooks
 npm run prepare
 ```
 
-## 🛠️ Environnement de Développement
+## 🛠️ Development Environment
 
-### Scripts Disponibles
+### Available Scripts
 ```bash
-# Développement
-npm run dev              # Serveur de développement
-npm run build            # Build de production
-npm run start            # Serveur de production
+# Development
+npm run dev              # Development server
+npm run build            # Production build
+npm run start            # Production server
 
-# Qualité du code
-npm run lint             # Vérification ESLint
-npm run lint:fix         # Correction automatique ESLint
-npm run format           # Formatage Prettier
-npm run format:check     # Vérification formatage
+# Code quality
+npm run lint             # ESLint checking
+npm run lint:fix         # Auto-fix ESLint issues
+npm run format           # Prettier formatting
+npm run format:check     # Format checking
 
 # Tests
-npm test                 # Tests Jest
-npm run test:watch       # Tests en mode watch
-npm run test:coverage    # Tests avec couverture
+npm test                 # Jest tests
+npm run test:watch       # Watch mode tests
+npm run test:coverage    # Tests with coverage
 ```
 
-### Structure du Projet
+### Project Structure
 ```
 {{PROJECT_NAME}}/
-├── src/                 # Code source principal
-│   ├── components/      # Composants réutilisables
-│   ├── pages/          # Pages/Vues principales
-│   ├── utils/          # Utilitaires et helpers
-│   ├── hooks/          # Hooks personnalisés (React)
-│   ├── services/       # Services API
-│   └── styles/         # Styles globaux
-├── tests/              # Tests unitaires et d'intégration
-├── public/             # Assets statiques
+├── src/                 # Main source code
+│   ├── components/      # Reusable components
+│   ├── pages/          # Main pages/views
+│   ├── utils/          # Utilities and helpers
+│   ├── hooks/          # Custom hooks (React)
+│   ├── services/       # API services
+│   └── styles/         # Global styles
+├── tests/              # Unit and integration tests
+├── public/             # Static assets
 ├── docs/               # Documentation
-└── config/             # Configuration build/dev
+└── config/             # Build/dev configuration
 ```
 
-## 📋 Standards de Code
+## 📋 Code Standards
 
 ### ESLint
-- **Règles** : Standard + TypeScript + React/Vue
-- **Extensions** : Sécurité, bonnes pratiques
-- **Auto-fix** activé pour les erreurs corrigeables
+- **Rules**: Standard + TypeScript + React/Vue
+- **Extensions**: Security, best practices
+- **Auto-fix** enabled for fixable errors
 
 ### Prettier
-- **Print Width** : 80 caractères
-- **Quotes** : Simple quotes
-- **Semicolons** : Activés
-- **Tab Width** : 2 espaces
+- **Print Width**: 80 characters
+- **Quotes**: Single quotes
+- **Semicolons**: Enabled
+- **Tab Width**: 2 spaces
 
-### TypeScript (si applicable)
-- **Strict mode** activé
-- **Types explicites** pour les APIs publiques
-- **Interfaces** préférées aux types pour les objets
+### TypeScript (if applicable)
+- **Strict mode** enabled
+- **Explicit types** for public APIs
+- **Interfaces** preferred over types for objects
 
 ## 🧪 Tests
 
-### Structure des Tests
+### Test Structure
 ```
 tests/
-├── unit/               # Tests unitaires
-├── integration/        # Tests d'intégration
-├── e2e/               # Tests end-to-end (si applicable)
-└── __mocks__/         # Mocks globaux
+├── unit/               # Unit tests
+├── integration/        # Integration tests
+├── e2e/               # End-to-end tests (if applicable)
+└── __mocks__/         # Global mocks
 ```
 
-### Conventions de Nommage
-- **Fichiers de test** : `*.test.js/ts` ou `*.spec.js/ts`
-- **Dossiers** : Même structure que `src/`
-- **Mocks** : `__mocks__/nom-du-module.js`
+### Naming Conventions
+- **Test files**: `*.test.js/ts` or `*.spec.js/ts`
+- **Folders**: Same structure as `src/`
+- **Mocks**: `__mocks__/module-name.js`
 
-### Types de Tests
+### Test Types
 ```javascript
-// Test unitaire
+// Unit test
 describe('UtilityFunction', () => {
   it('should return expected result', () => {
     expect(utilityFunction(input)).toBe(expectedOutput);
   });
 });
 
-// Test de composant (React)
+// Component test (React)
 import { render, screen } from '@testing-library/react';
 describe('MyComponent', () => {
   it('renders correctly', () => {
@@ -112,22 +112,22 @@ describe('MyComponent', () => {
 });
 ```
 
-## 🔄 Workflow Git
+## 🔄 Git Workflow
 
 ### Branches
-- **main** : Code de production
-- **develop** : Intégration des features
-- **feature/nom-feature** : Nouvelles fonctionnalités
-- **fix/nom-fix** : Corrections de bugs
-- **hotfix/nom-hotfix** : Corrections urgentes
+- **main**: Production code
+- **develop**: Feature integration
+- **feature/feature-name**: New features
+- **fix/fix-name**: Bug fixes
+- **hotfix/hotfix-name**: Urgent fixes
 
 ### Commits
-Convention **Conventional Commits** :
+**Conventional Commits** convention:
 ```bash
 # Format
 type(scope): description
 
-# Exemples
+# Examples
 feat(auth): add user authentication
 fix(api): resolve data fetching error
 docs(readme): update installation guide
@@ -137,37 +137,37 @@ test(user): add login flow tests
 ```
 
 ### Pull Requests
-1. **Créer une branche** depuis `develop`
-2. **Développer** la fonctionnalité
-3. **Tester** localement (lint + tests)
-4. **Créer la PR** vers `develop`
-5. **Code Review** obligatoire
-6. **Merge** après validation
+1. **Create branch** from `develop`
+2. **Develop** the feature
+3. **Test** locally (lint + tests)
+4. **Create PR** to `develop`
+5. **Code Review** required
+6. **Merge** after approval
 
 ## 🏗️ Architecture
 
-### Patterns Recommandés
-- **Composants fonctionnels** (React)
+### Recommended Patterns
+- **Functional components** (React)
 - **Composition API** (Vue.js)
-- **Custom Hooks** pour la logique réutilisable
-- **Services** pour les appels API
-- **State management** centralisé si nécessaire
+- **Custom Hooks** for reusable logic
+- **Services** for API calls
+- **Centralized state management** if needed
 
-### Gestion d'État
+### State Management
 ```javascript
-// État local (useState, ref)
+// Local state (useState, ref)
 const [state, setState] = useState(initialValue);
 
-// État global (Context, Redux, Zustand, Pinia)
+// Global state (Context, Redux, Zustand, Pinia)
 const { user, updateUser } = useUserStore();
 
-// État serveur (React Query, SWR)
+// Server state (React Query, SWR)
 const { data, error, isLoading } = useQuery('users', fetchUsers);
 ```
 
-### API et Services
+### API and Services
 ```javascript
-// Structure service
+// Service structure
 export const userService = {
   async getAll() {
     const response = await fetch('/api/users');
@@ -181,16 +181,16 @@ export const userService = {
 };
 ```
 
-## 🔒 Sécurité
+## 🔒 Security
 
-### Bonnes Pratiques
-- **Validation** des inputs utilisateur
-- **Sanitization** des données
-- **HTTPS** en production
-- **Variables d'environnement** pour les secrets
+### Best Practices
+- **Input validation** for user data
+- **Data sanitization**
+- **HTTPS** in production
+- **Environment variables** for secrets
 - **CSP** (Content Security Policy)
 
-### Variables d'Environnement
+### Environment Variables
 ```bash
 # .env.local
 NEXT_PUBLIC_API_URL=http://localhost:3001
@@ -198,65 +198,65 @@ DATABASE_URL=postgresql://user:pass@localhost/db
 JWT_SECRET=your-secret-key
 ```
 
-## 📦 Build et Déploiement
+## 📦 Build and Deployment
 
-### Build de Production
+### Production Build
 ```bash
-# Build optimisé
+# Optimized build
 npm run build
 
-# Vérification du build
+# Build verification
 npm run start
 
-# Analyse du bundle (si disponible)
+# Bundle analysis (if available)
 npm run analyze
 ```
 
-### Optimisations
-- **Code splitting** automatique
-- **Tree shaking** activé
-- **Compression** des assets
-- **Lazy loading** des composants
+### Optimizations
+- **Automatic code splitting**
+- **Tree shaking** enabled
+- **Asset compression**
+- **Component lazy loading**
 - **Service Worker** (PWA)
 
 ## 🐛 Debugging
 
-### Outils de Développement
+### Development Tools
 - **React DevTools** / **Vue DevTools**
-- **Redux DevTools** (si applicable)
-- **Network tab** pour les API
-- **Console** pour les logs
-- **Sources** pour le debugging
+- **Redux DevTools** (if applicable)
+- **Network tab** for APIs
+- **Console** for logs
+- **Sources** for debugging
 
-### Logs et Monitoring
+### Logs and Monitoring
 ```javascript
-// Logs structurés
+// Structured logs
 console.group('User Action');
 console.log('Action:', action);
 console.log('Payload:', payload);
 console.groupEnd();
 
-// Monitoring d'erreurs
+// Error monitoring
 try {
-  // Code à risque
+  // Risky code
 } catch (error) {
   console.error('Error:', error);
-  // Envoyer à service de monitoring
+  // Send to monitoring service
 }
 ```
 
-## 📚 Ressources
+## 📚 Resources
 
 ### Documentation
-- **README.md** : Vue d'ensemble du projet
-- **CHANGELOG.md** : Historique des versions
-- **API.md** : Documentation API (si applicable)
-- **DEPLOYMENT.md** : Guide de déploiement
+- **README.md**: Project overview
+- **CHANGELOG.md**: Version history
+- **API.md**: API documentation (if applicable)
+- **DEPLOYMENT.md**: Deployment guide
 
-### Liens Utiles
-- [Documentation Framework](#)
-- [Guide des bonnes pratiques](#)
-- [Standards de l'équipe](#)
+### Useful Links
+- [Framework Documentation](#)
+- [Best Practices Guide](#)
+- [Team Standards](#)
 
 ---
 

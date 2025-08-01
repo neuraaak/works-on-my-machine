@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 
 import click
+
 from shared.cli_manager import run_command
 
 # Add shared modules to path
@@ -25,17 +26,28 @@ def womm():
     pass
 
 
-@womm.command("init")
-@click.option("--force", "-f", is_flag=True, help="Force initialization even if .womm directory exists")
-@click.option("--no-prerequisites", is_flag=True, help="Skip prerequisites installation")
-@click.option("--no-context-menu", is_flag=True, help="Skip Windows context menu integration")
-@click.option("--target", type=click.Path(), help="Custom target directory (default: ~/.womm)")
-def init(force, no_prerequisites, no_context_menu, target):
-    """Initialize Works On My Machine in user directory."""
-    script_path = Path(__file__).parent / "init.py"
-    
+@womm.command("install")
+@click.option(
+    "--force",
+    "-f",
+    is_flag=True,
+    help="Force installation even if .womm directory exists",
+)
+@click.option(
+    "--no-prerequisites", is_flag=True, help="Skip prerequisites installation"
+)
+@click.option(
+    "--no-context-menu", is_flag=True, help="Skip Windows context menu integration"
+)
+@click.option(
+    "--target", type=click.Path(), help="Custom target directory (default: ~/.womm)"
+)
+def install(force, no_prerequisites, no_context_menu, target):
+    """Install Works On My Machine in user directory."""
+    script_path = Path(__file__).parent / "shared" / "installer.py"
+
     cmd = [sys.executable, str(script_path)]
-    
+
     if force:
         cmd.append("--force")
     if no_prerequisites:
@@ -44,8 +56,33 @@ def init(force, no_prerequisites, no_context_menu, target):
         cmd.append("--no-context-menu")
     if target:
         cmd.extend(["--target", target])
-    
-    result = run_command(cmd, "Initializing Works On My Machine")
+
+    result = run_command(cmd, "Installing Works On My Machine")
+    sys.exit(0 if result.success else 1)
+
+
+@womm.command("uninstall")
+@click.option(
+    "--force",
+    "-f",
+    is_flag=True,
+    help="Force uninstallation without confirmation",
+)
+@click.option(
+    "--target", type=click.Path(), help="Custom target directory (default: ~/.womm)"
+)
+def uninstall(force, target):
+    """Uninstall Works On My Machine from user directory."""
+    script_path = Path(__file__).parent / "shared" / "uninstaller.py"
+
+    cmd = [sys.executable, str(script_path)]
+
+    if force:
+        cmd.append("--force")
+    if target:
+        cmd.extend(["--target", target])
+
+    result = run_command(cmd, "Uninstalling Works On My Machine")
     sys.exit(0 if result.success else 1)
 
 
@@ -242,7 +279,9 @@ def system_detect(export):
 @system.command("install")
 @click.option("--check", is_flag=True, help="Only check prerequisites")
 @click.option("--interactive", is_flag=True, help="Interactive installation mode")
-@click.argument("tools", nargs=-1, type=click.Choice(["python", "node", "git", "npm", "all"]))
+@click.argument(
+    "tools", nargs=-1, type=click.Choice(["python", "node", "git", "npm", "all"])
+)
 def system_install(check, interactive, tools):
     """Install system prerequisites."""
     script_path = Path(__file__).parent / "shared" / "prerequisite_installer.py"

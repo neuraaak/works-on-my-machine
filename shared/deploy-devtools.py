@@ -54,7 +54,7 @@ def deploy_tools(target_dir: Path, install_global: bool = False):
     for item in source_dir.iterdir():
         if item.name.startswith("."):
             continue  # Skip hidden files
-        
+
         if item.is_file():
             shutil.copy2(item, target_dir)
         elif item.is_dir():
@@ -131,7 +131,18 @@ python "{script_path}" %*
                 # Add to PATH
                 new_path = f"{bin_dir};%PATH%"
                 run_command(
-                    ["reg", "add", "HKCU\\Environment", "/v", "PATH", "/t", "REG_EXPAND_SZ", "/d", new_path, "/f"],
+                    [
+                        "reg",
+                        "add",
+                        "HKCU\\Environment",
+                        "/v",
+                        "PATH",
+                        "/t",
+                        "REG_EXPAND_SZ",
+                        "/d",
+                        new_path,
+                        "/f",
+                    ],
                     "Adding bin directory to PATH",
                 )
                 print("✅ Added bin directory to PATH")
@@ -139,7 +150,7 @@ python "{script_path}" %*
                 print("✅ bin directory already in PATH")
     except Exception as e:
         print(f"⚠️  Could not update PATH: {e}")
-        print(f"💡 Add manually: setx PATH \"{bin_dir};%PATH%\"")
+        print(f'💡 Add manually: setx PATH "{bin_dir};%PATH%"')
 
     print(f"✅ Windows commands created in: {bin_dir}")
 
@@ -219,7 +230,7 @@ def main():
         deploy_tools(target_path, args.install_global)
         print("\n🎉 Deployment completed successfully!")
         print(f"📁 Tools deployed to: {target_path}")
-        
+
         if args.install_global:
             print("🌍 Global commands installed")
             print("💡 Restart your terminal to use the new commands")

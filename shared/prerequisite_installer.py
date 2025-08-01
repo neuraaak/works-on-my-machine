@@ -579,7 +579,9 @@ def main():
 
     if args.install:
         to_install = (
-            args.install if "all" not in args.install else ["python", "node", "git", "npm"]
+            args.install
+            if "all" not in args.install
+            else ["python", "node", "git", "npm"]
         )
         for prereq in to_install:
             installer.install_prerequisite(prereq, args.path)

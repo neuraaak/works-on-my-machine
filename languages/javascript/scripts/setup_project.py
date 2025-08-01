@@ -88,11 +88,9 @@ class JavaScriptProjectSetup:
         self.devtools_path = self.js_tools_path.parent.parent
 
     def setup_all(self):
-        """Configure tout l'environnement de développement."""
-        print(
-            f"🟨 Configuration de l'environnement JavaScript pour '{self.project_name}'"
-        )
-        print(f"📁 Répertoire: {self.project_path}")
+        """Configure the complete development environment."""
+        print(f"🟨 Setting up JavaScript environment for '{self.project_name}'")
+        print(f"📁 Directory: {self.project_path}")
         print(f"🎯 Type: {self.PROJECT_TYPES[self.project_type]['description']}")
 
         self.create_directory_structure()
@@ -109,8 +107,8 @@ class JavaScriptProjectSetup:
         self.print_next_steps()
 
     def create_directory_structure(self):
-        """Crée la structure de répertoires de base."""
-        print("\n📂 Création de la structure de répertoires...")
+        """Create the basic directory structure."""
+        print("\n📂 Creating directory structure...")
 
         directories = [
             self.project_path / "src",
@@ -119,7 +117,7 @@ class JavaScriptProjectSetup:
             self.project_path / ".vscode",
         ]
 
-        # Dossiers spécifiques selon le type
+        # Type-specific directories
         if self.project_type in ["react", "vue"]:
             directories.extend(
                 [
@@ -135,7 +133,7 @@ class JavaScriptProjectSetup:
 
     def copy_configs(self):
         """Copy configuration files."""
-        print("\n⚙️ Copie des configurations JavaScript...")
+        print("\n⚙️ Copying JavaScript configurations...")
 
         configs = [
             ("configs/.eslintrc.json", ".eslintrc.json"),
@@ -151,11 +149,11 @@ class JavaScriptProjectSetup:
                 shutil.copy2(source_path, dest_path)
                 print(f"   ✓ {dest}")
             else:
-                print(f"   ⚠️  Fichier manquant: {source}")
+                print(f"   ⚠️  Missing file: {source}")
 
     def setup_git(self):
-        """Initialise Git et configure .gitignore."""
-        print("\n🔧 Configuration Git...")
+        """Initialize Git and configure .gitignore."""
+        print("\n🔧 Configuring Git...")
 
         if not (self.project_path / ".git").exists():
             try:
@@ -165,13 +163,13 @@ class JavaScriptProjectSetup:
                     check=True,
                     capture_output=True,
                 )
-                print("   ✓ Repository Git initialisé")
+                print("   ✓ Git repository initialized")
             except (subprocess.CalledProcessError, FileNotFoundError):
-                print("   ⚠️  Git non trouvé ou erreur d'initialisation")
+                print("   ⚠️  Git not found or initialization error")
 
     def setup_cspell(self):
-        """Configure CSpell pour le projet."""
-        print("📝 Configuration CSpell...")
+        """Configure CSpell for the project."""
+        print("📝 Configuring CSpell...")
 
         # Importer le gestionnaire CSpell
         devtools_path = Path.home() / ".dev-tools"
@@ -188,11 +186,11 @@ class JavaScriptProjectSetup:
             else:
                 print("   ⚠ Erreur lors de la configuration CSpell")
         except ImportError:
-            print("   ⚠ Module cspell_manager non trouvé")
+            print("   ⚠ cspell_manager module not found")
 
     def setup_development_environment(self):
-        """Configure l'environnement de développement JavaScript."""
-        print("🛠️ Configuration de l'environnement de développement...")
+        """Configure the JavaScript development environment."""
+        print("🛠️ Setting up development environment...")
 
         # Importer le gestionnaire d'environnement
         devtools_path = Path.home() / ".dev-tools"
@@ -206,32 +204,32 @@ class JavaScriptProjectSetup:
             if manager.prompt_install_tools():
                 if manager.setup_javascript_environment():
                     manager.create_activation_scripts()
-                    print("   ✓ Environnement de développement configuré")
+                    print("   ✓ Development environment configured")
                     return True
                 else:
-                    print("   ⚠ Erreur lors de la configuration de l'environnement")
+                    print("   ⚠ Error configuring development environment")
                     return False
             else:
-                print("   ⏭️ Configuration de l'environnement ignorée")
+                print("   ⏭️ Development environment setup skipped")
                 return True
 
         except ImportError:
-            print("   ⚠ Module environment_manager non trouvé")
+            print("   ⚠ environment_manager module not found")
             return False
 
     def create_package_json(self):
-        """Crée le fichier package.json."""
-        print("\n📦 Création du package.json...")
+        """Create the package.json file."""
+        print("\n📦 Creating package.json...")
 
         template_path = self.js_tools_path / "templates" / "package.template.json"
         if not template_path.exists():
-            print("   ⚠️  Template package.json manquant")
+            print("   ⚠️  package.json template missing")
             return
 
-        # Lire le template
+        # Read template
         template_content = template_path.read_text(encoding="utf-8")
 
-        # Remplacer les placeholders
+        # Replace placeholders
         config = self.PROJECT_TYPES[self.project_type]
         replacements = {
             "{{PROJECT_NAME}}": self.project_name,
@@ -249,19 +247,19 @@ class JavaScriptProjectSetup:
         for placeholder, value in replacements.items():
             template_content = template_content.replace(placeholder, value)
 
-        # Nettoyer les virgules en trop
+        # Clean up extra commas
         template_content = template_content.replace(",\n    \n  }", "\n  }")
         template_content = template_content.replace(",\n    {{", "\n    {{")
 
-        # Écrire le fichier
+        # Write file
         (self.project_path / "package.json").write_text(
             template_content, encoding="utf-8"
         )
         print("   ✓ package.json")
 
     def create_project_files(self):
-        """Crée les fichiers de base du projet selon le type."""
-        print("\n📄 Création des fichiers de base...")
+        """Create basic project files based on type."""
+        print("\n📄 Creating basic files...")
 
         # README.md
         readme_content = f"""# {self.project_name}
@@ -274,13 +272,13 @@ class JavaScriptProjectSetup:
 npm install
 ```
 
-## 🛠️ Développement
+## 🛠️ Development
 
 ```bash
-# Serveur de développement
+# Development server
 npm run dev
 
-# Build de production
+# Production build
 npm run build
 
 # Tests
@@ -303,15 +301,15 @@ npm run format
 
 ## 📖 Documentation
 
-Voir [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) pour le guide de développement complet.
+See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for the complete development guide.
 """
         (self.project_path / "README.md").write_text(readme_content, encoding="utf-8")
         print("   ✓ README.md")
 
-        # Créer les fichiers selon le type
+        # Create type-specific files
         self._create_type_specific_files()
 
-        # TypeScript config (si nécessaire)
+        # TypeScript config (if needed)
         if self.project_type != "vanilla":
             self._create_typescript_config()
 
@@ -319,7 +317,7 @@ Voir [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) pour le guide de développement 
         self._create_test_files()
 
     def _create_type_specific_files(self):
-        """Crée les fichiers spécifiques au type de projet."""
+        """Create type-specific project files."""
         if self.project_type == "node":
             # src/index.js
             index_content = """import express from 'express';
@@ -510,15 +508,15 @@ describe('App Component', () => {{
                 print(f"   ⚠️  Fichier VSCode manquant: {file}")
 
     def install_dependencies(self):
-        """Installe les dépendances NPM."""
-        print("\n📦 Installation des dépendances...")
+        """Install NPM dependencies."""
+        print("\n📦 Installing dependencies...")
 
         try:
-            # Vérifier npm
+            # Check npm
             subprocess.run(["npm", "--version"], capture_output=True, check=True)
 
-            # Installer les dépendances
-            print("   🔄 Installation en cours...")
+            # Install dependencies
+            print("   🔄 Installing...")
             result = subprocess.run(
                 ["npm", "install"],
                 cwd=self.project_path,
@@ -527,23 +525,23 @@ describe('App Component', () => {{
             )
 
             if result.returncode == 0:
-                print("   ✅ Dépendances installées")
+                print("   ✅ Dependencies installed")
 
-                # Installer husky
+                # Install husky
                 subprocess.run(
                     ["npx", "husky", "install"],
                     cwd=self.project_path,
                     capture_output=True,
                 )
-                print("   ✅ Hooks Husky configurés")
+                print("   ✅ Husky hooks configured")
             else:
-                print(f"   ⚠️  Erreur lors de l'installation: {result.stderr}")
+                print(f"   ⚠️  Installation error: {result.stderr}")
 
         except (subprocess.CalledProcessError, FileNotFoundError):
-            print("   ⚠️  npm non trouvé. Installez Node.js/npm")
+            print("   ⚠️  npm not found. Install Node.js/npm")
 
     def print_next_steps(self):
-        """Affiche les prochaines étapes."""
+        """Display next steps."""
         print(
             f"""
 🎉 JavaScript project '{self.project_name}' configured successfully!
@@ -572,7 +570,7 @@ describe('App Component', () => {{
 
 
 def main():
-    """Fonction principale."""
+    """Execute the main function."""
     parser = argparse.ArgumentParser(
         description="Configure a JavaScript development environment"
     )
@@ -600,35 +598,35 @@ def main():
         project_name = args.project_name
         project_path = Path.cwd() / project_name
     else:
-        project_name = input("Nom du projet JavaScript: ").strip()
+        project_name = input("JavaScript project name: ").strip()
         if not project_name:
-            print("❌ Nom de projet requis")
+            print("❌ Project name required")
             return 1
         project_path = Path.cwd() / project_name
 
-    # Sélection du type si pas spécifié
+    # Type selection if not specified
     if not args.current_dir and not args.type:
-        print("\n🎯 Quel type de projet JavaScript voulez-vous créer ?")
+        print("\n🎯 What type of JavaScript project do you want to create?")
         for i, (key, config) in enumerate(
             JavaScriptProjectSetup.PROJECT_TYPES.items(), 1
         ):
             print(f"{i}. {key} - {config['description']}")
 
         try:
-            choice = int(input("Choix (1-4): ")) - 1
+            choice = int(input("Choice (1-4): ")) - 1
             project_type = list(JavaScriptProjectSetup.PROJECT_TYPES.keys())[choice]
         except (ValueError, IndexError):
             project_type = "node"
     else:
         project_type = args.type
 
-    # Confirmer avant de continuer
+    # Confirm before continuing
     if not args.current_dir:
         response = input(
-            f"Créer le projet JavaScript '{project_name}' ({project_type}) dans {project_path}? (y/N): "
+            f"Create JavaScript project '{project_name}' ({project_type}) in {project_path}? (y/N): "
         )
         if response.lower() not in ("y", "yes", "o", "oui"):
-            print("Annulé.")
+            print("Cancelled.")
             return 0
 
     setup = JavaScriptProjectSetup(project_path, project_name, project_type)

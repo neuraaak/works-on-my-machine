@@ -25,8 +25,8 @@ The Works On My Machine system includes a **smart prerequisites installation man
 
 ### **Automatic Integration**
 ```bash
-# During initialization
-python .dev-tools/init.py
+# During installation
+python womm.py install
 # → Automatically detects missing prerequisites
 # → Offers to install them
 ```
@@ -109,7 +109,7 @@ python shared/system_detector.py --export system_report.json
 
 ### **Scenario 1: First Use**
 ```bash
-python .dev-tools/init.py
+python womm.py install
 ```
 ```
 🔍 Checking prerequisites...

@@ -7,14 +7,14 @@
 
 ```bash
 # Create a new JavaScript/Node.js project
-new-js-project my-project
+womm new javascript my-project
 
 # In an existing project
 cd my-existing-project
-new-js-project --current-dir
+womm new javascript --current-dir
 
 # Linting and formatting
-lint-project      # Auto-detection if in a JS project
+womm lint javascript  # Auto-detection if in a JS project
 npm run lint      # ESLint checking
 npm run format    # Prettier formatting
 ```
@@ -96,12 +96,12 @@ languages/javascript/
 ### 🆕 **Project Creation**
 ```bash
 # Interactive assistant
-new-js-project my-app
+womm new javascript my-app
 
 # Specific types
-new-js-project my-api --type=node
-new-js-project my-front --type=react
-new-js-project my-vue --type=vue
+womm new javascript my-api --type=node
+womm new javascript my-front --type=react
+womm new javascript my-vue --type=vue
 ```
 
 ### 🔧 **Development**
@@ -216,7 +216,7 @@ Specialized configuration:
 
 ### 1. **Initialization**
 ```bash
-new-js-project my-project --type=react
+womm new javascript my-project --type=react
 cd my-project
 npm install
 ```

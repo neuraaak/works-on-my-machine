@@ -148,16 +148,16 @@ After running `register_wom_tools.py --register`, these tools become available i
 
 | Tool | Description | Script |
 |------|-------------|--------|
-| 🛠️ Initialize Works On My Machine | Initialize WOM in current directory | `init.py` |
+| 🛠️ Install Works On My Machine | Install WOMM in current directory | `womm.py` |
 | 🔍 Detect Project Type | Auto-detect and setup project | `project_detector.py` |
 | ⚙️ Setup Dev Environment | Configure development environment | `environment_manager.py` |
 | 📦 Install Prerequisites | Install required development tools | `prerequisite_installer.py` |
 | 🔧 Configure VSCode | Setup VSCode for development | `vscode_config.py` |
 | 📝 Spell Check Project | Check spelling in project files | `cspell_manager.py` |
 
-## 🔧 Integration with Init Process
+## 🔧 Integration with Install Process
 
-During Works On My Machine initialization on Windows, users are prompted:
+During Works On My Machine installation on Windows, users are prompted:
 
 ```
 🔧 Windows System Integration

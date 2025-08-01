@@ -52,9 +52,9 @@ install-dev:
 # Formatage automatique
 format:
 	@echo "$(BLUE)Formatage du code avec Black...$(RESET)"
-	black shared languages init.py lint.py setup.py
+	black shared languages womm.py lint.py setup.py
 	@echo "$(BLUE)Organisation des imports avec isort...$(RESET)"
-	isort shared languages init.py lint.py setup.py
+	isort shared languages womm.py lint.py setup.py
 
 # Correction automatique
 fix: format
@@ -106,5 +106,5 @@ prepare: format lint
 # Test des outils dev-tools
 demo:
 	@echo "$(BLUE)Test des outils works-on-my-machine...$(RESET)"
-	$(PYTHON) init.py --help 2>/dev/null || echo "Lancez: python init.py"
+	$(PYTHON) womm.py --help 2>/dev/null || echo "Lancez: python womm.py"
 	@echo "$(GREEN)Démo terminée !$(RESET)"

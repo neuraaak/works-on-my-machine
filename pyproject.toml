@@ -4,15 +4,15 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "works-on-my-machine"
-version = "1.0.0"
-description = "Outils de développement universels pour Python et JavaScript - Installation automatique, configuration cross-platform, commandes globales"
+version = "1.1.0"
+description = "Universal development tools for Python and JavaScript - Automatic installation, cross-platform configuration, global commands"
 readme = "README.md"
 license = {text = "MIT"}
 authors = [
-    {name = "Dev", email = "dev@example.com"}
+    {name = "Neuraaak"}
 ]
 maintainers = [
-    {name = "Dev", email = "dev@example.com"}
+    {name = "Neuraaak"}
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -64,10 +64,8 @@ test = [
 "Bug Tracker" = "https://github.com/neuraaak/works-on-my-machine/issues"
 
 [project.scripts]
-# Main CLI commands
-womm = "wom:womm"
-works-on-my-machine = "wom:womm"
-"works-on-my-machine-init" = "init:main"
+# Main CLI command
+womm = "womm:womm"
 
 [tool.setuptools]
 zip-safe = false

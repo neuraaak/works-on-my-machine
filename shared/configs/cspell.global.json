@@ -65,7 +65,8 @@
         "vscode",
         "pycharm",
         "intellij",
-        "webstorm"
+        "webstorm",
+        "WOMM"
     ],
     "ignoreWords": [
         "Lorem",

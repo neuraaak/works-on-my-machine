@@ -62,10 +62,10 @@ class WOMRegistrator:
         """
         tools = [
             {
-                "script": self.wom_root / "init.py",
-                "title": "🛠️ Initialize Works On My Machine",
+                "script": self.wom_root / "womm.py",
+                "title": "🛠️ Install Works On My Machine",
                 "icon": "python",
-                "description": "Initialize WOM in current directory",
+                "description": "Install WOMM in current directory",
             },
             {
                 "script": self.wom_root / "shared" / "project_detector.py",

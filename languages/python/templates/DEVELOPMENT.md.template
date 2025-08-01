@@ -1,153 +1,153 @@
-# Guide de Développement - {{PROJECT_NAME}}
+# Development Guide - {{PROJECT_NAME}}
 
-## 🚀 Configuration de l'Environnement
+## 🚀 Environment Setup
 
-### Installation rapide
+### Quick Installation
 ```bash
-# Installation du package en mode développement
+# Install package in development mode
 pip install -e ".[dev]"
 ```
 
-## 🛠️ Outils de Développement
+## 🛠️ Development Tools
 
-### Formatage Automatique
+### Automatic Formatting
 
-#### VSCode (Recommandé)
-Le projet inclut une configuration VSCode complète dans `.vscode/settings.json` qui active :
-- **Formatage automatique à la sauvegarde** avec Black
-- **Organisation automatique des imports** avec isort
-- **Linting en temps réel** avec flake8
-- **Détection des tests** avec pytest
+#### VSCode (Recommended)
+The project includes a complete VSCode configuration in `.vscode/settings.json` that enables:
+- **Automatic formatting on save** with Black
+- **Automatic import organization** with isort
+- **Real-time linting** with flake8
+- **Test discovery** with pytest
 
-### Commandes de Développement
+### Development Commands
 
-#### Scripts de développement
+#### Development scripts
 ```bash
-# Formatage et qualité
-python .devtools/scripts/lint.py        # Vérifier la qualité
-python .devtools/scripts/lint.py --fix  # Corriger automatiquement
+# Formatting and quality
+python .devtools/scripts/lint.py        # Check code quality
+python .devtools/scripts/lint.py --fix  # Auto-fix issues
 
 # Tests
-pytest                                   # Lancer les tests
-pytest --cov                           # Tests avec couverture
+pytest                                   # Run tests
+pytest --cov                           # Tests with coverage
 ```
 
-#### Avec Make (Linux/Mac/WSL)
+#### With Make (Linux/Mac/WSL)
 ```bash
-make help           # Afficher l'aide
-make format         # Formater le code (black + isort)
-make lint           # Vérifier la qualité du code
-make test           # Lancer les tests
-make clean          # Nettoyer les fichiers temporaires
+make help           # Show help
+make format         # Format code (black + isort)
+make lint           # Check code quality
+make test           # Run tests
+make clean          # Clean temporary files
 ```
 
-## 📏 Standards de Code
+## 📏 Code Standards
 
-### Configuration Black
-- **Longueur de ligne** : 88 caractères
-- **Versions Python** : 3.9+
-- **Formatage automatique** activé à la sauvegarde
+### Black Configuration
+- **Line length**: 88 characters
+- **Python versions**: 3.9+
+- **Automatic formatting** enabled on save
 
-### Configuration isort
-- **Profile** : black (compatible)
-- **Longueur de ligne** : 88
-- **Organisation automatique** des imports
+### isort Configuration
+- **Profile**: black (compatible)
+- **Line length**: 88
+- **Automatic import organization**
 
-### Configuration flake8
-- **Longueur max** : 88 caractères
-- **Configuration** : `.flake8`
+### flake8 Configuration
+- **Max length**: 88 characters
+- **Configuration**: `.flake8`
 
-## 🔒 Hooks Pre-commit
+## 🔒 Pre-commit Hooks
 
 ### Installation
 ```bash
-# Installer pre-commit
+# Install pre-commit
 pip install pre-commit
 
-# Installer les hooks
+# Install hooks
 pre-commit install
 ```
 
-### Vérifications automatiques
-Les hooks s'exécutent avant chaque commit :
-- Formatage avec Black
-- Organisation des imports avec isort
-- Linting avec flake8
-- Vérifications générales
+### Automatic checks
+Hooks run before each commit:
+- Formatting with Black
+- Import organization with isort
+- Linting with flake8
+- General checks
 
 ## 🧪 Tests
 
-### Structure des tests
+### Test Structure
 ```
 tests/
-├── conftest.py                 # Configuration pytest
-├── test_*.py                   # Tests unitaires
+├── conftest.py                 # pytest configuration
+├── test_*.py                   # Unit tests
 └── ...
 ```
 
-### Exécution
+### Execution
 ```bash
-# Tests rapides
+# Quick tests
 pytest
 
-# Tests avec couverture
+# Tests with coverage
 pytest --cov={{PROJECT_NAME}}
 
-# Tests spécifiques
+# Specific tests
 pytest tests/test_specific.py -v
 ```
 
-## 🔧 Workflow de Développement Recommandé
+## 🔧 Recommended Development Workflow
 
-### 1. Avant de commencer
+### 1. Before starting
 ```bash
-# Mettre à jour les dépendances
+# Update dependencies
 pip install -e ".[dev]"
 
-# Installer les hooks
+# Install hooks
 pre-commit install
 ```
 
-### 2. Pendant le développement
-- **VSCode** formatera automatiquement à la sauvegarde
-- **Ou manuellement** : `python .devtools/scripts/lint.py --fix`
-- **Tests** : `pytest`
+### 2. During development
+- **VSCode** will format automatically on save
+- **Or manually**: `python .devtools/scripts/lint.py --fix`
+- **Tests**: `pytest`
 
-### 3. Avant de committer
+### 3. Before committing
 ```bash
-# Vérification complète
+# Complete verification
 python .devtools/scripts/lint.py
 pytest
 ```
 
-### 4. Les hooks pre-commit s'exécutent automatiquement
+### 4. Pre-commit hooks run automatically
 
-## 📁 Structure du Projet
+## 📁 Project Structure
 
 ```
 {{PROJECT_NAME}}/
-├── .devtools/              # Outils de développement
-├── .vscode/               # Configuration VSCode
+├── .devtools/              # Development tools
+├── .vscode/               # VSCode configuration
 ├── docs/                  # Documentation
-├── {{PROJECT_NAME}}/      # Code source
-├── tests/                 # Suite de tests
-├── pyproject.toml         # Configuration du projet
-├── .flake8               # Configuration linting
-├── .pre-commit-config.yaml # Hooks pre-commit
-└── .gitignore            # Fichiers ignorés par Git
+├── {{PROJECT_NAME}}/      # Source code
+├── tests/                 # Test suite
+├── pyproject.toml         # Project configuration
+├── .flake8               # Linting configuration
+├── .pre-commit-config.yaml # Pre-commit hooks
+└── .gitignore            # Git ignored files
 ```
 
 ## 📝 Conventions
 
 ### Commits
-- **Format** : `type: description claire`
-- **Types** : `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`
+- **Format**: `type: clear description`
+- **Types**: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`
 
 ### Code
-- **Type hints** recommandés
-- **Docstrings** format standard
-- **Tests** pour les nouvelles fonctionnalités
+- **Type hints** recommended
+- **Docstrings** standard format
+- **Tests** for new features
 
 ### Documentation
-- **Commentaires** en français ou anglais selon le contexte
-- **README** en anglais pour la compatibilité internationale
+- **Comments** in English for international compatibility
+- **README** in English for international compatibility

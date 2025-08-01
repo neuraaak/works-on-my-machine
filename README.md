@@ -7,8 +7,8 @@
 
 ```bash
 # 1. Download/extract works-on-my-machine anywhere
-# 2. Run initialization
-womm init        # or python init.py
+# 2. Run installation
+womm install     # or python init.py
 
 # 3. Restart terminal
 # 4. Use anywhere!
@@ -23,7 +23,7 @@ womm lint python          # Lint Python code
 works-on-my-machine/
 ├── 📋 README.md                     # This file
 ├── 🔧 womm.py                       # Main CLI entry point (Click)
-├── 🔧 init.py, init.bat, init.ps1   # Initialization scripts
+├── 🔧 init.py, init.bat, init.ps1   # Installation wrappers (delegate to womm:install)
 ├── 📦 bin/                          # Global commands (added to PATH)
 ├── 🐍 languages/python/             # Python tools (→ see PYTHON.md)
 ├── 🟨 languages/javascript/         # JavaScript tools (→ see JAVASCRIPT.md)
@@ -40,6 +40,10 @@ After initialization, usable from any directory:
 - `womm new python name` - Python project with complete environment
 - `womm new javascript name` - JavaScript/Node.js project with tooling
 - `womm new detect name` - Auto-detect project type and setup
+
+### 🔧 Installation Management
+- `womm install` - Install WOMM in user directory
+- `womm uninstall` - Remove WOMM from system
 
 ### 🔍 Linting and Quality
 - `womm lint python` - Lint Python code with flake8, black, isort

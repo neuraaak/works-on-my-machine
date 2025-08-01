@@ -24,12 +24,12 @@ def get_python_interpreter_paths() -> Dict[str, str]:
 
 
 def get_platform_specific_settings(language: str = "python") -> Dict[str, Any]:
-    """Génère des paramètres VSCode spécifiques à la plateforme."""
+    """Generate platform-specific VSCode settings."""
     system = platform.system().lower()
 
     if language == "python":
         base_settings = {
-            # Configuration de base (commune)
+            # Base configuration (common)
             "editor.formatOnSave": True,
             "editor.formatOnPaste": True,
             "editor.codeActionsOnSave": {"source.organizeImports": "explicit"},

@@ -33,9 +33,9 @@ class PythonProjectSetup:
         self.devtools_path = self.python_tools_path.parent.parent
 
     def setup_all(self):
-        """Configure tout l'environnement de développement."""
-        print(f"🐍 Configuration de l'environnement Python pour '{self.project_name}'")
-        print(f"📁 Répertoire: {self.project_path}")
+        """Configure the complete development environment."""
+        print(f"🐍 Setting up Python environment for '{self.project_name}'")
+        print(f"📁 Directory: {self.project_path}")
 
         self.create_directory_structure()
         self.copy_configs()
@@ -50,8 +50,8 @@ class PythonProjectSetup:
         self.print_next_steps()
 
     def create_directory_structure(self):
-        """Crée la structure de répertoires de base."""
-        print("\n📂 Création de la structure de répertoires...")
+        """Create the basic directory structure."""
+        print("\n📂 Creating directory structure...")
 
         directories = [
             self.project_path / self.project_name,
@@ -66,7 +66,7 @@ class PythonProjectSetup:
 
     def copy_configs(self):
         """Copy configuration files."""
-        print("\n⚙️ Copie des configurations Python...")
+        print("\n⚙️ Copying Python configurations...")
 
         configs = [
             ("configs/.flake8", ".flake8"),
@@ -93,7 +93,7 @@ class PythonProjectSetup:
 
                 print(f"   ✓ {dest}")
             else:
-                print(f"   ⚠️  Fichier manquant: {source}")
+                print(f"   ⚠️  Missing file: {source}")
 
     def setup_git(self):
         """Initialise Git et configure .gitignore."""
@@ -107,13 +107,13 @@ class PythonProjectSetup:
                     check=True,
                     capture_output=True,
                 )
-                print("   ✓ Repository Git initialisé")
+                print("   ✓ Git repository initialized")
             except (subprocess.CalledProcessError, FileNotFoundError):
-                print("   ⚠️  Git non trouvé ou erreur d'initialisation")
+                print("   ⚠️  Git not found or initialization error")
 
     def setup_cspell(self):
-        """Configure CSpell pour le projet."""
-        print("📝 Configuration CSpell...")
+        """Configure CSpell for the project."""
+        print("📝 Configuring CSpell...")
 
         # Importer le gestionnaire CSpell
         devtools_path = Path.home() / ".dev-tools"
@@ -126,15 +126,15 @@ class PythonProjectSetup:
                 self.project_path, "python", self.project_name
             )
             if success:
-                print("   ✓ Configuration CSpell créée")
+                print("   ✓ CSpell configuration created")
             else:
-                print("   ⚠ Erreur lors de la configuration CSpell")
+                print("   ⚠ Error configuring CSpell")
         except ImportError:
-            print("   ⚠ Module cspell_manager non trouvé")
+            print("   ⚠ cspell_manager module not found")
 
     def setup_development_environment(self):
-        """Configure l'environnement de développement Python."""
-        print("🛠️ Configuration de l'environnement de développement...")
+        """Configure the Python development environment."""
+        print("🛠️ Setting up development environment...")
 
         # Importer le gestionnaire d'environnement
         devtools_path = Path.home() / ".dev-tools"
@@ -148,22 +148,22 @@ class PythonProjectSetup:
             if manager.prompt_install_tools():
                 if manager.setup_python_environment():
                     manager.create_activation_scripts()
-                    print("   ✓ Environnement de développement configuré")
+                    print("   ✓ Development environment configured")
                     return True
                 else:
-                    print("   ⚠ Erreur lors de la configuration de l'environnement")
+                    print("   ⚠ Error configuring development environment")
                     return False
             else:
-                print("   ⏭️ Configuration de l'environnement ignorée")
+                print("   ⏭️ Development environment setup skipped")
                 return True
 
         except ImportError:
-            print("   ⚠ Module environment_manager non trouvé")
+            print("   ⚠ environment_manager module not found")
             return False
 
     def create_project_files(self):
-        """Crée les fichiers de base du projet."""
-        print("\n📄 Création des fichiers de base...")
+        """Create the basic project files."""
+        print("\n📄 Creating basic files...")
 
         # pyproject.toml
         pyproject_content = f"""[build-system]

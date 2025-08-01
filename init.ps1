@@ -2,8 +2,8 @@ Write-Host "🚀 Smart Init Dev Tools (PowerShell)" -ForegroundColor Blue
 Write-Host ""
 
 # Exécuter le script Python
-$scriptPath = Join-Path $PSScriptRoot "init.py"
-python $scriptPath
+$scriptPath = Join-Path $PSScriptRoot "womm.py"
+python $scriptPath install
 
 if ($LASTEXITCODE -eq 0) {
     Write-Host "" 
