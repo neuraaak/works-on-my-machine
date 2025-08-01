@@ -8,12 +8,13 @@
 ```bash
 # 1. Download/extract works-on-my-machine anywhere
 # 2. Run initialization
-python init.py        # or double-click init.bat (Windows)
+womm init        # or python init.py
 
 # 3. Restart terminal
 # 4. Use anywhere!
-new-project my-app     # Project creation with auto-detection
-lint-project          # Automatic linting based on project type
+womm new python my-app     # Create Python project
+womm new javascript my-app # Create JavaScript project
+womm lint python          # Lint Python code
 ```
 
 ## 📁 Project Structure
@@ -21,6 +22,7 @@ lint-project          # Automatic linting based on project type
 ```
 works-on-my-machine/
 ├── 📋 README.md                     # This file
+├── 🔧 womm.py                       # Main CLI entry point (Click)
 ├── 🔧 init.py, init.bat, init.ps1   # Initialization scripts
 ├── 📦 bin/                          # Global commands (added to PATH)
 ├── 🐍 languages/python/             # Python tools (→ see PYTHON.md)
@@ -35,31 +37,57 @@ works-on-my-machine/
 After initialization, usable from any directory:
 
 ### 🆕 Project Creation
-- `new-project` - Universal assistant (automatic detection)
-- `new-python-project name` - Python project with complete environment
-- `new-js-project name` - JavaScript/Node.js project with tooling
+- `womm new python name` - Python project with complete environment
+- `womm new javascript name` - JavaScript/Node.js project with tooling
+- `womm new detect name` - Auto-detect project type and setup
 
 ### 🔍 Linting and Quality
-- `lint-project` - Automatic linting based on project type
-- `spellcheck` - Spell checking with CSpell
+- `womm lint python` - Lint Python code with flake8, black, isort
+- `womm lint all` - Lint all supported code in project
 
-### 🛠️ Utilities
-- `vscode-config` - VSCode configuration setup
-- `dev-tools-install` - Install development prerequisites
-- `setup-dev-env` - Setup development environment
+### 📝 Spell Checking
+- `womm spell install` - Install CSpell globally
+- `womm spell setup project` - Setup CSpell for project
+- `womm spell check` - Check spelling in files
+
+### 🔧 System Management
+- `womm system detect` - Detect system information and tools
+- `womm system install python node git npm` - Install prerequisites
+
+### 📦 Deployment
+- `womm deploy tools` - Deploy tools to global directory
+
+### 🖱️ Windows Context Menu
+- `womm context register` - Register WOMM tools in context menu
+- `womm context unregister` - Remove WOMM tools from context menu
+- `womm context list` - List registered context menu entries
 
 ## 🔧 Architecture & CLI Management
 
-### Standardized CLI System
-Works On My Machine uses a centralized CLI system via `shared/cli_manager.py` that:
+### Modern Click CLI System
+Works On My Machine uses a modern Click-based CLI system that provides:
 
-- **Standardizes execution** of all system commands
-- **Handles errors** consistently
-- **Automatically logs** commands and their results
-- **Supports different modes**: silent, interactive, verbose
-- **Cross-platform**: automatic adaptation for Windows/Linux/macOS
+- **Beautiful command interface** with automatic help generation
+- **Command grouping** for organized functionality
+- **Automatic argument parsing** and validation
+- **Cross-platform compatibility** with consistent behavior
+- **Integration** with system command execution via `shared/cli_manager.py`
 
 ### CLI Features
+```bash
+# Main help
+womm --help
+
+# Group help
+womm new --help
+womm system --help
+
+# Command help
+womm new python --help
+womm system install --help
+```
+
+### System Command Integration
 ```python
 from shared.cli_manager import run_command, run_silent, check_tool_available
 
@@ -131,7 +159,7 @@ if check_tool_available("git"):
 - Automatic PATH configuration
 
 ### ✅ **Intelligent**
-- **Auto-relocation** to `%USER%/.dev-tools`
+- **Auto-relocation** to `%USER%/.womm`
 - **Automatic project detection**
 - **Adaptive configuration** based on OS
 
@@ -144,8 +172,8 @@ if check_tool_available("git"):
 
 ### Installation
 1. **Smart Init** detects location and relocates if necessary
-2. **PATH Setup** permanently adds `{USER_HOME}/.dev-tools/bin`
-3. **Wrapper Scripts** create global commands
+2. **PATH Setup** permanently adds `{USER_HOME}/.womm/bin`
+3. **Click CLI** provides modern command interface
 
 ### Usage
 1. **Automatic detection** of project type (Python/JS)
@@ -154,9 +182,10 @@ if check_tool_available("git"):
 
 ## 📋 Version History
 
-- **v2.0** - Multi-language restructuring (Python + JavaScript)
-- **v1.x** - Original Python-specific version
+- **v1.0** - Modern Click CLI with full feature set
+- **v0.9** - Multi-language restructuring (Python + JavaScript)
+- **v0.8** - Initial release with Python support
 
 ---
 
-**Ready to code efficiently? Run `python init.py` and let's go! 🚀**
+**This system makes dev-tools entirely self-sufficient! 🎉**

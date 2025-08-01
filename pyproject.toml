@@ -65,8 +65,8 @@ test = [
 
 [project.scripts]
 # Main CLI commands
-wom = "wom:wom"
-works-on-my-machine = "wom:wom"
+womm = "wom:womm"
+works-on-my-machine = "wom:womm"
 "works-on-my-machine-init" = "init:main"
 
 [tool.setuptools]

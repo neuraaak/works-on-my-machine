@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Works On My Machine (WOM) - Main CLI Entry Point.
+Works On My Machine (WOMM) - Main CLI Entry Point.
 Universal development tools for Python and JavaScript projects.
 """
 
@@ -16,7 +16,7 @@ sys.path.insert(0, str(Path(__file__).parent / "shared"))
 
 @click.group()
 @click.version_option(version="1.0.0")
-def wom():
+def womm():
     """🛠️ Works On My Machine - Universal development tools.
 
     Automatic installation, cross-platform configuration, global commands
@@ -25,7 +25,31 @@ def wom():
     pass
 
 
-@wom.group()
+@womm.command("init")
+@click.option("--force", "-f", is_flag=True, help="Force initialization even if .womm directory exists")
+@click.option("--no-prerequisites", is_flag=True, help="Skip prerequisites installation")
+@click.option("--no-context-menu", is_flag=True, help="Skip Windows context menu integration")
+@click.option("--target", type=click.Path(), help="Custom target directory (default: ~/.womm)")
+def init(force, no_prerequisites, no_context_menu, target):
+    """Initialize Works On My Machine in user directory."""
+    script_path = Path(__file__).parent / "init.py"
+    
+    cmd = [sys.executable, str(script_path)]
+    
+    if force:
+        cmd.append("--force")
+    if no_prerequisites:
+        cmd.append("--no-prerequisites")
+    if no_context_menu:
+        cmd.append("--no-context-menu")
+    if target:
+        cmd.extend(["--target", target])
+    
+    result = run_command(cmd, "Initializing Works On My Machine")
+    sys.exit(0 if result.success else 1)
+
+
+@womm.group()
 def new():
     """🆕 Create new projects."""
     pass
@@ -107,7 +131,7 @@ def new_detect(project_name, current_dir):
     sys.exit(0 if result.success else 1)
 
 
-@wom.group()
+@womm.group()
 def lint():
     """🎨 Code quality and linting tools."""
     pass
@@ -143,7 +167,7 @@ def lint_all(path, fix):
     sys.exit(0 if result.success else 1)
 
 
-@wom.group()
+@womm.group()
 def spell():
     """📝 Spell checking with CSpell."""
     pass
@@ -195,7 +219,7 @@ def spell_check(path, fix):
     sys.exit(0 if result.success else 1)
 
 
-@wom.group()
+@womm.group()
 def system():
     """🔧 System detection and prerequisites."""
     pass
@@ -235,7 +259,7 @@ def system_install(check, interactive, tools):
     sys.exit(0 if result.success else 1)
 
 
-@wom.group()
+@womm.group()
 def deploy():
     """📦 Deployment and distribution tools."""
     pass
@@ -245,7 +269,7 @@ def deploy():
 @click.option(
     "--target",
     type=click.Path(),
-    default="~/.dev-tools",
+    default="~/.womm",
     help="Target directory for deployment",
 )
 @click.option("--global", "create_global", is_flag=True, help="Create global commands")
@@ -261,7 +285,7 @@ def deploy_tools(target, create_global):
     sys.exit(0 if result.success else 1)
 
 
-@wom.group()
+@womm.group()
 def context():
     """🖱️ Windows context menu management."""
     pass
@@ -270,7 +294,7 @@ def context():
 @context.command("register")
 @click.option("--backup", is_flag=True, help="Create backup before registration")
 def context_register(backup):
-    """Register WOM tools in Windows context menu."""
+    """Register WOMM tools in Windows context menu."""
     script_path = Path(__file__).parent / "shared" / "system" / "register_wom_tools.py"
 
     cmd = [sys.executable, str(script_path), "--register"]
@@ -283,7 +307,7 @@ def context_register(backup):
 
 @context.command("unregister")
 def context_unregister():
-    """Unregister WOM tools from Windows context menu."""
+    """Unregister WOMM tools from Windows context menu."""
     script_path = Path(__file__).parent / "shared" / "system" / "register_wom_tools.py"
 
     cmd = [sys.executable, str(script_path), "--unregister"]
@@ -302,4 +326,4 @@ def context_list():
 
 
 if __name__ == "__main__":
-    wom()
+    womm()

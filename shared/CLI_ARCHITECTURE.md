@@ -3,148 +3,136 @@
 ## Overview
 
 The Works On My Machine project uses a **dual CLI architecture**:
-1. **User-facing CLI** with Click (`wom.py`) - Modern, user-friendly command interface
+1. **User-facing CLI** with Click (`womm.py`) - Modern, user-friendly command interface
 2. **System command manager** (`shared/cli_manager.py`) - Centralized subprocess execution
 
 This architecture provides both excellent UX and robust system command handling.
 
-## 🎯 Objectives
+## File Structure
 
-### ✅ Problems Solved
-- **Inconsistency**: Each file handled subprocess differently
-- **Inconsistent Logging**: Variable display formats
-- **Error Handling**: Different treatments across files
-- **Cross-platform**: Duplicated code for Windows/Linux/macOS
-- **Maintenance**: Changes to be repeated in multiple files
-
-### ✅ Benefits Provided
-- **Unified API**: A single way to execute commands
-- **Automatic Logging**: Consistent format with emojis and colors
-- **Centralized Management**: Timeout, encoding, error handling
-- **Multiple Modes**: Silent, interactive, verbose
-- **Simplified Maintenance**: Single source of truth
-
-## 🏗️ Architecture
-
-### File Structure
 ```
 works-on-my-machine/
-├── wom.py                  # Main CLI entry point (Click)
+├── womm.py                  # Main CLI entry point (Click)
+├── init.py                  # Initialization script
 ├── shared/
-│   ├── cli_manager.py      # System command manager
-│   ├── CLI_ARCHITECTURE.md # This documentation
-│   └── [other modules...]  # Use the CLI manager
-└── languages/              # Language-specific tools
+│   ├── cli_manager.py       # System command execution
+│   ├── system_detector.py   # System detection (migrated)
+│   └── ...
+└── languages/
+    ├── python/scripts/      # Python tools
+    └── javascript/scripts/  # JavaScript tools
 ```
 
-### Main Components
+## Main Components
 
-#### 1. Click CLI (`wom.py`)
-Modern command-line interface:
+### 1. Click CLI (`womm.py`)
+
+**Purpose**: Modern, user-friendly command interface with automatic help generation.
+
+**Features**:
+- Command grouping (`new`, `lint`, `spell`, `system`, `deploy`, `context`)
+- Automatic argument parsing and validation
+- Built-in help system
+- Cross-platform compatibility
+
+**Example Usage**:
 ```bash
-# Main commands
-wom new python my-project          # Create Python project
-wom new javascript --type=react    # Create React project
-wom lint python --fix             # Lint and fix Python code
-wom spell check ./src              # Spell check files
-wom system install python node    # Install prerequisites
+womm new python my-project          # Create Python project
+womm new javascript --type=react    # Create React project
+womm lint python --fix             # Lint and fix Python code
+womm spell check ./src              # Spell check files
+womm system install python node    # Install prerequisites
 ```
 
-#### 2. System Command Manager (`cli_manager.py`)
-Centralized subprocess execution:
+### 2. CLI Manager (`shared/cli_manager.py`)
+
+**Purpose**: Centralized system command execution with consistent error handling.
+
+**Features**:
+- Standardized command execution
+- Automatic logging and error handling
+- Cross-platform command adaptation
+- Multiple execution modes (silent, interactive, verbose)
+
+**Example Usage**:
 ```python
-class CLIManager:
-    def run(command, description, **options) -> CommandResult
-    def run_silent(command, **options) -> CommandResult  
-    def run_interactive(command, **options) -> CommandResult
-    def check_command_available(command) -> bool
-    def get_command_version(command) -> Optional[str]
+from shared.cli_manager import run_command, run_silent
+
+# Execute with logging
+result = run_command(["npm", "install"], "Installing dependencies")
+
+# Silent execution
+result = run_silent(["git", "status"])
 ```
 
-#### 3. Command Groups Structure
+## Command Groups Structure
+
+### Main Entry Point
 ```python
 @click.group()
-def wom():              # Main entry point
-    pass
-
-@wom.group()
-def new():              # Project creation
-    pass
-
-@wom.group() 
-def lint():             # Code quality
-    pass
-
-@wom.group()
-def spell():            # Spell checking
+@click.version_option(version="1.0.0")
+def womm():
+    """🛠️ Works On My Machine - Universal development tools."""
     pass
 ```
 
-## 🔄 Completed Migration
-
-### Refactored Files
-- ✅ `lint.py` - Main linting script
-- ✅ `languages/python/scripts/lint.py` - Python linting
-- ✅ `shared/project_detector.py` - Project detection
-- ✅ `shared/cspell_manager.py` - CSpell management
-- ✅ `shared/prerequisite_installer.py` - Prerequisites installation
-- ✅ `shared/environment_manager.py` - Environment management
-- ✅ `shared/system_detector.py` - System detection (migrated)
-- ✅ `init.py` - Initialization script
-
-### Migration Patterns
-
-#### Before (direct subprocess)
+### Command Groups
 ```python
-import subprocess
+@womm.group()
+def new():
+    """🆕 Create new projects."""
+    pass
 
-try:
-    result = subprocess.run(
-        ["python", "--version"], 
-        capture_output=True, 
-        text=True, 
-        check=True
-    )
-    print(f"Python: {result.stdout}")
-except subprocess.CalledProcessError as e:
-    print(f"Error: {e}")
+@womm.group()
+def lint():
+    """🎨 Code quality and linting tools."""
+    pass
+
+@womm.group()
+def spell():
+    """📝 Spell checking with CSpell."""
+    pass
+
+@womm.group()
+def system():
+    """🔧 System detection and prerequisites."""
+    pass
+
+@womm.group()
+def deploy():
+    """📦 Deployment and distribution tools."""
+    pass
+
+@womm.group()
+def context():
+    """🖱️ Windows context menu management."""
+    pass
 ```
 
-#### After (CLI Manager)
-```python
-from shared.cli_manager import run_command
-
-result = run_command(["python", "--version"], "Python version check")
-if result.success:
-    print(f"Python: {result.stdout}")
-else:
-    print(f"Error: {result.stderr}")
-```
-
-## 💡 Usage Guide
+## Usage Guide
 
 ### 1. User Commands (Click CLI)
 ```bash
 # Project creation
-wom new python my-api                    # New Python project
-wom new javascript --current-dir         # Setup current directory
-wom new detect my-project                # Auto-detect project type
+womm new python my-api                    # New Python project
+womm new javascript --current-dir         # Setup current directory
+womm new detect my-project                # Auto-detect project type
 
 # Code quality
-wom lint python --fix                    # Fix Python code issues
-wom lint all ./src                       # Lint all code in src/
+womm lint python --fix                    # Fix Python code issues
+womm lint all ./src                       # Lint all code in src/
 
 # Spell checking
-wom spell install                        # Install CSpell globally
-wom spell setup my-project --type=python # Setup for project
-wom spell check --fix                    # Interactive spell fix
+womm spell install                        # Install CSpell globally
+womm spell setup my-project --type=python # Setup for project
+womm spell check --fix                    # Interactive spell fix
 
 # System management
-wom system detect --export=report.json   # System detection
-wom system install python node git       # Install prerequisites
+womm system detect --export=report.json   # System detection
+womm system install python node git npm   # Install prerequisites
 
 # Deployment
-wom deploy tools --global                # Deploy to global directory
+womm deploy tools --global                # Deploy to global directory
 ```
 
 ### 2. System Commands (CLI Manager)
@@ -157,7 +145,7 @@ if result.success:
     print("Git OK")
 ```
 
-### 4. Tool Verification
+### 3. Tool Verification
 ```python
 from shared.cli_manager import check_tool_available, get_tool_version
 
@@ -166,7 +154,7 @@ if check_tool_available("docker"):
     print(f"Docker {version} available")
 ```
 
-### 5. Advanced Configuration
+### 4. Advanced Configuration
 ```python
 from shared.cli_manager import CLIManager
 
@@ -208,72 +196,47 @@ Error: command not found
 The CLI Manager respects standard environment variables:
 - `PATH` - Executable search
 - `PYTHONPATH` - Python modules
-- `NODE_PATH` - Node.js modules
+- `HOME` - User home directory
 
-### Timeouts
-- Default: No timeout
-- Configurable per command
-- Clean timeout handling
-
-### Encoding
-- UTF-8 by default
-- Error handling for encoding
-- Cross-platform (Windows CP1252, Unix UTF-8)
-
-## 🧪 Testing and Validation
-
-### Manual Tests Completed
-- ✅ Execution on Windows 10
-- ✅ Python commands (pip, python)
-- ✅ Node.js commands (npm, npx)
-- ✅ Git commands
-- ✅ Error handling
-- ✅ Timeouts
-
-### To Be Tested
-- [ ] Linux (Ubuntu, CentOS)
-- [ ] macOS
-- [ ] Commands with special characters
-- [ ] Very long outputs
-- [ ] Complex interactive commands
-
-## 🔮 Future Developments
-
-### Planned Features
-- **Result Caching**: Avoid identical re-executions
-- **Parallelization**: Simultaneous command execution
-- **History**: Persistent command logging
-- **Metrics**: Execution time, statistics
-- **Automatic Retry**: New attempt on failure
-
-### Possible Optimizations
-- **Lazy Loading**: On-demand module imports
-- **Validation**: Command syntax verification
-- **Suggestions**: Similar commands on error
-- **Auto-completion**: Interactive shell support
-
-## 📋 Maintenance
-
-### Best Practices
-1. **Always** use `run_command()` with description
-2. **Prefer** `run_silent()` for checks
-3. **Verify** `result.success` before accessing stdout/stderr
-4. **Document** complex commands
-5. **Test** on different platforms
-
-### Debugging
+### Custom Settings
 ```python
-# Enable verbose logging
-from shared.cli_manager import CLIManager
-cli = CLIManager(verbose=True)
-
-# Inspect detailed result
-result = cli.run(cmd, desc)
-print(f"Return code: {result.returncode}")
-print(f"Stdout: {result.stdout}")
-print(f"Stderr: {result.stderr}")
+# Custom CLI Manager instance
+cli = CLIManager(
+    default_cwd="/custom/path",
+    verbose=True,
+    timeout=60,
+    shell=True
+)
 ```
+
+## 🔄 Migration Status
+
+### ✅ Completed Migrations
+- `shared/system_detector.py` - Uses `run_silent()` from CLI Manager
+- All Click CLI commands - Use `run_command()` for system calls
+
+### 🔄 In Progress
+- Documentation updates for new CLI structure
+- Testing of all command combinations
+
+### 📋 Planned
+- Performance optimization for command execution
+- Additional command groups as needed
+
+## 🎯 Best Practices
+
+### For CLI Development
+1. **Use Click groups** for logical command organization
+2. **Leverage CLI Manager** for all system command execution
+3. **Provide clear help text** for all commands and options
+4. **Handle errors gracefully** with user-friendly messages
+
+### For System Commands
+1. **Always use CLI Manager** instead of direct `subprocess` calls
+2. **Provide descriptive messages** for command execution
+3. **Handle cross-platform differences** automatically
+4. **Log all command executions** for debugging
 
 ---
 
-*This CLI architecture improves the robustness, maintainability, and user experience of Works On My Machine by centralizing and standardizing all system interactions.*
+**This architecture ensures both excellent user experience and robust system integration! 🚀**
