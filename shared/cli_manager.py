@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
 """
-Gestionnaire CLI standardisé pour Works On My Machine.
-Centralise et standardise l'exécution des commandes système
+Standardized CLI Manager for Works On My Machine.
+Centralizes and standardizes system command execution.
 
-Ce module remplace les appels directs à subprocess.run() dispersés dans le projet
-par un système centralisé qui offre :
+This module replaces scattered subprocess.run() calls throughout the project
+with a centralized system that provides:
 
-- Logging automatique et cohérent des commandes
-- Gestion d'erreurs standardisée
-- Support cross-platform (Windows/Linux/macOS)
-- Modes d'exécution multiples (silencieux, interactif, verbeux)
-- Timeout et gestion des ressources
-- API simple et cohérente
+- Automatic and consistent command logging
+- Standardized error handling
+- Cross-platform support (Windows/Linux/macOS)
+- Multiple execution modes (silent, interactive, verbose)
+- Timeout and resource management
+- Simple and consistent API
 
-Utilisation :
+Usage:
     from shared.cli_manager import run_command, run_silent, check_tool_available
 
     # Execution with full logging
@@ -26,8 +26,8 @@ Utilisation :
     if check_tool_available("npm"):
         print("npm available")
 
-Migration depuis subprocess :
-    # Ancien code
+Migration from subprocess:
+    # Old code
     result = subprocess.run(cmd, capture_output=True, text=True)
 
     # New code
