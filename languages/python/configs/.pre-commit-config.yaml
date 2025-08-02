@@ -1,8 +1,8 @@
-# Configuration pre-commit pour projets Python
+# Pre-commit configuration for Python projects
 # Installation: pip install pre-commit && pre-commit install
 
 repos:
-  # Hooks généraux
+  # General hooks
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.6.0
     hooks:
@@ -16,7 +16,7 @@ repos:
         args: ["--maxkb=1000"]
       - id: debug-statements
 
-  # Formatage du code Python avec Black
+  # Python code formatting with Black
   - repo: https://github.com/psf/black
     rev: 24.8.0
     hooks:
@@ -24,21 +24,21 @@ repos:
         language_version: python3
         args: [--line-length=88]
 
-  # Organisation des imports avec isort
+  # Import organization with isort
   - repo: https://github.com/pycqa/isort
     rev: 5.13.2
     hooks:
       - id: isort
         args: [--profile=black, --line-length=88]
 
-  # Linting avec flake8
+  # Linting with flake8
   - repo: https://github.com/pycqa/flake8
     rev: 7.1.1
     hooks:
       - id: flake8
         args: [--config=.flake8]
 
-  # Vérification de la sécurité avec bandit
+  # Security verification with bandit
   - repo: https://github.com/PyCQA/bandit
     rev: 1.7.10
     hooks:
@@ -46,7 +46,7 @@ repos:
         args: [-r, ., -f, json]
         exclude: "tests/.*"
 
-  # Tests avec pytest (optionnel, peut être lourd)
+  # Tests with pytest (optional, can be heavy)
   # - repo: local
   #   hooks:
   #     - id: pytest

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Template Helpers - Utilitaires pour la génération de templates cross-platform.
-Génère des templates cross-platform.
-Valide les placeholders dans un template.
+Template Helpers - Utilities for cross-platform template generation.
+Generates cross-platform templates.
+Validates placeholders in a template.
 """
 
 import os
@@ -13,7 +13,7 @@ from typing import Any, Dict, Optional
 
 
 def get_platform_info() -> Dict[str, str]:
-    """Retourne les informations de plateforme."""
+    """Returns platform information."""
     system = platform.system()
     return {
         "system": system,
@@ -27,7 +27,7 @@ def get_platform_info() -> Dict[str, str]:
 
 
 def get_python_paths() -> Dict[str, str]:
-    """Retourne les chemins Python selon l'OS."""
+    """Returns Python paths according to OS."""
     platform_info = get_platform_info()
 
     if platform_info["is_windows"]:
@@ -47,7 +47,7 @@ def get_python_paths() -> Dict[str, str]:
 
 
 def get_node_paths() -> Dict[str, str]:
-    """Retourne les chemins Node.js selon l'OS."""
+    """Returns Node.js paths according to OS."""
     platform_info = get_platform_info()
 
     if platform_info["is_windows"]:
@@ -65,7 +65,7 @@ def get_node_paths() -> Dict[str, str]:
 
 
 def get_shell_commands() -> Dict[str, str]:
-    """Retourne les commandes shell selon l'OS."""
+    """Returns shell commands according to OS."""
     platform_info = get_platform_info()
 
     if platform_info["is_windows"]:
@@ -75,7 +75,7 @@ def get_shell_commands() -> Dict[str, str]:
             "remove_dir": "rmdir /s /q",
             "copy_file": "copy",
             "move_file": "move",
-            "make_executable": "rem",  # Pas nécessaire sur Windows
+            "make_executable": "rem",  # Not needed on Windows
             "which": "where",
         }
     else:  # Linux/macOS
@@ -94,21 +94,21 @@ def replace_platform_placeholders(text: str, **extra_vars) -> str:
     r"""
     Replace platform-specific placeholders in a text.
 
-    Placeholders supportés:
-    - {{PYTHON_PATH}} - Chemin vers l'exécutable Python
-    - {{VENV_ACTIVATE}} - Commande d'activation de l'environnement virtuel
-    - {{SHELL_EXT}} - Extension des scripts shell (.bat ou .sh)
-    - {{PATH_SEP}} - Séparateur de chemin (/ ou \\)
-    - {{LINE_ENDING}} - Fin de ligne (\\r\\n ou \\n)
+    Supported placeholders:
+    - {{PYTHON_PATH}} - Path to Python executable
+    - {{VENV_ACTIVATE}} - Virtual environment activation command
+    - {{SHELL_EXT}} - Shell script extension (.bat or .sh)
+    - {{PATH_SEP}} - Path separator (/ or \\)
+    - {{LINE_ENDING}} - Line ending (\\r\\n or \\n)
     """
     platform_info = get_platform_info()
     python_paths = get_python_paths()
     node_paths = get_node_paths()
     shell_commands = get_shell_commands()
 
-    # Dictionnaire de remplacement
+    # Replacement dictionary
     replacements = {
-        # Informations de plateforme
+        # Platform information
         "PLATFORM_SYSTEM": platform_info["system"],
         "PLATFORM_SYSTEM_LOWER": platform_info["system_lower"],
         "IS_WINDOWS": str(platform_info["is_windows"]).lower(),
@@ -116,16 +116,16 @@ def replace_platform_placeholders(text: str, **extra_vars) -> str:
         "IS_MACOS": str(platform_info["is_macos"]).lower(),
         "PATH_SEP": platform_info["path_separator"],
         "LINE_ENDING": platform_info["line_ending"],
-        # Chemins Python
+        # Python paths
         "PYTHON_PATH": python_paths["venv_python"],
         "VENV_ACTIVATE": python_paths["venv_activate"],
         "VENV_PIP": python_paths["venv_pip"],
         "PYTHON_EXECUTABLE": python_paths["python_executable"],
-        # Chemins Node.js
+        # Node.js paths
         "NPM_EXECUTABLE": node_paths["npm_executable"],
         "NODE_EXECUTABLE": node_paths["node_executable"],
         "NPX_EXECUTABLE": node_paths["npx_executable"],
-        # Commandes shell
+        # Shell commands
         "SHELL": shell_commands["shell"],
         "SHELL_EXT": shell_commands["shell_extension"],
         "REMOVE_DIR": shell_commands["remove_dir"],
@@ -133,11 +133,11 @@ def replace_platform_placeholders(text: str, **extra_vars) -> str:
         "MOVE_FILE": shell_commands["move_file"],
         "MAKE_EXECUTABLE": shell_commands["make_executable"],
         "WHICH": shell_commands["which"],
-        # Variables supplémentaires
+        # Additional variables
         **extra_vars,
     }
 
-    # Remplacement des placeholders
+    # Replace placeholders
     result = text
     for key, value in replacements.items():
         placeholder = f"{{{{{key}}}}}"
@@ -152,12 +152,12 @@ def generate_cross_platform_template(
     template_vars: Optional[Dict[str, str]] = None,
 ) -> None:
     """
-    Génère un fichier à partir d'un template en remplaçant les placeholders.
+    Generates a file from a template by replacing placeholders.
 
     Args:
-        template_path: Chemin vers le template à utiliser.
-        output_path: Chemin vers le fichier de sortie.
-        template_vars: Variables à remplacer dans le template.
+        template_path: Path to the template to use.
+        output_path: Path to the output file.
+        template_vars: Variables to replace in the template.
 
     Returns:
         None
@@ -165,21 +165,21 @@ def generate_cross_platform_template(
     if template_vars is None:
         template_vars = {}
 
-    # Lecture du template
-    with open(template_path, "r", encoding="utf-8") as f:
+    # Read template
+    with open(template_path, encoding="utf-8") as f:
         template_content = f.read()
 
-    # Remplacement des placeholders
+    # Replace placeholders
     result_content = replace_platform_placeholders(template_content, **template_vars)
 
-    # Création du répertoire de sortie si nécessaire
+    # Create output directory if necessary
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # Écriture du fichier de sortie
+    # Write output file
     with open(output_path, "w", encoding="utf-8") as f:
         f.write(result_content)
 
-    print(f"✅ Template généré : {output_path}")
+    print(f"✅ Template generated: {output_path}")
 
 
 def validate_template_placeholders(template_path: Path) -> Dict[str, Any]:
@@ -187,19 +187,19 @@ def validate_template_placeholders(template_path: Path) -> Dict[str, Any]:
     Validate placeholders in a template and return statistics.
 
     Args:
-        template_path: Chemin vers le template à valider.
+        template_path: Path to the template to validate.
 
     Returns:
-        Un dictionnaire contenant les statistiques de validation.
+        A dictionary containing validation statistics.
     """
-    with open(template_path, "r", encoding="utf-8") as f:
+    with open(template_path, encoding="utf-8") as f:
         content = f.read()
 
-    # Recherche des placeholders
+    # Search for placeholders
     placeholder_pattern = r"\{\{([A-Z_]+)\}\}"
     placeholders = re.findall(placeholder_pattern, content)
 
-    # Placeholders supportés
+    # Supported placeholders
     supported_placeholders = {
         "PLATFORM_SYSTEM",
         "PLATFORM_SYSTEM_LOWER",
@@ -222,7 +222,7 @@ def validate_template_placeholders(template_path: Path) -> Dict[str, Any]:
         "MOVE_FILE",
         "MAKE_EXECUTABLE",
         "WHICH",
-        # Placeholders de projet standards
+        # Standard project placeholders
         "PROJECT_NAME",
         "PROJECT_DESCRIPTION",
         "AUTHOR_NAME",
@@ -233,7 +233,7 @@ def validate_template_placeholders(template_path: Path) -> Dict[str, Any]:
         "PROJECT_KEYWORDS",
     }
 
-    # Classification des placeholders
+    # Classify placeholders
     found_placeholders = set(placeholders)
     supported_found = found_placeholders & supported_placeholders
     unsupported_found = found_placeholders - supported_placeholders
@@ -248,25 +248,25 @@ def validate_template_placeholders(template_path: Path) -> Dict[str, Any]:
 
 
 def main():
-    """Point d'entrée principal pour les tests."""
+    """Main entry point for tests."""
     platform_info = get_platform_info()
     python_paths = get_python_paths()
     node_paths = get_node_paths()
     shell_commands = get_shell_commands()
 
-    print("🌍 Informations de plateforme :")
+    print("🌍 Platform information:")
     for key, value in platform_info.items():
         print(f"  {key}: {value}")
 
-    print("\n🐍 Chemins Python :")
+    print("\n🐍 Python paths:")
     for key, value in python_paths.items():
         print(f"  {key}: {value}")
 
-    print("\n🟨 Chemins Node.js :")
+    print("\n🟨 Node.js paths:")
     for key, value in node_paths.items():
         print(f"  {key}: {value}")
 
-    print("\n💻 Commandes shell :")
+    print("\n💻 Shell commands:")
     for key, value in shell_commands.items():
         print(f"  {key}: {value}")
 

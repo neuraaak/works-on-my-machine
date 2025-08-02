@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
 """
-Configuration VSCode Cross-Platform.
-Génère automatiquement les configurations VSCode adaptées à l'OS.
+Cross-Platform VSCode Configuration.
+Automatically generates VSCode configurations adapted to the OS.
 """
 
 import json
 import platform
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 
 def get_python_interpreter_paths() -> Dict[str, str]:
-    """Retourne les chemins d'interpréteur Python selon l'OS."""
+    """Returns Python interpreter paths according to the OS."""
     system = platform.system().lower()
 
     paths = {
@@ -67,7 +67,7 @@ def get_platform_specific_settings(language: str = "python") -> Dict[str, Any]:
             "python.analysis.extraPaths": ["./src"],
             "python.analysis.autoSearchPaths": True,
             "python.analysis.typeCheckingMode": "basic",
-            # Exclusions communes
+            # Common exclusions
             "files.exclude": {
                 "**/__pycache__": True,
                 "**/*.pyc": True,
@@ -110,11 +110,11 @@ def get_platform_specific_settings(language: str = "python") -> Dict[str, Any]:
             "git.ignoreLimitWarning": True,
         }
 
-        # Ajout du chemin d'interpréteur spécifique à l'OS
+        # Add OS-specific interpreter path
         python_path = get_python_interpreter_paths()
         base_settings["python.defaultInterpreterPath"] = python_path
 
-        # Configuration environnement terminal spécifique à l'OS
+        # OS-specific terminal environment configuration
         if system == "windows":
             base_settings["terminal.integrated.env.windows"] = {
                 "PYTHONPATH": "${workspaceFolder}/src"
@@ -183,50 +183,48 @@ def get_platform_specific_settings(language: str = "python") -> Dict[str, Any]:
     return {}
 
 
-def generate_vscode_config(
-    target_dir: Path, language: str = "python", project_name: Optional[str] = None
-) -> None:
-    """Génère la configuration VSCode pour un projet."""
+def generate_vscode_config(target_dir: Path, language: str = "python") -> None:
+    """Generates VSCode configuration for a project."""
     vscode_dir = target_dir / ".vscode"
     vscode_dir.mkdir(exist_ok=True)
 
-    # Génération settings.json
+    # Generate settings.json
     settings = get_platform_specific_settings(language)
     settings_file = vscode_dir / "settings.json"
 
     with open(settings_file, "w", encoding="utf-8") as f:
         json.dump(settings, f, indent=4, ensure_ascii=False)
 
-    print(f"✅ Configuration VSCode générée pour {language} dans {vscode_dir}")
-    print(f"🖥️  Plateforme détectée : {platform.system()}")
+    print(f"✅ VSCode configuration generated for {language} in {vscode_dir}")
+    print(f"🖥️  Detected platform: {platform.system()}")
 
     if language == "python":
         python_path = get_python_interpreter_paths()
-        print(f"🐍 Chemin Python configuré : {python_path}")
+        print(f"🐍 Python path configured: {python_path}")
 
 
 def main():
-    """Point d'entrée principal."""
+    """Main entry point."""
     import argparse
 
     parser = argparse.ArgumentParser(
-        description="Génère une configuration VSCode cross-platform"
+        description="Generates a cross-platform VSCode configuration"
     )
     parser.add_argument(
         "--language",
         "-l",
         choices=["python", "javascript"],
         default="python",
-        help="Langage cible (default: python)",
+        help="Target language (default: python)",
     )
     parser.add_argument(
         "--target",
         "-t",
         type=Path,
         default=Path.cwd(),
-        help="Répertoire cible (default: répertoire courant)",
+        help="Target directory (default: current directory)",
     )
-    parser.add_argument("--project-name", "-n", help="Nom du projet")
+    parser.add_argument("--project-name", "-n", help="Project name")
 
     args = parser.parse_args()
 

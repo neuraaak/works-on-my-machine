@@ -55,7 +55,7 @@ nosetests.xml
 # ===================================
 # Development Tools
 # ===================================
-# Linting et formatage
+# Linting and formatting
 .mypy_cache/
 .ruff_cache/
 .bandit/
@@ -67,12 +67,12 @@ nosetests.xml
 .benchmarks/
 
 # ===================================
-# Éditeurs et IDEs
+# Editors and IDEs
 # ===================================
-# VSCode - Configuration partagée incluse
+# VSCode - Shared configuration included
 # .vscode/
 
-# Autres éditeurs
+# Other editors
 .idea/
 *.swp
 *.swo
@@ -100,7 +100,7 @@ $RECYCLE.BIN/
 .Trash-*
 
 # ===================================
-# Logs et données temporaires
+# Logs and temporary data
 # ===================================
 *.log
 *.pid

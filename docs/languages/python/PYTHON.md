@@ -1,9 +1,42 @@
 # 🐍 Python Development Tools
 
+[🏠 Main](../../../README.md) > [📚 Documentation](../../README.md) > [🐍 Python](PYTHON.md)
+
+[← Back to Main Documentation](../../../README.md)
+
 > **Modern and complete Python development environment**  
 > Black + isort + flake8 + pytest + pre-commit + VSCode
 
+## 📚 Documentation Navigation
+
+**🏠 [Main Documentation](../../../README.md)**  
+**📚 [Documentation Index](../../README.md)**  
+**🐍 [Python Development](PYTHON.md)** (You are here)  
+**🟨 [JavaScript Development](../javascript/JAVASCRIPT.md)**  
+**⚙️ [Environment Setup](../../ENVIRONMENT_SETUP.md)**  
+**🔧 [Prerequisites Installation](../../PREREQUISITE_INSTALLER.md)**
+
+## Table of Contents
+- [Quick Usage](#-quick-usage)
+- [Python Tools Structure](#-python-tools-structure)
+- [Included Configuration](#️-included-configuration)
+- [Available Scripts](#️-available-scripts)
+- [Installed Dependencies](#-installed-dependencies)
+- [Provided Templates](#-provided-templates)
+- [Recommended Workflow](#-recommended-workflow)
+- [Customization](#-customization)
+- [Troubleshooting](#-troubleshooting)
+
+## Related Documentation
+- [JavaScript Tools](../javascript/JAVASCRIPT.md) - Alternative language setup
+- [Main README](../../../README.md) - Project overview
+- [Documentation Index](../../README.md) - Complete documentation hub
+- [Environment Setup](../../ENVIRONMENT_SETUP.md) - Development environment management
+- [Common Commands](../../COMMON_COMMANDS.md) - Standard commands and workflows
+
 ## 🚀 Quick Usage
+
+> **For complete command reference, see [Common Commands](../../COMMON_COMMANDS.md)**
 
 ```bash
 # Create a new Python project
@@ -47,7 +80,7 @@ languages/python/
 - **Automatic import organization**
 - **PEP 8 standards** respected
 
-### 🔍 **Linting (flake8)**
+### 🔍 **Linting (Ruff)**
 - **Real-time quality checks**
 - **Rules adapted** to modern tools
 - **Smart exclusions** for tests and CLI
@@ -103,7 +136,7 @@ make clean          # Cleanup
 ### 🎯 **Core Development**
 - **black** - Automatic formatting
 - **isort** - Import organization
-- **flake8** - Linting and quality
+- **ruff** - Linting and quality
 - **pre-commit** - Git hooks
 
 ### 🧪 **Testing**
@@ -121,7 +154,7 @@ make clean          # Cleanup
 Modern configuration with:
 - Project metadata
 - Dev dependencies
-- Tool configuration (black, isort, pytest)
+- Tool configuration (black, isort, ruff, pytest)
 - Entry scripts
 
 ### 📝 **.gitignore**
@@ -163,7 +196,7 @@ git commit -m "feat: new feature"  # Automatic hooks
 ## 🔧 Customization
 
 ### ⚙️ **Local Configuration**
-Create a `.dev-tools.toml` file in your project:
+Create a `.womm.toml` file in your project:
 ```toml
 [python]
 line_length = 100      # Instead of 88
@@ -211,4 +244,4 @@ git add -A && git commit
 
 ---
 
-🐍 **Happy Python development!** For other languages, see the [📋 Main README](../../README.md)
+🐍 **Happy Python development!** For other languages, see the [📋 Main README](../../../README.md)

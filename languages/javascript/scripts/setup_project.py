@@ -1,18 +1,17 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
-Script d'initialisation d'environnement de développement JavaScript/Node.js.
+JavaScript/Node.js development environment initialization script.
 
 Usage:
-    python setup_project.py [nom_projet] [--type=node|react|vue|vanilla]
+    python setup_project.py [project_name] [--type=node|react|vue|vanilla]
     python setup_project.py --current-dir
 
-Fonctionnalités:
-    - Copie les configurations de développement
-    - Initialise Git avec .gitignore adapté
-    - Configure les hooks pre-commit
-    - Crée la structure de projet de base
-    - Configure VSCode et NPM
+Features:
+    - Copy development configurations
+    - Initialize Git with appropriate .gitignore
+    - Configure pre-commit hooks
+    - Create basic project structure
+    - Configure VSCode and NPM
 """
 
 import argparse
@@ -22,13 +21,21 @@ import subprocess
 import sys
 from pathlib import Path
 
+# Import security validator if available
+try:
+    from shared.security.security_validator import SecurityValidator
+
+    SECURITY_AVAILABLE = True
+except ImportError:
+    SECURITY_AVAILABLE = False
+
 
 class JavaScriptProjectSetup:
-    """Classe pour configurer un environnement de développement JavaScript."""
+    """Class to configure a JavaScript development environment."""
 
     PROJECT_TYPES = {
         "node": {
-            "description": "Backend Node.js avec Express",
+            "description": "Backend Node.js with Express",
             "main_file": "src/index.js",
             "module_type": "module",
             "dev_command": "nodemon src/index.js",
@@ -40,7 +47,7 @@ class JavaScriptProjectSetup:
             "keywords": "nodejs, express, api",
         },
         "react": {
-            "description": "Frontend React avec Vite",
+            "description": "Frontend React with Vite",
             "main_file": "src/main.tsx",
             "module_type": "module",
             "dev_command": "vite",
@@ -52,7 +59,7 @@ class JavaScriptProjectSetup:
             "keywords": "react, frontend, vite",
         },
         "vue": {
-            "description": "Frontend Vue.js avec Vite",
+            "description": "Frontend Vue.js with Vite",
             "main_file": "src/main.ts",
             "module_type": "module",
             "dev_command": "vite",
@@ -64,7 +71,7 @@ class JavaScriptProjectSetup:
             "keywords": "vue, frontend, vite",
         },
         "vanilla": {
-            "description": "JavaScript vanilla avec bundler",
+            "description": "Vanilla JavaScript with bundler",
             "main_file": "src/index.js",
             "module_type": "module",
             "dev_command": "vite",
@@ -80,7 +87,7 @@ class JavaScriptProjectSetup:
     def __init__(
         self, project_path: Path, project_name: str, project_type: str = "node"
     ):
-        """Initialise le script de configuration du projet JavaScript."""
+        """Initialize the JavaScript project configuration script."""
         self.project_path = project_path
         self.project_name = project_name
         self.project_type = project_type
@@ -103,7 +110,7 @@ class JavaScriptProjectSetup:
         self.setup_development_environment()
         self.install_dependencies()
 
-        print("\n✅ Configuration JavaScript terminée !")
+        print("\n✅ JavaScript configuration completed!")
         self.print_next_steps()
 
     def create_directory_structure(self):
@@ -157,8 +164,21 @@ class JavaScriptProjectSetup:
 
         if not (self.project_path / ".git").exists():
             try:
-                subprocess.run(
-                    ["git", "init"],
+                git_path = shutil.which("git")
+                if git_path is None:
+                    print("   ⚠️  Git not found")
+                    return
+
+                # Security validation
+                if SECURITY_AVAILABLE:
+                    validator = SecurityValidator()
+                    is_valid, error_msg = validator.validate_command([git_path, "init"])
+                    if not is_valid:
+                        print(f"   ⚠️  Security validation failed: {error_msg}")
+                        return
+
+                subprocess.run(  # noqa: S603
+                    [git_path, "init"],
                     cwd=self.project_path,
                     check=True,
                     capture_output=True,
@@ -172,19 +192,19 @@ class JavaScriptProjectSetup:
         print("📝 Configuring CSpell...")
 
         # Importer le gestionnaire CSpell
-        devtools_path = Path.home() / ".dev-tools"
+        devtools_path = Path.home() / ".womm"
         sys.path.insert(0, str(devtools_path))
 
         try:
-            from shared.cspell_manager import setup_project_cspell
+            from shared.tools.cspell_manager import setup_project_cspell
 
             success = setup_project_cspell(
                 self.project_path, "javascript", self.project_name
             )
             if success:
-                print("   ✓ Configuration CSpell créée")
+                print("   ✓ CSpell configuration created")
             else:
-                print("   ⚠ Erreur lors de la configuration CSpell")
+                print("   ⚠ Error during CSpell configuration")
         except ImportError:
             print("   ⚠ cspell_manager module not found")
 
@@ -193,11 +213,11 @@ class JavaScriptProjectSetup:
         print("🛠️ Setting up development environment...")
 
         # Importer le gestionnaire d'environnement
-        devtools_path = Path.home() / ".dev-tools"
+        devtools_path = Path.home() / ".womm"
         sys.path.insert(0, str(devtools_path))
 
         try:
-            from shared.environment_manager import EnvironmentManager
+            from shared.project.environment_manager import EnvironmentManager
 
             manager = EnvironmentManager(self.project_path, "javascript")
 
@@ -264,7 +284,7 @@ class JavaScriptProjectSetup:
         # README.md
         readme_content = f"""# {self.project_name}
 
-{self.PROJECT_TYPES[self.project_type]['description']}
+{self.PROJECT_TYPES[self.project_type]["description"]}
 
 ## 🚀 Installation
 
@@ -285,19 +305,19 @@ npm run build
 npm test
 npm run test:coverage
 
-# Linting et formatage
+# Linting and formatting
 npm run lint
 npm run format
 ```
 
-## 📋 Scripts Disponibles
+## 📋 Available Scripts
 
-- `npm run dev` - Serveur de développement
-- `npm run build` - Build de production
-- `npm run start` - Serveur de production
-- `npm run lint` - Vérification ESLint
-- `npm run format` - Formatage Prettier
-- `npm test` - Tests Jest
+- `npm run dev` - Development server
+- `npm run build` - Production build
+- `npm run start` - Production server
+- `npm run lint` - ESLint checking
+- `npm run format` - Prettier formatting
+- `npm test` - Jest tests
 
 ## 📖 Documentation
 
@@ -417,10 +437,10 @@ createApp(App).mount('#app');
                 main_content, encoding="utf-8"
             )
 
-        print(f"   ✓ Fichiers {self.project_type} créés")
+        print(f"   ✓ {self.project_type} files created")
 
     def _create_typescript_config(self):
-        """Crée la configuration TypeScript."""
+        """Create TypeScript configuration."""
         tsconfig = {
             "compilerOptions": {
                 "target": "ES2020",
@@ -450,7 +470,7 @@ createApp(App).mount('#app');
         print("   ✓ tsconfig.json")
 
     def _create_test_files(self):
-        """Crée les fichiers de test example."""
+        """Create example test files."""
         if self.project_type == "node":
             test_content = """import request from 'supertest';
 import app from '../src/index.js';
@@ -493,7 +513,7 @@ describe('App Component', () => {{
 
     def setup_vscode(self):
         """Configure VSCode."""
-        print("\n🔧 Configuration VSCode...")
+        print("\n🔧 Configuring VSCode...")
 
         vscode_files = ["settings.json", "extensions.json"]
 
@@ -505,7 +525,7 @@ describe('App Component', () => {{
                 shutil.copy2(source, dest)
                 print(f"   ✓ .vscode/{file}")
             else:
-                print(f"   ⚠️  Fichier VSCode manquant: {file}")
+                print(f"   ⚠️  Missing VSCode file: {file}")
 
     def install_dependencies(self):
         """Install NPM dependencies."""
@@ -513,12 +533,37 @@ describe('App Component', () => {{
 
         try:
             # Check npm
-            subprocess.run(["npm", "--version"], capture_output=True, check=True)
+            npm_path = shutil.which("npm")
+            if npm_path is None:
+                print("   ⚠️  npm not found. Install Node.js/npm")
+                return
+
+            # Security validation
+            if SECURITY_AVAILABLE:
+                validator = SecurityValidator()
+                is_valid, error_msg = validator.validate_command(
+                    [npm_path, "--version"]
+                )
+                if not is_valid:
+                    print(f"   ⚠️  Security validation failed: {error_msg}")
+                    return
+
+            subprocess.run(  # noqa: S603
+                [npm_path, "--version"], capture_output=True, check=True
+            )
 
             # Install dependencies
             print("   🔄 Installing...")
-            result = subprocess.run(
-                ["npm", "install"],
+            # Security validation
+            if SECURITY_AVAILABLE:
+                validator = SecurityValidator()
+                is_valid, error_msg = validator.validate_command([npm_path, "install"])
+                if not is_valid:
+                    print(f"   ⚠️  Security validation failed: {error_msg}")
+                    return
+
+            result = subprocess.run(  # noqa: S603
+                [npm_path, "install"],
                 cwd=self.project_path,
                 capture_output=True,
                 text=True,
@@ -528,12 +573,26 @@ describe('App Component', () => {{
                 print("   ✅ Dependencies installed")
 
                 # Install husky
-                subprocess.run(
-                    ["npx", "husky", "install"],
-                    cwd=self.project_path,
-                    capture_output=True,
-                )
-                print("   ✅ Husky hooks configured")
+                npx_path = shutil.which("npx")
+                if npx_path is not None:
+                    # Security validation
+                    if SECURITY_AVAILABLE:
+                        validator = SecurityValidator()
+                        is_valid, error_msg = validator.validate_command(
+                            [npx_path, "husky", "install"]
+                        )
+                        if not is_valid:
+                            print(f"   ⚠️  Security validation failed: {error_msg}")
+                            return
+
+                    subprocess.run(  # noqa: S603
+                        [npx_path, "husky", "install"],
+                        cwd=self.project_path,
+                        capture_output=True,
+                    )
+                    print("   ✅ Husky hooks configured")
+                else:
+                    print("   ⚠️  npx not found, skipping husky installation")
             else:
                 print(f"   ⚠️  Installation error: {result.stderr}")
 

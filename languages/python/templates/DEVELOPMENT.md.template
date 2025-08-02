@@ -1,4 +1,20 @@
-# Development Guide - {{PROJECT_NAME}}
+# 🐍 Development Guide - {{PROJECT_NAME}}
+
+[🏠 Main](../../README.md) > [🐍 Python](../PYTHON.md) > [📖 Development Guide](DEVELOPMENT.md)
+
+[← Back to Python Documentation](../PYTHON.md)
+
+## Table of Contents
+- [Environment Setup](#-environment-setup)
+- [Development Tools](#️-development-tools)
+- [Code Standards](#-code-standards)
+- [Pre-commit Hooks](#-pre-commit-hooks)
+- [Tests](#-tests)
+- [Recommended Development Workflow](#️-recommended-development-workflow)
+
+## Related Documentation
+- [Python Tools](../PYTHON.md) - Python development tools
+- [Main README](../../README.md) - Project overview
 
 ## 🚀 Environment Setup
 
@@ -24,8 +40,8 @@ The project includes a complete VSCode configuration in `.vscode/settings.json` 
 #### Development scripts
 ```bash
 # Formatting and quality
-python .devtools/scripts/lint.py        # Check code quality
-python .devtools/scripts/lint.py --fix  # Auto-fix issues
+womm lint python        # Check code quality
+womm lint python --fix  # Auto-fix issues
 
 # Tests
 pytest                                   # Run tests
@@ -53,9 +69,9 @@ make clean          # Clean temporary files
 - **Line length**: 88
 - **Automatic import organization**
 
-### flake8 Configuration
+### Ruff Configuration
 - **Max length**: 88 characters
-- **Configuration**: `.flake8`
+- **Configuration**: `pyproject.toml`
 
 ## 🔒 Pre-commit Hooks
 
@@ -72,7 +88,7 @@ pre-commit install
 Hooks run before each commit:
 - Formatting with Black
 - Import organization with isort
-- Linting with flake8
+- Linting with Ruff
 - General checks
 
 ## 🧪 Tests
@@ -110,13 +126,13 @@ pre-commit install
 
 ### 2. During development
 - **VSCode** will format automatically on save
-- **Or manually**: `python .devtools/scripts/lint.py --fix`
+- **Or manually**: `womm lint python --fix`
 - **Tests**: `pytest`
 
 ### 3. Before committing
 ```bash
 # Complete verification
-python .devtools/scripts/lint.py
+womm lint python
 pytest
 ```
 
@@ -126,13 +142,12 @@ pytest
 
 ```
 {{PROJECT_NAME}}/
-├── .devtools/              # Development tools
 ├── .vscode/               # VSCode configuration
 ├── docs/                  # Documentation
 ├── {{PROJECT_NAME}}/      # Source code
 ├── tests/                 # Test suite
 ├── pyproject.toml         # Project configuration
-├── .flake8               # Linting configuration
+# Ruff configuration in pyproject.toml
 ├── .pre-commit-config.yaml # Pre-commit hooks
 └── .gitignore            # Git ignored files
 ```

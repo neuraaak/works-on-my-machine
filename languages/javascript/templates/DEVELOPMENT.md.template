@@ -1,6 +1,26 @@
 # 🟨 Development Guide - {{PROJECT_NAME}}
 
+[🏠 Main](../../README.md) > [🟨 JavaScript](../JAVASCRIPT.md) > [📖 Development Guide](DEVELOPMENT.md)
+
+[← Back to JavaScript Documentation](../JAVASCRIPT.md)
+
 > Complete guide for contributing to **{{PROJECT_NAME}}** project
+
+## Table of Contents
+- [Installation and Setup](#-installation-and-setup)
+- [Development Environment](#️-development-environment)
+- [Code Standards](#-code-standards)
+- [Tests](#-tests)
+- [Git Workflow](#-git-workflow)
+- [Architecture](#️-architecture)
+- [Security](#-security)
+- [Build and Deployment](#-build-and-deployment)
+- [Debugging](#-debugging)
+- [Resources](#-resources)
+
+## Related Documentation
+- [JavaScript Tools](../JAVASCRIPT.md) - JavaScript development tools
+- [Main README](../../README.md) - Project overview
 
 ## 🚀 Installation and Setup
 

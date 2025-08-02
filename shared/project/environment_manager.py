@@ -5,19 +5,15 @@ Automatically creates and configures virtual environments and dependencies.
 """
 
 import json
-import os
 import platform
 import shutil
-import sys
 import venv
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Optional
 
-# Importer le gestionnaire CLI
-from shared.cli_manager import (
-    check_tool_available,
+# Import CLI manager
+from shared.core.cli_manager import (
     run_command,
-    run_interactive,
     run_silent,
 )
 
@@ -55,7 +51,7 @@ class EnvironmentManager:
             print("  • husky (hooks)")
 
         response = input("\n🤔 Install development tools? (Y/n): ").lower()
-        return response in ["", "o", "oui", "y", "yes"]
+        return response in ["", "y", "yes"]
 
     def setup_python_environment(self) -> bool:
         """Set up the complete Python environment."""
@@ -257,7 +253,7 @@ class EnvironmentManager:
 
         # Read package.json to detect TypeScript
         try:
-            with open(package_json, "r", encoding="utf-8") as f:
+            with open(package_json, encoding="utf-8") as f:
                 pkg_data = json.load(f)
         except (FileNotFoundError, json.JSONDecodeError):
             pkg_data = {}

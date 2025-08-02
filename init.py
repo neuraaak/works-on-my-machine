@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 Initialize the Works On My Machine environment.
 
 This is a compatibility wrapper that delegates to womm:install.
 For direct installation, use: python womm.py install
 """
+
 import sys
 from pathlib import Path
 

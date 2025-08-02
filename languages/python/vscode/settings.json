@@ -1,34 +1,32 @@
 {
-    // Auto-formatting sur sauvegarde
+    // Auto-formatting on save
     "editor.formatOnSave": true,
     "editor.formatOnPaste": true,
     "editor.codeActionsOnSave": {
         "source.organizeImports": "explicit"
     },
-    // Configuration Python Cross-Platform
-    // VSCode détecte automatiquement l'interpréteur Python depuis ces emplacements :
+    // Cross-Platform Python Configuration
+    // VSCode automatically detects Python interpreter from these locations:
     // Windows: "./venv/Scripts/python.exe", "./.venv/Scripts/python.exe"
     // Linux/Mac: "./venv/bin/python", "./.venv/bin/python"
     "python.defaultInterpreterPath": "${workspaceFolder}/venv/bin/python",
     "python.terminal.activateEnvironment": true,
-    // Configuration Linting
+    // Linting Configuration
     "python.linting.enabled": true,
-    "python.linting.flake8Enabled": true,
-    "python.linting.flake8Args": [
-        "--config=.flake8"
-    ],
-    // Configuration Black (formatage)
+    "python.linting.ruffEnabled": true,
+    "python.linting.flake8Enabled": false,
+    // Black Configuration (formatting)
     "python.formatting.provider": "black",
     "python.formatting.blackArgs": [
         "--line-length=88",
         "--target-version=py39"
     ],
-    // Configuration isort (organisation des imports)
+    // isort Configuration (import organization)
     "python.sortImports.args": [
         "--profile=black",
         "--line-length=88"
     ],
-    // Extensions à utiliser pour le formatage
+    // Extensions to use for formatting
     "[python]": {
         "editor.defaultFormatter": "ms-python.black-formatter",
         "editor.formatOnSave": true,
@@ -36,7 +34,7 @@
             "source.organizeImports": "explicit"
         }
     },
-    // Configuration pour les tests
+    // Test Configuration
     "python.testing.pytestEnabled": true,
     "python.testing.pytestArgs": [
         "tests",
@@ -44,7 +42,7 @@
         "--strict-markers"
     ],
     "python.testing.autoTestDiscoverOnSaveEnabled": true,
-    // Paramètres d'affichage
+    // Display Settings
     "editor.rulers": [
         88
     ],
@@ -53,7 +51,7 @@
     "files.trimTrailingWhitespace": true,
     "files.insertFinalNewline": true,
     "files.trimFinalNewlines": true,
-    // Exclusions pour la recherche et surveillance
+    // Exclusions for search and monitoring
     "files.exclude": {
         "**/__pycache__": true,
         "**/*.pyc": true,
@@ -76,7 +74,7 @@
         "**/*.crt": true,
         "**/credentials": true
     },
-    // Configuration Files Watcher (performance)
+    // Files Watcher Configuration (performance)
     "files.watcherExclude": {
         "**/.git/objects/**": true,
         "**/.git/subtree-cache/**": true,
@@ -95,9 +93,9 @@
         "**/*.crt": true,
         "**/credentials/**": true
     },
-    // Configuration Git
+    // Git Configuration
     "git.ignoreLimitWarning": true,
-    // Configuration Terminal
+    // Terminal Configuration
     "terminal.integrated.env.windows": {
         "PYTHONPATH": "${workspaceFolder}/src"
     },
@@ -107,13 +105,13 @@
     "terminal.integrated.env.osx": {
         "PYTHONPATH": "${workspaceFolder}/src"
     },
-    // Configuration IntelliSense
+    // IntelliSense Configuration
     "python.analysis.extraPaths": [
         "./src"
     ],
     "python.analysis.autoSearchPaths": true,
     "python.analysis.typeCheckingMode": "basic",
-    // Configuration CSpell
+    // CSpell Configuration
     "cSpell.enabled": true,
     "cSpell.language": "en,fr",
     "cSpell.enableFiletypes": [

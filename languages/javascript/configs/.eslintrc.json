@@ -24,7 +24,7 @@
     "react-hooks"
   ],
   "rules": {
-    // Erreurs importantes
+    // Important errors
     "no-console": "warn",
     "no-debugger": "error",
     "no-unused-vars": "off",
@@ -35,13 +35,13 @@
     "@typescript-eslint/no-non-null-assertion": "warn",
     "@typescript-eslint/prefer-const": "error",
     
-    // React (si applicable)
+    // React (if applicable)
     "react/react-in-jsx-scope": "off",
     "react/prop-types": "off",
     "react-hooks/rules-of-hooks": "error",
     "react-hooks/exhaustive-deps": "warn",
     
-    // Style et bonnes pratiques
+    // Style and best practices
     "prefer-const": "error",
     "no-var": "error",
     "object-shorthand": "error",
@@ -49,7 +49,7 @@
     "template-curly-spacing": "error",
     "arrow-spacing": "error",
     
-    // Sécurité
+    // Security
     "no-eval": "error",
     "no-implied-eval": "error",
     "no-new-func": "error",

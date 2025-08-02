@@ -1,6 +1,6 @@
 {
   "version": "0.2",
-  "description": "Configuration CSpell pour projet Python: {{PROJECT_NAME}}",
+  "description": "CSpell configuration for Python project: {{PROJECT_NAME}}",
   "extends": "@cspell/dict-python/cspell-ext.json",
   "language": "en,fr",
   "words": [

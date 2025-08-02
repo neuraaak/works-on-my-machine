@@ -1,6 +1,6 @@
 {
   "version": "0.2",
-  "description": "Configuration CSpell pour projet JavaScript: {{PROJECT_NAME}}",
+  "description": "CSpell configuration for JavaScript project: {{PROJECT_NAME}}",
   "extends": "@cspell/dict-typescript/cspell-ext.json",
   "language": "en,fr",
   "words": [

@@ -1,7 +1,7 @@
 {
     "version": "0.2",
     "language": "en,fr",
-    "description": "Configuration CSpell globale pour dev-tools",
+    "description": "Global CSpell configuration for dev-tools",
     "words": [
         "axios",
         "eslint",
@@ -66,7 +66,23 @@
         "pycharm",
         "intellij",
         "webstorm",
-        "WOMM"
+        "WOMM",
+        "configuration",
+        "development",
+        "project",
+        "file",
+        "files",
+        "user",
+        "system",
+        "security",
+        "validation",
+        "verification",
+        "installation",
+        "dependencies",
+        "environment",
+        "manager",
+        "editor",
+        "editors"
     ],
     "ignoreWords": [
         "Lorem",
@@ -116,6 +132,21 @@
             "name": "Markdown links",
             "pattern": "\\[.*?\\]\\(.*?\\)",
             "description": "Ignore markdown links"
+        },
+        {
+            "name": "Python imports",
+            "pattern": "from\\s+[a-zA-Z_][a-zA-Z0-9_.]*\\s+import",
+            "description": "Ignore Python import statements"
+        },
+        {
+            "name": "Python decorators",
+            "pattern": "@[a-zA-Z_][a-zA-Z0-9_.]*",
+            "description": "Ignore Python decorators"
+        },
+        {
+            "name": "File paths",
+            "pattern": "[a-zA-Z]:\\\\[^\\s]*|[a-zA-Z0-9._/-]+\\.[a-zA-Z0-9]+",
+            "description": "Ignore file paths"
         }
     ],
     "overrides": [
@@ -185,6 +216,13 @@
             ]
         },
         {
+            "filename": "**/requirements*.txt",
+            "dictionaries": [
+                "python",
+                "npm"
+            ]
+        },
+        {
             "filename": "**/package.json",
             "words": [
                 "devdependencies",
@@ -197,11 +235,23 @@
         {
             "filename": "**/pyproject.toml",
             "words": [
-                "setuptools",
                 "buildbackend",
                 "sdist",
                 "wheel",
-                "pypi"
+                "pypi",
+                "classifiers",
+                "setuptools",
+                "zip-safe",
+                "package-data",
+                "pyproject",
+                "toml"
+            ]
+        },
+        {
+            "filename": "**/setup.py",
+            "words": [
+                "setuptools",
+                "distutils"
             ]
         },
         {
@@ -258,6 +308,8 @@
         ".tox/**",
         "venv/**",
         ".venv/**",
+        ".cspell-dict/**",
+        "htmlcov/**",
         "*.min.js",
         "*.min.css",
         "package-lock.json",
@@ -270,7 +322,14 @@
         "**/*.key",
         "**/*.pem",
         "**/*.crt",
-        "**/credentials/**"
+        "**/credentials/**",
+        "**/*.pyc",
+        "**/*.pyo",
+        "**/*.pyd",
+        "**/*.so",
+        "**/*.dll",
+        "**/*.exe",
+        "**/*.dylib"
     ],
     "allowCompoundWords": true,
     "caseSensitive": false,

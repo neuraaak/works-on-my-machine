@@ -1,17 +1,16 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
-Script d'initialisation d'environnement de développement Python.
+Python development environment initialization script.
 
 Usage:
-    python setup_project.py [nom_projet]
+    python setup_project.py [project_name]
     python setup_project.py --current-dir
 
-Fonctionnalités:
-    - Copie les configurations de développement
-    - Initialise Git avec .gitignore adapté
-    - Configure les hooks pre-commit
-    - Crée la structure de projet de base
+Features:
+    - Copy development configurations
+    - Initialize Git with adapted .gitignore
+    - Configure pre-commit hooks
+    - Create basic project structure
     - Configure VSCode
 """
 
@@ -21,18 +20,26 @@ import subprocess
 import sys
 from pathlib import Path
 
+# Import security validator
+try:
+    from shared.security.security_validator import SecurityValidator
+
+    SECURITY_AVAILABLE = True
+except ImportError:
+    SECURITY_AVAILABLE = False
+
 
 class PythonProjectSetup:
-    """Classe pour configurer un environnement de développement Python."""
+    """Class to configure a Python development environment."""
 
-    def __init__(self, project_path: Path, project_name: str):
-        """Initialise le script de configuration du projet Python."""
+    def __init__(self, project_path: Path, project_name: str) -> None:
+        """Initialize the Python project configuration script."""
         self.project_path = project_path
         self.project_name = project_name
         self.python_tools_path = Path(__file__).parent.parent
         self.devtools_path = self.python_tools_path.parent.parent
 
-    def setup_all(self):
+    def setup_all(self) -> None:
         """Configure the complete development environment."""
         print(f"🐍 Setting up Python environment for '{self.project_name}'")
         print(f"📁 Directory: {self.project_path}")
@@ -46,10 +53,10 @@ class PythonProjectSetup:
         self.setup_development_environment()
         self.install_hooks()
 
-        print("\n✅ Configuration Python terminée !")
+        print("\n✅ Python configuration completed!")
         self.print_next_steps()
 
-    def create_directory_structure(self):
+    def create_directory_structure(self) -> None:
         """Create the basic directory structure."""
         print("\n📂 Creating directory structure...")
 
@@ -64,12 +71,11 @@ class PythonProjectSetup:
             directory.mkdir(parents=True, exist_ok=True)
             print(f"   ✓ {directory}")
 
-    def copy_configs(self):
+    def copy_configs(self) -> None:
         """Copy configuration files."""
         print("\n⚙️ Copying Python configurations...")
 
         configs = [
-            ("configs/.flake8", ".flake8"),
             ("configs/.pre-commit-config.yaml", ".pre-commit-config.yaml"),
             ("templates/gitignore-python.txt", ".gitignore"),
             ("templates/Makefile.template", "Makefile"),
@@ -83,7 +89,7 @@ class PythonProjectSetup:
             if source_path.exists():
                 dest_path.parent.mkdir(parents=True, exist_ok=True)
 
-                # Traiter les templates
+                # Process templates
                 if source_path.suffix == ".template":
                     content = source_path.read_text(encoding="utf-8")
                     content = content.replace("{{PROJECT_NAME}}", self.project_name)
@@ -101,8 +107,21 @@ class PythonProjectSetup:
 
         if not (self.project_path / ".git").exists():
             try:
-                subprocess.run(
-                    ["git", "init"],
+                git_path = shutil.which("git")
+                if git_path is None:
+                    print("   ⚠️  Git not found")
+                    return
+
+                # Security validation
+                if SECURITY_AVAILABLE:
+                    validator = SecurityValidator()
+                    is_valid, error_msg = validator.validate_command([git_path, "init"])
+                    if not is_valid:
+                        print(f"   ⚠️  Security validation failed: {error_msg}")
+                        return
+
+                subprocess.run(  # noqa: S603
+                    [git_path, "init"],
                     cwd=self.project_path,
                     check=True,
                     capture_output=True,
@@ -116,11 +135,11 @@ class PythonProjectSetup:
         print("📝 Configuring CSpell...")
 
         # Importer le gestionnaire CSpell
-        devtools_path = Path.home() / ".dev-tools"
+        devtools_path = Path.home() / ".womm"
         sys.path.insert(0, str(devtools_path))
 
         try:
-            from shared.cspell_manager import setup_project_cspell
+            from shared.tools.cspell_manager import setup_project_cspell
 
             success = setup_project_cspell(
                 self.project_path, "python", self.project_name
@@ -137,11 +156,11 @@ class PythonProjectSetup:
         print("🛠️ Setting up development environment...")
 
         # Importer le gestionnaire d'environnement
-        devtools_path = Path.home() / ".dev-tools"
+        devtools_path = Path.home() / ".womm"
         sys.path.insert(0, str(devtools_path))
 
         try:
-            from shared.environment_manager import EnvironmentManager
+            from shared.project.environment_manager import EnvironmentManager
 
             manager = EnvironmentManager(self.project_path, "python")
 
@@ -180,7 +199,7 @@ license = {{text = "MIT"}}
 authors = [{{name = "Votre Nom", email = "votre.email@example.com"}}]
 
 dependencies = [
-    # Ajoutez vos dépendances ici
+    # Add your dependencies here
 ]
 
 [project.optional-dependencies]
@@ -327,17 +346,44 @@ def test_import():
         print("\n🔒 Installing pre-commit hooks...")
 
         try:
-            # Vérifier si pre-commit est installé
-            subprocess.run(
-                ["pre-commit", "--version"],
+            # Check if pre-commit is installed
+            precommit_path = shutil.which("pre-commit")
+            if precommit_path is None:
+                print(
+                    "   ⚠️  pre-commit not found. Install with: pip install pre-commit"
+                )
+                return
+
+            # Security validation
+            if SECURITY_AVAILABLE:
+                validator = SecurityValidator()
+                is_valid, error_msg = validator.validate_command(
+                    [precommit_path, "--version"]
+                )
+                if not is_valid:
+                    print(f"   ⚠️  Security validation failed: {error_msg}")
+                    return
+
+            subprocess.run(  # noqa: S603
+                [precommit_path, "--version"],
                 cwd=self.project_path,
                 check=True,
                 capture_output=True,
             )
 
             # Installer les hooks
-            subprocess.run(
-                ["pre-commit", "install"],
+            # Security validation
+            if SECURITY_AVAILABLE:
+                validator = SecurityValidator()
+                is_valid, error_msg = validator.validate_command(
+                    [precommit_path, "install"]
+                )
+                if not is_valid:
+                    print(f"   ⚠️  Security validation failed: {error_msg}")
+                    return
+
+            subprocess.run(  # noqa: S603
+                [precommit_path, "install"],
                 cwd=self.project_path,
                 check=True,
                 capture_output=True,
@@ -348,7 +394,7 @@ def test_import():
             print("   ⚠️  pre-commit not found. Install with: pip install pre-commit")
 
     def print_next_steps(self):
-        """Affiche les prochaines étapes."""
+        """Display next steps."""
         print(
             f"""
 🎉 Python project '{self.project_name}' configured successfully!
@@ -408,10 +454,10 @@ def main():
     # Confirmer avant de continuer
     if not args.current_dir:
         response = input(
-            f"Créer le projet Python '{project_name}' dans {project_path}? (y/N): "
+            f"Create Python project '{project_name}' in {project_path}? (y/N): "
         )
         if response.lower() not in ("y", "yes", "o", "oui"):
-            print("Annulé.")
+            print("Cancelled.")
             return 0
 
     setup = PythonProjectSetup(project_path, project_name)

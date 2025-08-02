@@ -1,21 +1,20 @@
 {
     "recommendations": [
-        // Extensions Python essentielles
+        // Essential Python extensions
         "ms-python.python",
         "ms-python.black-formatter",
         "ms-python.isort",
-        "ms-python.flake8",
-        // Extensions utiles pour le développement
+        "charliermarsh.ruff",
+        // Useful development extensions
         "ms-python.pylint",
         "ms-vscode.vscode-json",
         "redhat.vscode-yaml",
         "streetsidesoftware.code-spell-checker",
-        "streetsidesoftware.code-spell-checker-french",
-        // Extensions Git
+        // Git extensions
         "eamodio.gitlens",
-        // Extensions pour la documentation
+        // Documentation extensions
         "yzhang.markdown-all-in-one",
-        // Extensions pour les tests
+        // Test extensions
         "ms-python.pytest"
     ]
 }

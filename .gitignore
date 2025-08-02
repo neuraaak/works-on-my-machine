@@ -67,12 +67,15 @@ nosetests.xml
 .benchmarks/
 
 # ===================================
-# Éditeurs et IDEs
+# Editors and IDEs
 # ===================================
-# VSCode - Configuration partagée incluse
+# VSCode - Shared configuration included
 # .vscode/
 
-# Autres éditeurs
+# Cursor AI
+.cursor/
+
+# Other editors
 .idea/
 *.swp
 *.swo
@@ -100,7 +103,7 @@ $RECYCLE.BIN/
 .Trash-*
 
 # ===================================
-# Logs et données temporaires
+# Logs and temporary data
 # ===================================
 *.log
 *.pid
@@ -109,7 +112,7 @@ $RECYCLE.BIN/
 _temp/
 
 # ===================================
-# Fichiers sensibles (selon mémoire)
+# Sensitive files (from memory)
 # ===================================
 .env
 .env.*
@@ -133,11 +136,11 @@ keys/
 *.rej
 
 # ===================================
-# Spécifique au projet works-on-my-machine
+# Specific to works-on-my-machine project
 # ===================================
-# Répertoire d'installation dans le home de l'utilisateur
+# Installation directory in user home
 # (on ignore la copie locale mais pas les sources)
-/.dev-tools
+/.womm
 
 # Fichiers de test temporaires
 test_output/
@@ -147,11 +150,11 @@ works-on-my-machine-temp/
 # Sauvegardes automatiques
 *.backup/
 
-# Fichiers de configuration locale générés
+# Generated local configuration files
 local_config/
 user_settings/
 
-# Cache du gestionnaire de dépendances
+# Dependency manager cache
 .pip-cache/
 node_modules/
 .npm/

@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 Works On My Machine - Auto-registration of tools to Windows context menu.
 
@@ -26,7 +25,7 @@ try:
         validate_script_path,
     )
 except ImportError:
-    # Fallback si l'import échoue
+    # Fallback if import fails
     ScriptType = None
     add_context_menu_entry = None
     backup_registry_entries = None
@@ -233,7 +232,6 @@ def main():
         int: Exit code.
     """
     import argparse
-    from datetime import datetime
 
     parser = argparse.ArgumentParser(
         description="Register Works On My Machine tools to Windows context menu",

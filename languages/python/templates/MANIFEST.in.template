@@ -1,7 +1,7 @@
-# MANIFEST.in pour {{PROJECT_NAME}}
-# Ce fichier spécifie quels fichiers inclure dans la distribution source
+# MANIFEST.in for {{PROJECT_NAME}}
+# This file specifies which files to include in the source distribution
 
-# Fichiers de documentation
+# Documentation files
 include README.md
 include CHANGELOG.md
 include LICENSE
@@ -9,51 +9,51 @@ include AUTHORS.md
 include CONTRIBUTING.md
 include SECURITY.md
 
-# Configuration de développement
+# Development configuration
 include pyproject.toml
 include setup.cfg
 include tox.ini
 include .pre-commit-config.yaml
 include Makefile
 
-# Configuration d'éditeurs
+# Editor configuration
 recursive-include .vscode *.json
 recursive-include .idea *.xml *.iml
 
-# Fichiers de données du package
+# Package data files
 recursive-include src/{{PROJECT_NAME}}/data *
 recursive-include src/{{PROJECT_NAME}}/templates *
 recursive-include src/{{PROJECT_NAME}}/static *
 recursive-include src/{{PROJECT_NAME}}/assets *
 recursive-include src/{{PROJECT_NAME}}/resources *
 
-# Configuration et schémas
+# Configuration and schemas
 recursive-include src/{{PROJECT_NAME}}/schemas *.json *.yaml *.yml
 recursive-include src/{{PROJECT_NAME}}/config *.ini *.cfg *.conf *.json *.yaml *.yml
 
-# Documentation Sphinx
+# Sphinx documentation
 recursive-include docs *.rst *.md *.py *.txt *.png *.jpg *.svg
 include docs/Makefile
 include docs/make.bat
 
-# Tests (pour la distribution source)
+# Tests (for source distribution)
 recursive-include tests *.py *.json *.yaml *.yml *.txt *.csv
 recursive-include tests/data *
 recursive-include tests/fixtures *
 recursive-include tests/samples *
 
-# Scripts et outils
+# Scripts and tools
 recursive-include scripts *.py *.sh *.bat *.ps1
 recursive-include tools *.py
 
-# Fichiers de traduction/localisation
+# Translation/localization files
 recursive-include src/{{PROJECT_NAME}}/locale *.po *.pot *.mo
 
-# Fichiers de type MIME et icônes
+# MIME type files and icons
 recursive-include src/{{PROJECT_NAME}}/icons *.png *.ico *.svg
 recursive-include src/{{PROJECT_NAME}}/images *.png *.jpg *.jpeg *.gif *.svg
 
-# Exclusions globales
+# Global exclusions
 global-exclude *.pyc
 global-exclude *.pyo
 global-exclude *.pyd
@@ -64,7 +64,7 @@ global-exclude *.so
 global-exclude *.dylib
 global-exclude *.dll
 
-# Exclusions de développement
+# Development exclusions
 global-exclude .git*
 global-exclude .pytest_cache
 global-exclude .mypy_cache
@@ -75,19 +75,19 @@ global-exclude build
 global-exclude dist
 global-exclude *.egg-info
 
-# Exclusions d'environnements virtuels
+# Virtual environment exclusions
 global-exclude venv
 global-exclude .venv
 global-exclude env
 global-exclude .env
 
-# Exclusions d'éditeurs
+# Editor exclusions
 global-exclude *.swp
 global-exclude *.swo
 global-exclude *~
 global-exclude .#*
 
-# Exclusions de sauvegardes
+# Backup exclusions
 global-exclude *.bak
 global-exclude *.backup
 global-exclude *.orig

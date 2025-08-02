@@ -1,22 +1,19 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 Uninstaller for Works On My Machine.
 Removes WOMM from the system and cleans up PATH entries.
 """
 
 import argparse
-import os
 import platform
 import shutil
 import sys
 import winreg
 from pathlib import Path
-from typing import Optional
 
 # Import CLI manager
 try:
-    from shared.cli_manager import run_command, run_silent
+    from shared.core.cli_manager import run_command, run_silent
 except ImportError:
     # Fallback if module not available
     import subprocess
@@ -25,12 +22,38 @@ except ImportError:
         """Run a command with logging."""
         print(f"\n🔍 {desc}...")
         print(f"Command: {' '.join(cmd)}")
-        result = subprocess.run(cmd, **kwargs)
+
+        # Security validation
+        if SECURITY_AVAILABLE:
+            validator = SecurityValidator()
+            is_valid, error_msg = validator.validate_command(cmd)
+            if not is_valid:
+                print(f"   ⚠️  Security validation failed: {error_msg}")
+                return type("obj", (object,), {"success": False})()
+
+        result = subprocess.run(cmd, **kwargs)  # noqa: S603
         return type("obj", (object,), {"success": result.returncode == 0})()
 
     def run_silent(cmd, **kwargs):
         """Run a command silently."""
-        return subprocess.run(cmd, capture_output=True, **kwargs)
+        # Security validation
+        if SECURITY_AVAILABLE:
+            validator = SecurityValidator()
+            is_valid, error_msg = validator.validate_command(cmd)
+            if not is_valid:
+                print(f"   ⚠️  Security validation failed: {error_msg}")
+                return type("obj", (object,), {"success": False})()
+
+        return subprocess.run(cmd, capture_output=True, **kwargs)  # noqa: S603
+
+
+# Import security validator if available
+try:
+    from shared.security.security_validator import SecurityValidator
+
+    SECURITY_AVAILABLE = True
+except ImportError:
+    SECURITY_AVAILABLE = False
 
 
 def get_target_womm_path() -> Path:

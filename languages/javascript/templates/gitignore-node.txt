@@ -117,7 +117,7 @@ temp/
 # ===================================
 # IDE and Editor
 # ===================================
-# VSCode - Configuration partagée incluse
+# VSCode - Shared configuration included
 # .vscode/
 
 .idea/

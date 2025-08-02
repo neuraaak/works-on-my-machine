@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 Deploy development tools to a global directory.
 
@@ -14,8 +13,8 @@ import shutil
 import sys
 from pathlib import Path
 
-# Importer le gestionnaire CLI
-from shared.cli_manager import run_command, run_silent
+# Import CLI manager
+from shared.core.cli_manager import run_command, run_silent
 
 
 def get_default_target():
@@ -92,7 +91,7 @@ def create_windows_commands(target_dir: Path):
     bin_dir.mkdir(exist_ok=True)
 
     # Main new-project script (uses existing project_detector)
-    new_project_script = target_dir / "new-project.py"
+    target_dir / "new-project.py"
     new_project_content = f"""@echo off
 python "{target_dir}/new-project.py" %*
 """
@@ -190,7 +189,7 @@ function lint-project {{ python "{target_dir}/lint-project.py" $@ }}
 
     # Add to profile if not already there
     if profile_file.exists():
-        with open(profile_file, "r", encoding="utf-8") as f:
+        with open(profile_file, encoding="utf-8") as f:
             content = f.read()
     else:
         content = ""

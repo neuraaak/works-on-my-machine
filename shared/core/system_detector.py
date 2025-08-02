@@ -1,33 +1,39 @@
 #!/usr/bin/env python3
 """
-Détecteur système avancé pour dev-tools.
-Détecte OS, architecture, gestionnaires de paquets, et environnements de développement
+Advanced system detector for dev-tools.
+Detects OS, architecture, package managers, and development environments
 """
 
 import json
+import logging
 import os
 import platform
 import shutil
-import subprocess
-import sys
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 
-# Importer le gestionnaire CLI
-from shared.cli_manager import check_tool_available, run_silent
+# Import CLI manager
+try:
+    from .cli_manager import check_tool_available, run_silent
+except ImportError:
+    # Fallback for direct execution
+    import sys
+
+    sys.path.insert(0, str(Path(__file__).parent.parent))
+    from shared.core.cli_manager import check_tool_available, run_silent
 
 
 class SystemDetector:
-    """Détecteur système complet."""
+    """Complete system detector."""
 
     def __init__(self):
-        """Initialise le détecteur système."""
+        """Initialize the system detector."""
         self.system_info = self.get_system_info()
         self.package_managers = self.detect_package_managers()
         self.dev_environments = self.detect_development_environments()
 
     def get_system_info(self) -> Dict:
-        """Retourne les informations système de base."""
+        """Returns basic system information."""
         return {
             "platform": platform.system(),
             "platform_release": platform.release(),
@@ -46,7 +52,7 @@ class SystemDetector:
         }
 
     def detect_package_managers(self) -> Dict[str, Dict]:
-        """Détecte tous les gestionnaires de paquets disponibles."""
+        """Detects all available package managers."""
         managers = {}
 
         # Windows
@@ -64,7 +70,7 @@ class SystemDetector:
         return managers
 
     def _detect_windows_managers(self) -> Dict[str, Dict]:
-        """Détecte les gestionnaires Windows."""
+        """Detects Windows package managers."""
         managers = {}
 
         # Chocolatey
@@ -75,12 +81,12 @@ class SystemDetector:
                     "available": True,
                     "version": result.stdout.strip() if result.success else None,
                     "command": "choco",
-                    "description": "Gestionnaire de paquets communautaire",
+                    "description": "Community package manager",
                     "install_cmd": "choco install",
                     "priority": 1,
                 }
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(f"Failed to detect Chocolatey version: {e}")
 
         # Winget
         if check_tool_available("winget"):
@@ -90,12 +96,12 @@ class SystemDetector:
                     "available": True,
                     "version": result.stdout.strip() if result.success else None,
                     "command": "winget",
-                    "description": "Gestionnaire Microsoft officiel",
+                    "description": "Official Microsoft package manager",
                     "install_cmd": "winget install",
                     "priority": 2,
                 }
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(f"Failed to detect Winget version: {e}")
 
         # Scoop
         if check_tool_available("scoop"):
@@ -105,17 +111,17 @@ class SystemDetector:
                     "available": True,
                     "version": result.stdout.strip() if result.success else None,
                     "command": "scoop",
-                    "description": "Gestionnaire pour développeurs",
+                    "description": "Package manager for developers",
                     "install_cmd": "scoop install",
                     "priority": 3,
                 }
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(f"Failed to detect Scoop version: {e}")
 
         return managers
 
     def _detect_macos_managers(self) -> Dict[str, Dict]:
-        """Détecte les gestionnaires macOS."""
+        """Detects macOS package managers."""
         managers = {}
 
         # Homebrew
@@ -127,12 +133,12 @@ class SystemDetector:
                     "available": True,
                     "version": version,
                     "command": "brew",
-                    "description": "Gestionnaire de paquets principal pour macOS",
+                    "description": "Main package manager for macOS",
                     "install_cmd": "brew install",
                     "priority": 1,
                 }
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(f"Failed to detect Homebrew version: {e}")
 
         # MacPorts
         if shutil.which("port"):
@@ -142,17 +148,17 @@ class SystemDetector:
                     "available": True,
                     "version": result.stdout.strip() if result.success else None,
                     "command": "port",
-                    "description": "Gestionnaire de paquets alternatif",
+                    "description": "Alternative package manager",
                     "install_cmd": "sudo port install",
                     "priority": 2,
                 }
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(f"Failed to detect MacPorts version: {e}")
 
         return managers
 
     def _detect_linux_managers(self) -> Dict[str, Dict]:
-        """Détecte les gestionnaires Linux."""
+        """Detects Linux package managers."""
         managers = {}
 
         # APT (Debian/Ubuntu)
@@ -163,12 +169,12 @@ class SystemDetector:
                     "available": True,
                     "version": result.stdout.split("\n")[0],
                     "command": "apt",
-                    "description": "Gestionnaire Debian/Ubuntu",
+                    "description": "Debian/Ubuntu package manager",
                     "install_cmd": "sudo apt install",
                     "priority": 1,
                 }
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(f"Failed to detect APT version: {e}")
 
         # DNF (Fedora)
         if shutil.which("dnf"):
@@ -178,12 +184,12 @@ class SystemDetector:
                     "available": True,
                     "version": result.stdout.split("\n")[0],
                     "command": "dnf",
-                    "description": "Gestionnaire Fedora/RHEL",
+                    "description": "Fedora/RHEL package manager",
                     "install_cmd": "sudo dnf install",
                     "priority": 1,
                 }
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(f"Failed to detect DNF version: {e}")
 
         # YUM (CentOS/RHEL)
         if shutil.which("yum"):
@@ -193,12 +199,12 @@ class SystemDetector:
                     "available": True,
                     "version": result.stdout.split("\n")[0],
                     "command": "yum",
-                    "description": "Gestionnaire CentOS/RHEL",
+                    "description": "CentOS/RHEL package manager",
                     "install_cmd": "sudo yum install",
                     "priority": 2,
                 }
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(f"Failed to detect YUM version: {e}")
 
         # Pacman (Arch)
         if shutil.which("pacman"):
@@ -208,12 +214,12 @@ class SystemDetector:
                     "available": True,
                     "version": result.stdout.split("\n")[0],
                     "command": "pacman",
-                    "description": "Gestionnaire Arch Linux",
+                    "description": "Arch Linux package manager",
                     "install_cmd": "sudo pacman -S",
                     "priority": 1,
                 }
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(f"Failed to detect Pacman version: {e}")
 
         # Snap
         if shutil.which("snap"):
@@ -223,20 +229,20 @@ class SystemDetector:
                     "available": True,
                     "version": result.stdout.split("\n")[0],
                     "command": "snap",
-                    "description": "Gestionnaire universel Ubuntu",
+                    "description": "Universal Ubuntu package manager",
                     "install_cmd": "sudo snap install",
                     "priority": 3,
                 }
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(f"Failed to detect Snap version: {e}")
 
         return managers
 
     def detect_development_environments(self) -> Dict[str, Dict]:
-        """Détecte les environnements de développement."""
+        """Detects development environments."""
         envs = {}
 
-        # Éditeurs/IDEs
+        # Editors/IDEs
         editors = {
             "code": "Visual Studio Code",
             "code-insiders": "VS Code Insiders",
@@ -289,7 +295,7 @@ class SystemDetector:
         return envs
 
     def get_best_package_manager(self) -> Optional[str]:
-        """Retourne le meilleur gestionnaire disponible."""
+        """Returns the best available package manager."""
         available = {
             name: info
             for name, info in self.package_managers.items()
@@ -299,25 +305,25 @@ class SystemDetector:
         if not available:
             return None
 
-        # Trier par priorité
+        # Sort by priority
         sorted_managers = sorted(available.items(), key=lambda x: x[1]["priority"])
         return sorted_managers[0][0]
 
     def can_install_package_manager(self) -> Optional[str]:
-        """Vérifie si on peut installer un gestionnaire de paquets."""
-        if self.system_info["platform"] == "Windows":
-            # Peut installer Chocolatey via PowerShell
-            if shutil.which("powershell") or shutil.which("pwsh"):
-                return "chocolatey"
-        elif self.system_info["platform"] == "Darwin":
-            # Peut installer Homebrew via curl
-            if shutil.which("curl"):
-                return "homebrew"
+        """Checks if a package manager can be installed."""
+        if self.system_info["platform"] == "Windows" and (
+            shutil.which("powershell") or shutil.which("pwsh")
+        ):
+            # Can install Chocolatey via PowerShell
+            return "chocolatey"
+        elif self.system_info["platform"] == "Darwin" and shutil.which("curl"):
+            # Can install Homebrew via curl
+            return "homebrew"
 
         return None
 
     def export_report(self, output_path: Optional[Path] = None) -> Path:
-        """Génère et exporte un rapport détaillé du système."""
+        """Generates and exports a detailed system report."""
         report = {
             "system_info": self.system_info,
             "package_managers": self.package_managers,
@@ -334,45 +340,43 @@ class SystemDetector:
         return output_path
 
     def get_recommendations(self) -> Dict[str, str]:
-        """Génère des recommandations basées sur la détection."""
+        """Generates recommendations based on detection."""
         recommendations = {}
 
-        # Gestionnaire de paquets
+        # Package manager
         best_manager = self.get_best_package_manager()
         if best_manager:
-            recommendations["package_manager"] = (
-                f"Utiliser {best_manager} pour les installations"
-            )
+            recommendations["package_manager"] = f"Use {best_manager} for installations"
         else:
             installable = self.can_install_package_manager()
             if installable:
                 recommendations["package_manager"] = (
-                    f"Installer {installable} pour faciliter les installations"
+                    f"Install {installable} to facilitate installations"
                 )
             else:
                 recommendations["package_manager"] = (
-                    "Aucun gestionnaire de paquets détecté - installation manuelle requise"
+                    "No package manager detected - manual installation required"
                 )
 
-        # Éditeur recommandé
+        # Recommended editor
         if "code" in self.dev_environments:
             recommendations["editor"] = (
-                "VS Code détecté - excellent choix pour dev-tools"
+                "VS Code detected - excellent choice for dev-tools"
             )
         elif any("vim" in env or "nvim" in env for env in self.dev_environments):
             recommendations["editor"] = (
-                "Éditeur en ligne de commande détecté - dev-tools compatible"
+                "Command line editor detected - dev-tools compatible"
             )
         else:
             recommendations["editor"] = (
-                "Installer VS Code recommandé pour une meilleure intégration"
+                "Install VS Code recommended for better integration"
             )
 
         return recommendations
 
     def print_summary(self):
-        """Affiche un résumé système."""
-        print("🖥️  Informations Système")
+        """Displays a system summary."""
+        print("SYSTEM  System Information")
         print("=" * 40)
         print(
             f"OS: {self.system_info['platform']} {self.system_info['platform_release']}"
@@ -381,35 +385,33 @@ class SystemDetector:
         print(f"Python: {self.system_info['python_version']}")
         print(f"Shell: {self.system_info['shell']}")
 
-        print(
-            f"\n📦 Gestionnaires de Paquets ({len(self.package_managers)} disponibles)"
-        )
+        print(f"\nPACKAGES  Package Managers ({len(self.package_managers)} available)")
         print("-" * 50)
         for name, info in self.package_managers.items():
             if info["available"]:
-                print(f"✅ {name}: {info['version']} - {info['description']}")
+                print(f"OK {name}: {info['version']} - {info['description']}")
 
         print(
-            f"\n🛠️  Environnements de Développement ({len(self.dev_environments)} détectés)"
+            f"\nTOOLS  Development Environments ({len(self.dev_environments)} detected)"
         )
         print("-" * 60)
         for _, info in self.dev_environments.items():
             if info["available"]:
-                print(f"✅ {info['name']}: {info.get('version', 'unknown')}")
+                print(f"OK {info['name']}: {info.get('version', 'unknown')}")
 
-        print("\n💡 Recommandations")
+        print("\nRECOMMENDATIONS  Recommendations")
         print("-" * 20)
         for category, recommendation in self.get_recommendations().items():
-            print(f"• {category}: {recommendation}")
+            print(f"- {category}: {recommendation}")
 
 
 def main():
-    """Point d'entrée principal."""
+    """Main entry point."""
     import argparse
 
-    parser = argparse.ArgumentParser(description="Détecteur système pour dev-tools")
-    parser.add_argument("--export", help="Exporter le rapport vers un fichier JSON")
-    parser.add_argument("--summary", action="store_true", help="Afficher un résumé")
+    parser = argparse.ArgumentParser(description="System detector for dev-tools")
+    parser.add_argument("--export", help="Export report to JSON file")
+    parser.add_argument("--summary", action="store_true", help="Display summary")
 
     args = parser.parse_args()
 
@@ -417,7 +419,7 @@ def main():
 
     if args.export:
         output_path = detector.export_report(Path(args.export))
-        print(f"📄 Rapport exporté vers: {output_path}")
+        print(f"REPORT  Report exported to: {output_path}")
 
     if args.summary or not args.export:
         detector.print_summary()

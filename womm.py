@@ -2,6 +2,7 @@
 """
 Works On My Machine (WOMM) - Main CLI Entry Point.
 Universal development tools for Python and JavaScript projects.
+Enhanced with comprehensive security validation.
 """
 
 import sys
@@ -9,10 +10,31 @@ from pathlib import Path
 
 import click
 
-from shared.cli_manager import run_command
+from shared.core.cli_manager import run_command
 
 # Add shared modules to path
 sys.path.insert(0, str(Path(__file__).parent / "shared"))
+
+# Import security modules
+try:
+    from shared.security.secure_cli_manager import run_secure_command
+    from shared.security.security_validator import (
+        security_validator,
+        validate_user_input,
+    )
+
+    SECURITY_AVAILABLE = True
+except ImportError:
+    SECURITY_AVAILABLE = False
+
+    # Fallback functions if security modules are not available
+    def validate_user_input(_value, _input_type):
+        """Fallback validation function when security modules are not available."""
+        return True, ""
+
+    def run_secure_command(cmd, description):
+        """Fallback secure command execution when security modules are not available."""
+        return run_command(cmd, description)
 
 
 @click.group()
@@ -22,8 +44,9 @@ def womm():
 
     Automatic installation, cross-platform configuration, global commands
     for Python and JavaScript projects.
+
+    🔒 Enhanced with comprehensive security validation.
     """
-    pass
 
 
 @womm.command("install")
@@ -44,7 +67,14 @@ def womm():
 )
 def install(force, no_prerequisites, no_context_menu, target):
     """Install Works On My Machine in user directory."""
-    script_path = Path(__file__).parent / "shared" / "installer.py"
+    # Security validation for target path
+    if target and SECURITY_AVAILABLE:
+        is_valid, error = security_validator.validate_path(target)
+        if not is_valid:
+            click.echo(f"❌ Invalid target path: {error}", err=True)
+            sys.exit(1)
+
+    script_path = Path(__file__).parent / "shared" / "installation" / "installer.py"
 
     cmd = [sys.executable, str(script_path)]
 
@@ -57,7 +87,12 @@ def install(force, no_prerequisites, no_context_menu, target):
     if target:
         cmd.extend(["--target", target])
 
-    result = run_command(cmd, "Installing Works On My Machine")
+    # Use secure command execution if available
+    if SECURITY_AVAILABLE:
+        result = run_secure_command(cmd, "Installing Works On My Machine")
+    else:
+        result = run_command(cmd, "Installing Works On My Machine")
+
     sys.exit(0 if result.success else 1)
 
 
@@ -73,7 +108,14 @@ def install(force, no_prerequisites, no_context_menu, target):
 )
 def uninstall(force, target):
     """Uninstall Works On My Machine from user directory."""
-    script_path = Path(__file__).parent / "shared" / "uninstaller.py"
+    # Security validation for target path
+    if target and SECURITY_AVAILABLE:
+        is_valid, error = security_validator.validate_path(target)
+        if not is_valid:
+            click.echo(f"❌ Invalid target path: {error}", err=True)
+            sys.exit(1)
+
+    script_path = Path(__file__).parent / "shared" / "installation" / "uninstaller.py"
 
     cmd = [sys.executable, str(script_path)]
 
@@ -82,14 +124,18 @@ def uninstall(force, target):
     if target:
         cmd.extend(["--target", target])
 
-    result = run_command(cmd, "Uninstalling Works On My Machine")
+    # Use secure command execution if available
+    if SECURITY_AVAILABLE:
+        result = run_secure_command(cmd, "Uninstalling Works On My Machine")
+    else:
+        result = run_command(cmd, "Uninstalling Works On My Machine")
+
     sys.exit(0 if result.success else 1)
 
 
 @womm.group()
 def new():
     """🆕 Create new projects."""
-    pass
 
 
 @new.command("python")
@@ -101,9 +147,23 @@ def new():
 )
 def new_python(project_name, current_dir):
     """Create a new Python project with full development environment."""
+    # Security validation for project name
+    if project_name and SECURITY_AVAILABLE:
+        is_valid, error = validate_user_input(project_name, "project_name")
+        if not is_valid:
+            click.echo(f"❌ Invalid project name: {error}", err=True)
+            sys.exit(1)
+
     script_path = (
         Path(__file__).parent / "languages" / "python" / "scripts" / "setup_project.py"
     )
+
+    # Security validation for script execution
+    if SECURITY_AVAILABLE:
+        is_valid, error = security_validator.validate_script_execution(script_path)
+        if not is_valid:
+            click.echo(f"❌ Script validation failed: {error}", err=True)
+            sys.exit(1)
 
     cmd = [sys.executable, str(script_path)]
     if current_dir:
@@ -111,7 +171,12 @@ def new_python(project_name, current_dir):
     elif project_name:
         cmd.append(project_name)
 
-    result = run_command(cmd, "Setting up Python project")
+    # Use secure command execution if available
+    if SECURITY_AVAILABLE:
+        result = run_secure_command(cmd, "Setting up Python project")
+    else:
+        result = run_command(cmd, "Setting up Python project")
+
     sys.exit(0 if result.success else 1)
 
 
@@ -131,6 +196,13 @@ def new_python(project_name, current_dir):
 )
 def new_javascript(project_name, current_dir, project_type):
     """Create a new JavaScript/Node.js project with development tools."""
+    # Security validation for project name
+    if project_name and SECURITY_AVAILABLE:
+        is_valid, error = validate_user_input(project_name, "project_name")
+        if not is_valid:
+            click.echo(f"❌ Invalid project name: {error}", err=True)
+            sys.exit(1)
+
     script_path = (
         Path(__file__).parent
         / "languages"
@@ -138,6 +210,13 @@ def new_javascript(project_name, current_dir, project_type):
         / "scripts"
         / "setup_project.py"
     )
+
+    # Security validation for script execution
+    if SECURITY_AVAILABLE:
+        is_valid, error = security_validator.validate_script_execution(script_path)
+        if not is_valid:
+            click.echo(f"❌ Script validation failed: {error}", err=True)
+            sys.exit(1)
 
     cmd = [sys.executable, str(script_path)]
     if current_dir:
@@ -147,7 +226,12 @@ def new_javascript(project_name, current_dir, project_type):
 
     cmd.extend(["--type", project_type])
 
-    result = run_command(cmd, f"Setting up {project_type} project")
+    # Use secure command execution if available
+    if SECURITY_AVAILABLE:
+        result = run_secure_command(cmd, f"Setting up {project_type} project")
+    else:
+        result = run_command(cmd, f"Setting up {project_type} project")
+
     sys.exit(0 if result.success else 1)
 
 
@@ -156,7 +240,7 @@ def new_javascript(project_name, current_dir, project_type):
 @click.option("--current-dir", is_flag=True, help="Configure current directory")
 def new_detect(project_name, current_dir):
     """Auto-detect project type and create appropriate setup."""
-    script_path = Path(__file__).parent / "shared" / "project_detector.py"
+    script_path = Path(__file__).parent / "shared" / "project" / "project_detector.py"
 
     cmd = [sys.executable, str(script_path)]
     if current_dir:
@@ -171,7 +255,6 @@ def new_detect(project_name, current_dir):
 @womm.group()
 def lint():
     """🎨 Code quality and linting tools."""
-    pass
 
 
 @lint.command("python")
@@ -207,13 +290,12 @@ def lint_all(path, fix):
 @womm.group()
 def spell():
     """📝 Spell checking with CSpell."""
-    pass
 
 
 @spell.command("install")
 def spell_install():
     """Install CSpell and dictionaries globally."""
-    script_path = Path(__file__).parent / "shared" / "cspell_manager.py"
+    script_path = Path(__file__).parent / "shared" / "tools" / "cspell_manager.py"
 
     cmd = [sys.executable, str(script_path), "--install"]
     result = run_command(cmd, "Installing CSpell globally")
@@ -230,7 +312,7 @@ def spell_install():
 )
 def spell_setup(project_name, project_type):
     """Set CSpell for current project."""
-    script_path = Path(__file__).parent / "shared" / "cspell_manager.py"
+    script_path = Path(__file__).parent / "shared" / "tools" / "cspell_manager.py"
 
     cmd = [sys.executable, str(script_path), "--setup-project", project_name]
     if project_type:
@@ -240,12 +322,92 @@ def spell_setup(project_name, project_type):
     sys.exit(0 if result.success else 1)
 
 
+@spell.command("status")
+def spell_status():
+    """Display CSpell project status."""
+    script_path = Path(__file__).parent / "shared" / "tools" / "cspell_manager.py"
+
+    cmd = [sys.executable, str(script_path), "--status"]
+    result = run_command(cmd, "Displaying CSpell status")
+    sys.exit(0 if result.success else 1)
+
+
+@spell.command("add")
+@click.argument("words", nargs=-1, required=False)
+@click.option(
+    "--file", "file_path", type=click.Path(exists=True), help="Add words from file"
+)
+@click.option("--interactive", is_flag=True, help="Interactive mode")
+def spell_add(words, file_path, interactive):
+    """Add words to CSpell configuration."""
+    script_path = Path(__file__).parent / "shared" / "tools" / "cspell_manager.py"
+
+    if interactive:
+        cmd = [sys.executable, str(script_path), "--add-interactive"]
+    elif file_path:
+        cmd = [sys.executable, str(script_path), "--add-file", file_path]
+    elif words:
+        cmd = [sys.executable, str(script_path), "--add"] + list(words)
+    else:
+        click.echo("Error: Specify words, --file, or --interactive", err=True)
+        sys.exit(1)
+
+    result = run_command(cmd, "Adding words to CSpell configuration")
+    sys.exit(0 if result.success else 1)
+
+
+@spell.command("add-all")
+@click.option("--force", is_flag=True, help="Skip confirmation prompt")
+def spell_add_all(force):
+    """Add all dictionaries from .cspell-dict/ to CSpell configuration."""
+    from shared.tools.dictionary_manager import add_all_dictionaries
+
+    # Override input function to skip confirmation if --force
+    if force:
+        import builtins
+
+        original_input = builtins.input
+        builtins.input = lambda _prompt: "y"
+
+    try:
+        success = add_all_dictionaries()
+        sys.exit(0 if success else 1)
+    finally:
+        if force:
+            builtins.input = original_input
+
+
+@spell.command("list-dicts")
+def spell_list_dicts():
+    """List available dictionaries in .cspell-dict/."""
+    from shared.tools.dictionary_manager import get_dictionary_info
+
+    info = get_dictionary_info()
+
+    if not info["directory_exists"]:
+        click.echo("❌ .cspell-dict directory not found")
+        click.echo("💡 Create the directory and add dictionary files (.txt)")
+        sys.exit(1)
+
+    if info["total_files"] == 0:
+        click.echo("📁 .cspell-dict directory is empty")
+        click.echo("💡 Add .txt files with one word per line")
+        sys.exit(0)
+
+    click.echo(f"📚 Found {info['total_files']} dictionary files:")
+    for file_path in info["files"]:
+        file_name = Path(file_path).name
+        click.echo(f"   - {file_name}")
+
+    click.echo(f"\n📊 Total words available: {info['total_words']}")
+
+
 @spell.command("check")
 @click.argument("path", type=click.Path(exists=True), default=".", required=False)
 @click.option("--fix", is_flag=True, help="Interactive fix mode")
 def spell_check(path, fix):
     """Check spelling in files."""
-    script_path = Path(__file__).parent / "shared" / "cspell_manager.py"
+    script_path = Path(__file__).parent / "shared" / "tools" / "cspell_manager.py"
 
     if fix:
         cmd = [sys.executable, str(script_path), "--fix", path]
@@ -259,14 +421,13 @@ def spell_check(path, fix):
 @womm.group()
 def system():
     """🔧 System detection and prerequisites."""
-    pass
 
 
 @system.command("detect")
 @click.option("--export", type=click.Path(), help="Export report to file")
 def system_detect(export):
     """Detect system information and available tools."""
-    script_path = Path(__file__).parent / "shared" / "system_detector.py"
+    script_path = Path(__file__).parent / "shared" / "core" / "system_detector.py"
 
     cmd = [sys.executable, str(script_path)]
     if export:
@@ -284,7 +445,9 @@ def system_detect(export):
 )
 def system_install(check, interactive, tools):
     """Install system prerequisites."""
-    script_path = Path(__file__).parent / "shared" / "prerequisite_installer.py"
+    script_path = (
+        Path(__file__).parent / "shared" / "installation" / "prerequisite_installer.py"
+    )
 
     cmd = [sys.executable, str(script_path)]
     if check:
@@ -301,7 +464,6 @@ def system_install(check, interactive, tools):
 @womm.group()
 def deploy():
     """📦 Deployment and distribution tools."""
-    pass
 
 
 @deploy.command("tools")
@@ -314,7 +476,9 @@ def deploy():
 @click.option("--global", "create_global", is_flag=True, help="Create global commands")
 def deploy_tools(target, create_global):
     """Deploy development tools to global directory."""
-    script_path = Path(__file__).parent / "shared" / "deploy-devtools.py"
+    script_path = (
+        Path(__file__).parent / "shared" / "installation" / "deploy-devtools.py"
+    )
 
     cmd = [sys.executable, str(script_path), "--target", target]
     if create_global:
@@ -327,7 +491,6 @@ def deploy_tools(target, create_global):
 @womm.group()
 def context():
     """🖱️ Windows context menu management."""
-    pass
 
 
 @context.command("register")

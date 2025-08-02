@@ -1,32 +1,31 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
-Script de linting pour projets Python.
+Python project linting script.
 
-Ce script automatise les vérifications de qualité du code :
-- flake8 pour la vérification de style
-- black pour le formatage
-- isort pour l'organisation des imports
+This script automates code quality checks:
+- ruff for style and security verification
+- black for formatting
+- isort for import organization
 """
 
 import argparse
 
-# Importer le nouveau gestionnaire CLI
+# Import the new CLI manager
 import sys
 from pathlib import Path
 
-# Ajouter le chemin parent pour pouvoir importer shared
+# Add parent path to import shared
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
 try:
-    from shared.cli_manager import run_command_legacy as run_command
+    from shared.core.cli_manager import run_command_legacy as run_command
 except ImportError:
-    # Fallback si l'import échoue
+    # Fallback if import fails
     run_command = None
 
 
-def is_security_excluded(path):
-    """Vérifie si un fichier ou dossier est exclu pour sécurité."""
+def is_security_excluded(path: Path) -> bool:
+    """Check if a file or directory is excluded for security reasons."""
     import fnmatch
 
     security_patterns = [
@@ -50,12 +49,12 @@ def is_security_excluded(path):
     return False
 
 
-def detect_project_dirs(base_path=None):
-    """Détecte les dossiers Python en excluant les fichiers sensibles."""
+def detect_project_dirs(base_path: Path | None = None) -> list[str]:
+    """Detect Python directories while excluding sensitive files."""
     current_dir = Path(base_path) if base_path else Path.cwd()
     target_dirs = []
 
-    # Chercher les dossiers avec des fichiers Python
+    # Search for directories with Python files
     for item in current_dir.iterdir():
         if (
             item.is_dir()
@@ -63,7 +62,7 @@ def detect_project_dirs(base_path=None):
             and item.name not in ["build", "dist", "__pycache__", "htmlcov"]
             and not is_security_excluded(item)
         ):
-            # Vérifier s'il contient des fichiers Python (non-sensibles)
+            # Check if it contains Python files (non-sensitive)
             has_python_files = False
             try:
                 for py_file in item.glob("*.py"):
@@ -78,16 +77,15 @@ def detect_project_dirs(base_path=None):
                 if has_python_files:
                     target_dirs.append(str(item))
             except OSError:
-                # Ignorer les erreurs d'accès aux fichiers
+                # Ignore file access errors
                 pass
 
-    # Ajouter 'tests' s'il existe et n'est pas exclu
+    # Add 'tests' if it exists and is not excluded
     tests_dir = current_dir / "tests"
     if tests_dir.exists() and not is_security_excluded(tests_dir):
         target_dirs.append("tests")
 
-    # Fallback: analyser le répertoire courant s'il contient des .py
-    # non-sensibles
+    # Fallback: analyze current directory if it contains safe .py files
     if not target_dirs:
         has_safe_python_files = False
         try:
@@ -102,6 +100,8 @@ def detect_project_dirs(base_path=None):
 
     return target_dirs
 
+    return target_dirs
+
 
 def main(target_path=None):
     """Fonction principale du script de linting."""
@@ -111,11 +111,11 @@ def main(target_path=None):
     print("=" * 50)
     print(f"📂 Target directory: {target_dir}")
 
-    # Vérifier que les outils sont installés
-    tools = ["flake8", "black", "isort"]
+    # Check that tools are installed
+    tools = ["ruff", "black", "isort"]
     missing_tools = []
 
-    from shared.cli_manager import run_silent
+    from shared.core.cli_manager import run_silent
 
     for tool in tools:
         try:
@@ -130,7 +130,7 @@ def main(target_path=None):
         print("Install them with: pip install -e '.[dev]'")
         return 1
 
-    # Détecter automatiquement les dossiers à analyser
+    # Automatically detect directories to analyze
     target_dirs = detect_project_dirs(target_dir)
     if not target_dirs:
         print("❌ No Python folders found")
@@ -140,15 +140,15 @@ def main(target_path=None):
 
     success = True
 
-    # 1. Vérifier le style avec flake8
-    flake8_success = run_command(
-        ["flake8"] + target_dirs + ["--count", "--statistics"],
-        "Style check (flake8)",
+    # 1. Check style with ruff
+    ruff_success = run_command(
+        ["ruff", "check"] + target_dirs,
+        "Style check (ruff)",
         cwd=target_dir,
     )
-    success = success and flake8_success
+    success = success and ruff_success
 
-    # 2. Vérifier le formatage avec black
+    # 2. Check formatting with black
     black_success = run_command(
         ["black", "--check", "--diff"] + target_dirs,
         "Format check (black)",
@@ -156,7 +156,7 @@ def main(target_path=None):
     )
     success = success and black_success
 
-    # 3. Vérifier l'organisation des imports avec isort
+    # 3. Check import organization with isort
     isort_success = run_command(
         ["isort", "--check-only", "--diff"] + target_dirs,
         "Import check (isort)",
@@ -164,7 +164,7 @@ def main(target_path=None):
     )
     success = success and isort_success
 
-    # Résumé
+    # Summary
     print("\n" + "=" * 50)
     if success:
         print("🎉 All checks passed!")
@@ -176,12 +176,12 @@ def main(target_path=None):
         print(f"   cd {target_dir}")
         print(f"   black {' '.join(target_dirs)}")
         print(f"   isort {' '.join(target_dirs)}")
-        print(f"   flake8 {' '.join(target_dirs)}")
+        print(f"   ruff check {' '.join(target_dirs)}")
         return 1
 
 
 def fix_whitespace_issues(target_path=None):
-    """Corrige les problèmes d'espaces (W293, W291, W292)."""
+    """Fix whitespace issues (W293, W291, W292)."""
     target_dir = Path(target_path) if target_path else Path.cwd()
     fixed_files = 0
 
@@ -192,14 +192,14 @@ def fix_whitespace_issues(target_path=None):
             continue
 
         try:
-            with open(py_file, "r", encoding="utf-8") as f:
+            with open(py_file, encoding="utf-8") as f:
                 lines = f.readlines()
 
             modified = False
             new_lines = []
 
             for line in lines:
-                # Supprimer les espaces en fin de ligne (W291)
+                # Remove trailing spaces (W291)
                 new_line = (
                     line.rstrip() + "\n" if line.endswith("\n") else line.rstrip()
                 )
@@ -207,7 +207,7 @@ def fix_whitespace_issues(target_path=None):
                     modified = True
                 new_lines.append(new_line)
 
-            # Assurer une ligne vide en fin de fichier (W292)
+            # Ensure empty line at end of file (W292)
             if new_lines and not new_lines[-1].endswith("\n"):
                 new_lines[-1] += "\n"
                 modified = True
@@ -219,7 +219,7 @@ def fix_whitespace_issues(target_path=None):
                 print(f"  ✅ {py_file}")
 
         except Exception as e:
-            print(f"  ❌ Erreur avec {py_file}: {e}")
+            print(f"  ❌ Error with {py_file}: {e}")
 
     if fixed_files > 0:
         print(f"🎉 {fixed_files} files fixed for whitespace")
@@ -230,14 +230,14 @@ def fix_whitespace_issues(target_path=None):
 
 
 def fix_code(target_path=None):
-    """Corrige automatiquement le code."""
+    """Automatically fix code."""
     target_dir = Path(target_path) if target_path else Path.cwd()
 
     print("🔧 Python Project - Automatic code fixing")
     print("=" * 50)
     print(f"📂 Target directory: {target_dir}")
 
-    # Détecter les dossiers
+    # Detect directories
     target_dirs = detect_project_dirs(target_dir)
     if not target_dirs:
         print("❌ No Python folders found")
@@ -247,22 +247,22 @@ def fix_code(target_path=None):
 
     success = True
 
-    # 0. Corriger les problèmes d'espaces
+    # 0. Fix whitespace issues
     fix_whitespace_issues(target_dir)
 
-    # 1. Formater avec black
+    # 1. Format with black
     black_success = run_command(
         ["black"] + target_dirs, "Automatic formatting (black)", cwd=target_dir
     )
     success = success and black_success
 
-    # 2. Organiser les imports avec isort
+    # 2. Organize imports with isort
     isort_success = run_command(
         ["isort"] + target_dirs, "Import organization (isort)", cwd=target_dir
     )
     success = success and isort_success
 
-    # Résumé
+    # Summary
     print("\n" + "=" * 50)
     if success:
         print("🎉 Automatic fixes completed!")

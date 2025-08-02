@@ -1,9 +1,42 @@
 # 🟨 JavaScript/Node.js Development Tools
 
+[🏠 Main](../../README.md) > [🟨 JavaScript](JAVASCRIPT.md)
+
+[← Back to Main Documentation](../../README.md)
+
 > **Modern and complete JavaScript development environment**  
 > ESLint + Prettier + TypeScript + Jest + Husky + VSCode
 
+## 📚 Documentation Navigation
+
+**🏠 [Main Documentation](../../README.md)**  
+**🐍 [Python Development](../python/PYTHON.md)**  
+**🟨 [JavaScript Development](JAVASCRIPT.md)** (You are here)  
+**⚙️ [Environment Setup](../../ENVIRONMENT_SETUP.md)**  
+**🔧 [Prerequisites Installation](../../PREREQUISITE_INSTALLER.md)**
+
+## Table of Contents
+- [Quick Usage](#-quick-usage)
+- [JavaScript Tools Structure](#-javascript-tools-structure)
+- [Included Configuration](#️-included-configuration)
+- [Supported Project Types](#-supported-project-types)
+- [Available Scripts](#️-available-scripts)
+- [Integrated Configurations](#️-integrated-configurations)
+- [Provided Templates](#-provided-templates)
+- [Recommended Workflow](#-recommended-workflow)
+- [Customization](#-customization)
+- [Troubleshooting](#-troubleshooting)
+- [Supported Types](#-supported-types)
+
+## Related Documentation
+- [Python Tools](../python/PYTHON.md) - Alternative language setup
+- [Main README](../../README.md) - Project overview
+- [Environment Setup](../../ENVIRONMENT_SETUP.md) - Development environment management
+- [Common Commands](../../COMMON_COMMANDS.md) - Standard commands and workflows
+
 ## 🚀 Quick Usage
+
+> **For complete command reference, see [Common Commands](../../COMMON_COMMANDS.md)**
 
 ```bash
 # Create a new JavaScript/Node.js project

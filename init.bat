@@ -8,12 +8,12 @@ python "%~dp0womm.py" install
 if errorlevel 1 (
     echo.
     echo ❌ Erreur lors de l'initialisation
-    echo 💡 Vérifiez que Python est installé et accessible
+    echo 💡 Make sure Python is installed and accessible
     pause
     exit /b 1
 )
 
 echo.
-echo ✅ Processus d'initialisation terminé
-echo 💡 Si une nouvelle fenêtre s'est ouverte, attendez qu'elle se termine
+echo ✅ Initialization process completed
+echo 💡 If a new window opened, wait for it to finish
 pause

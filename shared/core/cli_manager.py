@@ -14,7 +14,7 @@ with a centralized system that provides:
 - Simple and consistent API
 
 Usage:
-    from shared.cli_manager import run_command, run_silent, check_tool_available
+    # Note: This is the cli_manager module itself
 
     # Execution with full logging
     result = run_command(["git", "status"], "Git status check")
@@ -34,13 +34,19 @@ Migration from subprocess:
     result = run_command(cmd, "Action description")
 """
 
-import json
 import platform
 import shutil
 import subprocess
-import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union
+
+# Import security validator if available
+try:
+    from shared.security.security_validator import SecurityValidator
+
+    SECURITY_AVAILABLE = True
+except ImportError:
+    SECURITY_AVAILABLE = False
 
 
 class CommandResult:
@@ -132,10 +138,7 @@ class CLIManager:
         """
         # Normalize command
         if isinstance(command, str):
-            if shell:
-                cmd = command
-            else:
-                cmd = command.split()
+            cmd = command if shell else command.split()
         else:
             cmd = list(command)
 
@@ -150,7 +153,7 @@ class CLIManager:
         # Logging
         if self.verbose:
             display_desc = description or "Command execution"
-            print(f"\n🔍 {display_desc}...")
+            print(f"\n[RUN] {display_desc}...")
             cmd_str = command if isinstance(command, str) else " ".join(cmd)
             print(f"Command: {cmd_str}")
             if run_cwd != Path.cwd():
@@ -162,8 +165,8 @@ class CLIManager:
                 "cwd": run_cwd,
                 "timeout": run_timeout,
                 "text": True,
-                "encoding": "utf-8",
-                "errors": "replace",
+                "encoding": "cp1252" if platform.system() == "Windows" else "utf-8",
+                "errors": "ignore",
                 "shell": shell,
             }
 
@@ -202,8 +205,30 @@ class CLIManager:
             if env:
                 subprocess_args["env"] = env
 
-            # Execute command
-            result = subprocess.run(cmd, **subprocess_args)
+            # Security validation
+            if SECURITY_AVAILABLE and not shell:
+                validator = SecurityValidator()
+                is_valid, error_msg = validator.validate_command(cmd)
+                if not is_valid:
+                    if self.verbose:
+                        print(f"[SECURITY] Command rejected: {error_msg}")
+                    cmd_result = CommandResult(
+                        returncode=-1,
+                        stderr=f"Security validation failed: {error_msg}",
+                        command=cmd if isinstance(cmd, list) else cmd.split(),
+                        cwd=run_cwd,
+                    )
+                    if do_check:
+                        raise subprocess.CalledProcessError(
+                            cmd_result.returncode,
+                            cmd_result.command,
+                            cmd_result.stdout,
+                            cmd_result.stderr,
+                        )
+                    return cmd_result
+
+            # Execute command (security validated above)
+            result = subprocess.run(cmd, **subprocess_args)  # noqa: S603
 
             # Create result
             cmd_result = CommandResult(
@@ -217,11 +242,13 @@ class CLIManager:
             # Result logging
             if self.verbose:
                 if cmd_result.success:
-                    print(f"✅ {display_desc} - SUCCESS")
+                    print(f"[OK] {display_desc} - SUCCESS")
                     if cmd_result.stdout.strip():
                         print(cmd_result.stdout.strip())
                 else:
-                    print(f"❌ {display_desc} - FAILED (code: {cmd_result.returncode})")
+                    print(
+                        f"[ERROR] {display_desc} - FAILED (code: {cmd_result.returncode})"
+                    )
                     if cmd_result.stderr.strip():
                         print(f"Error: {cmd_result.stderr.strip()}")
                     if cmd_result.stdout.strip():
@@ -238,7 +265,7 @@ class CLIManager:
 
             return cmd_result
 
-        except subprocess.TimeoutExpired as e:
+        except subprocess.TimeoutExpired:
             if self.verbose:
                 print(f"⏱️ Timeout after {run_timeout}s for: {description or 'command'}")
             cmd_result = CommandResult(
@@ -254,7 +281,7 @@ class CLIManager:
         except Exception as e:
             if self.verbose:
                 desc_text = description or "execution"
-                print(f"❌ Error during {desc_text}: {e}")
+                print(f"[ERROR] Error during {desc_text}: {e}")
             cmd_result = CommandResult(
                 returncode=-1,
                 stderr=str(e),

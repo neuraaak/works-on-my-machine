@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 Universal project type detector for Dev Tools.
 
@@ -7,6 +6,7 @@ This module automatically detects the project type (Python, JavaScript, etc.)
 and launches the appropriate tool for creation or configuration.
 """
 
+import logging
 import sys
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -98,7 +98,7 @@ class ProjectDetector:
         if not scores:
             return "generic", 0
 
-        # Retourner le type avec le meilleur score
+        # Return the type with the best score
         best_type = max(scores.items(), key=lambda x: x[1])
         return best_type[0], best_type[1]
 
@@ -146,7 +146,7 @@ class ProjectDetector:
                 for file_path in self.project_path.glob(f"**/*{ext}"):
                     if not self._is_security_excluded(file_path):
                         found_files += 1
-                        break  # Un seul fichier par extension suffit
+                        break  # One file per extension is enough
 
             if found_files > 0:
                 score += min(found_files, 3) * (signature.get("priority", 1) // 3)
@@ -161,8 +161,10 @@ class ProjectDetector:
                     for marker in markers:
                         if marker in content:
                             score += signature.get("priority", 1)
-                except Exception:
-                    pass  # Ignore read errors
+                except Exception as e:
+                    logging.debug(
+                        f"Failed to read file {file_path}: {e}"
+                    )  # Ignore read errors
 
         return score
 
@@ -255,7 +257,7 @@ def launch_project_setup(
     print(f"🚀 Launching: {' '.join(cmd)}")
 
     # Launch script
-    from shared.cli_manager import run_command
+    from shared.core.cli_manager import run_command
 
     result = run_command(cmd, f"Configuring {project_type} project")
     return 0 if result.success else 1

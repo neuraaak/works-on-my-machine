@@ -15,26 +15,31 @@ YELLOW := \033[33m
 RED := \033[31m
 RESET := \033[0m
 
-# Aide par défaut
+# Default help
 help:
-	@echo "$(BLUE)works-on-my-machine - Commandes de développement$(RESET)"
+	@echo "$(BLUE)works-on-my-machine - Development Commands$(RESET)"
 	@echo ""
 	@echo "$(GREEN)Installation:$(RESET)"
 	@echo "  install      - Installer le package"
-	@echo "  install-dev  - Installer les dépendances de développement"
+	@echo "  install-dev  - Install development dependencies"
 	@echo ""
-	@echo "$(GREEN)Formatage et qualité:$(RESET)"
-	@echo "  format       - Formater le code (black + isort)"
-	@echo "  lint         - Vérifier la qualité du code"
-	@echo "  fix          - Corriger automatiquement les problèmes"
+	@echo "$(GREEN)Formatting and quality:$(RESET)"
+@echo "  format       - Format code (black + isort)"
+@echo "  lint         - Check code quality"
+@echo "  fix          - Automatically fix issues"
 	@echo ""
 	@echo "$(GREEN)Tests:$(RESET)"
-	@echo "  test         - Lancer les tests unitaires"
+	@echo "  test         - Lancer tous les tests"
+	@echo "  test-unit    - Tests unitaires uniquement"
+	@echo "  test-integration - Integration tests only"
+@echo "  test-security - Security tests only"
+	@echo "  test-fast    - Tests rapides (sans tests lents)"
 	@echo "  test-cov     - Tests avec couverture"
+	@echo "  test-parallel - Tests in parallel"
 	@echo ""
 	@echo "$(GREEN)Hooks et outils:$(RESET)"
 	@echo "  setup-hooks  - Installer les hooks pre-commit"
-	@echo "  pre-commit   - Lancer les vérifications pre-commit"
+	@echo "  pre-commit   - Run pre-commit checks"
 	@echo ""
 	@echo "$(GREEN)Nettoyage:$(RESET)"
 	@echo "  clean        - Nettoyer les fichiers temporaires"
@@ -45,7 +50,7 @@ install:
 	$(PIP) install -e .
 
 install-dev:
-	@echo "$(BLUE)Installation des dépendances de développement...$(RESET)"
+	@echo "$(BLUE)Installing development dependencies...$(RESET)"
 	$(PIP) install -e ".[dev]"
 	$(PIP) install pre-commit
 
@@ -58,32 +63,55 @@ format:
 
 # Correction automatique
 fix: format
-	@echo "$(BLUE)Correction des problèmes d'espaces...$(RESET)"
-	$(PYTHON) lint.py --fix
-	@echo "$(GREEN)Code formaté automatiquement !$(RESET)"
+	@echo "$(BLUE)Correction automatique avec Ruff...$(RESET)"
+	ruff check --fix shared languages womm.py lint.py setup.py
+	@echo "$(GREEN)Code automatically fixed!$(RESET)"
 
 # Linting
 lint:
-	@echo "$(BLUE)Vérification de la qualité du code...$(RESET)"
-	$(PYTHON) lint.py
+	@echo "$(BLUE)Checking code quality with Ruff...$(RESET)"
+	ruff check shared languages womm.py lint.py setup.py
+	@echo "$(BLUE)Security check with Bandit...$(RESET)"
+	bandit -r shared languages -f json -o bandit-report.json || true
+	@echo "$(GREEN)Linting completed!$(RESET)"
 
 # Tests
 test:
+	@echo "$(BLUE)Lancement de tous les tests...$(RESET)"
+	pytest tests/ -v
+
+test-unit:
 	@echo "$(BLUE)Lancement des tests unitaires...$(RESET)"
-	pytest tests/ 2>/dev/null || echo "$(YELLOW)Pas de tests configurés pour le moment$(RESET)"
+	pytest tests/unit/ -v
+
+test-integration:
+	@echo "$(BLUE)Running integration tests...$(RESET)"
+	pytest tests/integration/ -v
+
+test-security:
+	@echo "$(BLUE)Running security tests...$(RESET)"
+	pytest -m security -v
+
+test-fast:
+	@echo "$(BLUE)Lancement des tests rapides...$(RESET)"
+	pytest tests/ -m "not slow" -v
 
 test-cov:
 	@echo "$(BLUE)Tests avec couverture...$(RESET)"
-	pytest --cov=shared --cov=languages --cov-report=html --cov-report=term 2>/dev/null || echo "$(YELLOW)Pas de tests configurés$(RESET)"
+	pytest tests/ --cov=shared --cov=languages --cov-report=html --cov-report=term -v
+
+test-parallel:
+	@echo "$(BLUE)Tests in parallel...$(RESET)"
+	pytest tests/ -n auto -v
 
 # Hooks pre-commit
 setup-hooks:
 	@echo "$(BLUE)Installation des hooks pre-commit...$(RESET)"
 	pre-commit install
-	@echo "$(GREEN)Hooks pre-commit installés !$(RESET)"
+	@echo "$(GREEN)Pre-commit hooks installed!$(RESET)"
 
 pre-commit:
-	@echo "$(BLUE)Lancement des vérifications pre-commit...$(RESET)"
+	@echo "$(BLUE)Running pre-commit checks...$(RESET)"
 	pre-commit run --all-files
 
 # Nettoyage
@@ -93,18 +121,18 @@ clean:
 	find . -type f -name "*.pyc" -delete 2>/dev/null || true
 	find . -type d -name "*.egg-info" -exec rm -rf {} + 2>/dev/null || true
 	rm -rf build/ dist/ .coverage htmlcov/ .pytest_cache/ .mypy_cache/ 2>/dev/null || true
-	@echo "$(GREEN)Nettoyage terminé !$(RESET)"
+	@echo "$(GREEN)Cleanup completed!$(RESET)"
 
-# Commande complète de vérification
+# Complete verification command
 check: format lint test
-	@echo "$(GREEN)Toutes les vérifications sont terminées !$(RESET)"
+	@echo "$(GREEN)All verifications completed!$(RESET)"
 
-# Préparation pour un commit
+# Preparation for commit
 prepare: format lint
-	@echo "$(GREEN)Code prêt pour le commit !$(RESET)"
+	@echo "$(GREEN)Code ready for commit!$(RESET)"
 
 # Test des outils dev-tools
 demo:
 	@echo "$(BLUE)Test des outils works-on-my-machine...$(RESET)"
 	$(PYTHON) womm.py --help 2>/dev/null || echo "Lancez: python womm.py"
-	@echo "$(GREEN)Démo terminée !$(RESET)"
+	@echo "$(GREEN)Demo completed!$(RESET)"

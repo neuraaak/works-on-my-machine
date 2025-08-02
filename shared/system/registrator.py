@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 Enhanced Windows Context Menu Registrator for Works On My Machine.
 
@@ -21,13 +20,14 @@ Usage:
 
 import argparse
 import json
+import logging
 import os
 import shutil
 import sys
 import winreg
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, Optional, Tuple
 
 
 class ScriptType:
@@ -228,8 +228,8 @@ def backup_registry_entries() -> Dict:
                                         entry_data["properties"]["Command"] = command
                                 except FileNotFoundError:
                                     pass
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logging.debug(f"Failed to process registry entry: {e}")
 
                         backup_data["entries"].append(entry_data)
                         i += 1
@@ -278,7 +278,7 @@ def restore_from_backup(backup_file: str) -> bool:
         True if successful
     """
     try:
-        with open(backup_file, "r", encoding="utf-8") as f:
+        with open(backup_file, encoding="utf-8") as f:
             backup_data = json.load(f)
 
         print(f"🔄 Restoring from backup: {backup_file}")

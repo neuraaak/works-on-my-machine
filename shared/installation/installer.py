@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 Install Works On My Machine in user directory.
 
 This script handles the installation of WOMM to the user's home directory,
 including PATH setup, prerequisites installation, and Windows context menu integration.
 """
+
 import argparse
 import os
 import platform
@@ -14,11 +14,19 @@ import subprocess
 import sys
 from pathlib import Path
 
-# Importer le gestionnaire CLI
+# Import CLI manager
 try:
-    from shared.cli_manager import run_command, run_interactive, run_silent
+    from shared.core.cli_manager import run_command, run_interactive, run_silent
+
+    # Import security modules if available
+    try:
+        from shared.security.security_validator import security_validator
+
+        SECURITY_AVAILABLE = True
+    except ImportError:
+        SECURITY_AVAILABLE = False
 except ImportError:
-    # Fallback si le module n'est pas encore disponible lors de la première installation
+    # Fallback if module not available during first installation
     subprocess_run = subprocess.run
 
     def run_command(cmd, desc, **kwargs):
@@ -89,6 +97,13 @@ def copy_womm_to_user_directory():
     source = get_current_womm_path()
     target = get_target_womm_path()
 
+    # Security validation for target path
+    if SECURITY_AVAILABLE:
+        is_valid, error = security_validator.validate_path(target)
+        if not is_valid:
+            print(f"❌ Invalid target path: {error}")
+            return None
+
     print(f"📦 Copying from: {source}")
     print(f"📁 To: {target}")
 
@@ -114,6 +129,7 @@ def setup_path():
 
     if platform.system() == "Windows":
         setup_windows_path(bin_path)
+        setup_npm_path()  # Add npm PATH for CSpell
     else:
         setup_unix_path(bin_path)
 
@@ -179,6 +195,79 @@ def setup_windows_path(bin_path):
         print("✅ PATH already configured")
 
 
+def setup_npm_path():
+    """Set up npm global PATH for CSpell and other npm tools."""
+    print("🔧 Setting up npm global PATH...")
+
+    try:
+        # Get npm prefix (where global packages are installed)
+        result = run_silent(["npm", "config", "get", "prefix"])
+        if not result.success:
+            print("⚠️  Could not get npm prefix")
+            return
+
+        npm_prefix = result.stdout.strip()
+        npm_bin_path = Path(npm_prefix)
+
+        # Check if npm bin path is already in PATH
+        result = run_silent(["reg", "query", "HKCU\\Environment", "/v", "PATH"])
+        if result.returncode == 0:
+            output = result.stdout.decode("utf-8", errors="ignore")
+            for line in output.split("\n"):
+                if "PATH" in line and "REG_EXPAND_SZ" in line:
+                    current_path = line.split("REG_EXPAND_SZ")[1].strip()
+                    break
+            else:
+                current_path = ""
+        else:
+            current_path = ""
+
+        # Check if npm path is already in PATH
+        if str(npm_bin_path) not in current_path:
+            # Add npm path to PATH
+            new_path = (
+                f"{npm_bin_path};{current_path}" if current_path else str(npm_bin_path)
+            )
+
+            try:
+                result = run_command(
+                    [
+                        "reg",
+                        "add",
+                        "HKCU\\Environment",
+                        "/v",
+                        "PATH",
+                        "/t",
+                        "REG_EXPAND_SZ",
+                        "/d",
+                        new_path,
+                        "/f",
+                    ],
+                    "Setting npm PATH",
+                    capture_output=True,
+                    text=True,
+                )
+
+                if result.success:
+                    print("✅ npm global PATH updated successfully")
+                    print(
+                        "🔄 Restart your terminal to use npm global tools (like cspell)"
+                    )
+                else:
+                    print("⚠️  Failed to update npm PATH automatically")
+                    print(
+                        f'💡 You can add it manually: setx PATH "{npm_bin_path};%PATH%"'
+                    )
+            except Exception as e:
+                print(f"⚠️  Error updating npm PATH: {e}")
+                print(f'💡 You can add it manually: setx PATH "{npm_bin_path};%PATH%"')
+        else:
+            print("✅ npm global PATH already configured")
+
+    except Exception as e:
+        print(f"⚠️  Error setting up npm PATH: {e}")
+
+
 def setup_unix_path(bin_path):
     """Set up PATH for Unix-like systems."""
     print("🔧 Setting up Unix PATH...")
@@ -196,7 +285,7 @@ def setup_unix_path(bin_path):
 
     # Check if our path is already in profile
     if profile_file.exists():
-        with open(profile_file, "r", encoding="utf-8") as f:
+        with open(profile_file, encoding="utf-8") as f:
             content = f.read()
     else:
         content = ""
@@ -239,7 +328,7 @@ from pathlib import Path
 womm_path = Path(__file__).parent.parent
 sys.path.insert(0, str(womm_path))
 
-from shared.project_detector import main
+        from shared.project.project_detector import main
 if __name__ == "__main__":
     main()
 """
@@ -285,7 +374,7 @@ from pathlib import Path
 womm_path = Path(__file__).parent.parent
 sys.path.insert(0, str(womm_path))
 
-from shared.project_detector import detect_project_type
+from shared.project.project_detector import detect_project_type
 from languages.python.scripts.lint import main as python_lint
 from languages.javascript.scripts.lint import main as js_lint
 
@@ -325,7 +414,7 @@ python "{script_file}" %*
 def check_and_install_prerequisites() -> bool:
     """Check and install prerequisites if needed."""
     try:
-        from shared.prerequisite_installer import PrerequisiteInstaller
+        from shared.installation.prerequisite_installer import PrerequisiteInstaller
 
         installer = PrerequisiteInstaller()
         should_install, missing, custom_path = installer.prompt_installation()

@@ -3,6 +3,15 @@
 > **Universal development tools for Python and JavaScript**  
 > Automatic installation, cross-platform configuration, global commands
 
+## 📚 Documentation Navigation
+
+**🏠 [Main Documentation](README.md)** (You are here)  
+**📚 [Documentation Index](docs/README.md)**  
+**🐍 [Python Development](docs/languages/python/PYTHON.md)**  
+**🟨 [JavaScript Development](docs/languages/javascript/JAVASCRIPT.md)**  
+**⚙️ [Environment Setup](docs/ENVIRONMENT_SETUP.md)**  
+**🔧 [Prerequisites Installation](docs/PREREQUISITE_INSTALLER.md)**
+
 ## 🚀 Quick Installation
 
 ```bash
@@ -25,11 +34,11 @@ works-on-my-machine/
 ├── 🔧 womm.py                       # Main CLI entry point (Click)
 ├── 🔧 init.py, init.bat, init.ps1   # Installation wrappers (delegate to womm:install)
 ├── 📦 bin/                          # Global commands (added to PATH)
-├── 🐍 languages/python/             # Python tools (→ see PYTHON.md)
-├── 🟨 languages/javascript/         # JavaScript tools (→ see JAVASCRIPT.md)
+├── 🐍 languages/python/             # Python tools and scripts
+├── 🟨 languages/javascript/         # JavaScript tools and scripts
 ├── 🔄 shared/                       # Shared utilities
-├── 📄 ENVIRONMENT_SETUP.md          # Environment setup guide
-└── 📄 PREREQUISITE_INSTALLER.md     # Prerequisites installation
+├── 📚 docs/                         # Complete documentation (→ see [docs/README.md](docs/README.md))
+└── 🧪 tests/                        # Test framework
 ```
 
 ## 🎯 Available Commands
@@ -108,51 +117,57 @@ if check_tool_available("git"):
 
 ## 📚 Language-Specific Documentation
 
-### 🐍 **Python** → [languages/python/PYTHON.md](languages/python/PYTHON.md)
+### 🐍 **Python** → [docs/languages/python/PYTHON.md](docs/languages/python/PYTHON.md)
 - Complete configuration (Black, isort, flake8, pytest)
 - PyProject.toml, pre-commit, VSCode templates
 - Development scripts and Makefile
 
-### 🟨 **JavaScript** → [languages/javascript/JAVASCRIPT.md](languages/javascript/JAVASCRIPT.md)
+### 🟨 **JavaScript** → [docs/languages/javascript/JAVASCRIPT.md](docs/languages/javascript/JAVASCRIPT.md)
 - Modern tools (ESLint, Prettier, TypeScript)
 - package.json, tsconfig.json templates
 - Support for Node.js, React, Vue, etc.
 
-## 📖 Complete Documentation Index
+## 📚 Complete Documentation Index
 
 ### 🚀 **Getting Started**
 - **📋 [README.md](README.md)** - Main documentation (this file)
-- **⚙️ [Environment Setup](ENVIRONMENT_SETUP.md)** - Development environment management
-- **🔧 [Prerequisites Installation](PREREQUISITE_INSTALLER.md)** - Required tools installation
+- **📚 [Documentation Index](docs/README.md)** - Complete documentation hub
+- **⚙️ [Environment Setup](docs/ENVIRONMENT_SETUP.md)** - Development environment management
+- **🔧 [Prerequisites Installation](docs/PREREQUISITE_INSTALLER.md)** - Required tools installation
 
 ### 🌐 **Language-Specific Guides**
-- **🐍 [Python Development](languages/python/PYTHON.md)** - Python tools and configuration
-- **🟨 [JavaScript Development](languages/javascript/JAVASCRIPT.md)** - JavaScript/Node.js tools
+- **🐍 [Python Development](docs/languages/python/PYTHON.md)** - Python tools and configuration
+- **🟨 [JavaScript Development](docs/languages/javascript/JAVASCRIPT.md)** - JavaScript/Node.js tools
+
+### 📋 **Documentation Standards**
+- **📚 [Documentation Rules](docs/DOCUMENTATION_RULES.md)** - Standards and guidelines for documentation
+- **🔧 [Common Commands](docs/COMMON_COMMANDS.md)** - Centralized command reference
 
 ### 📚 **Quick Navigation**
 
 | Topic | Description | File |
 |-------|-------------|------|
 | **Project Setup** | How to use Works On My Machine | [README.md](README.md) |
-| **Environment Manager** | Automatic dev environment setup | [ENVIRONMENT_SETUP.md](ENVIRONMENT_SETUP.md) |
-| **Prerequisites** | Install Python, Node.js, Git automatically | [PREREQUISITE_INSTALLER.md](PREREQUISITE_INSTALLER.md) |
-| **Python Tools** | Black, flake8, pytest, pre-commit setup | [languages/python/PYTHON.md](languages/python/PYTHON.md) |
-| **JavaScript Tools** | ESLint, Prettier, Jest, Husky setup | [languages/javascript/JAVASCRIPT.md](languages/javascript/JAVASCRIPT.md) |
+| **Documentation Hub** | Complete documentation index | [docs/README.md](docs/README.md) |
+| **Environment Manager** | Automatic dev environment setup | [docs/ENVIRONMENT_SETUP.md](docs/ENVIRONMENT_SETUP.md) |
+| **Prerequisites** | Install Python, Node.js, Git automatically | [docs/PREREQUISITE_INSTALLER.md](docs/PREREQUISITE_INSTALLER.md) |
+| **Python Tools** | Black, flake8, pytest, pre-commit setup | [docs/languages/python/PYTHON.md](docs/languages/python/PYTHON.md) |
+| **JavaScript Tools** | ESLint, Prettier, Jest, Husky setup | [docs/languages/javascript/JAVASCRIPT.md](docs/languages/javascript/JAVASCRIPT.md) |
 
 ### 🎯 **By Use Case**
 
 **Setting up a new Python project:**
 1. 📋 [Installation](README.md#-quick-installation) 
-2. 🐍 [Python Guide](languages/python/PYTHON.md)
-3. ⚙️ [Environment Setup](ENVIRONMENT_SETUP.md)
+2. 🐍 [Python Guide](docs/languages/python/PYTHON.md)
+3. ⚙️ [Environment Setup](docs/ENVIRONMENT_SETUP.md)
 
 **Setting up a new JavaScript project:**
 1. 📋 [Installation](README.md#-quick-installation)
-2. 🟨 [JavaScript Guide](languages/javascript/JAVASCRIPT.md) 
-3. ⚙️ [Environment Setup](ENVIRONMENT_SETUP.md)
+2. 🟨 [JavaScript Guide](docs/languages/javascript/JAVASCRIPT.md) 
+3. ⚙️ [Environment Setup](docs/ENVIRONMENT_SETUP.md)
 
 **Installing prerequisites:**
-1. 🔧 [Prerequisites Guide](PREREQUISITE_INSTALLER.md)
+1. 🔧 [Prerequisites Guide](docs/PREREQUISITE_INSTALLER.md)
 2. 📋 [Main Installation](README.md#-quick-installation)
 
 ## ⚙️ Features

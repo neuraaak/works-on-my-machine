@@ -4,18 +4,16 @@ Prerequisites installation manager for dev-tools.
 Supports Windows (Chocolatey, Winget, Scoop), Linux (apt, yum), macOS (Homebrew).
 """
 
-import json
-import os
+import logging
 import platform
 import shutil
-import sys
 import tempfile
 import urllib.request
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
-# Importer le gestionnaire CLI
-from shared.cli_manager import check_tool_available, run_command, run_silent
+# Import CLI manager
+from shared.core.cli_manager import check_tool_available, run_command, run_silent
 
 
 class PrerequisiteInstaller:
@@ -89,7 +87,8 @@ class PrerequisiteInstaller:
                                 "command": cmd,
                                 "path": shutil.which(cmd),
                             }
-                except Exception:
+                except Exception as e:
+                    logging.debug(f"Failed to check Python version with {cmd}: {e}")
                     continue
 
         return {"status": False, "version": None, "command": None, "path": None}
@@ -119,8 +118,8 @@ class PrerequisiteInstaller:
                     "npm_version": npm_version,
                     "path": shutil.which("node"),
                 }
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(f"Failed to check Node.js version: {e}")
 
         return {"status": False, "version": None, "npm_version": None, "path": None}
 
@@ -135,8 +134,8 @@ class PrerequisiteInstaller:
                     else None
                 )
                 return {"status": True, "version": version, "path": shutil.which("git")}
-            except Exception:
-                pass
+            except Exception as e:
+                logging.debug(f"Failed to check Git version: {e}")
 
         return {"status": False, "version": None, "path": None}
 
@@ -186,7 +185,7 @@ class PrerequisiteInstaller:
             """
 
             # Execute via PowerShell
-            result = run_command(
+            run_command(
                 ["powershell", "-Command", install_script], "Installation Chocolatey"
             )
 
@@ -360,7 +359,7 @@ class PrerequisiteInstaller:
 
             try:
                 print("📥 Downloading Python...")
-                urllib.request.urlretrieve(python_url, installer_path)
+                urllib.request.urlretrieve(python_url, installer_path)  # noqa: S310
 
                 # Silent installation
                 install_cmd = [
@@ -389,7 +388,7 @@ class PrerequisiteInstaller:
 
         return False
 
-    def install_node_manually(self, custom_path: Optional[str] = None) -> bool:
+    def install_node_manually(self, _custom_path: Optional[str] = None) -> bool:
         """Manual installation of Node.js."""
         if self.system == "Windows":
             # Node.js URL for Windows
@@ -398,7 +397,7 @@ class PrerequisiteInstaller:
 
             try:
                 print("📥 Downloading Node.js...")
-                urllib.request.urlretrieve(node_url, installer_path)
+                urllib.request.urlretrieve(node_url, installer_path)  # noqa: S310
 
                 # Silent installation
                 install_cmd = ["msiexec", "/i", str(installer_path), "/quiet"]
@@ -418,7 +417,7 @@ class PrerequisiteInstaller:
 
         return False
 
-    def install_git_manually(self, custom_path: Optional[str] = None) -> bool:
+    def install_git_manually(self, _custom_path: Optional[str] = None) -> bool:
         """Manual installation of Git."""
         if self.system == "Windows":
             # Git URL for Windows
@@ -427,7 +426,7 @@ class PrerequisiteInstaller:
 
             try:
                 print("📥 Downloading Git...")
-                urllib.request.urlretrieve(git_url, installer_path)
+                urllib.request.urlretrieve(git_url, installer_path)  # noqa: S310
 
                 # Silent installation
                 install_cmd = [str(installer_path), "/SILENT"]
@@ -511,24 +510,24 @@ class PrerequisiteInstaller:
 
         # Offer to install a package manager if none available
         if not self.get_best_package_manager():
-            if self.system == "Windows":
-                install_choco = input(
+            if (
+                self.system == "Windows"
+                and input(
                     "\n🍫 Install Chocolatey to make installations easier? (y/N): "
                 ).lower()
-                if install_choco in ["o", "oui", "y", "yes"]:
-                    if self.install_package_manager("chocolatey"):
-                        print(
-                            "✅ Chocolatey installed - future installations will be faster"
-                        )
-            elif self.system == "Darwin":
-                install_brew = input(
+                in ["o", "oui", "y", "yes"]
+                and self.install_package_manager("chocolatey")
+            ):
+                print("✅ Chocolatey installed - future installations will be faster")
+            elif (
+                self.system == "Darwin"
+                and input(
                     "\n🍺 Install Homebrew to make installations easier? (y/N): "
                 ).lower()
-                if install_brew in ["o", "oui", "y", "yes"]:
-                    if self.install_package_manager("homebrew"):
-                        print(
-                            "✅ Homebrew installed - future installations will be faster"
-                        )
+                in ["o", "oui", "y", "yes"]
+                and self.install_package_manager("homebrew")
+            ):
+                print("✅ Homebrew installed - future installations will be faster")
 
         for prereq in missing:
             print(f"\n📦 Installing {prereq}...")
@@ -539,11 +538,89 @@ class PrerequisiteInstaller:
 
         if success_count == len(missing):
             print("\n🎉 All prerequisites have been installed successfully!")
+
+            # Setup npm PATH if Node.js was installed
+            if "node" in missing or "npm" in missing:
+                setup_npm_path()
+
             print("🔄 Restart your terminal to use the new tools")
             return True
         else:
             print(f"\n⚠️  {success_count}/{len(missing)} prerequisites installed")
             return False
+
+
+def setup_npm_path():
+    """Set up npm global PATH for CSpell and other npm tools."""
+    print("🔧 Setting up npm global PATH...")
+
+    try:
+        # Get npm prefix (where global packages are installed)
+        result = run_silent(["npm", "config", "get", "prefix"])
+        if not result.success:
+            print("⚠️  Could not get npm prefix")
+            return
+
+        npm_prefix = result.stdout.strip()
+        npm_bin_path = Path(npm_prefix)
+
+        # Check if npm bin path is already in PATH
+        result = run_silent(["reg", "query", "HKCU\\Environment", "/v", "PATH"])
+        if result.returncode == 0:
+            output = result.stdout.decode("utf-8", errors="ignore")
+            for line in output.split("\n"):
+                if "PATH" in line and "REG_EXPAND_SZ" in line:
+                    current_path = line.split("REG_EXPAND_SZ")[1].strip()
+                    break
+            else:
+                current_path = ""
+        else:
+            current_path = ""
+
+        # Check if npm path is already in PATH
+        if str(npm_bin_path) not in current_path:
+            # Add npm path to PATH
+            new_path = (
+                f"{npm_bin_path};{current_path}" if current_path else str(npm_bin_path)
+            )
+
+            try:
+                result = run_command(
+                    [
+                        "reg",
+                        "add",
+                        "HKCU\\Environment",
+                        "/v",
+                        "PATH",
+                        "/t",
+                        "REG_EXPAND_SZ",
+                        "/d",
+                        new_path,
+                        "/f",
+                    ],
+                    "Setting npm PATH",
+                    capture_output=True,
+                    text=True,
+                )
+
+                if result.success:
+                    print("✅ npm global PATH updated successfully")
+                    print(
+                        "🔄 Restart your terminal to use npm global tools (like cspell)"
+                    )
+                else:
+                    print("⚠️  Failed to update npm PATH automatically")
+                    print(
+                        f'💡 You can add it manually: setx PATH "{npm_bin_path};%PATH%"'
+                    )
+            except Exception as e:
+                print(f"⚠️  Error updating npm PATH: {e}")
+                print(f'💡 You can add it manually: setx PATH "{npm_bin_path};%PATH%"')
+        else:
+            print("✅ npm global PATH already configured")
+
+    except Exception as e:
+        print(f"⚠️  Error setting up npm PATH: {e}")
 
 
 def main():
@@ -587,7 +664,7 @@ def main():
             installer.install_prerequisite(prereq, args.path)
         return
 
-    # Mode par défaut ou interactif
+    # Default or interactive mode
     should_install, missing, custom_path = installer.prompt_installation()
 
     if should_install and missing:

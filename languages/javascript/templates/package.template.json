@@ -1,7 +1,7 @@
 {
   "name": "{{PROJECT_NAME}}",
   "version": "1.0.0",
-  "description": "Description de votre projet JavaScript/TypeScript",
+  "description": "Description of your JavaScript/TypeScript project",
   "main": "{{MAIN_FILE}}",
   "type": "{{MODULE_TYPE}}",
   "scripts": {
