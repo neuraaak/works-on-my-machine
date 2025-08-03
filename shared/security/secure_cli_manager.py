@@ -210,7 +210,7 @@ class SecureCLIManager:
                 # Log security event
                 self.logger.info(
                     f"Command executed: {' '.join(cmd)} | "
-                    f"Success: {result.success} | "
+                    f"Success: {result.returncode == 0} | "
                     f"Validated: {security_validated} | "
                     f"Attempt: {attempt + 1}"
                 )

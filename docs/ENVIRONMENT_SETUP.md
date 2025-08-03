@@ -4,8 +4,8 @@
 
 [← Back to Main Documentation](../README.md)
 
-> **Automatic development environment management**  
-> Complete setup for Python and JavaScript projects with intelligent detection
+> **Complete development environment setup with automatic PATH backup**  
+> Safe installation process with recovery options for system PATH management
 
 ## 📚 Documentation Navigation
 
@@ -17,15 +17,13 @@
 **🔧 [Prerequisites Installation](PREREQUISITE_INSTALLER.md)**
 
 ## Table of Contents
-- [Overview](#overview)
-- [Automatic Integration](#automatic-integration)
-- [Dedicated Commands](#dedicated-commands)
-- [Python Environment](#python-environment)
-- [JavaScript Environment](#javascript-environment)
-- [Smart Detection](#smart-detection)
-- [Security and Exclusions](#security-and-exclusions)
-- [Error Handling](#error-handling)
-- [Benefits](#benefits)
+- [Installation Process](#installation-process)
+- [PATH Backup & Recovery](#path-backup--recovery)
+- [CLI Commands](#cli-commands)
+- [Manual Installation](#manual-installation)
+- [Post-Installation](#post-installation)
+- [Troubleshooting](#troubleshooting)
+- [Security Features](#security-features)
 - [Related Documentation](#related-documentation)
 
 ## Related Documentation
@@ -33,271 +31,409 @@
 - **🔧 [Prerequisites Installation](PREREQUISITE_INSTALLER.md)** - Required tools installation
 - **📋 [Main README](../README.md)** - Project overview and installation
 
-## 🎯 Overview
+## 🚀 Installation Process
 
-The Environment Setup system provides **automatic development environment management** for both Python and JavaScript projects. It intelligently detects project types and configures the appropriate tools and dependencies.
+### Automatic Installation Flow
 
-### ✅ **Python - Complete Virtual Environment**
-- **Virtual environment** creation and activation
-- **Development tools** installation (Black, isort, flake8, pytest)
-- **Pre-commit hooks** configuration
-- **VSCode settings** and extensions
+The installation process follows a **safe, step-by-step approach** with automatic PATH backup:
 
-### ✅ **JavaScript - Complete npm Dependencies**
-- **Package.json** generation with modern tools
-- **Development dependencies** (ESLint, Prettier, Jest, Husky)
-- **TypeScript support** when applicable
-- **VSCode configuration** for JavaScript/TypeScript
-
-### 🤔 **Smart Interactive Mode**
-- **Automatic detection** of project type
-- **User confirmation** before installation
-- **Customizable options** for advanced users
-- **Rollback capability** if needed
-
-## 🔄 Automatic Integration
-
-### When creating a project
-- **Automatic prompt** to install environment
-- **Creates venv** + installs all tools
-- **Configures pre-commit** hooks
-- **Sets up VSCode** settings
-
-### When configuring existing projects
-- **Automatic prompt** to install environment
-- **npm install** + configures all tools
-- **TypeScript setup** if applicable
-- **Husky hooks** configuration
-
-## 🛠️ Dedicated Commands
-
-### Manual configuration of existing project
 ```bash
-# Python project
-womm env setup python
+# Start installation
+python init
 
-# JavaScript project
-womm env setup javascript
-
-# Auto-detect
-womm env setup auto
+# Process flow:
+# 1. Copy womm directory to ~/.womm
+# 2. ✅ BACKUP current user PATH to ~/.womm/.backup/.path
+# 3. Check and install prerequisites
+# 4. Configure system PATH
+# 5. Create symbolic links
+# 6. Verify installation
 ```
 
-### Test from any project
-```bash
-# Check environment status
-womm env status
+### Step-by-Step Breakdown
 
-# Validate setup
+#### 1. **Directory Copy**
+- Copies the entire `works-on-my-machine` directory to `~/.womm`
+- Preserves all files, configurations, and templates
+- Creates the base installation directory
+
+#### 2. **🔐 PATH Backup (Critical Safety Step)**
+- **Automatic backup** of current user PATH before any modifications
+- **Location**: `~/.womm/.backup/.path`
+- **Format**: Timestamped backup with metadata
+- **Safety**: Ensures recovery point if PATH gets corrupted
+
+#### 3. **Prerequisites Check**
+- Validates Python installation (3.8+)
+- Checks for required system tools
+- Installs missing dependencies if needed
+
+#### 4. **System Configuration**
+- Adds `~/.womm` to system PATH
+- Creates symbolic links for easy access
+- Configures shell profiles (Unix systems)
+
+#### 5. **Verification**
+- Tests all installed components
+- Validates PATH configuration
+- Confirms successful installation
+
+## 🔐 PATH Backup & Recovery
+
+### Automatic Backup System
+
+The installation process includes **automatic PATH backup** to prevent data loss:
+
+#### Backup Location
+```
+~/.womm/
+└── .backup/
+    ├── .path                    # Symlink to latest backup
+    ├── .path_20241201_143022   # Timestamped backup file
+    ├── .path_20241201_143045   # Previous backup
+    └── ...
+```
+
+#### Backup Content
+```bash
+# Example backup file content
+# PATH backup created on 2024-12-01T14:30:22
+# Platform: Windows
+# Original PATH:
+C:\Windows\system32;C:\Windows;C:\Users\username\AppData\Local\Programs\Python\Python39\Scripts\;C:\Users\username\AppData\Local\Programs\Python\Python39\;...
+```
+
+### Recovery Commands
+
+#### Restore PATH from Backup
+```bash
+# Restore PATH to last backup
+womm restore-path
+
+# Restore from specific directory
+womm restore-path --target /custom/path
+```
+
+#### View Backup Information
+```bash
+# Show backup details
+womm backup-info
+
+# Display available backups
+womm backup-info --target ~/.womm
+```
+
+### Manual Recovery (If CLI Commands Fail)
+
+#### Windows Recovery
+```cmd
+# View current PATH
+reg query "HKCU\Environment" /v PATH
+
+# Restore from backup file
+reg add "HKCU\Environment" /v PATH /t REG_EXPAND_SZ /d "ORIGINAL_PATH_VALUE" /f
+```
+
+#### Unix/Linux Recovery
+```bash
+# View backup content
+cat ~/.womm/.backup/.path
+
+# Manually update shell profile
+# Edit ~/.bashrc, ~/.zshrc, or ~/.profile
+export PATH="ORIGINAL_PATH_VALUE:$PATH"
+```
+
+## 🛠️ CLI Commands
+
+### Installation Commands
+
+```bash
+# Standard installation
+python init
+
+# Installation with options
+python init --no-prerequisites    # Skip prerequisite check
+python init --target /custom/path # Custom installation directory
+```
+
+### PATH Management Commands
+
+```bash
+# Restore PATH from backup
+womm restore-path
+
+# View backup information
+womm backup-info
+
+# Check installation status
+womm status
+```
+
+### Environment Commands
+
+```bash
+# Setup Python environment
+womm env setup python
+
+# Setup JavaScript environment  
+womm env setup javascript
+
+# Auto-detect and setup
+womm env setup auto
+
+# Validate environment
 womm env validate
 ```
 
-## 🐍 Python Environment
+## 📋 Manual Installation
 
-### Automatically Installed Tools
-- **black** - Code formatting
-- **isort** - Import organization
-- **ruff** - Linting and quality
-- **pytest** - Testing framework
-- **pre-commit** - Git hooks
-- **bandit** - Security analysis
+### Prerequisites
 
-### Optional Tools (Bonus)
-- **mypy** - Type checking
-- **coverage** - Code coverage
-- **tox** - Multi-environment testing
+#### System Requirements
+- **Python 3.8+** installed and accessible
+- **Administrator privileges** (Windows) or **sudo access** (Unix)
+- **Internet connection** for dependency downloads
 
-### Created Structure
-```
-project/
-├── .venv/                    # Virtual environment
-├── .pre-commit-config.yaml   # Git hooks
-├── pyproject.toml           # Project configuration
-├── .vscode/                 # VSCode settings
-│   ├── settings.json
-│   └── extensions.json
-└── Makefile                 # Development commands
-```
+#### Optional Tools
+- **Git** for version control integration
+- **VSCode** for enhanced development experience
+- **Node.js** for JavaScript project support
 
-### Python Workflow
-1. **Create the project**
-   - → "Install development tools? (Y/n): [Enter]"
-   - → ✅ venv created + tools installed
+### Step-by-Step Manual Installation
 
-2. **Activate environment**
-   ```bash
-   # Windows
-   .venv\Scripts\activate
-   
-   # Linux/Mac
-   source .venv/bin/activate
-   ```
-
-3. **Develop**
-   ```bash
-   make format    # Format code
-   make lint      # Check quality
-   make test      # Run tests
-   ```
-
-## 🟨 JavaScript Environment
-
-### Automatically Installed Tools
-- **ESLint** - Code linting
-- **Prettier** - Code formatting
-- **Jest** - Testing framework
-- **Husky** - Git hooks
-- **lint-staged** - Pre-commit linting
-
-### Automatic TypeScript Support
-- **TypeScript** configuration
-- **@types** packages
-- **tsconfig.json** setup
-- **ESLint TypeScript** rules
-
-### Created Structure
-```
-project/
-├── package.json             # Dependencies and scripts
-├── .eslintrc.json          # Linting rules
-├── prettier.config.js      # Formatting rules
-├── jest.config.js          # Testing configuration
-├── .husky/                 # Git hooks
-│   └── pre-commit
-├── .vscode/                # VSCode settings
-│   ├── settings.json
-│   └── extensions.json
-└── tsconfig.json           # TypeScript config (if applicable)
-```
-
-### JavaScript Workflow
-1. **Create the project**
-   - → "Install development tools? (Y/n): [Enter]"
-   - → ✅ npm install + tools configured
-
-2. **Develop**
-   ```bash
-   npm run dev          # Development server
-   npm run lint         # Check code quality
-   npm test             # Run tests
-   ```
-
-## 🔍 Smart Detection
-
-### Project Type Detection
-- **Python**: `pyproject.toml`, `requirements.txt`, `setup.py`
-- **JavaScript**: `package.json`, `node_modules/`
-- **Mixed**: Both Python and JavaScript files
-- **Unknown**: Prompt user for choice
-
-### Generated Activation Scripts
-- **Python - activate.bat (Windows)**
-- **JavaScript - dev.bat (Windows)**
-- **Cross-platform shell scripts**
-
-### Automatic Pre-commit Configuration
-- **Python**: Black, isort, ruff, pytest
-- **JavaScript**: ESLint, Prettier, Jest
-- **Mixed**: Combined configuration
-
-## 🔒 Security and Automatic Exclusions
-
-### Sensitive Files Protection
-- **Environment variables** (`.env*`)
-- **Secrets and keys** (`*.key`, `*.pem`)
-- **Database files** (`*.db`, `*.sqlite`)
-- **Log files** (`*.log`)
-
-### Automatically Excluded Files
-- **Build artifacts** (`dist/`, `build/`, `*.pyc`)
-- **Dependencies** (`node_modules/`, `.venv/`)
-- **IDE files** (`.vscode/`, `.idea/`)
-- **OS files** (`.DS_Store`, `Thumbs.db`)
-
-### Applied Exclusions
-```gitignore
-# Python
-__pycache__/
-*.pyc
-.venv/
-dist/
-build/
-
-# JavaScript
-node_modules/
-dist/
-build/
-.env*
-
-# IDE
-.vscode/
-.idea/
-*.swp
-```
-
-### Exclusions Example
+#### 1. **Download and Extract**
 ```bash
-# These files are automatically excluded
-.env.local          # Environment variables
-secrets.json        # Sensitive data
-*.log              # Log files
-node_modules/      # Dependencies
+# Clone or download the repository
+git clone <repository-url>
+cd works-on-my-machine
 ```
 
-### Why It's Important
-- **Security**: Prevents accidental commit of secrets
-- **Performance**: Excludes large dependency directories
-- **Cleanliness**: Keeps repository focused on source code
-- **Compliance**: Meets security best practices
+#### 2. **Run Installation**
+```bash
+# Execute installation script
+python init
 
-## 🚨 Error Handling
+# Or run directly
+python womm.py install
+```
 
-### Common Issues
-- **Permission errors**: Automatic retry with elevated privileges
-- **Network issues**: Graceful fallback with offline mode
-- **Tool conflicts**: Automatic resolution and user notification
-- **Insufficient space**: Clear error messages with cleanup suggestions
+#### 3. **Verify Installation**
+```bash
+# Test womm command
+womm --help
 
-### Recovery Options
-- **Rollback**: Automatic cleanup if installation fails
-- **Manual mode**: Step-by-step installation guide
-- **Diagnostic mode**: Detailed error reporting
-- **Skip options**: Continue without problematic tools
+# Check PATH configuration
+echo $PATH  # Unix
+echo %PATH% # Windows
+```
 
-## 💡 Benefits
+### Custom Installation Options
 
-### For Developers
-- **Zero configuration** - Works out of the box
-- **Consistent environments** - Same setup across team
-- **Time saving** - No manual tool installation
-- **Best practices** - Industry-standard configurations
+#### Custom Target Directory
+```bash
+# Install to custom location
+python init --target /opt/womm
 
-### For Teams
-- **Onboarding speed** - New developers ready in minutes
-- **Standardization** - Consistent development experience
-- **Quality assurance** - Built-in linting and testing
-- **Security** - Automatic exclusion of sensitive files
+# Verify custom installation
+ls /opt/womm
+```
 
-### For Projects
-- **Professional setup** - Industry-standard tools
-- **Maintainability** - Clear structure and configuration
-- **Scalability** - Easy to extend and customize
-- **Documentation** - Self-documenting configuration
+#### Skip Prerequisites
+```bash
+# Install without prerequisite check
+python init --no-prerequisites
 
-## 📈 New Features & Improvements
+# Manual prerequisite installation
+python shared/installation/prerequisite_installer.py
+```
 
-### 🔐 Enhanced Security (Recent)
-- **Automatic secret detection**
-- **Sensitive file exclusion**
-- **Environment variable protection**
-- **Security scanning integration**
+## ✅ Post-Installation
 
-### 🔍 Improved Project Detection
-- **Multi-language project support**
-- **Framework-specific configurations**
-- **Legacy project compatibility**
-- **Custom project type definitions**
+### Verification Steps
+
+#### 1. **Command Availability**
+```bash
+# Test womm command
+womm --version
+
+# Test subcommands
+womm env --help
+womm restore-path --help
+```
+
+#### 2. **PATH Configuration**
+```bash
+# Check if ~/.womm is in PATH
+which womm  # Unix
+where womm  # Windows
+```
+
+#### 3. **Backup Verification**
+```bash
+# Verify backup was created
+ls ~/.womm/.backup/
+
+# Check backup content
+womm backup-info
+```
+
+### Configuration
+
+#### Shell Profile Setup (Unix)
+```bash
+# Add to ~/.bashrc or ~/.zshrc
+export PATH="$HOME/.womm:$PATH"
+
+# Reload shell configuration
+source ~/.bashrc
+```
+
+#### Windows Registry (Automatic)
+- Installation automatically configures Windows Registry
+- No manual configuration required
+- Restart terminal to apply changes
+
+### First Project Setup
+
+#### Create New Project
+```bash
+# Python project
+womm new python my-project
+
+# JavaScript project  
+womm new javascript my-project
+
+# Auto-detect project type
+womm new auto my-project
+```
+
+#### Configure Existing Project
+```bash
+# Setup environment for existing project
+cd existing-project
+womm env setup auto
+```
+
+## 🚨 Troubleshooting
+
+### Common Installation Issues
+
+#### PATH Corruption
+```bash
+# Symptoms: womm command not found after installation
+# Solution: Restore from backup
+womm restore-path
+
+# If backup command fails, manual recovery:
+# Windows: Use reg command with backup content
+# Unix: Edit shell profile with backup content
+```
+
+#### Permission Errors
+```bash
+# Windows: Run as Administrator
+# Unix: Use sudo
+sudo python init
+
+# Or install to user directory
+python init --target ~/.local/womm
+```
+
+#### Prerequisite Failures
+```bash
+# Skip prerequisites and install manually
+python init --no-prerequisites
+
+# Manual prerequisite installation
+python shared/installation/prerequisite_installer.py
+```
+
+### Backup Issues
+
+#### Missing Backup Directory
+```bash
+# Check if backup was created
+ls ~/.womm/.backup/
+
+# If missing, create manual backup
+mkdir -p ~/.womm/.backup
+echo $PATH > ~/.womm/.backup/.path_manual
+```
+
+#### Corrupted Backup Files
+```bash
+# View backup content
+cat ~/.womm/.backup/.path
+
+# If corrupted, use system PATH
+echo $PATH > ~/.womm/.backup/.path_recovery
+```
+
+### Recovery Procedures
+
+#### Complete Reinstallation
+```bash
+# Uninstall current installation
+womm uninstall
+
+# Clean up manually if needed
+rm -rf ~/.womm
+
+# Reinstall
+python init
+```
+
+#### PATH Recovery
+```bash
+# Automatic recovery
+womm restore-path
+
+# Manual recovery (Windows)
+reg add "HKCU\Environment" /v PATH /t REG_EXPAND_SZ /d "DEFAULT_PATH" /f
+
+# Manual recovery (Unix)
+export PATH="/usr/local/bin:/usr/bin:/bin:$PATH"
+```
+
+## 🔒 Security Features
+
+### Input Validation
+
+#### Path Validation
+- All user-provided paths are validated
+- Prevents directory traversal attacks
+- Ensures safe file operations
+
+#### Command Validation
+- External commands are validated before execution
+- Prevents command injection attacks
+- Uses secure subprocess execution
+
+### Backup Security
+
+#### Secure Backup Location
+- Backups stored in protected `.backup` directory
+- Timestamped files prevent overwrites
+- Symlink system ensures latest backup access
+
+#### Backup Content Protection
+- No sensitive data in backup files
+- Only PATH information stored
+- Metadata includes platform and timestamp
+
+### Installation Security
+
+#### Safe File Operations
+- All file operations use secure methods
+- Temporary directories for sensitive operations
+- Proper cleanup after installation
+
+#### Privilege Management
+- Minimal privilege requirements
+- User directory installation preferred
+- Clear permission requirements documented
 
 ---
 
-**⚙️ This environment setup system ensures every project starts with professional-grade development tools and configurations.**
+**⚙️ This environment setup ensures safe, reliable installation with automatic recovery options for system PATH management.**

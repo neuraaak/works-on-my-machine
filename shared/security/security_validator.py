@@ -77,6 +77,22 @@ class SecurityValidator:
         "jest",
         "husky",
         "lint-staged",
+        # Windows system commands for installation
+        "reg",
+        "setx",
+        "powershell",
+        "cmd",
+        "msiexec",
+        # Package managers
+        "choco",
+        "winget",
+        "scoop",
+        "brew",
+        "apt",
+        "yum",
+        "dnf",
+        "pacman",
+        "snap",
     }
 
     def __init__(self):
@@ -198,9 +214,9 @@ class SecurityValidator:
         if cmd_name not in self.ALLOWED_COMMANDS:
             return False, f"Command '{cmd_name}' is not allowed"
 
-        # Check arguments
-        for arg in cmd_parts[1:]:
-            if not self._validate_argument(arg):
+        # Check arguments with context-aware validation
+        for _i, arg in enumerate(cmd_parts[1:], 1):
+            if not self._validate_argument_with_context(arg, cmd_name, cmd_parts):
                 return False, f"Invalid argument: {arg}"
 
         return True, ""
@@ -214,6 +230,41 @@ class SecurityValidator:
 
         # Check length
         return not len(arg) > 1000
+
+    def _validate_argument_with_context(
+        self, arg: str, command: str, full_command: List[str]
+    ) -> bool:
+        """Validate command argument with command context."""
+        # Special handling for PATH-related commands
+        if command.lower() in ["reg", "setx"]:
+            # Check if this is a PATH operation
+            is_path_operation = False
+            if (
+                command.lower() == "reg"
+                and len(full_command) > 3
+                and "HKCU\\Environment" in full_command
+                and "/v" in full_command
+                and "PATH" in full_command
+            ):
+                # reg add HKCU\Environment /v PATH /t REG_EXPAND_SZ /d <value> /f
+                is_path_operation = True
+            elif command.lower() == "setx" and len(full_command) > 2:
+                # setx PATH <value>
+                is_path_operation = "PATH" in full_command
+
+            if is_path_operation:
+                # Allow semicolons in PATH values for Windows
+                # Remove semicolons from dangerous patterns check for this case
+                dangerous_patterns = [
+                    p for p in self.DANGEROUS_PATTERNS if ";" not in p
+                ]
+                for pattern in dangerous_patterns:
+                    if re.search(pattern, arg):
+                        return False
+                return not len(arg) > 1000
+
+        # Default validation
+        return self._validate_argument(arg)
 
     def validate_file_operation(
         self, source: Path, destination: Path, operation: str
@@ -306,10 +357,17 @@ class SecurityValidator:
             return False, f"Cannot read script: {script_path}"
 
         # Check that script is in an allowed directory
+        # Allow both development directory and installed directory (~/.womm)
+        project_root = Path(__file__).parent.parent
+        installed_root = Path.home() / ".womm"
+
         allowed_dirs = [
-            Path(__file__).parent.parent / "languages",
-            Path(__file__).parent.parent / "shared",
-            Path(__file__).parent.parent,
+            project_root / "languages",
+            project_root / "shared",
+            project_root,
+            installed_root / "languages",
+            installed_root / "shared",
+            installed_root,
         ]
 
         script_in_allowed_dir = any(

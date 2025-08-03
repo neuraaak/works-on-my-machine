@@ -456,24 +456,26 @@ class PrerequisiteInstaller:
         ]
 
         if not missing:
-            print("✅ All prerequisites are installed!")
+            print("[SUCCESS] All prerequisites are installed!")
             return True, [], None
 
-        print("\n🔍 Checking prerequisites...")
+        print("\n[CHECK] Checking prerequisites...")
         print("=" * 50)
 
         for name, info in prerequisites.items():
             status = info["installed"]
             if status["status"]:
-                print(f"✅ {name.upper()}: {status['version']} - {status['path']}")
+                print(f"[OK] {name.upper()}: {status['version']} - {status['path']}")
             else:
-                print(f"❌ {name.upper()}: Not installed - {info['description']}")
+                print(
+                    f"[MISSING] {name.upper()}: Not installed - {info['description']}"
+                )
 
-        print(f"\n⚠️  Missing prerequisites: {', '.join(missing)}")
+        print(f"\n[WARN] Missing prerequisites: {', '.join(missing)}")
 
         # Main prompt
         response = input(
-            "\n🤔 Do you want to install missing prerequisites? (y/N): "
+            "\n[PROMPT] Do you want to install missing prerequisites? (y/N): "
         ).lower()
         if response not in ["o", "oui", "y", "yes"]:
             return False, missing, None
@@ -483,7 +485,7 @@ class PrerequisiteInstaller:
             name for name, available in self.available_managers.items() if available
         ]
         if len(available) > 1:
-            print(f"\n📦 Available package managers: {', '.join(available)}")
+            print(f"\n[PACKAGE] Available package managers: {', '.join(available)}")
             manager_choice = input(
                 "Choose a package manager (or Enter for automatic): "
             ).lower()
@@ -495,7 +497,7 @@ class PrerequisiteInstaller:
         custom_path = None
         if self.system == "Windows":
             path_response = input(
-                "\n📁 Custom installation path? (Enter for default): "
+                "\n[PATH] Custom installation path? (Enter for default): "
             ).strip()
             if path_response:
                 custom_path = path_response
@@ -513,40 +515,44 @@ class PrerequisiteInstaller:
             if (
                 self.system == "Windows"
                 and input(
-                    "\n🍫 Install Chocolatey to make installations easier? (y/N): "
+                    "\n[CHOCO] Install Chocolatey to make installations easier? (y/N): "
                 ).lower()
                 in ["o", "oui", "y", "yes"]
                 and self.install_package_manager("chocolatey")
             ):
-                print("✅ Chocolatey installed - future installations will be faster")
+                print(
+                    "[SUCCESS] Chocolatey installed - future installations will be faster"
+                )
             elif (
                 self.system == "Darwin"
                 and input(
-                    "\n🍺 Install Homebrew to make installations easier? (y/N): "
+                    "\n[HOMEBREW] Install Homebrew to make installations easier? (y/N): "
                 ).lower()
                 in ["o", "oui", "y", "yes"]
                 and self.install_package_manager("homebrew")
             ):
-                print("✅ Homebrew installed - future installations will be faster")
+                print(
+                    "[SUCCESS] Homebrew installed - future installations will be faster"
+                )
 
         for prereq in missing:
-            print(f"\n📦 Installing {prereq}...")
+            print(f"\n[INSTALL] Installing {prereq}...")
             if self.install_prerequisite(prereq, custom_path):
                 success_count += 1
             else:
-                print(f"❌ Failed to install {prereq}")
+                print(f"[ERROR] Failed to install {prereq}")
 
         if success_count == len(missing):
-            print("\n🎉 All prerequisites have been installed successfully!")
+            print("\n[SUCCESS] All prerequisites have been installed successfully!")
 
             # Setup npm PATH if Node.js was installed
             if "node" in missing or "npm" in missing:
                 setup_npm_path()
 
-            print("🔄 Restart your terminal to use the new tools")
+            print("[INFO] Restart your terminal to use the new tools")
             return True
         else:
-            print(f"\n⚠️  {success_count}/{len(missing)} prerequisites installed")
+            print(f"\n[WARN] {success_count}/{len(missing)} prerequisites installed")
             return False
 
 
