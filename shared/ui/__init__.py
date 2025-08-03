@@ -4,9 +4,6 @@ User Interface module using Rich for beautiful terminal output.
 """
 
 # Import and expose common Rich utilities
-from .console import print_file  # Remplace COPY, BACKUP, RESTORE
-from .console import print_install  # Remplace INSTALL, DICT
-from .console import print_system  # Remplace BAT, EXEC, WINDOWS, REGISTER
 from .console import (  # === NOUVELLES FONCTIONS UI SPÉCIALISÉES ===; Patterns regroupés (Option A); === MÉTHODES SPÉCIALISÉES POUR LES COMMANDES NEW ===; Fonction générique; === MÉTHODES UTILITAIRES POUR LES ÉTAPES DE PROCESSUS ===; Patterns principaux; Patterns spécialisés; Fonctions de configuration du niveau de logging
     LogLevel,
     console,
@@ -25,11 +22,13 @@ from .console import (  # === NOUVELLES FONCTIONS UI SPÉCIALISÉES ===; Pattern
     print_eval,
     print_failed,
     print_fallback,
+    print_file,  # Remplace COPY, BACKUP, RESTORE
     print_file_operation_result,
     print_fix,
     print_header,
     print_hint,
     print_info,
+    print_install,  # Remplace INSTALL, DICT
     print_installation_result,
     print_interactive,
     print_new_project_complete,
@@ -56,6 +55,7 @@ from .console import (  # === NOUVELLES FONCTIONS UI SPÉCIALISÉES ===; Pattern
     print_status,
     print_success,
     print_summary,
+    print_system,  # Remplace BAT, EXEC, WINDOWS, REGISTER
     print_tip,
     print_unknown,
     print_validation_result,
@@ -101,9 +101,26 @@ from .prompts import (
     show_info_panel,
     show_warning_panel,
 )
+from .spell import (
+    print_spell_add_result,
+    print_spell_check_start,
+    print_spell_dictionary_info,
+    print_spell_errors,
+    print_spell_install_progress,
+    print_spell_install_result,
+    print_spell_progress,
+    print_spell_result,
+    print_spell_setup_result,
+    print_spell_start,
+    print_spell_status,
+    print_spell_suggestions,
+    print_spell_summary,
+    print_spell_tool_check_result,
+)
 from .tables import (
     create_command_table,
     create_dependency_table,
+    create_dictionary_table,
     create_status_table,
     create_table,
 )
@@ -119,6 +136,7 @@ __all__ = [
     "print_critical",
     "create_table",
     "create_status_table",
+    "create_dictionary_table",
     "create_panel",
     "create_info_panel",
     "create_progress",
@@ -159,4 +177,19 @@ __all__ = [
     "print_lint_fix_suggestions",
     "print_lint_start",
     "print_tool_check_result",
+    # Spell checking UI functions
+    "print_spell_add_result",
+    "print_spell_check_start",
+    "print_spell_dictionary_info",
+    "print_spell_errors",
+    "print_spell_install_progress",
+    "print_spell_install_result",
+    "print_spell_progress",
+    "print_spell_result",
+    "print_spell_setup_result",
+    "print_spell_start",
+    "print_spell_status",
+    "print_spell_summary",
+    "print_spell_suggestions",
+    "print_spell_tool_check_result",
 ]
