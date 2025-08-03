@@ -4,6 +4,9 @@ User Interface module using Rich for beautiful terminal output.
 """
 
 # Import and expose common Rich utilities
+from .console import print_file  # Remplace COPY, BACKUP, RESTORE
+from .console import print_install  # Remplace INSTALL, DICT
+from .console import print_system  # Remplace BAT, EXEC, WINDOWS, REGISTER
 from .console import (  # === NOUVELLES FONCTIONS UI SPÉCIALISÉES ===; Patterns regroupés (Option A); === MÉTHODES SPÉCIALISÉES POUR LES COMMANDES NEW ===; Fonction générique; === MÉTHODES UTILITAIRES POUR LES ÉTAPES DE PROCESSUS ===; Patterns principaux; Patterns spécialisés; Fonctions de configuration du niveau de logging
     LogLevel,
     console,
@@ -22,13 +25,11 @@ from .console import (  # === NOUVELLES FONCTIONS UI SPÉCIALISÉES ===; Pattern
     print_eval,
     print_failed,
     print_fallback,
-    print_file,  # Remplace COPY, BACKUP, RESTORE
     print_file_operation_result,
     print_fix,
     print_header,
     print_hint,
     print_info,
-    print_install,  # Remplace INSTALL, DICT
     print_installation_result,
     print_interactive,
     print_new_project_complete,
@@ -55,7 +56,6 @@ from .console import (  # === NOUVELLES FONCTIONS UI SPÉCIALISÉES ===; Pattern
     print_status,
     print_success,
     print_summary,
-    print_system,  # Remplace BAT, EXEC, WINDOWS, REGISTER
     print_tip,
     print_unknown,
     print_validation_result,

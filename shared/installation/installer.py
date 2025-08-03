@@ -106,29 +106,64 @@ def should_exclude_file(file_path: Path, source_path: Path) -> bool:
     Returns:
         True if file should be excluded, False otherwise
     """
-    # Exclude common development files and directories
-    exclude_patterns = [
-        ".git",
-        ".gitignore",
-        ".pytest_cache",
-        "__pycache__",
-        "*.pyc",
-        "*.pyo",
-        "*.pyd",
-        ".coverage",
-        "htmlcov",
-        "build",
-        "dist",
-        "*.egg-info",
-        ".venv",
-        "venv",
-        "node_modules",
-        ".vscode",
-        ".idea",
-        "*.log",
-        ".DS_Store",
-        "Thumbs.db",
-    ]
+    # Load exclude patterns from ignore-install.txt if available
+    exclude_patterns = []
+    ignore_file = source_path / "ignore-install.txt"
+
+    if ignore_file.exists():
+        try:
+            with open(ignore_file, encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    # Skip comments and empty lines
+                    if line and not line.startswith("#"):
+                        exclude_patterns.append(line)
+        except Exception as e:
+            # Fall back to default patterns if file can't be read
+            # Log the error for debugging but continue with defaults
+            print(f"Warning: Could not read ignore-install.txt: {e}")
+
+    # Fallback to default patterns if no ignore-install.txt or empty
+    if not exclude_patterns:
+        exclude_patterns = [
+            ".git",
+            ".gitignore",
+            ".pytest_cache",
+            "__pycache__",
+            "*.pyc",
+            "*.pyo",
+            "*.pyd",
+            ".coverage",
+            "htmlcov",
+            "build",
+            "dist",
+            "*.egg-info",
+            ".venv",
+            "venv",
+            "node_modules",
+            ".vscode",
+            ".idea",
+            "*.log",
+            ".DS_Store",
+            "Thumbs.db",
+            ".mypy_cache",
+            ".ruff_cache",
+            ".cursor",
+            "cspell.json",
+            "*_temp.*",
+            "*.mdc",
+            "benchmarks",
+            "coverage",
+            "ignore-install.txt",
+            "LICENSE",
+            "pyproject.toml",
+            "MANIFEST",
+            "Makefile",
+            "setup.py",
+            "tests",
+            "run_tests.py",
+            "build_package.py",
+        ]
 
     file_name = file_path.name
     relative_path = file_path.relative_to(source_path)
@@ -543,8 +578,9 @@ class InstallationManager:
                             "/f",
                         ]
                     )
-                except:
-                    pass  # Ignore les erreurs de restauration
+                except Exception as restore_error:
+                    # Ignore les erreurs de restauration
+                    print(f"Warning: Could not restore PATH: {restore_error}")
             return {"success": False, "error": f"Windows user PATH setup error: {e}"}
 
     def _persist_path_change(self, new_path: str) -> Dict:
@@ -583,7 +619,7 @@ class InstallationManager:
         except Exception as e:
             return {"success": False, "error": f"PATH persistence error: {e}"}
 
-    def _persist_unix_path_change(self, new_path: str) -> Dict:
+    def _persist_unix_path_change(self, _new_path: str) -> Dict:
         """Persist PATH change to Unix shell profile."""
         try:
             womm_path = str(self.target_path)

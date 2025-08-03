@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "works-on-my-machine"
-version = "1.5.0"
+version = "1.6.0"
 description = "Universal development tools for Python and JavaScript - Automatic installation, cross-platform configuration, global commands"
 readme = "README.md"
 license = {text = "MIT"}
@@ -54,6 +54,10 @@ dev = [
     "pytest-cov>=4.0.0",
     "pytest-mock>=3.10.0",
     "pytest-xdist>=3.0.0",
+    
+    # Build and distribution
+    "build>=1.0.0",
+    "twine>=4.0.0",
 ]
 test = [
     "pytest>=7.0.0",
@@ -69,7 +73,7 @@ test = [
 
 [project.scripts]
 # Main CLI command
-womm = "womm:womm"
+womm = "womm.cli:main"
 
 [tool.setuptools]
 zip-safe = false
@@ -77,22 +81,54 @@ include-package-data = true
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["shared*", "languages*"]
-exclude = ["tests*", "build*", "dist*"]
+include = ["shared*", "languages*", "womm*"]
+exclude = [
+    "tests*", 
+    "build*", 
+    "dist*", 
+    "*.egg-info*",
+    ".pytest_cache*",
+    ".mypy_cache*",
+    ".ruff_cache*",
+    ".cursor*",
+    "benchmarks*",
+    "coverage*",
+    "htmlcov*",
+    ".venv*",
+    "venv*",
+    "node_modules*",
+    ".vscode*",
+    ".idea*",
+    "__pycache__*",
+]
 
 [tool.setuptools.package-data]
-# Inclure tous les fichiers de templates et configurations
-"*" = [
-    "*.txt",
+# Include templates and configuration files
+"shared" = [
     "*.json",
-    "*.yaml",
+    "*.yaml", 
     "*.yml",
-    "*.md",
+    "*.txt",
     "*.template",
     "*.config.*",
     "templates/*",
     "configs/*",
     "vscode/*",
+]
+"languages" = [
+    "*.json",
+    "*.yaml",
+    "*.yml", 
+    "*.txt",
+    "*.template",
+    "*.config.*",
+    "templates/*",
+    "configs/*",
+    "vscode/*",
+    "scripts/*",
+]
+"womm" = [
+    "*.py",
 ]
 
 # Configuration Black

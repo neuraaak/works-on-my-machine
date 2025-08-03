@@ -1,0 +1,66 @@
+# WOMM Installation Exclusions
+# This file lists files and directories that should be excluded during installation
+# These exclusions match the patterns defined in shared/installation/installer.py
+
+# Version control
+.git
+.gitignore
+
+# Python cache and compiled files
+.pytest_cache
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+
+# Code coverage
+.coverage
+htmlcov
+
+# Build and distribution
+build
+dist
+*.egg-info
+
+# Virtual environments
+.venv
+venv
+
+# Node.js dependencies
+node_modules
+
+# IDE and editor files
+.vscode
+.idea
+
+# Logs
+*.log
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Additional development files
+.mypy_cache
+.ruff_cache
+.cursor
+*_temp.*
+*.mdc
+cspell.json
+
+# Project configuration files (not needed for installation)
+benchmarks
+coverage
+ignore-install.txt
+LICENSE
+MANIFEST
+pyproject.toml
+Makefile
+setup.py
+
+# Tests (not needed for installation)
+tests
+run_tests.py
+
+# Build tools (not needed for installation)
+build_package.py 
