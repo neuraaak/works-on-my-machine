@@ -11,8 +11,7 @@ from typing import Dict, List, Optional
 
 import click
 
-from .core.cli_manager import run_command
-from .security.secure_cli_manager import check_tool_secure, run_secure_silent
+from .core.cli_manager import run_command, run_silent, check_tool_available
 
 
 class DependencyManager:
@@ -52,13 +51,13 @@ class DependencyManager:
 
     def _check_command(self, command: str) -> bool:
         """Check if a command is available."""
-        # Use secure command checking
-        if not check_tool_secure(command):
+        # Use CLI manager command checking
+        if not check_tool_available(command):
             return False
 
-        # Use secure execution to check version
-        result = run_secure_silent([command, "--version"])
-        return result.success and result.security_validated
+        # Use silent execution to check version
+        result = run_silent([command, "--version"])
+        return result.success
 
     def check_with_cache(self, dependency: str) -> bool:
         """Check dependency with caching."""
@@ -84,9 +83,9 @@ class DependencyManager:
 
     def _check_python(self) -> bool:
         """Check if Python is installed."""
-        # Use secure execution with sys.executable (full path)
-        result = run_secure_silent([sys.executable, "--version"])
-        return result.success and result.security_validated
+        # Use silent execution with sys.executable (full path)
+        result = run_silent([sys.executable, "--version"])
+        return result.success
 
     def _check_node(self) -> bool:
         """Check if Node.js is installed."""
@@ -100,15 +99,15 @@ class DependencyManager:
 
         # If npm not found but node is available, try to get npm version
         if self._check_command("node"):
-            # Use secure execution to check npm via node
-            result = run_secure_silent(
+            # Use silent execution to check npm via node
+            result = run_silent(
                 [
                     "node",
                     "-e",
                     "console.log(require('child_process').execSync('npm --version', {encoding: 'utf8'}))",
                 ]
             )
-            return result.success and result.security_validated
+            return result.success
 
         return False
 
@@ -123,8 +122,8 @@ class DependencyManager:
             return True
 
         # Check local installation in current project
-        result = run_secure_silent(["npx", "cspell", "--version"])
-        return result.success and result.security_validated
+        result = run_silent(["npx", "cspell", "--version"])
+        return result.success
 
     def _check_package_manager(self) -> bool:
         """Check if any package manager is available."""
@@ -376,9 +375,9 @@ class DependencyManager:
             return  # Unix systems usually handle this automatically
 
         # Get npm prefix (where global packages are installed)
-        result = run_secure_silent(["npm", "config", "get", "prefix"])
+        result = run_silent(["npm", "config", "get", "prefix"])
 
-        if result.success and result.security_validated:
+        if result.success:
             npm_prefix = result.stdout.strip()
             npm_bin_path = Path(npm_prefix)
 
@@ -415,14 +414,14 @@ class DependencyManager:
 
     def _get_current_user_path(self) -> str:
         """Get current USER PATH from Windows registry."""
-        result = run_secure_silent(["reg", "query", "HKCU\\Environment", "/v", "PATH"])
+        result = run_silent(["reg", "query", "HKCU\\Environment", "/v", "PATH"])
 
-        if result.success and result.security_validated:
+        if result.success:
             for line in result.stdout.split("\n"):
                 if "PATH" in line and "REG_EXPAND_SZ" in line:
                     return line.split("REG_EXPAND_SZ")[1].strip()
         else:
-            click.echo("⚠️  Warning: Could not read Windows PATH securely")
+            click.echo("⚠️  Warning: Could not read Windows PATH")
 
         return ""
 

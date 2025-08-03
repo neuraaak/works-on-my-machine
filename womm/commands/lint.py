@@ -27,9 +27,15 @@ def lint_python(path, fix):
     if fix:
         cmd.append("--fix")
 
-    from shared.core.cli_manager import run_command
-    result = run_command(cmd, f"Linting Python code in {path}")
-    sys.exit(0 if result.success else 1)
+    print(f"🔍 Executing: {' '.join(cmd)}")
+
+    import subprocess
+    try:
+        result = subprocess.run(cmd, capture_output=False, text=True)
+        sys.exit(result.returncode)
+    except Exception as e:
+        print(f"❌ Error executing lint script: {e}")
+        sys.exit(1)
 
 
 @lint_group.command("all")
@@ -43,6 +49,10 @@ def lint_all(path, fix):
     if fix:
         cmd.append("--fix")
 
-    from shared.core.cli_manager import run_command
-    result = run_command(cmd, f"Linting all code in {path}")
-    sys.exit(0 if result.success else 1)
+    import subprocess
+    try:
+        result = subprocess.run(cmd, capture_output=False, text=True)
+        sys.exit(result.returncode)
+    except Exception as e:
+        print(f"❌ Error executing lint script: {e}")
+        sys.exit(1)

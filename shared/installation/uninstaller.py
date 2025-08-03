@@ -5,11 +5,13 @@ Removes WOMM from the system and cleans up PATH entries.
 """
 
 import argparse
+import os
 import platform
 import shutil
 import sys
 import winreg
 from pathlib import Path
+from typing import Dict, Optional
 
 # Import CLI manager
 try:
@@ -18,191 +20,276 @@ except ImportError:
     # Fallback if module not available
     import subprocess
 
-    def run_command(cmd, desc, **kwargs):
+    def run_command(cmd, **kwargs):
         """Run a command with logging."""
-        print(f"\n🔍 {desc}...")
-        print(f"Command: {' '.join(cmd)}")
-
-        # Security validation
-        if SECURITY_AVAILABLE:
-            validator = SecurityValidator()
-            is_valid, error_msg = validator.validate_command(cmd)
-            if not is_valid:
-                print(f"   ⚠️  Security validation failed: {error_msg}")
-                return type("obj", (object,), {"success": False})()
-
         result = subprocess.run(cmd, **kwargs)  # noqa: S603
         return type("obj", (object,), {"success": result.returncode == 0})()
 
     def run_silent(cmd, **kwargs):
         """Run a command silently."""
-        # Security validation
-        if SECURITY_AVAILABLE:
-            validator = SecurityValidator()
-            is_valid, error_msg = validator.validate_command(cmd)
-            if not is_valid:
-                print(f"   ⚠️  Security validation failed: {error_msg}")
-                return type("obj", (object,), {"success": False})()
-
         return subprocess.run(cmd, capture_output=True, **kwargs)  # noqa: S603
 
 
 # Import security validator if available
-try:
-    from shared.security.security_validator import SecurityValidator
+import importlib.util
 
-    SECURITY_AVAILABLE = True
-except ImportError:
-    SECURITY_AVAILABLE = False
-
-
-def get_target_womm_path() -> Path:
-    """Get the standard target path for Works On My Machine."""
-    return Path.home() / ".womm"
+SECURITY_AVAILABLE = (
+    importlib.util.find_spec("shared.security.security_validator") is not None
+)
 
 
-def remove_from_windows_path(bin_path: Path) -> bool:
-    """Remove WOMM bin directory from Windows PATH."""
-    try:
-        print("🔧 Removing from Windows PATH...")
+class UninstallationManager:
+    """Manages the uninstallation process for Works On My Machine."""
 
-        # Get current PATH from registry
-        key = winreg.OpenKey(
-            winreg.HKEY_CURRENT_USER,
-            r"Environment",
-            0,
-            winreg.KEY_READ | winreg.KEY_WRITE,
-        )
+    def __init__(self, target: Optional[str] = None):
+        """Initialize the uninstallation manager.
+
+        Args:
+            target: Custom target directory (default: ~/.womm)
+        """
+        if target:
+            self.target_path = Path(target).expanduser().resolve()
+        else:
+            self.target_path = Path.home() / ".womm"
+
+        # WOMM is installed directly in target_path, not in a bin subdirectory
+        self.womm_path = str(self.target_path)
+        self.actions = []
+        self.platform = platform.system()
+
+    def uninstall(self, force: bool = False) -> Dict:
+        """Perform the uninstallation process.
+
+        Args:
+            force: Skip confirmation prompts
+
+        Returns:
+            Dictionary containing uninstallation results
+        """
+        result = {
+            "success": False,
+            "target_path": str(self.target_path),
+            "platform": self.platform,
+            "actions": [],
+            "errors": [],
+            "requires_confirmation": False,
+        }
+
+        # Check if WOMM is installed
+        if not self.target_path.exists():
+            result["errors"].append(
+                "Works On My Machine is not installed at the specified location"
+            )
+            return result
+
+        # Check if force is required
+        if not force and self._needs_confirmation():
+            result["requires_confirmation"] = True
+            return result
+
+        # Start uninstallation
+        success = True
+
+        # 1. Remove from PATH
+        if self.platform == "Windows":
+            path_result = self._remove_from_windows_path()
+        else:
+            path_result = self._remove_from_unix_path()
+
+        if path_result["status"] == "failed":
+            success = False
+            result["errors"].extend(path_result["errors"])
+
+        self.actions.append(path_result)
+
+        # 2. Remove WOMM directory
+        dir_result = self._remove_womm_directory()
+        if dir_result["status"] == "failed":
+            success = False
+            result["errors"].extend(dir_result["errors"])
+
+        self.actions.append(dir_result)
+
+        result["success"] = success
+        result["actions"] = self.actions
+
+        return result
+
+    def _needs_confirmation(self) -> bool:
+        """Check if uninstallation requires user confirmation."""
+        return self.target_path.exists()
+
+    def _remove_from_windows_path(self) -> Dict:
+        """Remove WOMM directory from Windows user PATH using backup/restore strategy."""
+        action = {
+            "action": "remove_path",
+            "status": "failed",
+            "message": "",
+            "errors": [],
+        }
 
         try:
-            path_value, _ = winreg.QueryValueEx(key, "Path")
-        except FileNotFoundError:
-            print("   ⚠️  PATH not found in registry")
-            return True
+            # Step 1: Récupérer le PATH utilisateur actuel
+            result = run_silent(["reg", "query", "HKCU\\Environment", "/v", "PATH"])
 
-        # Remove WOMM bin path
-        bin_path_str = str(bin_path)
-        path_parts = path_value.split(";")
+            backup_user_path = ""  # Variable de secours
 
-        if bin_path_str in path_parts:
-            path_parts.remove(bin_path_str)
-            new_path = ";".join(path_parts)
+            if result.success:
+                output = result.stdout
+                if isinstance(output, bytes):
+                    output = output.decode("utf-8", errors="ignore")
 
-            # Update registry
-            winreg.SetValueEx(key, "Path", 0, winreg.REG_EXPAND_SZ, new_path)
-            print(f"   ✓ Removed {bin_path_str} from PATH")
-        else:
-            print(f"   ℹ️  {bin_path_str} not found in PATH")
-
-        winreg.CloseKey(key)
-        return True
-
-    except Exception as e:
-        print(f"   ❌ Error updating Windows PATH: {e}")
-        return False
-
-
-def remove_from_unix_path(bin_path: Path) -> bool:
-    """Remove WOMM bin directory from Unix PATH."""
-    try:
-        print("🔧 Removing from Unix PATH...")
-
-        # Common shell config files
-        shell_files = [
-            Path.home() / ".bashrc",
-            Path.home() / ".bash_profile",
-            Path.home() / ".zshrc",
-            Path.home() / ".profile",
-        ]
-
-        bin_path_str = str(bin_path)
-        removed = False
-
-        for shell_file in shell_files:
-            if shell_file.exists():
-                content = shell_file.read_text()
-
-                # Look for PATH export lines containing WOMM
-                lines = content.split("\n")
-                new_lines = []
-
-                for line in lines:
-                    path_patterns = [
-                        f'export PATH="{bin_path_str}:$PATH"',
-                        f'export PATH=$PATH:"{bin_path_str}"',
-                        "export PATH=" + bin_path_str + ":$PATH",
-                        "export PATH=$PATH:" + bin_path_str,
-                    ]
-                    if any(pattern in line for pattern in path_patterns):
-                        print(f"   ✓ Removed PATH entry from {shell_file.name}")
-                        removed = True
-                    else:
-                        new_lines.append(line)
-
-                if removed:
-                    shell_file.write_text("\n".join(new_lines))
-
-        if not removed:
-            print(f"   ℹ️  {bin_path_str} not found in shell config files")
-
-        return True
-
-    except Exception as e:
-        print(f"   ❌ Error updating Unix PATH: {e}")
-        return False
-
-
-def remove_context_menu() -> bool:
-    """Remove WOMM tools from Windows context menu."""
-    if platform.system() != "Windows":
-        return True
-
-    try:
-        print("🔧 Removing Windows context menu entries...")
-
-        # Use the existing unregister script
-        unregister_script = Path(__file__).parent / "system" / "register_wom_tools.py"
-
-        if unregister_script.exists():
-            result = run_silent(
-                [sys.executable, str(unregister_script), "--unregister"]
-            )
-
-            if result.returncode == 0:
-                print("   ✓ Context menu entries removed")
-                return True
+                # Extraire le PATH utilisateur du registre
+                for line in output.split("\n"):
+                    if "REG_SZ" in line and "PATH" in line:
+                        parts = line.split("REG_SZ")
+                        if len(parts) > 1:
+                            backup_user_path = parts[1].strip()
+                            break
             else:
-                print("   ⚠️  Error removing context menu entries")
-                return False
-        else:
-            print("   ℹ️  Context menu unregister script not found")
-            return True
+                action["status"] = "warning"
+                action["message"] = "PATH not found in registry"
+                return action
 
-    except Exception as e:
-        print(f"   ❌ Error removing context menu: {e}")
-        return False
+            # Step 2: Vérifier si WOMM path est présent
+            if self.womm_path not in backup_user_path:
+                action["status"] = "warning"
+                action["message"] = f"WOMM path {self.womm_path} not found in user PATH"
+                return action
 
+            # Step 3: Retirer le path du dossier .womm
+            new_entries = [entry for entry in backup_user_path.split(";") if entry != self.womm_path]
+            new_user_path = ";".join(new_entries)
 
-def remove_womm_directory(target_path: Path) -> bool:
-    """Remove the WOMM directory."""
-    try:
-        print(f"🗑️  Removing WOMM directory: {target_path}")
+            # Step 4: Écrire le nouveau PATH utilisateur
+            result = run_silent([
+                "reg", "add", "HKCU\\Environment", "/v", "PATH",
+                "/t", "REG_SZ", "/d", new_user_path, "/f"
+            ])
 
-        if target_path.exists():
-            shutil.rmtree(target_path)
-            print("   ✓ WOMM directory removed")
-            return True
-        else:
-            print("   ℹ️  WOMM directory not found")
-            return True
+            if not result.success:
+                action["errors"].append("Failed to update user PATH in registry")
+                return action
 
-    except Exception as e:
-        print(f"   ❌ Error removing WOMM directory: {e}")
-        return False
+            # Step 5: Vérifier que la suppression a réussi avec reg query
+            verify_result = run_silent(["reg", "query", "HKCU\\Environment", "/v", "PATH"])
+            if not verify_result.success:
+                # Si erreur, rétablir le PATH avec la variable de secours
+                run_silent([
+                    "reg", "add", "HKCU\\Environment", "/v", "PATH",
+                    "/t", "REG_SZ", "/d", backup_user_path, "/f"
+                ])
+                action["errors"].append("Failed to verify PATH update - restored backup")
+                return action
+
+            # Step 6: Vérifier que le chemin WOMM n'est plus dans le registre
+            verify_output = verify_result.stdout
+            if isinstance(verify_output, bytes):
+                verify_output = verify_output.decode("utf-8", errors="ignore")
+
+            if self.womm_path in verify_output:
+                # Si le chemin est encore dans le registre, restaurer
+                run_silent([
+                    "reg", "add", "HKCU\\Environment", "/v", "PATH",
+                    "/t", "REG_SZ", "/d", backup_user_path, "/f"
+                ])
+                action["errors"].append("WOMM path still found in registry after removal")
+                return action
+
+            # Step 7: Mettre à jour la session courante
+            current_full_path = os.environ.get("PATH", "")
+            # Retirer de la session courante aussi
+            current_entries = current_full_path.split(";")
+            new_current_entries = [entry for entry in current_entries if entry != self.womm_path]
+            os.environ["PATH"] = ";".join(new_current_entries)
+
+            action["status"] = "success"
+            action["message"] = f"Removed {self.womm_path} from user PATH - verified with registry"
+            return action
+
+        except Exception as e:
+            # En cas d'exception, rétablir le PATH avec la variable de secours
+            if 'backup_user_path' in locals() and backup_user_path:
+                try:
+                    run_silent([
+                        "reg", "add", "HKCU\\Environment", "/v", "PATH",
+                        "/t", "REG_SZ", "/d", backup_user_path, "/f"
+                    ])
+                except Exception:
+                    pass  # Ignore les erreurs de restauration
+            action["errors"].append(f"Windows user PATH removal error: {e}")
+            return action
+
+    def _remove_from_unix_path(self) -> Dict:
+        """Remove WOMM bin directory from Unix PATH."""
+        action = {
+            "action": "remove_path",
+            "status": "failed",
+            "message": "",
+            "errors": [],
+        }
+
+        try:
+            bin_path_str = str(self.bin_path)
+            shell_files = [
+                Path.home() / ".bashrc",
+                Path.home() / ".zshrc",
+                Path.home() / ".profile",
+                Path.home() / ".bash_profile",
+            ]
+
+            removed_from = []
+
+            for shell_file in shell_files:
+                if shell_file.exists():
+                    content = shell_file.read_text()
+                    path_line = f'export PATH="$PATH:{bin_path_str}"'
+
+                    if path_line in content:
+                        new_content = content.replace(path_line, "")
+                        shell_file.write_text(new_content)
+                        removed_from.append(shell_file.name)
+
+            if removed_from:
+                action["status"] = "success"
+                action["message"] = f"Removed PATH entry from {', '.join(removed_from)}"
+            else:
+                action["status"] = "warning"
+                action["message"] = f"{bin_path_str} not found in shell config files"
+
+            return action
+
+        except Exception as e:
+            action["errors"].append(f"Error updating Unix PATH: {e}")
+            return action
+
+    def _remove_womm_directory(self) -> Dict:
+        """Remove the WOMM directory."""
+        action = {
+            "action": "remove_directory",
+            "status": "failed",
+            "message": "",
+            "errors": [],
+        }
+
+        try:
+            if self.target_path.exists():
+                shutil.rmtree(self.target_path)
+                action["status"] = "success"
+                action["message"] = f"WOMM directory removed: {self.target_path}"
+            else:
+                action["status"] = "warning"
+                action["message"] = "WOMM directory not found"
+
+            return action
+
+        except Exception as e:
+            action["errors"].append(f"Error removing WOMM directory: {e}")
+            return action
 
 
 def main():
-    """Run the uninstallation process."""
+    """Legacy main function - kept for backward compatibility."""
     parser = argparse.ArgumentParser(description="Uninstall Works On My Machine")
     parser.add_argument(
         "--force",
@@ -216,68 +303,18 @@ def main():
 
     args = parser.parse_args()
 
-    print("🗑️  WOMM Uninstaller")
-    print("=" * 50)
+    # Use UninstallationManager for actual uninstallation
+    manager = UninstallationManager(target=args.target)
+    result = manager.uninstall(force=args.force)
 
-    # Determine target path
-    if args.target:
-        target_path = Path(args.target).expanduser().resolve()
+    # Simple console output for legacy compatibility
+    if result["success"]:
+        print("Uninstallation completed successfully")
     else:
-        target_path = get_target_womm_path()
-
-    print(f"🎯 Target: {target_path}")
-
-    # Check if WOMM is installed
-    if not target_path.exists():
-        print("❌ Works On My Machine is not installed at the specified location")
-        return 1
-
-    # Confirmation
-    if not args.force:
-        print("\n⚠️  This will completely remove Works On My Machine from:")
-        print(f"   - Directory: {target_path}")
-        print("   - System PATH")
-        print("   - Windows context menu (if applicable)")
-
-        response = input("\n🤔 Are you sure you want to continue? (y/N): ").lower()
-        if response not in ["y", "yes", "o", "oui"]:
-            print("⏭️  Uninstallation cancelled")
-            return 0
-
-    # Start uninstallation
-    print("\n🚀 Starting uninstallation...")
-
-    success = True
-
-    # 1. Remove from PATH
-    bin_path = target_path / "bin"
-    if platform.system() == "Windows":
-        if not remove_from_windows_path(bin_path):
-            success = False
-    else:
-        if not remove_from_unix_path(bin_path):
-            success = False
-
-    # 2. Remove context menu entries
-    if not remove_context_menu():
-        success = False
-
-    # 3. Remove WOMM directory
-    if not remove_womm_directory(target_path):
-        success = False
-
-    # Final status
-    if success:
-        print("\n✅ Uninstallation completed successfully!")
-        print(
-            "💡 You may need to restart your terminal for PATH changes to take effect"
-        )
-    else:
-        print("\n❌ Uninstallation completed with errors")
-        print("💡 Some components may need manual removal")
-        return 1
-
-    return 0
+        print("Uninstallation failed")
+        for error in result["errors"]:
+            print(f"Error: {error}")
+        sys.exit(1)
 
 
 if __name__ == "__main__":

@@ -12,15 +12,48 @@ import shutil
 from pathlib import Path
 from typing import Dict, Optional
 
-# Import CLI manager
+# Import CLI manager with proper error handling
 try:
     from .cli_manager import check_tool_available, run_silent
 except ImportError:
     # Fallback for direct execution
+    import subprocess
     import sys
+    from pathlib import Path
 
+    # Add parent directory to path for imports
     sys.path.insert(0, str(Path(__file__).parent.parent))
-    from shared.core.cli_manager import check_tool_available, run_silent
+
+    try:
+        from shared.core.cli_manager import check_tool_available, run_silent
+    except ImportError:
+        # Ultimate fallback - define basic functions
+        def check_tool_available(tool_name: str) -> bool:
+            """Basic tool availability check."""
+            return shutil.which(tool_name) is not None
+
+        def run_silent(command):
+            """Basic command execution."""
+            try:
+                result = subprocess.run( #noqa: S603
+                    command,
+                    capture_output=True,
+                    text=True,
+                    timeout=30
+                )
+                return type('Result', (), {
+                    'success': result.returncode == 0,
+                    'stdout': result.stdout,
+                    'stderr': result.stderr,
+                    'returncode': result.returncode
+                })()
+            except Exception as e:
+                return type('Result', (), {
+                    'success': False,
+                    'stdout': '',
+                    'stderr': str(e),
+                    'returncode': -1
+                })()
 
 
 class SystemDetector:
@@ -76,6 +109,7 @@ class SystemDetector:
         # Chocolatey
         if check_tool_available("choco"):
             try:
+                from shared.core.cli_manager import run_silent
                 result = run_silent(["choco", "--version"])
                 managers["chocolatey"] = {
                     "available": True,
@@ -91,6 +125,7 @@ class SystemDetector:
         # Winget
         if check_tool_available("winget"):
             try:
+                from shared.core.cli_manager import run_silent
                 result = run_silent(["winget", "--version"])
                 managers["winget"] = {
                     "available": True,
@@ -106,6 +141,7 @@ class SystemDetector:
         # Scoop
         if check_tool_available("scoop"):
             try:
+                from shared.core.cli_manager import run_silent
                 result = run_silent(["scoop", "--version"])
                 managers["scoop"] = {
                     "available": True,
@@ -374,55 +410,46 @@ class SystemDetector:
 
         return recommendations
 
-    def print_summary(self):
-        """Displays a system summary."""
-        print("SYSTEM  System Information")
-        print("=" * 40)
-        print(
-            f"OS: {self.system_info['platform']} {self.system_info['platform_release']}"
-        )
-        print(f"Architecture: {self.system_info['architecture']}")
-        print(f"Python: {self.system_info['python_version']}")
-        print(f"Shell: {self.system_info['shell']}")
-
-        print(f"\nPACKAGES  Package Managers ({len(self.package_managers)} available)")
-        print("-" * 50)
-        for name, info in self.package_managers.items():
-            if info["available"]:
-                print(f"OK {name}: {info['version']} - {info['description']}")
-
-        print(
-            f"\nTOOLS  Development Environments ({len(self.dev_environments)} detected)"
-        )
-        print("-" * 60)
-        for _, info in self.dev_environments.items():
-            if info["available"]:
-                print(f"OK {info['name']}: {info.get('version', 'unknown')}")
-
-        print("\nRECOMMENDATIONS  Recommendations")
-        print("-" * 20)
-        for category, recommendation in self.get_recommendations().items():
-            print(f"- {category}: {recommendation}")
+    def get_system_data(self) -> Dict:
+        """Returns complete system data without any display logic."""
+        return {
+            "system_info": self.system_info,
+            "package_managers": self.package_managers,
+            "dev_environments": self.dev_environments,
+            "recommendations": self.get_recommendations()
+        }
 
 
 def main():
     """Main entry point."""
     import argparse
+    import json
 
     parser = argparse.ArgumentParser(description="System detector for dev-tools")
     parser.add_argument("--export", help="Export report to JSON file")
     parser.add_argument("--summary", action="store_true", help="Display summary")
+    parser.add_argument("--json", action="store_true", help="Output as JSON")
 
     args = parser.parse_args()
 
     detector = SystemDetector()
 
-    if args.export:
-        output_path = detector.export_report(Path(args.export))
-        print(f"REPORT  Report exported to: {output_path}")
-
-    if args.summary or not args.export:
-        detector.print_summary()
+    if args.json:
+        # Return structured data as JSON - ONLY this print, nothing else
+        data = detector.get_system_data()
+        print(json.dumps(data, indent=2))
+    elif args.export:
+        try:
+            from shared.ui import print_success
+            output_path = detector.export_report(Path(args.export))
+            print_success(f"Report exported to: {output_path}")
+        except ImportError:
+            output_path = detector.export_report(Path(args.export))
+            print(f"REPORT  Report exported to: {output_path}")
+    elif args.summary:
+        # For backward compatibility, but this should be handled by the calling command
+        data = detector.get_system_data()
+        print(json.dumps(data, indent=2))
 
 
 if __name__ == "__main__":

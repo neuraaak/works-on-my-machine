@@ -77,6 +77,8 @@ class SecurityValidator:
         "jest",
         "husky",
         "lint-staged",
+        # Development tools
+        "code",
         # Windows system commands for installation
         "reg",
         "setx",

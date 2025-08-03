@@ -6,8 +6,8 @@ Contains utility modules for CLI operations.
 
 # Import utility modules
 from . import (
-    security,
     path_manager,
+    security,
 )
 
 __all__ = [

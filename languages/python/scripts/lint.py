@@ -18,10 +18,21 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
 try:
-    from shared.core.cli_manager import run_command_legacy as run_command
+    from shared.core.cli_manager import run_command
 except ImportError:
     # Fallback if import fails
-    run_command = None
+    import subprocess
+    def run_command(cmd, description=None, cwd=None):
+        print(f"🔧 {description or ' '.join(cmd)}")
+        try:
+            result = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=30)
+            print(result.stdout)
+            if result.stderr:
+                print(result.stderr)
+            return result.returncode == 0
+        except Exception as e:
+            print(f"❌ Error: {e}")
+            return False
 
 
 def is_security_excluded(path: Path) -> bool:
@@ -105,6 +116,7 @@ def detect_project_dirs(base_path: Path | None = None) -> list[str]:
 
 def main(target_path=None):
     """Fonction principale du script de linting."""
+    print("🚀 Script de linting démarré!")
     target_dir = Path(target_path) if target_path else Path.cwd()
 
     print("🎨 Python Project - Linting Script")
@@ -141,6 +153,7 @@ def main(target_path=None):
     success = True
 
     # 1. Check style with ruff
+    print("🔍 Checking style with ruff...")
     ruff_success = run_command(
         ["ruff", "check"] + target_dirs,
         "Style check (ruff)",
@@ -149,6 +162,7 @@ def main(target_path=None):
     success = success and ruff_success
 
     # 2. Check formatting with black
+    print("🔍 Checking formatting with black...")
     black_success = run_command(
         ["black", "--check", "--diff"] + target_dirs,
         "Format check (black)",
@@ -157,6 +171,7 @@ def main(target_path=None):
     success = success and black_success
 
     # 3. Check import organization with isort
+    print("🔍 Checking imports with isort...")
     isort_success = run_command(
         ["isort", "--check-only", "--diff"] + target_dirs,
         "Import check (isort)",

@@ -6,17 +6,22 @@ Contains all command modules for the CLI interface.
 
 # Import all command modules
 from . import (
-    install,
-    new,
+    context,
+    deploy,
     lint,
+    new,
     spell,
     system,
-    deploy,
-    context,
 )
+
+# Import individual commands for direct access
+from .install import backup_path, install, restore_path, uninstall
 
 __all__ = [
     "install",
+    "uninstall",
+    "backup_path",
+    "restore_path",
     "new",
     "lint",
     "spell",
