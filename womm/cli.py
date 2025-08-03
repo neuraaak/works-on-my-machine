@@ -13,7 +13,6 @@ import click
 from .commands import (
     backup_path,
     context,
-    deploy,
     install,
     lint,
     new,
@@ -76,7 +75,6 @@ womm.add_command(new.new_group)
 womm.add_command(lint.lint_group)
 womm.add_command(spell.spell_group)
 womm.add_command(system.system_group)
-womm.add_command(deploy.deploy_group)
 womm.add_command(context.context_group)
 
 

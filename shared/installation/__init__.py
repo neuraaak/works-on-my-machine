@@ -1,7 +1,7 @@
 """
 Installation modules for Works On My Machine.
 
-This package contains all installation and deployment related functionality.
+This package contains all installation related functionality.
 """
 
 from .installer import InstallationManager
