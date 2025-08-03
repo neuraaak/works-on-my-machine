@@ -9,7 +9,6 @@ import os
 import platform
 import shutil
 import sys
-import winreg
 from pathlib import Path
 from typing import Dict, Optional
 
@@ -158,28 +157,56 @@ class UninstallationManager:
                 return action
 
             # Step 3: Retirer le path du dossier .womm
-            new_entries = [entry for entry in backup_user_path.split(";") if entry != self.womm_path]
+            new_entries = [
+                entry
+                for entry in backup_user_path.split(";")
+                if entry != self.womm_path
+            ]
             new_user_path = ";".join(new_entries)
 
             # Step 4: Écrire le nouveau PATH utilisateur
-            result = run_silent([
-                "reg", "add", "HKCU\\Environment", "/v", "PATH",
-                "/t", "REG_SZ", "/d", new_user_path, "/f"
-            ])
+            result = run_silent(
+                [
+                    "reg",
+                    "add",
+                    "HKCU\\Environment",
+                    "/v",
+                    "PATH",
+                    "/t",
+                    "REG_SZ",
+                    "/d",
+                    new_user_path,
+                    "/f",
+                ]
+            )
 
             if not result.success:
                 action["errors"].append("Failed to update user PATH in registry")
                 return action
 
             # Step 5: Vérifier que la suppression a réussi avec reg query
-            verify_result = run_silent(["reg", "query", "HKCU\\Environment", "/v", "PATH"])
+            verify_result = run_silent(
+                ["reg", "query", "HKCU\\Environment", "/v", "PATH"]
+            )
             if not verify_result.success:
                 # Si erreur, rétablir le PATH avec la variable de secours
-                run_silent([
-                    "reg", "add", "HKCU\\Environment", "/v", "PATH",
-                    "/t", "REG_SZ", "/d", backup_user_path, "/f"
-                ])
-                action["errors"].append("Failed to verify PATH update - restored backup")
+                run_silent(
+                    [
+                        "reg",
+                        "add",
+                        "HKCU\\Environment",
+                        "/v",
+                        "PATH",
+                        "/t",
+                        "REG_SZ",
+                        "/d",
+                        backup_user_path,
+                        "/f",
+                    ]
+                )
+                action["errors"].append(
+                    "Failed to verify PATH update - restored backup"
+                )
                 return action
 
             # Step 6: Vérifier que le chemin WOMM n'est plus dans le registre
@@ -189,32 +216,58 @@ class UninstallationManager:
 
             if self.womm_path in verify_output:
                 # Si le chemin est encore dans le registre, restaurer
-                run_silent([
-                    "reg", "add", "HKCU\\Environment", "/v", "PATH",
-                    "/t", "REG_SZ", "/d", backup_user_path, "/f"
-                ])
-                action["errors"].append("WOMM path still found in registry after removal")
+                run_silent(
+                    [
+                        "reg",
+                        "add",
+                        "HKCU\\Environment",
+                        "/v",
+                        "PATH",
+                        "/t",
+                        "REG_SZ",
+                        "/d",
+                        backup_user_path,
+                        "/f",
+                    ]
+                )
+                action["errors"].append(
+                    "WOMM path still found in registry after removal"
+                )
                 return action
 
             # Step 7: Mettre à jour la session courante
             current_full_path = os.environ.get("PATH", "")
             # Retirer de la session courante aussi
             current_entries = current_full_path.split(";")
-            new_current_entries = [entry for entry in current_entries if entry != self.womm_path]
+            new_current_entries = [
+                entry for entry in current_entries if entry != self.womm_path
+            ]
             os.environ["PATH"] = ";".join(new_current_entries)
 
             action["status"] = "success"
-            action["message"] = f"Removed {self.womm_path} from user PATH - verified with registry"
+            action["message"] = (
+                f"Removed {self.womm_path} from user PATH - verified with registry"
+            )
             return action
 
         except Exception as e:
             # En cas d'exception, rétablir le PATH avec la variable de secours
-            if 'backup_user_path' in locals() and backup_user_path:
+            if "backup_user_path" in locals() and backup_user_path:
                 try:
-                    run_silent([
-                        "reg", "add", "HKCU\\Environment", "/v", "PATH",
-                        "/t", "REG_SZ", "/d", backup_user_path, "/f"
-                    ])
+                    run_silent(
+                        [
+                            "reg",
+                            "add",
+                            "HKCU\\Environment",
+                            "/v",
+                            "PATH",
+                            "/t",
+                            "REG_SZ",
+                            "/d",
+                            backup_user_path,
+                            "/f",
+                        ]
+                    )
                 except Exception:
                     pass  # Ignore les erreurs de restauration
             action["errors"].append(f"Windows user PATH removal error: {e}")

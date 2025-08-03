@@ -22,10 +22,13 @@ try:
 except ImportError:
     # Fallback if import fails
     import subprocess
+
     def run_command(cmd, description=None, cwd=None):
         print(f"🔧 {description or ' '.join(cmd)}")
         try:
-            result = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=30)
+            result = subprocess.run(
+                cmd, cwd=cwd, capture_output=True, text=True, timeout=30
+            )
             print(result.stdout)
             if result.stderr:
                 print(result.stderr)

@@ -178,7 +178,7 @@ class PrerequisiteManager:
             results[tool] = {
                 "available": is_available,
                 "version": version,
-                "status": "installed" if is_available else "missing"
+                "status": "installed" if is_available else "missing",
             }
 
         return results
@@ -228,8 +228,7 @@ class PrerequisiteManager:
             """
 
             run_command(
-                ["powershell", "-Command", install_script],
-                "Installation Chocolatey"
+                ["powershell", "-Command", install_script], "Installation Chocolatey"
             )
 
             # Reload available package managers
@@ -273,7 +272,9 @@ class PrerequisiteManager:
             self.logger.error(f"Error installing Homebrew: {e}")
             return False
 
-    def install_tool(self, tool_name: str, custom_path: Optional[str] = None) -> Tuple[bool, str]:
+    def install_tool(
+        self, tool_name: str, custom_path: Optional[str] = None
+    ) -> Tuple[bool, str]:
         """
         Install a specific tool.
 
@@ -295,7 +296,10 @@ class PrerequisiteManager:
 
         # Execute installation
         try:
-            result = run_silent(install_method["command"], install_method.get("description", f"Installing {tool_name}"))
+            result = run_silent(
+                install_method["command"],
+                install_method.get("description", f"Installing {tool_name}"),
+            )
 
             if result.success:
                 self.logger.info(f"Successfully installed {tool_name}")
@@ -323,59 +327,91 @@ class PrerequisiteManager:
             "chocolatey": {
                 "python": {
                     "command": ["choco", "install", "python", "-y"],
-                    "description": "Installing Python via Chocolatey"
+                    "description": "Installing Python via Chocolatey",
                 },
                 "node": {
                     "command": ["choco", "install", "nodejs", "-y"],
-                    "description": "Installing Node.js via Chocolatey"
+                    "description": "Installing Node.js via Chocolatey",
                 },
                 "git": {
                     "command": ["choco", "install", "git", "-y"],
-                    "description": "Installing Git via Chocolatey"
-                }
+                    "description": "Installing Git via Chocolatey",
+                },
             },
             "winget": {
                 "python": {
                     "command": ["winget", "install", "Python.Python.3.12"],
-                    "description": "Installing Python via winget"
+                    "description": "Installing Python via winget",
                 },
                 "node": {
                     "command": ["winget", "install", "OpenJS.NodeJS"],
-                    "description": "Installing Node.js via winget"
+                    "description": "Installing Node.js via winget",
                 },
                 "git": {
                     "command": ["winget", "install", "Git.Git"],
-                    "description": "Installing Git via winget"
-                }
+                    "description": "Installing Git via winget",
+                },
             },
             "homebrew": {
                 "python": {
                     "command": ["brew", "install", "python@3.12"],
-                    "description": "Installing Python via Homebrew"
+                    "description": "Installing Python via Homebrew",
                 },
                 "node": {
                     "command": ["brew", "install", "node"],
-                    "description": "Installing Node.js via Homebrew"
+                    "description": "Installing Node.js via Homebrew",
                 },
                 "git": {
                     "command": ["brew", "install", "git"],
-                    "description": "Installing Git via Homebrew"
-                }
+                    "description": "Installing Git via Homebrew",
+                },
             },
             "apt": {
                 "python": {
-                    "command": ["sudo", "apt", "update", "&&", "sudo", "apt", "install", "-y", "python3", "python3-pip"],
-                    "description": "Installing Python via apt"
+                    "command": [
+                        "sudo",
+                        "apt",
+                        "update",
+                        "&&",
+                        "sudo",
+                        "apt",
+                        "install",
+                        "-y",
+                        "python3",
+                        "python3-pip",
+                    ],
+                    "description": "Installing Python via apt",
                 },
                 "node": {
-                    "command": ["sudo", "apt", "update", "&&", "sudo", "apt", "install", "-y", "nodejs", "npm"],
-                    "description": "Installing Node.js via apt"
+                    "command": [
+                        "sudo",
+                        "apt",
+                        "update",
+                        "&&",
+                        "sudo",
+                        "apt",
+                        "install",
+                        "-y",
+                        "nodejs",
+                        "npm",
+                    ],
+                    "description": "Installing Node.js via apt",
                 },
                 "git": {
-                    "command": ["sudo", "apt", "update", "&&", "sudo", "apt", "install", "-y", "git"],
-                    "description": "Installing Git via apt"
-                }
-            }
+                    "command": [
+                        "sudo",
+                        "apt",
+                        "update",
+                        "&&",
+                        "sudo",
+                        "apt",
+                        "install",
+                        "-y",
+                        "git",
+                    ],
+                    "description": "Installing Git via apt",
+                },
+            },
         }
 
         if manager in install_methods and tool_name in install_methods[manager]:
@@ -383,7 +419,9 @@ class PrerequisiteManager:
 
         return None
 
-    def _install_manually(self, tool_name: str, custom_path: Optional[str] = None) -> Tuple[bool, str]:
+    def _install_manually(
+        self, tool_name: str, custom_path: Optional[str] = None
+    ) -> Tuple[bool, str]:
         """Manual installation via direct download."""
         self.logger.info(f"Manual installation of {tool_name}...")
 
@@ -396,10 +434,14 @@ class PrerequisiteManager:
 
         return False, f"No manual installation method available for {tool_name}"
 
-    def _install_python_manually(self, custom_path: Optional[str] = None) -> Tuple[bool, str]:
+    def _install_python_manually(
+        self, custom_path: Optional[str] = None
+    ) -> Tuple[bool, str]:
         """Manual installation of Python."""
         if self.system == "Windows":
-            python_url = "https://www.python.org/ftp/python/3.12.0/python-3.12.0-amd64.exe"
+            python_url = (
+                "https://www.python.org/ftp/python/3.12.0/python-3.12.0-amd64.exe"
+            )
             installer_path = Path(tempfile.gettempdir()) / "python_installer.exe"
 
             try:
@@ -431,7 +473,9 @@ class PrerequisiteManager:
 
         return False, "Manual Python installation not supported on this platform"
 
-    def _install_node_manually(self, _custom_path: Optional[str] = None) -> Tuple[bool, str]:
+    def _install_node_manually(
+        self, _custom_path: Optional[str] = None
+    ) -> Tuple[bool, str]:
         """Manual installation of Node.js."""
         if self.system == "Windows":
             node_url = "https://nodejs.org/dist/v20.9.0/node-v20.9.0-x64.msi"
@@ -457,7 +501,9 @@ class PrerequisiteManager:
 
         return False, "Manual Node.js installation not supported on this platform"
 
-    def _install_git_manually(self, _custom_path: Optional[str] = None) -> Tuple[bool, str]:
+    def _install_git_manually(
+        self, _custom_path: Optional[str] = None
+    ) -> Tuple[bool, str]:
         """Manual installation of Git."""
         if self.system == "Windows":
             git_url = "https://github.com/git-for-windows/git/releases/download/v2.42.0.windows.2/Git-2.42.0.2-64-bit.exe"
@@ -483,7 +529,12 @@ class PrerequisiteManager:
 
         return False, "Manual Git installation not supported on this platform"
 
-    def install_prerequisites(self, tools: List[str], interactive: bool = False, custom_path: Optional[str] = None) -> Dict[str, Dict]:
+    def install_prerequisites(
+        self,
+        tools: List[str],
+        interactive: bool = False,
+        custom_path: Optional[str] = None,
+    ) -> Dict[str, Dict]:
         """
         Install multiple prerequisites.
 
@@ -502,7 +553,7 @@ class PrerequisiteManager:
             results[tool] = {
                 "success": success,
                 "message": message,
-                "status": "installed" if success else "failed"
+                "status": "installed" if success else "failed",
             }
 
         return results
@@ -521,7 +572,9 @@ class PrerequisiteManager:
         check_results = self.check_prerequisites(tools)
 
         # Identify missing tools
-        missing_tools = [tool for tool, info in check_results.items() if not info["available"]]
+        missing_tools = [
+            tool for tool, info in check_results.items() if not info["available"]
+        ]
 
         # Install missing tools
         if missing_tools:
@@ -536,7 +589,7 @@ class PrerequisiteManager:
                         "available": is_available,
                         "version": version,
                         "status": "installed" if is_available else "failed",
-                        "installed": True
+                        "installed": True,
                     }
                 else:
                     check_results[tool]["installed"] = False
@@ -574,7 +627,11 @@ class PrerequisiteManager:
             # Check if npm path is already in PATH
             if str(npm_bin_path) not in current_path:
                 # Add npm path to PATH
-                new_path = f"{npm_bin_path};{current_path}" if current_path else str(npm_bin_path)
+                new_path = (
+                    f"{npm_bin_path};{current_path}"
+                    if current_path
+                    else str(npm_bin_path)
+                )
 
                 try:
                     result = run_command(
@@ -622,7 +679,9 @@ def check_prerequisites(tools: List[str]) -> Dict[str, Dict]:
     return prerequisite_manager.check_prerequisites(tools)
 
 
-def install_prerequisites(tools: List[str], interactive: bool = False, custom_path: Optional[str] = None) -> Dict[str, Dict]:
+def install_prerequisites(
+    tools: List[str], interactive: bool = False, custom_path: Optional[str] = None
+) -> Dict[str, Dict]:
     """Install prerequisites using global instance."""
     return prerequisite_manager.install_prerequisites(tools, interactive, custom_path)
 

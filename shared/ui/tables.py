@@ -127,10 +127,7 @@ def create_backup_table(backups: List[Dict[str, Any]]) -> Table:
             description = description[:47] + "..."
 
         table.add_row(
-            backup.get("name", ""),
-            size_str,
-            backup.get("modified", ""),
-            description
+            backup.get("name", ""), size_str, backup.get("modified", ""), description
         )
 
     return table

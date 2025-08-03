@@ -12,13 +12,13 @@ class TestPythonProjectCreation:
         project_path = temp_dir / project_name
 
         # Mock the setup script to create actual structure
-        with patch('shared.secure_cli_manager.run_secure_command') as mock_run:
+        with patch("shared.secure_cli_manager.run_secure_command") as mock_run:
             mock_run.return_value = Mock(
                 success=True,
                 security_validated=True,
                 returncode=0,
                 stdout="Project created successfully",
-                stderr=""
+                stderr="",
             )
 
             # Create project structure manually for testing
@@ -32,8 +32,12 @@ class TestPythonProjectCreation:
             (project_path / "src" / "__init__.py").touch()
             (project_path / "src" / "main.py").write_text("print('Hello, World!')")
             (project_path / "tests" / "__init__.py").touch()
-            (project_path / "tests" / "test_main.py").write_text("def test_hello(): pass")
-            (project_path / "pyproject.toml").write_text("[project]\nname = 'test-project'")
+            (project_path / "tests" / "test_main.py").write_text(
+                "def test_hello(): pass"
+            )
+            (project_path / "pyproject.toml").write_text(
+                "[project]\nname = 'test-project'"
+            )
             (project_path / ".gitignore").write_text("__pycache__/\n*.pyc")
             (project_path / "Makefile").write_text("test:\n\techo 'Running tests'")
 
@@ -228,13 +232,13 @@ clean:
         project_path = temp_dir / project_name
 
         # Mock CLI execution
-        with patch('shared.secure_cli_manager.run_secure_command') as mock_run:
+        with patch("shared.secure_cli_manager.run_secure_command") as mock_run:
             mock_run.return_value = Mock(
                 success=True,
                 security_validated=True,
                 returncode=0,
                 stdout="Project created successfully",
-                stderr=""
+                stderr="",
             )
 
             # Create complete project structure
@@ -244,28 +248,33 @@ clean:
             src_dir = project_path / "src"
             src_dir.mkdir()
             (src_dir / "__init__.py").touch()
-            (src_dir / "main.py").write_text("""
+            (src_dir / "main.py").write_text(
+                """
 def hello_world():
     return "Hello, World!"
 
 if __name__ == "__main__":
     print(hello_world())
-""")
+"""
+            )
 
             # Tests
             tests_dir = project_path / "tests"
             tests_dir.mkdir()
             (tests_dir / "__init__.py").touch()
-            (tests_dir / "test_main.py").write_text("""
+            (tests_dir / "test_main.py").write_text(
+                """
 import pytest
 from src.main import hello_world
 
 def test_hello_world():
     assert hello_world() == "Hello, World!"
-""")
+"""
+            )
 
             # Configuration files
-            (project_path / "pyproject.toml").write_text("""
+            (project_path / "pyproject.toml").write_text(
+                """
 [project]
 name = "test-python-project"
 version = "0.1.0"
@@ -279,7 +288,8 @@ dev = [
     "flake8>=6.0.0",
     "pytest>=7.0.0",
 ]
-""")
+"""
+            )
 
             # Verify complete structure
             assert project_path.exists()
@@ -292,9 +302,9 @@ dev = [
             # Verify source code content
             main_content = (src_dir / "main.py").read_text()
             assert "def hello_world():" in main_content
-            assert "return \"Hello, World!\"" in main_content
+            assert 'return "Hello, World!"' in main_content
 
             # Verify test content
             test_content = (tests_dir / "test_main.py").read_text()
             assert "def test_hello_world():" in test_content
-            assert "hello_world() == \"Hello, World!\"" in test_content
+            assert 'hello_world() == "Hello, World!"' in test_content

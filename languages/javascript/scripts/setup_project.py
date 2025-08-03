@@ -96,9 +96,9 @@ class JavaScriptProjectSetup:
 
     def setup_all(self):
         """Configure the complete development environment."""
-        print(f"🟨 Setting up JavaScript environment for '{self.project_name}'")
-        print(f"📁 Directory: {self.project_path}")
-        print(f"🎯 Type: {self.PROJECT_TYPES[self.project_type]['description']}")
+        print(f"[JS] Setting up JavaScript environment for '{self.project_name}'")
+        print(f"[DIR] Directory: {self.project_path}")
+        print(f"[TYPE] Type: {self.PROJECT_TYPES[self.project_type]['description']}")
 
         self.create_directory_structure()
         self.copy_configs()
@@ -110,12 +110,12 @@ class JavaScriptProjectSetup:
         self.setup_development_environment()
         self.install_dependencies()
 
-        print("\n✅ JavaScript configuration completed!")
+        print("\n[SUCCESS] JavaScript configuration completed!")
         self.print_next_steps()
 
     def create_directory_structure(self):
         """Create the basic directory structure."""
-        print("\n📂 Creating directory structure...")
+        print("\n[DIRS] Creating directory structure...")
 
         directories = [
             self.project_path / "src",
@@ -136,11 +136,11 @@ class JavaScriptProjectSetup:
 
         for directory in directories:
             directory.mkdir(parents=True, exist_ok=True)
-            print(f"   ✓ {directory}")
+            print(f"   [OK] {directory}")
 
     def copy_configs(self):
         """Copy configuration files."""
-        print("\n⚙️ Copying JavaScript configurations...")
+        print("\n[CONFIG] Copying JavaScript configurations...")
 
         configs = [
             ("configs/.eslintrc.json", ".eslintrc.json"),
@@ -154,19 +154,19 @@ class JavaScriptProjectSetup:
 
             if source_path.exists():
                 shutil.copy2(source_path, dest_path)
-                print(f"   ✓ {dest}")
+                print(f"   [OK] {dest}")
             else:
-                print(f"   ⚠️  Missing file: {source}")
+                print(f"   [WARN] Missing file: {source}")
 
     def setup_git(self):
         """Initialize Git and configure .gitignore."""
-        print("\n🔧 Configuring Git...")
+        print("\n[GIT] Configuring Git...")
 
         if not (self.project_path / ".git").exists():
             try:
                 git_path = shutil.which("git")
                 if git_path is None:
-                    print("   ⚠️  Git not found")
+                    print("   [WARN] Git not found")
                     return
 
                 # Security validation
@@ -174,7 +174,7 @@ class JavaScriptProjectSetup:
                     validator = SecurityValidator()
                     is_valid, error_msg = validator.validate_command([git_path, "init"])
                     if not is_valid:
-                        print(f"   ⚠️  Security validation failed: {error_msg}")
+                        print(f"   [WARN] Security validation failed: {error_msg}")
                         return
 
                 subprocess.run(  # noqa: S603
@@ -183,13 +183,13 @@ class JavaScriptProjectSetup:
                     check=True,
                     capture_output=True,
                 )
-                print("   ✓ Git repository initialized")
+                print("   [OK] Git repository initialized")
             except (subprocess.CalledProcessError, FileNotFoundError):
-                print("   ⚠️  Git not found or initialization error")
+                print("   [WARN] Git not found or initialization error")
 
     def setup_cspell(self):
         """Configure CSpell for the project."""
-        print("📝 Configuring CSpell...")
+        print("[CSPELL] Configuring CSpell...")
 
         # Importer le gestionnaire CSpell
         devtools_path = Path.home() / ".womm"
@@ -202,15 +202,15 @@ class JavaScriptProjectSetup:
                 self.project_path, "javascript", self.project_name
             )
             if success:
-                print("   ✓ CSpell configuration created")
+                print("   [OK] CSpell configuration created")
             else:
-                print("   ⚠ Error during CSpell configuration")
+                print("   [WARN] Error during CSpell configuration")
         except ImportError:
-            print("   ⚠ cspell_manager module not found")
+            print("   [WARN] cspell_manager module not found")
 
     def setup_development_environment(self):
         """Configure the JavaScript development environment."""
-        print("🛠️ Setting up development environment...")
+        print("[ENV] Setting up development environment...")
 
         # Importer le gestionnaire d'environnement
         devtools_path = Path.home() / ".womm"
@@ -224,26 +224,26 @@ class JavaScriptProjectSetup:
             if manager.prompt_install_tools():
                 if manager.setup_javascript_environment():
                     manager.create_activation_scripts()
-                    print("   ✓ Development environment configured")
+                    print("   [OK] Development environment configured")
                     return True
                 else:
-                    print("   ⚠ Error configuring development environment")
+                    print("   [WARN] Error configuring development environment")
                     return False
             else:
-                print("   ⏭️ Development environment setup skipped")
+                print("   [SKIP] Development environment setup skipped")
                 return True
 
         except ImportError:
-            print("   ⚠ environment_manager module not found")
+            print("   [WARN] environment_manager module not found")
             return False
 
     def create_package_json(self):
         """Create the package.json file."""
-        print("\n📦 Creating package.json...")
+        print("\n[PACKAGE] Creating package.json...")
 
         template_path = self.js_tools_path / "templates" / "package.template.json"
         if not template_path.exists():
-            print("   ⚠️  package.json template missing")
+            print("   [WARN] package.json template missing")
             return
 
         # Read template
@@ -275,11 +275,11 @@ class JavaScriptProjectSetup:
         (self.project_path / "package.json").write_text(
             template_content, encoding="utf-8"
         )
-        print("   ✓ package.json")
+        print("   [OK] package.json")
 
     def create_project_files(self):
         """Create basic project files based on type."""
-        print("\n📄 Creating basic files...")
+        print("\n[FILES] Creating basic files...")
 
         # README.md
         readme_content = f"""# {self.project_name}
@@ -292,7 +292,7 @@ class JavaScriptProjectSetup:
 npm install
 ```
 
-## 🛠️ Development
+## [DEV] Development
 
 ```bash
 # Development server
@@ -310,7 +310,7 @@ npm run lint
 npm run format
 ```
 
-## 📋 Available Scripts
+## [SCRIPTS] Available Scripts
 
 - `npm run dev` - Development server
 - `npm run build` - Production build
@@ -319,12 +319,12 @@ npm run format
 - `npm run format` - Prettier formatting
 - `npm test` - Jest tests
 
-## 📖 Documentation
+## [DOCS] Documentation
 
 See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for the complete development guide.
 """
         (self.project_path / "README.md").write_text(readme_content, encoding="utf-8")
-        print("   ✓ README.md")
+        print("   [OK] README.md")
 
         # Create type-specific files
         self._create_type_specific_files()
@@ -437,7 +437,7 @@ createApp(App).mount('#app');
                 main_content, encoding="utf-8"
             )
 
-        print(f"   ✓ {self.project_type} files created")
+        print(f"   [OK] {self.project_type} files created")
 
     def _create_typescript_config(self):
         """Create TypeScript configuration."""
@@ -467,7 +467,7 @@ createApp(App).mount('#app');
         (self.project_path / "tsconfig.json").write_text(
             json.dumps(tsconfig, indent=2), encoding="utf-8"
         )
-        print("   ✓ tsconfig.json")
+        print("   [OK] tsconfig.json")
 
     def _create_test_files(self):
         """Create example test files."""
@@ -509,11 +509,11 @@ describe('App Component', () => {{
         (self.project_path / "tests" / f"{self.project_name}.test.js").write_text(
             test_content, encoding="utf-8"
         )
-        print("   ✓ Test files")
+        print("   [OK] Test files")
 
     def setup_vscode(self):
         """Configure VSCode."""
-        print("\n🔧 Configuring VSCode...")
+        print("\n[VSCODE] Configuring VSCode...")
 
         vscode_files = ["settings.json", "extensions.json"]
 
@@ -523,19 +523,19 @@ describe('App Component', () => {{
 
             if source.exists():
                 shutil.copy2(source, dest)
-                print(f"   ✓ .vscode/{file}")
+                print(f"   [OK] .vscode/{file}")
             else:
-                print(f"   ⚠️  Missing VSCode file: {file}")
+                print(f"   [WARN] Missing VSCode file: {file}")
 
     def install_dependencies(self):
         """Install NPM dependencies."""
-        print("\n📦 Installing dependencies...")
+        print("\n[INSTALL] Installing dependencies...")
 
         try:
             # Check npm
             npm_path = shutil.which("npm")
             if npm_path is None:
-                print("   ⚠️  npm not found. Install Node.js/npm")
+                print("   [WARN] npm not found. Install Node.js/npm")
                 return
 
             # Security validation
@@ -545,7 +545,7 @@ describe('App Component', () => {{
                     [npm_path, "--version"]
                 )
                 if not is_valid:
-                    print(f"   ⚠️  Security validation failed: {error_msg}")
+                    print(f"   [WARN] Security validation failed: {error_msg}")
                     return
 
             subprocess.run(  # noqa: S603
@@ -553,13 +553,13 @@ describe('App Component', () => {{
             )
 
             # Install dependencies
-            print("   🔄 Installing...")
+            print("   [PROGRESS] Installing...")
             # Security validation
             if SECURITY_AVAILABLE:
                 validator = SecurityValidator()
                 is_valid, error_msg = validator.validate_command([npm_path, "install"])
                 if not is_valid:
-                    print(f"   ⚠️  Security validation failed: {error_msg}")
+                    print(f"   [WARN] Security validation failed: {error_msg}")
                     return
 
             result = subprocess.run(  # noqa: S603
@@ -570,7 +570,7 @@ describe('App Component', () => {{
             )
 
             if result.returncode == 0:
-                print("   ✅ Dependencies installed")
+                print("   [OK] Dependencies installed")
 
                 # Install husky
                 npx_path = shutil.which("npx")
@@ -582,7 +582,7 @@ describe('App Component', () => {{
                             [npx_path, "husky", "install"]
                         )
                         if not is_valid:
-                            print(f"   ⚠️  Security validation failed: {error_msg}")
+                            print(f"   [WARN] Security validation failed: {error_msg}")
                             return
 
                     subprocess.run(  # noqa: S603
@@ -590,40 +590,40 @@ describe('App Component', () => {{
                         cwd=self.project_path,
                         capture_output=True,
                     )
-                    print("   ✅ Husky hooks configured")
+                    print("   [OK] Husky hooks configured")
                 else:
-                    print("   ⚠️  npx not found, skipping husky installation")
+                    print("   [WARN] npx not found, skipping husky installation")
             else:
-                print(f"   ⚠️  Installation error: {result.stderr}")
+                print(f"   [WARN] Installation error: {result.stderr}")
 
         except (subprocess.CalledProcessError, FileNotFoundError):
-            print("   ⚠️  npm not found. Install Node.js/npm")
+            print("   [WARN] npm not found. Install Node.js/npm")
 
     def print_next_steps(self):
         """Display next steps."""
         print(
             f"""
-🎉 JavaScript project '{self.project_name}' configured successfully!
+[SUCCESS] JavaScript project '{self.project_name}' configured successfully!
 
-📋 Next steps:
+[NEXT] Next steps:
 1. cd {self.project_path}
 2. npm install  # If not already done
 3. npm run dev  # Start development server
 4. git add .
 5. git commit -m "Initial commit with JS dev environment"
 
-🛠️ Useful commands:
+[TOOLS] Useful commands:
 - npm run dev              # Development server
 - npm run build            # Production build
 - npm run lint             # ESLint check
 - npm run format           # Prettier formatting
 - npm test                 # Jest tests
 
-📚 Documentation:
+[DOCS] Documentation:
 - docs/DEVELOPMENT.md      # Development guide
 - {self.js_tools_path}/JAVASCRIPT.md  # Complete JavaScript documentation
 
-🟨 Happy JavaScript coding!
+[END] Happy JavaScript coding!
 """
         )
 
@@ -657,36 +657,13 @@ def main():
         project_name = args.project_name
         project_path = Path.cwd() / project_name
     else:
-        project_name = input("JavaScript project name: ").strip()
-        if not project_name:
-            print("❌ Project name required")
-            return 1
-        project_path = Path.cwd() / project_name
+        # Ce cas ne devrait plus arriver car new.py gère le prompt
+        print("[ERROR] Nom de projet requis")
+        return 1
 
-    # Type selection if not specified
-    if not args.current_dir and not args.type:
-        print("\n🎯 What type of JavaScript project do you want to create?")
-        for i, (key, config) in enumerate(
-            JavaScriptProjectSetup.PROJECT_TYPES.items(), 1
-        ):
-            print(f"{i}. {key} - {config['description']}")
-
-        try:
-            choice = int(input("Choice (1-4): ")) - 1
-            project_type = list(JavaScriptProjectSetup.PROJECT_TYPES.keys())[choice]
-        except (ValueError, IndexError):
-            project_type = "node"
-    else:
-        project_type = args.type
-
-    # Confirm before continuing
-    if not args.current_dir:
-        response = input(
-            f"Create JavaScript project '{project_name}' ({project_type}) in {project_path}? (y/N): "
-        )
-        if response.lower() not in ("y", "yes", "o", "oui"):
-            print("Cancelled.")
-            return 0
+    # Plus de confirmation interactive pour éviter les timeouts
+    # La confirmation est gérée par new.py
+    project_type = args.type
 
     setup = JavaScriptProjectSetup(project_path, project_name, project_type)
     setup.setup_all()

@@ -22,7 +22,7 @@ class CommandResult:
         command: List[str] = None,
         cwd: Optional[Path] = None,
         security_validated: bool = False,
-        execution_time: float = 0.0
+        execution_time: float = 0.0,
     ):
         self.returncode = returncode
         self.stdout = stdout
@@ -75,7 +75,9 @@ class CLIManager:
     def _setup_logging(self) -> logging.Logger:
         """Setup logging for CLI operations."""
         logger = logging.getLogger("cli_manager")
-        logger.setLevel(logging.CRITICAL)  # Only show critical errors, suppress all others
+        logger.setLevel(
+            logging.CRITICAL
+        )  # Only show critical errors, suppress all others
 
         if not logger.handlers:
             handler = logging.StreamHandler()
@@ -118,6 +120,7 @@ class CLIManager:
         if validate_security:
             try:
                 from shared.security.security_validator import security_validator
+
                 is_valid, error = security_validator.validate_command(cmd)
                 if not is_valid:
                     self.logger.warning(f"Command validation failed: {error}")
@@ -131,7 +134,9 @@ class CLIManager:
                     )
                 security_validated = True
             except ImportError:
-                self.logger.warning("Security validator not available, skipping validation")
+                self.logger.warning(
+                    "Security validator not available, skipping validation"
+                )
 
         # Parameters
         run_cwd = Path(cwd) if cwd else self.default_cwd
@@ -157,13 +162,17 @@ class CLIManager:
 
             except subprocess.TimeoutExpired as e:
                 last_error = e
-                self.logger.warning(f"Timeout after {self.timeout}s (attempt {attempt + 1}/{self.max_retries})")
+                self.logger.warning(
+                    f"Timeout after {self.timeout}s (attempt {attempt + 1}/{self.max_retries})"
+                )
                 if attempt < self.max_retries - 1:
                     time.sleep(self.retry_delay)
 
             except Exception as e:
                 last_error = e
-                self.logger.error(f"Error during execution (attempt {attempt + 1}/{self.max_retries}): {e}")
+                self.logger.error(
+                    f"Error during execution (attempt {attempt + 1}/{self.max_retries}): {e}"
+                )
                 if attempt < self.max_retries - 1:
                     time.sleep(self.retry_delay)
 
@@ -234,19 +243,12 @@ class CLIManager:
         # The command has already been validated by the calling method
         return subprocess.run(cmd, **subprocess_args)  # noqa: S603
 
-    def run_silent(
-        self,
-        command: Union[str, List[str]],
-        **kwargs
-    ) -> CommandResult:
+    def run_silent(self, command: Union[str, List[str]], **kwargs) -> CommandResult:
         """Execute a command in silent mode."""
         return self.run(command, **kwargs)
 
     def run_secure(
-        self,
-        command: Union[str, List[str]],
-        description: str = "",
-        **kwargs
+        self, command: Union[str, List[str]], description: str = "", **kwargs
     ) -> CommandResult:
         """Execute a command with security validation."""
         return self.run(command, description, validate_security=True, **kwargs)
@@ -254,12 +256,14 @@ class CLIManager:
     def check_command_available(self, command: str) -> bool:
         """Check if a command is available and optionally validate security."""
         import shutil
+
         if not shutil.which(command):
             return False
 
         # Additional security check if needed
         try:
             from shared.security.security_validator import security_validator
+
             is_valid, _ = security_validator.validate_command([command])
             return is_valid
         except ImportError:
@@ -292,16 +296,14 @@ def run_command(
     command: Union[str, List[str]],
     description: Optional[str] = None,
     cwd: Optional[Union[str, Path]] = None,
-    **kwargs
+    **kwargs,
 ) -> CommandResult:
     """Simple function to run a command."""
     return cli.run(command, description, cwd, **kwargs)
 
 
 def run_silent(
-    command: Union[str, List[str]],
-    cwd: Optional[Union[str, Path]] = None,
-    **kwargs
+    command: Union[str, List[str]], cwd: Optional[Union[str, Path]] = None, **kwargs
 ) -> CommandResult:
     """Simple function to run a command silently."""
     return cli.run_silent(command, cwd=cwd, **kwargs)
@@ -311,16 +313,14 @@ def run_secure(
     command: Union[str, List[str]],
     description: str = "",
     cwd: Optional[Union[str, Path]] = None,
-    **kwargs
+    **kwargs,
 ) -> CommandResult:
     """Simple function to run a command with security validation."""
     return cli.run_secure(command, description, cwd=cwd, **kwargs)
 
 
 def run_interactive(
-    command: Union[str, List[str]],
-    cwd: Optional[Union[str, Path]] = None,
-    **kwargs
+    command: Union[str, List[str]], cwd: Optional[Union[str, Path]] = None, **kwargs
 ) -> CommandResult:
     """Simple function to run a command interactively."""
     return cli.run(command, cwd=cwd, **kwargs)

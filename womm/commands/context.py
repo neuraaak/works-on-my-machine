@@ -27,6 +27,7 @@ def context_register(backup):
         cmd.append("--backup")
 
     from shared.core.cli_manager import run_command
+
     result = run_command(cmd, "Registering context menu tools")
     sys.exit(0 if result.success else 1)
 
@@ -38,6 +39,7 @@ def context_unregister():
 
     cmd = [sys.executable, str(script_path), "--unregister"]
     from shared.core.cli_manager import run_command
+
     result = run_command(cmd, "Unregistering context menu tools")
     sys.exit(0 if result.success else 1)
 
@@ -49,5 +51,6 @@ def context_list():
 
     cmd = [sys.executable, str(script_path), "--list"]
     from shared.core.cli_manager import run_command
+
     result = run_command(cmd, "Listing context menu entries")
     sys.exit(0 if result.success else 1)

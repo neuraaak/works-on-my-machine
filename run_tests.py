@@ -46,7 +46,9 @@ class TestRunner:
         try:
             # Use a secure command list - pytest is a trusted dependency
             cmd = [sys.executable, "-m", "pytest", "--version"]
-            subprocess.run(cmd, capture_output=True, check=True, timeout=10)  # noqa: S603
+            subprocess.run(
+                cmd, capture_output=True, check=True, timeout=10
+            )  # noqa: S603
             return True
         except (
             subprocess.CalledProcessError,
@@ -73,7 +75,9 @@ class TestRunner:
 
                 # Use a secure command list - trusted dependencies
                 cmd = [sys.executable, "-m", dep, "--version"]
-                subprocess.run(cmd, capture_output=True, check=True, timeout=10)  # noqa: S603
+                subprocess.run(
+                    cmd, capture_output=True, check=True, timeout=10
+                )  # noqa: S603
                 print(f"   ✅ {dep}")
             except (
                 subprocess.CalledProcessError,
@@ -258,7 +262,9 @@ class TestRunner:
                 return 1
 
             # Execute tests with timeout - validated and secure command
-            result = subprocess.run(cmd, cwd=self.project_root, timeout=300)  # noqa: S603  # 5 minutes max
+            result = subprocess.run(
+                cmd, cwd=self.project_root, timeout=300
+            )  # noqa: S603  # 5 minutes max
 
             # Display summary
             if args.summary:

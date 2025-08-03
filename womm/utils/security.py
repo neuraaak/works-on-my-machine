@@ -15,21 +15,22 @@ import importlib.util
 
 # Check if security modules are available
 SECURITY_AVAILABLE = (
-    importlib.util.find_spec("shared.core.cli_manager") is not None and
-    importlib.util.find_spec("shared.security.security_validator") is not None
+    importlib.util.find_spec("shared.core.cli_manager") is not None
+    and importlib.util.find_spec("shared.security.security_validator") is not None
 )
 
 if SECURITY_AVAILABLE:
-    from shared.security.security_validator import SecurityValidator
-    security_validator = SecurityValidator()
+    from shared.security.security_validator import (
+        SecurityValidator,
+        validate_user_input,
+    )
 
-    def validate_user_input(value, input_type):
-        """Validate user input using security validator."""
-        return security_validator.validate_user_input(value, input_type)
+    security_validator = SecurityValidator()
 
     def run_secure_command(cmd, description):
         """Secure command execution when security modules are available."""
         from shared.core.cli_manager import run_secure
+
         result = run_secure(cmd, description)
         # Ensure the result has a success attribute
         if not hasattr(result, "success"):
@@ -45,6 +46,7 @@ else:
     def run_secure_command(cmd, description):
         """Fallback secure command execution when security modules are not available."""
         from shared.core.cli_manager import run_secure
+
         result = run_secure(cmd, description)
         # Ensure the result has a success attribute
         if not hasattr(result, "success"):

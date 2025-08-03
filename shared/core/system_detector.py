@@ -35,25 +35,30 @@ except ImportError:
         def run_silent(command):
             """Basic command execution."""
             try:
-                result = subprocess.run( #noqa: S603
-                    command,
-                    capture_output=True,
-                    text=True,
-                    timeout=30
+                result = subprocess.run(  # noqa: S603
+                    command, capture_output=True, text=True, timeout=30
                 )
-                return type('Result', (), {
-                    'success': result.returncode == 0,
-                    'stdout': result.stdout,
-                    'stderr': result.stderr,
-                    'returncode': result.returncode
-                })()
+                return type(
+                    "Result",
+                    (),
+                    {
+                        "success": result.returncode == 0,
+                        "stdout": result.stdout,
+                        "stderr": result.stderr,
+                        "returncode": result.returncode,
+                    },
+                )()
             except Exception as e:
-                return type('Result', (), {
-                    'success': False,
-                    'stdout': '',
-                    'stderr': str(e),
-                    'returncode': -1
-                })()
+                return type(
+                    "Result",
+                    (),
+                    {
+                        "success": False,
+                        "stdout": "",
+                        "stderr": str(e),
+                        "returncode": -1,
+                    },
+                )()
 
 
 class SystemDetector:
@@ -110,6 +115,7 @@ class SystemDetector:
         if check_tool_available("choco"):
             try:
                 from shared.core.cli_manager import run_silent
+
                 result = run_silent(["choco", "--version"])
                 managers["chocolatey"] = {
                     "available": True,
@@ -126,6 +132,7 @@ class SystemDetector:
         if check_tool_available("winget"):
             try:
                 from shared.core.cli_manager import run_silent
+
                 result = run_silent(["winget", "--version"])
                 managers["winget"] = {
                     "available": True,
@@ -142,6 +149,7 @@ class SystemDetector:
         if check_tool_available("scoop"):
             try:
                 from shared.core.cli_manager import run_silent
+
                 result = run_silent(["scoop", "--version"])
                 managers["scoop"] = {
                     "available": True,
@@ -416,7 +424,7 @@ class SystemDetector:
             "system_info": self.system_info,
             "package_managers": self.package_managers,
             "dev_environments": self.dev_environments,
-            "recommendations": self.get_recommendations()
+            "recommendations": self.get_recommendations(),
         }
 
 
@@ -441,6 +449,7 @@ def main():
     elif args.export:
         try:
             from shared.ui import print_success
+
             output_path = detector.export_report(Path(args.export))
             print_success(f"Report exported to: {output_path}")
         except ImportError:

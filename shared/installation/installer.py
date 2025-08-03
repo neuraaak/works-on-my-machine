@@ -53,12 +53,16 @@ except ImportError:
             Object with success attribute indicating if command succeeded.
         """
         result = subprocess_run(cmd, capture_output=True, **kwargs)
-        return type("obj", (object,), {
-            "success": result.returncode == 0,
-            "returncode": result.returncode,
-            "stdout": result.stdout,
-            "stderr": result.stderr
-        })()
+        return type(
+            "obj",
+            (object,),
+            {
+                "success": result.returncode == 0,
+                "returncode": result.returncode,
+                "stdout": result.stdout,
+                "stderr": result.stderr,
+            },
+        )()
 
     def run_interactive(cmd, **kwargs):
         """Run a command interactively.
@@ -271,19 +275,23 @@ class InstallationManager:
         if success:
             verification_result = self._verify_installation()
             if verification_result["success"]:
-                actions.append({
-                    "action": "verify_installation",
-                    "status": "success",
-                    "message": "Installation verified successfully",
-                    "checks": verification_result["checks"]
-                })
+                actions.append(
+                    {
+                        "action": "verify_installation",
+                        "status": "success",
+                        "message": "Installation verified successfully",
+                        "checks": verification_result["checks"],
+                    }
+                )
             else:
-                actions.append({
-                    "action": "verify_installation",
-                    "status": "failed",
-                    "message": "Installation verification failed",
-                    "checks": verification_result["checks"]
-                })
+                actions.append(
+                    {
+                        "action": "verify_installation",
+                        "status": "failed",
+                        "message": "Installation verification failed",
+                        "checks": verification_result["checks"],
+                    }
+                )
                 success = False
                 errors.append("Installation verification failed")
 
@@ -420,7 +428,11 @@ class InstallationManager:
 
             # Step 2: Vérifier si déjà présent
             if womm_path in backup_user_path:
-                return {"success": True, "path_added": False, "message": "Already in user PATH"}
+                return {
+                    "success": True,
+                    "path_added": False,
+                    "message": "Already in user PATH",
+                }
 
             # Step 3: Faire la MAJ en rajoutant le path du dossier .womm
             if backup_user_path:
@@ -429,24 +441,52 @@ class InstallationManager:
                 new_user_path = womm_path
 
             # Step 4: Écrire le nouveau PATH utilisateur
-            result = run_silent([
-                "reg", "add", "HKCU\\Environment", "/v", "PATH",
-                "/t", "REG_SZ", "/d", new_user_path, "/f"
-            ])
+            result = run_silent(
+                [
+                    "reg",
+                    "add",
+                    "HKCU\\Environment",
+                    "/v",
+                    "PATH",
+                    "/t",
+                    "REG_SZ",
+                    "/d",
+                    new_user_path,
+                    "/f",
+                ]
+            )
 
             if not result.success:
-                return {"success": False, "error": "Failed to update user PATH in registry"}
+                return {
+                    "success": False,
+                    "error": "Failed to update user PATH in registry",
+                }
 
             # Step 5: Vérifier que l'ajout a réussi avec reg query
-            verify_result = run_silent(["reg", "query", "HKCU\\Environment", "/v", "PATH"])
+            verify_result = run_silent(
+                ["reg", "query", "HKCU\\Environment", "/v", "PATH"]
+            )
             if not verify_result.success:
                 # Si erreur, rétablir le PATH avec la variable de secours
                 if backup_user_path:
-                    run_silent([
-                        "reg", "add", "HKCU\\Environment", "/v", "PATH",
-                        "/t", "REG_SZ", "/d", backup_user_path, "/f"
-                    ])
-                return {"success": False, "error": "Failed to verify PATH update - restored backup"}
+                    run_silent(
+                        [
+                            "reg",
+                            "add",
+                            "HKCU\\Environment",
+                            "/v",
+                            "PATH",
+                            "/t",
+                            "REG_SZ",
+                            "/d",
+                            backup_user_path,
+                            "/f",
+                        ]
+                    )
+                return {
+                    "success": False,
+                    "error": "Failed to verify PATH update - restored backup",
+                }
 
             # Step 6: Vérifier que le chemin WOMM est bien dans le registre
             verify_output = verify_result.stdout
@@ -456,11 +496,24 @@ class InstallationManager:
             if womm_path not in verify_output:
                 # Si le chemin n'est pas dans le registre, restaurer
                 if backup_user_path:
-                    run_silent([
-                        "reg", "add", "HKCU\\Environment", "/v", "PATH",
-                        "/t", "REG_SZ", "/d", backup_user_path, "/f"
-                    ])
-                return {"success": False, "error": "WOMM path not found in registry after update"}
+                    run_silent(
+                        [
+                            "reg",
+                            "add",
+                            "HKCU\\Environment",
+                            "/v",
+                            "PATH",
+                            "/t",
+                            "REG_SZ",
+                            "/d",
+                            backup_user_path,
+                            "/f",
+                        ]
+                    )
+                return {
+                    "success": False,
+                    "error": "WOMM path not found in registry after update",
+                }
 
             # Step 7: Mettre à jour la session courante
             current_full_path = os.environ.get("PATH", "")
@@ -474,12 +527,22 @@ class InstallationManager:
 
         except Exception as e:
             # En cas d'exception, rétablir le PATH avec la variable de secours
-            if 'backup_user_path' in locals() and backup_user_path:
+            if "backup_user_path" in locals() and backup_user_path:
                 try:
-                    run_silent([
-                        "reg", "add", "HKCU\\Environment", "/v", "PATH",
-                        "/t", "REG_SZ", "/d", backup_user_path, "/f"
-                    ])
+                    run_silent(
+                        [
+                            "reg",
+                            "add",
+                            "HKCU\\Environment",
+                            "/v",
+                            "PATH",
+                            "/t",
+                            "REG_SZ",
+                            "/d",
+                            backup_user_path,
+                            "/f",
+                        ]
+                    )
                 except:
                     pass  # Ignore les erreurs de restauration
             return {"success": False, "error": f"Windows user PATH setup error: {e}"}
@@ -489,14 +552,30 @@ class InstallationManager:
         try:
             if platform.system() == "Windows":
                 # Windows: Update user PATH in registry
-                result = run_silent([
-                    "reg", "add", "HKCU\\Environment", "/v", "PATH",
-                    "/t", "REG_EXPAND_SZ", "/d", new_path, "/f"
-                ])
+                result = run_silent(
+                    [
+                        "reg",
+                        "add",
+                        "HKCU\\Environment",
+                        "/v",
+                        "PATH",
+                        "/t",
+                        "REG_EXPAND_SZ",
+                        "/d",
+                        new_path,
+                        "/f",
+                    ]
+                )
                 if result.success:
-                    return {"success": True, "message": "PATH persisted to Windows registry"}
+                    return {
+                        "success": True,
+                        "message": "PATH persisted to Windows registry",
+                    }
                 else:
-                    return {"success": False, "error": "Failed to update Windows registry"}
+                    return {
+                        "success": False,
+                        "error": "Failed to update Windows registry",
+                    }
             else:
                 # Unix: Update shell profile
                 return self._persist_unix_path_change(new_path)
@@ -518,13 +597,21 @@ class InstallationManager:
                         # Add PATH export
                         export_line = f'\n# Added by WOMM installer\nexport PATH="{womm_path}:$PATH"\n'
                         profile_path.write_text(content + export_line)
-                        return {"success": True, "message": f"PATH persisted to {profile_file}"}
+                        return {
+                            "success": True,
+                            "message": f"PATH persisted to {profile_file}",
+                        }
                     else:
-                        return {"success": True, "message": f"Already configured in {profile_file}"}
+                        return {
+                            "success": True,
+                            "message": f"Already configured in {profile_file}",
+                        }
 
             # If no profile found, create ~/.profile
             profile_path = Path("~/.profile").expanduser()
-            export_line = f'# Added by WOMM installer\nexport PATH="{womm_path}:$PATH"\n'
+            export_line = (
+                f'# Added by WOMM installer\nexport PATH="{womm_path}:$PATH"\n'
+            )
             profile_path.write_text(export_line)
             return {"success": True, "message": "PATH persisted to new ~/.profile"}
 
@@ -536,20 +623,22 @@ class InstallationManager:
         try:
             # Check if already in PATH
             if womm_path in original_path:
-                return {"success": True, "path_added": False, "message": "Already in PATH"}
+                return {
+                    "success": True,
+                    "path_added": False,
+                    "message": "Already in PATH",
+                }
 
             # Step 1: Get current user PATH from registry and store it
-            result = run_silent([
-                "reg", "query", "HKCU\\Environment", "/v", "PATH"
-            ])
-            
+            result = run_silent(["reg", "query", "HKCU\\Environment", "/v", "PATH"])
+
             if result.returncode == 0:
                 # Parse current user PATH from registry
                 output = result.stdout
                 if isinstance(output, bytes):
                     output = output.decode("utf-8", errors="ignore")
                 actual_user_path = ""
-                
+
                 # Extract PATH value from registry output
                 for line in output.split("\n"):
                     if "REG_EXPAND_SZ" in line and "PATH" in line:
@@ -557,38 +646,54 @@ class InstallationManager:
                         if len(parts) > 1:
                             actual_user_path = parts[1].strip()
                             break
-                
+
                 # If no user PATH found, start with empty
                 if not actual_user_path:
                     actual_user_path = ""
-                
+
                 # Check if already in user PATH
                 if womm_path in actual_user_path:
-                    return {"success": True, "path_added": False, "message": "Already in user PATH"}
-                
+                    return {
+                        "success": True,
+                        "path_added": False,
+                        "message": "Already in user PATH",
+                    }
+
                 # Step 2: Create new user PATH
                 if actual_user_path:
                     new_user_path = f"{womm_path};{actual_user_path}"
                 else:
                     new_user_path = womm_path
-                
+
                 # Step 3: Modify user PATH in registry
-                result = run_silent([
-                    "reg", "add", "HKCU\\Environment", "/v", "PATH", 
-                    "/t", "REG_EXPAND_SZ", "/d", new_user_path, "/f"
-                ])
-                
+                result = run_silent(
+                    [
+                        "reg",
+                        "add",
+                        "HKCU\\Environment",
+                        "/v",
+                        "PATH",
+                        "/t",
+                        "REG_EXPAND_SZ",
+                        "/d",
+                        new_user_path,
+                        "/f",
+                    ]
+                )
+
                 if result.returncode == 0:
                     # Step 4: Verify the modification - check if PATH length is valid
-                    verification_result = run_silent([
-                        "reg", "query", "HKCU\\Environment", "/v", "PATH"
-                    ])
-                    
+                    verification_result = run_silent(
+                        ["reg", "query", "HKCU\\Environment", "/v", "PATH"]
+                    )
+
                     if verification_result.returncode == 0:
                         verification_output = verification_result.stdout
                         if isinstance(verification_output, bytes):
-                            verification_output = verification_output.decode("utf-8", errors="ignore")
-                        
+                            verification_output = verification_output.decode(
+                                "utf-8", errors="ignore"
+                            )
+
                         # Extract the new PATH value
                         new_path_value = ""
                         for line in verification_output.split("\n"):
@@ -597,43 +702,92 @@ class InstallationManager:
                                 if len(parts) > 1:
                                     new_path_value = parts[1].strip()
                                     break
-                        
+
                         # Step 5: Safety check - if new PATH is shorter than original, rollback
                         if len(new_path_value) < len(actual_user_path):
                             # CRITICAL: PATH corruption detected, restore immediately
-                            run_silent([
-                                "reg", "add", "HKCU\\Environment", "/v", "PATH", 
-                                "/t", "REG_EXPAND_SZ", "/d", actual_user_path, "/f"
-                            ])
-                            return {"success": False, "error": "PATH corruption detected - restored original PATH"}
-                        
+                            run_silent(
+                                [
+                                    "reg",
+                                    "add",
+                                    "HKCU\\Environment",
+                                    "/v",
+                                    "PATH",
+                                    "/t",
+                                    "REG_EXPAND_SZ",
+                                    "/d",
+                                    actual_user_path,
+                                    "/f",
+                                ]
+                            )
+                            return {
+                                "success": False,
+                                "error": "PATH corruption detected - restored original PATH",
+                            }
+
                         # Step 6: Update current session PATH
                         system_path = os.environ.get("PATH", "")
                         os.environ["PATH"] = f"{new_user_path};{system_path}"
-                        
+
                         # Step 7: Final verification
                         verification = self._verify_path_modification(womm_path)
                         if verification["success"]:
-                            return {"success": True, "path_added": True, "message": "User PATH configured successfully"}
+                            return {
+                                "success": True,
+                                "path_added": True,
+                                "message": "User PATH configured successfully",
+                            }
                         else:
                             # Rollback: restore original user PATH
                             os.environ["PATH"] = original_path
-                            run_silent([
-                                "reg", "add", "HKCU\\Environment", "/v", "PATH", 
-                                "/t", "REG_EXPAND_SZ", "/d", actual_user_path, "/f"
-                            ])
-                            return {"success": False, "error": "User PATH modification failed verification"}
+                            run_silent(
+                                [
+                                    "reg",
+                                    "add",
+                                    "HKCU\\Environment",
+                                    "/v",
+                                    "PATH",
+                                    "/t",
+                                    "REG_EXPAND_SZ",
+                                    "/d",
+                                    actual_user_path,
+                                    "/f",
+                                ]
+                            )
+                            return {
+                                "success": False,
+                                "error": "User PATH modification failed verification",
+                            }
                     else:
                         # Rollback: restore original user PATH
-                        run_silent([
-                            "reg", "add", "HKCU\\Environment", "/v", "PATH", 
-                            "/t", "REG_EXPAND_SZ", "/d", actual_user_path, "/f"
-                        ])
-                        return {"success": False, "error": "Failed to verify PATH modification"}
+                        run_silent(
+                            [
+                                "reg",
+                                "add",
+                                "HKCU\\Environment",
+                                "/v",
+                                "PATH",
+                                "/t",
+                                "REG_EXPAND_SZ",
+                                "/d",
+                                actual_user_path,
+                                "/f",
+                            ]
+                        )
+                        return {
+                            "success": False,
+                            "error": "Failed to verify PATH modification",
+                        }
                 else:
-                    return {"success": False, "error": "Failed to modify user PATH in registry"}
+                    return {
+                        "success": False,
+                        "error": "Failed to modify user PATH in registry",
+                    }
             else:
-                return {"success": False, "error": "Failed to read user PATH from registry"}
+                return {
+                    "success": False,
+                    "error": "Failed to read user PATH from registry",
+                }
 
         except Exception as e:
             return {"success": False, "error": f"Windows user PATH setup error: {e}"}
@@ -643,7 +797,11 @@ class InstallationManager:
         try:
             # Check if already in PATH
             if womm_path in original_path:
-                return {"success": True, "path_added": False, "message": "Already in PATH"}
+                return {
+                    "success": True,
+                    "path_added": False,
+                    "message": "Already in PATH",
+                }
 
             # Unix PATH setup
             profile_files = ["~/.bashrc", "~/.zshrc", "~/.profile"]
@@ -654,26 +812,37 @@ class InstallationManager:
                     if womm_path not in content:
                         # Backup original content
                         backup_content = content
-                        
+
                         # Add PATH export
                         export_line = f'\nexport PATH="$PATH:{womm_path}"\n'
                         profile_path.write_text(content + export_line)
-                        
+
                         # Update current session
                         new_path = f"{original_path}:{womm_path}"
                         os.environ["PATH"] = new_path
-                        
+
                         # Verify the modification
                         verification = self._verify_path_modification(womm_path)
                         if verification["success"]:
-                            return {"success": True, "path_added": True, "message": f"PATH configured in {profile_file}"}
+                            return {
+                                "success": True,
+                                "path_added": True,
+                                "message": f"PATH configured in {profile_file}",
+                            }
                         else:
                             # Rollback: restore original content
                             profile_path.write_text(backup_content)
                             os.environ["PATH"] = original_path
-                            return {"success": False, "error": "PATH modification failed verification"}
+                            return {
+                                "success": False,
+                                "error": "PATH modification failed verification",
+                            }
                     else:
-                        return {"success": True, "path_added": False, "message": f"Already configured in {profile_file}"}
+                        return {
+                            "success": True,
+                            "path_added": False,
+                            "message": f"Already configured in {profile_file}",
+                        }
 
             return {"success": False, "error": "No shell profile found"}
 
@@ -684,17 +853,25 @@ class InstallationManager:
         """Verify that PATH modification was successful."""
         try:
             current_path = os.environ.get("PATH", "")
-            
+
             # Check if womm_path is in current PATH
             if womm_path in current_path:
                 # Test if womm executable is accessible
-                womm_exec = Path(womm_path) / ("womm.bat" if platform.system() == "Windows" else "womm")
+                womm_exec = Path(womm_path) / (
+                    "womm.bat" if platform.system() == "Windows" else "womm"
+                )
                 if womm_exec.exists():
                     return {"success": True, "message": "PATH modification verified"}
                 else:
-                    return {"success": False, "error": "WOMM executable not found after PATH modification"}
+                    return {
+                        "success": False,
+                        "error": "WOMM executable not found after PATH modification",
+                    }
             else:
-                return {"success": False, "error": "WOMM path not found in current PATH"}
+                return {
+                    "success": False,
+                    "error": "WOMM path not found in current PATH",
+                }
 
         except Exception as e:
             return {"success": False, "error": f"PATH verification error: {e}"}
@@ -703,21 +880,21 @@ class InstallationManager:
         """Verify that installation was successful."""
         try:
             checks = []
-            
+
             # Check 1: Files copied successfully
             files_check = self._verify_files_copied()
             checks.append(files_check)
-            
+
             # Note: PATH verification is now done in _setup_windows_user_path with reg query
             # Executable verification removed due to Unicode encoding issues with subprocess
             # The executable works fine in interactive mode, the issue is only with subprocess.run
-            
+
             success = all(check["success"] for check in checks)
-            
+
             return {
                 "success": success,
                 "checks": checks,
-                "message": "Installation verification completed"
+                "message": "Installation verification completed",
             }
 
         except Exception as e:
@@ -726,16 +903,22 @@ class InstallationManager:
     def _verify_files_copied(self) -> Dict:
         """Verify that WOMM files were copied successfully."""
         try:
-            required_files = ["womm.py", "womm.bat" if platform.system() == "Windows" else "womm"]
+            required_files = [
+                "womm.py",
+                "womm.bat" if platform.system() == "Windows" else "womm",
+            ]
             missing_files = []
-            
+
             for file_name in required_files:
                 file_path = self.target_path / file_name
                 if not file_path.exists():
                     missing_files.append(file_name)
-            
+
             if missing_files:
-                return {"success": False, "error": f"Missing files: {', '.join(missing_files)}"}
+                return {
+                    "success": False,
+                    "error": f"Missing files: {', '.join(missing_files)}",
+                }
             else:
                 return {"success": True, "message": "All required files present"}
 
@@ -749,10 +932,10 @@ class InstallationManager:
                 exec_path = self.target_path / "womm.bat"
             else:
                 exec_path = self.target_path / "womm"
-            
+
             if not exec_path.exists():
                 return {"success": False, "error": "WOMM executable not found"}
-            
+
             # Test basic functionality - avoid --help due to Unicode encoding issues
             # Just test that the executable can be run without arguments
             result = run_silent([str(exec_path)])
@@ -760,7 +943,10 @@ class InstallationManager:
             if result.returncode in [0, 2]:
                 return {"success": True, "message": "WOMM executable working correctly"}
             else:
-                return {"success": False, "error": f"WOMM executable failed basic test (exit code: {result.returncode})"}
+                return {
+                    "success": False,
+                    "error": f"WOMM executable failed basic test (exit code: {result.returncode})",
+                }
 
         except Exception as e:
             return {"success": False, "error": f"Executable verification error: {e}"}
@@ -770,11 +956,14 @@ class InstallationManager:
         try:
             current_path = os.environ.get("PATH", "")
             womm_path = str(self.target_path)
-            
+
             if womm_path in current_path:
                 return {"success": True, "message": "PATH configured correctly"}
             else:
-                return {"success": False, "error": "WOMM path not found in current PATH"}
+                return {
+                    "success": False,
+                    "error": "WOMM path not found in current PATH",
+                }
 
         except Exception as e:
             return {"success": False, "error": f"PATH verification error: {e}"}

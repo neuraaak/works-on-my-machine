@@ -50,9 +50,14 @@ def display_installation_result(result: dict) -> None:
                     if "checks" in action:
                         for check in action["checks"]:
                             if check["success"]:
-                                print_success(f"  ✓ {check.get('message', 'Check passed')}")
+                                print_success(
+                                    f"  ✓ {check.get('message', 'Check passed')}"
+                                )
                             else:
-                                print_error("VERIFY", f"  ✗ {check.get('error', 'Check failed')}")
+                                print_error(
+                                    "VERIFY",
+                                    f"  ✗ {check.get('error', 'Check failed')}",
+                                )
                                 # Debug: print more details
                                 print_error("DEBUG", f"    Check details: {check}")
                 else:
@@ -234,12 +239,7 @@ def display_path_restore_result(result: dict) -> None:
 def display_path_backup_result(result: dict) -> None:
     """Display PATH backup information using specialized prints."""
     try:
-        from shared.ui import (
-            console,
-            print_error,
-            print_info,
-            print_success,
-        )
+        from shared.ui import console, print_error, print_info, print_success
         from shared.ui.tables import create_backup_table
 
         if result["success"]:

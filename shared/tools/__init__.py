@@ -10,10 +10,7 @@ from .cspell_manager import (
     run_spellcheck,
     setup_project_cspell,
 )
-from .dictionary_manager import (
-    add_all_dictionaries,
-    get_dictionary_info,
-)
+from .dictionary_manager import add_all_dictionaries, get_dictionary_info
 
 __all__ = [
     "install_cspell_global",

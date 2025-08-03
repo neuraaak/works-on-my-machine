@@ -11,7 +11,13 @@ from typing import Dict, List, Optional
 
 import click
 
-from .core.cli_manager import run_command, run_silent, check_tool_available
+from .core.cli_manager import check_tool_available, run_command, run_silent
+from .core.results import (
+    DependencyCheckResult,
+    InstallationResult,
+    create_dependency_check_error,
+    create_dependency_check_success,
+)
 
 
 class DependencyManager:
@@ -157,6 +163,59 @@ class DependencyManager:
                 return False
 
         return True
+
+    def check_dependencies(self, dependencies: List[str]) -> DependencyCheckResult:
+        """Check if dependencies are available and return structured result."""
+        available = []
+        missing = []
+
+        for dependency in dependencies:
+            if self.check_with_cache(dependency):
+                available.append(dependency)
+            else:
+                missing.append(dependency)
+
+        if not missing:
+            return create_dependency_check_success(available)
+        else:
+            return create_dependency_check_error(
+                f"Missing dependencies: {', '.join(missing)}",
+                available=available,
+                missing=missing,
+            )
+
+    def install_dependencies(self, dependencies: List[str]) -> InstallationResult:
+        """Install dependencies and return structured result."""
+        installed = []
+        failed = []
+        skipped = []
+
+        for dependency in dependencies:
+            if self.check_with_cache(dependency):
+                skipped.append(dependency)
+                continue
+
+            if self._install_dependency_recursive(dependency):
+                installed.append(dependency)
+            else:
+                failed.append(dependency)
+
+        if not failed:
+            return InstallationResult(
+                success=True,
+                message=f"Successfully installed {len(installed)} dependencies",
+                installed=installed,
+                skipped=skipped,
+                failed=failed,
+            )
+        else:
+            return InstallationResult(
+                success=False,
+                error=f"Failed to install: {', '.join(failed)}",
+                installed=installed,
+                skipped=skipped,
+                failed=failed,
+            )
 
     def _install_dependency_recursive(self, dependency: str) -> bool:
         """Install a dependency and its prerequisites recursively."""

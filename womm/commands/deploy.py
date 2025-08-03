@@ -33,5 +33,6 @@ def deploy_tools(target, create_global):
         cmd.append("--install-global")
 
     from shared.core.cli_manager import run_command
+
     result = run_command(cmd, f"Deploying tools to {target}")
     sys.exit(0 if result.success else 1)

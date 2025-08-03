@@ -5,10 +5,7 @@ Contains utility modules for CLI operations.
 """
 
 # Import utility modules
-from . import (
-    path_manager,
-    security,
-)
+from . import path_manager, security
 
 __all__ = [
     "security",

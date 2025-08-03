@@ -22,6 +22,7 @@ def spell_install():
     """Install CSpell and dictionaries globally."""
     # Check and install CSpell if needed
     from shared.dependency_manager import check_and_install_dependencies
+
     if not check_and_install_dependencies(["cspell"]):
         click.echo("❌ CSpell installation required but not completed")
         sys.exit(1)
@@ -30,6 +31,7 @@ def spell_install():
 
     cmd = [sys.executable, str(script_path), "--install"]
     from shared.core.cli_manager import run_command
+
     result = run_command(cmd, "Installing CSpell globally")
     sys.exit(0 if result.success else 1)
 
@@ -51,6 +53,7 @@ def spell_setup(project_name, project_type):
         cmd.extend(["--type", project_type])
 
     from shared.core.cli_manager import run_command
+
     result = run_command(cmd, f"Setting up CSpell for {project_name}")
     sys.exit(0 if result.success else 1)
 
@@ -62,6 +65,7 @@ def spell_status():
 
     cmd = [sys.executable, str(script_path), "--status"]
     from shared.core.cli_manager import run_command
+
     result = run_command(cmd, "Displaying CSpell status")
     sys.exit(0 if result.success else 1)
 
@@ -87,6 +91,7 @@ def spell_add(words, file_path, interactive):
         sys.exit(1)
 
     from shared.core.cli_manager import run_command
+
     result = run_command(cmd, "Adding words to CSpell configuration")
     sys.exit(0 if result.success else 1)
 
@@ -144,6 +149,7 @@ def spell_check(path, fix):
     """Check spelling in files."""
     # Check and install CSpell if needed
     from shared.dependency_manager import check_and_install_dependencies
+
     if not check_and_install_dependencies(["cspell"]):
         click.echo("❌ CSpell installation required but not completed")
         sys.exit(1)
@@ -156,5 +162,6 @@ def spell_check(path, fix):
         cmd = [sys.executable, str(script_path), "--check", path]
 
     from shared.core.cli_manager import run_command
+
     result = run_command(cmd, f"Spell checking {path}")
     sys.exit(0 if result.success else 1)

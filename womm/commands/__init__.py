@@ -5,14 +5,7 @@ Contains all command modules for the CLI interface.
 """
 
 # Import all command modules
-from . import (
-    context,
-    deploy,
-    lint,
-    new,
-    spell,
-    system,
-)
+from . import context, deploy, lint, new, spell, system
 
 # Import individual commands for direct access
 from .install import backup_path, install, restore_path, uninstall

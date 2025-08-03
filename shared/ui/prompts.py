@@ -72,3 +72,14 @@ def show_error_panel(title: str, content: str) -> None:
     """Show an error panel."""
     panel = Panel(Text(content, style="red"), title=f"❌ {title}", border_style="red")
     console.print(panel)
+
+
+def print_prompt(
+    message: str, required: bool = False, default: Optional[str] = None
+) -> str:
+    """Show a prompt and return user input."""
+    while True:
+        result = prompt_text(message, default=default)
+        if result or not required:
+            return result
+        console.print("❌ Cette valeur est requise. Veuillez réessayer.", style="red")

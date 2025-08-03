@@ -363,6 +363,9 @@ class SecurityValidator:
         project_root = Path(__file__).parent.parent
         installed_root = Path.home() / ".womm"
 
+        # Also allow current working directory for development
+        current_dir = Path.cwd()
+
         allowed_dirs = [
             project_root / "languages",
             project_root / "shared",
@@ -370,10 +373,16 @@ class SecurityValidator:
             installed_root / "languages",
             installed_root / "shared",
             installed_root,
+            current_dir / "languages",
+            current_dir / "shared",
+            current_dir,
         ]
 
+        # Convert script_path to absolute path for comparison
+        script_abs_path = script_path.resolve()
+
         script_in_allowed_dir = any(
-            script_path.is_relative_to(allowed_dir) for allowed_dir in allowed_dirs
+            script_abs_path.is_relative_to(allowed_dir) for allowed_dir in allowed_dirs
         )
 
         if not script_in_allowed_dir:

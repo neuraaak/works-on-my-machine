@@ -4,57 +4,78 @@ User Interface module using Rich for beautiful terminal output.
 """
 
 # Import and expose common Rich utilities
-from .console import (
+from .console import print_file  # Remplace COPY, BACKUP, RESTORE
+from .console import print_install  # Remplace INSTALL, DICT
+from .console import print_system  # Remplace BAT, EXEC, WINDOWS, REGISTER
+from .console import (  # === NOUVELLES FONCTIONS UI SPÉCIALISÉES ===; Patterns regroupés (Option A); === MÉTHODES SPÉCIALISÉES POUR LES COMMANDES NEW ===; Fonction générique; === MÉTHODES UTILITAIRES POUR LES ÉTAPES DE PROCESSUS ===; Patterns principaux; Patterns spécialisés; Fonctions de configuration du niveau de logging
     LogLevel,
     console,
     get_log_level,
     print_added,
     print_check,
     print_command,
+    print_command_execution_result,
+    print_configuration_result,
     print_confirm,
     print_critical,
     print_debug,
+    print_dependency_check_result,
     print_detect,
     print_error,
     print_eval,
     print_failed,
     print_fallback,
-    # Patterns regroupés (Option A)
-    print_file,  # Remplace COPY, BACKUP, RESTORE
+    print_file_operation_result,
     print_fix,
     print_header,
     print_hint,
     print_info,
-    print_install,  # Remplace INSTALL, DICT
+    print_installation_result,
     print_interactive,
+    print_new_project_complete,
+    print_new_project_error,
+    print_new_project_progress,
+    print_new_project_start,
     print_ok,
     print_partial,
     print_path,
-    # Fonction générique
     print_pattern,
     print_preview,
     print_process,
+    print_process_error,
+    print_process_step,
+    print_process_success,
+    print_process_warning,
+    print_project_detection_result,
     print_result,
-    # Patterns principaux
     print_run,
-    # Patterns spécialisés
     print_security,
+    print_security_result,
     print_separator,
+    print_setup_result,
     print_status,
     print_success,
     print_summary,
-    print_system,  # Remplace BAT, EXEC, WINDOWS, REGISTER
     print_tip,
     print_unknown,
+    print_validation_result,
     print_warn,
     print_words,
     set_critical_level,
     set_debug_level,
     set_error_level,
     set_info_level,
-    # Fonctions de configuration du niveau de logging
     set_log_level,
     set_warn_level,
+)
+from .lint import (
+    print_lint_error,
+    print_lint_fix_suggestions,
+    print_lint_progress,
+    print_lint_result,
+    print_lint_start,
+    print_lint_summary,
+    print_tool_check_result,
 )
 from .panels import (
     create_error_panel,
@@ -72,6 +93,7 @@ from .progress import (
 )
 from .prompts import (
     confirm,
+    print_prompt,
     prompt_choice,
     prompt_path,
     prompt_text,
@@ -110,4 +132,31 @@ __all__ = [
     "set_warn_level",
     "set_error_level",
     "set_critical_level",
+    # Nouvelles fonctions UI spécialisées
+    "print_dependency_check_result",
+    "print_installation_result",
+    "print_setup_result",
+    "print_validation_result",
+    "print_security_result",
+    "print_project_detection_result",
+    "print_file_operation_result",
+    "print_command_execution_result",
+    "print_configuration_result",
+    "print_process_step",
+    "print_process_success",
+    "print_process_error",
+    "print_process_warning",
+    "print_new_project_start",
+    "print_new_project_progress",
+    "print_new_project_complete",
+    "print_new_project_error",
+    "print_prompt",
+    # Linting UI functions
+    "print_lint_progress",
+    "print_lint_result",
+    "print_lint_summary",
+    "print_lint_error",
+    "print_lint_fix_suggestions",
+    "print_lint_start",
+    "print_tool_check_result",
 ]

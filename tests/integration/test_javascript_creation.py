@@ -12,13 +12,13 @@ class TestJavaScriptProjectCreation:
         project_path = temp_dir / project_name
 
         # Mock the setup script to create actual structure
-        with patch('shared.secure_cli_manager.run_secure_command') as mock_run:
+        with patch("shared.secure_cli_manager.run_secure_command") as mock_run:
             mock_run.return_value = Mock(
                 success=True,
                 security_validated=True,
                 returncode=0,
                 stdout="Project created successfully",
-                stderr=""
+                stderr="",
             )
 
             # Create project structure manually for testing
@@ -29,8 +29,12 @@ class TestJavaScriptProjectCreation:
             (project_path / ".vscode").mkdir()
 
             # Create sample files
-            (project_path / "src" / "index.js").write_text("console.log('Hello, World!');")
-            (project_path / "tests" / "index.test.js").write_text("test('hello', () => {});")
+            (project_path / "src" / "index.js").write_text(
+                "console.log('Hello, World!');"
+            )
+            (project_path / "tests" / "index.test.js").write_text(
+                "test('hello', () => {});"
+            )
             (project_path / "package.json").write_text('{"name": "test-js-project"}')
             (project_path / ".gitignore").write_text("node_modules/\n*.log")
 
@@ -202,13 +206,13 @@ Thumbs.db
         project_path = temp_dir / project_name
 
         # Mock CLI execution
-        with patch('shared.secure_cli_manager.run_secure_command') as mock_run:
+        with patch("shared.secure_cli_manager.run_secure_command") as mock_run:
             mock_run.return_value = Mock(
                 success=True,
                 security_validated=True,
                 returncode=0,
                 stdout="Project created successfully",
-                stderr=""
+                stderr="",
             )
 
             # Create complete project structure
@@ -217,27 +221,32 @@ Thumbs.db
             # Source code
             src_dir = project_path / "src"
             src_dir.mkdir()
-            (src_dir / "index.js").write_text("""
+            (src_dir / "index.js").write_text(
+                """
 function helloWorld() {
     return "Hello, World!";
 }
 
 console.log(helloWorld());
-""")
+"""
+            )
 
             # Tests
             tests_dir = project_path / "tests"
             tests_dir.mkdir()
-            (tests_dir / "index.test.js").write_text("""
+            (tests_dir / "index.test.js").write_text(
+                """
 const { helloWorld } = require('../src/index.js');
 
 test('helloWorld returns correct message', () => {
     expect(helloWorld()).toBe("Hello, World!");
 });
-""")
+"""
+            )
 
             # Configuration files
-            (project_path / "package.json").write_text("""
+            (project_path / "package.json").write_text(
+                """
 {
   "name": "test-js-project",
   "version": "1.0.0",
@@ -254,7 +263,8 @@ test('helloWorld returns correct message', () => {
     "jest": "^29.0.0"
   }
 }
-""")
+"""
+            )
 
             # Verify complete structure
             assert project_path.exists()
@@ -267,9 +277,9 @@ test('helloWorld returns correct message', () => {
             # Verify source code content
             main_content = (src_dir / "index.js").read_text()
             assert "function helloWorld()" in main_content
-            assert "return \"Hello, World!\"" in main_content
+            assert 'return "Hello, World!"' in main_content
 
             # Verify test content
             test_content = (tests_dir / "index.test.js").read_text()
             assert "test('helloWorld returns correct message'" in test_content
-            assert "helloWorld()).toBe(\"Hello, World!\")" in test_content
+            assert 'helloWorld()).toBe("Hello, World!")' in test_content

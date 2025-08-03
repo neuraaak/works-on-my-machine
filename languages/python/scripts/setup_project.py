@@ -41,8 +41,8 @@ class PythonProjectSetup:
 
     def setup_all(self) -> None:
         """Configure the complete development environment."""
-        print(f"🐍 Setting up Python environment for '{self.project_name}'")
-        print(f"📁 Directory: {self.project_path}")
+        print(f"[PYTHON] Setting up Python environment for '{self.project_name}'")
+        print(f"[DIR] Directory: {self.project_path}")
 
         self.create_directory_structure()
         self.copy_configs()
@@ -53,12 +53,12 @@ class PythonProjectSetup:
         self.setup_development_environment()
         self.install_hooks()
 
-        print("\n✅ Python configuration completed!")
+        print("\n[SUCCESS] Python configuration completed!")
         self.print_next_steps()
 
     def create_directory_structure(self) -> None:
         """Create the basic directory structure."""
-        print("\n📂 Creating directory structure...")
+        print("\n[DIRS] Creating directory structure...")
 
         directories = [
             self.project_path / self.project_name,
@@ -69,11 +69,11 @@ class PythonProjectSetup:
 
         for directory in directories:
             directory.mkdir(parents=True, exist_ok=True)
-            print(f"   ✓ {directory}")
+            print(f"   [OK] {directory}")
 
     def copy_configs(self) -> None:
         """Copy configuration files."""
-        print("\n⚙️ Copying Python configurations...")
+        print("\n[CONFIG] Copying Python configurations...")
 
         configs = [
             ("configs/.pre-commit-config.yaml", ".pre-commit-config.yaml"),
@@ -97,19 +97,19 @@ class PythonProjectSetup:
                 else:
                     shutil.copy2(source_path, dest_path)
 
-                print(f"   ✓ {dest}")
+                print(f"   [OK] {dest}")
             else:
-                print(f"   ⚠️  Missing file: {source}")
+                print(f"   [WARN] Missing file: {source}")
 
     def setup_git(self):
         """Initialise Git et configure .gitignore."""
-        print("\n🔧 Configuration Git...")
+        print("\n[GIT] Configuration Git...")
 
         if not (self.project_path / ".git").exists():
             try:
                 git_path = shutil.which("git")
                 if git_path is None:
-                    print("   ⚠️  Git not found")
+                    print("   [WARN] Git not found")
                     return
 
                 # Security validation
@@ -117,7 +117,7 @@ class PythonProjectSetup:
                     validator = SecurityValidator()
                     is_valid, error_msg = validator.validate_command([git_path, "init"])
                     if not is_valid:
-                        print(f"   ⚠️  Security validation failed: {error_msg}")
+                        print(f"   [WARN] Security validation failed: {error_msg}")
                         return
 
                 subprocess.run(  # noqa: S603
@@ -126,13 +126,13 @@ class PythonProjectSetup:
                     check=True,
                     capture_output=True,
                 )
-                print("   ✓ Git repository initialized")
+                print("   [OK] Git repository initialized")
             except (subprocess.CalledProcessError, FileNotFoundError):
-                print("   ⚠️  Git not found or initialization error")
+                print("   [WARN] Git not found or initialization error")
 
     def setup_cspell(self):
         """Configure CSpell for the project."""
-        print("📝 Configuring CSpell...")
+        print("[CSPELL] Configuring CSpell...")
 
         # Importer le gestionnaire CSpell
         devtools_path = Path.home() / ".womm"
@@ -145,15 +145,15 @@ class PythonProjectSetup:
                 self.project_path, "python", self.project_name
             )
             if success:
-                print("   ✓ CSpell configuration created")
+                print("   [OK] CSpell configuration created")
             else:
-                print("   ⚠ Error configuring CSpell")
+                print("   [WARN] Error configuring CSpell")
         except ImportError:
-            print("   ⚠ cspell_manager module not found")
+            print("   [WARN] cspell_manager module not found")
 
     def setup_development_environment(self):
         """Configure the Python development environment."""
-        print("🛠️ Setting up development environment...")
+        print("[ENV] Setting up development environment...")
 
         # Importer le gestionnaire d'environnement
         devtools_path = Path.home() / ".womm"
@@ -167,22 +167,22 @@ class PythonProjectSetup:
             if manager.prompt_install_tools():
                 if manager.setup_python_environment():
                     manager.create_activation_scripts()
-                    print("   ✓ Development environment configured")
+                    print("   [OK] Development environment configured")
                     return True
                 else:
-                    print("   ⚠ Error configuring development environment")
+                    print("   [WARN] Error configuring development environment")
                     return False
             else:
-                print("   ⏭️ Development environment setup skipped")
+                print("   [SKIP] Development environment setup skipped")
                 return True
 
         except ImportError:
-            print("   ⚠ environment_manager module not found")
+            print("   [WARN] environment_manager module not found")
             return False
 
     def create_project_files(self):
         """Create the basic project files."""
-        print("\n📄 Creating basic files...")
+        print("\n[FILES] Creating basic files...")
 
         # pyproject.toml
         pyproject_content = f"""[build-system]
@@ -242,7 +242,7 @@ addopts = [
         (self.project_path / "pyproject.toml").write_text(
             pyproject_content, encoding="utf-8"
         )
-        print("   ✓ pyproject.toml")
+        print("   [OK] pyproject.toml")
 
         # __init__.py
         init_content = f'''# -*- coding: utf-8 -*-
@@ -254,7 +254,7 @@ __version__ = "0.1.0"
         (self.project_path / self.project_name / "__init__.py").write_text(
             init_content, encoding="utf-8"
         )
-        print("   ✓ __init__.py")
+        print("   [OK] __init__.py")
 
         # README.md
         readme_content = f"""# {self.project_name}
@@ -299,7 +299,7 @@ make clean          # Cleanup
 See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for complete development guide.
 """
         (self.project_path / "README.md").write_text(readme_content, encoding="utf-8")
-        print("   ✓ README.md")
+        print("   [OK] README.md")
 
         # Test example
         test_content = f'''# -*- coding: utf-8 -*-
@@ -323,11 +323,11 @@ def test_import():
         (self.project_path / "tests" / f"test_{self.project_name}.py").write_text(
             test_content, encoding="utf-8"
         )
-        print("   ✓ test example")
+        print("   [OK] test example")
 
     def setup_vscode(self):
         """Configure VSCode."""
-        print("\n🔧 Configuration VSCode...")
+        print("\n[VSCODE] Configuration VSCode...")
 
         vscode_files = ["settings.json", "extensions.json"]
 
@@ -337,20 +337,20 @@ def test_import():
 
             if source.exists():
                 shutil.copy2(source, dest)
-                print(f"   ✓ .vscode/{file}")
+                print(f"   [OK] .vscode/{file}")
             else:
-                print(f"   ⚠️  Missing VSCode file: {file}")
+                print(f"   [WARN] Missing VSCode file: {file}")
 
     def install_hooks(self):
         """Installe les hooks pre-commit."""
-        print("\n🔒 Installing pre-commit hooks...")
+        print("\n[HOOKS] Installing pre-commit hooks...")
 
         try:
             # Check if pre-commit is installed
             precommit_path = shutil.which("pre-commit")
             if precommit_path is None:
                 print(
-                    "   ⚠️  pre-commit not found. Install with: pip install pre-commit"
+                    "   [WARN] pre-commit not found. Install with: pip install pre-commit"
                 )
                 return
 
@@ -361,7 +361,7 @@ def test_import():
                     [precommit_path, "--version"]
                 )
                 if not is_valid:
-                    print(f"   ⚠️  Security validation failed: {error_msg}")
+                    print(f"   [WARN] Security validation failed: {error_msg}")
                     return
 
             subprocess.run(  # noqa: S603
@@ -379,7 +379,7 @@ def test_import():
                     [precommit_path, "install"]
                 )
                 if not is_valid:
-                    print(f"   ⚠️  Security validation failed: {error_msg}")
+                    print(f"   [WARN] Security validation failed: {error_msg}")
                     return
 
             subprocess.run(  # noqa: S603
@@ -388,36 +388,38 @@ def test_import():
                 check=True,
                 capture_output=True,
             )
-            print("   ✓ Pre-commit hooks installed")
+            print("   [OK] Pre-commit hooks installed")
 
         except (subprocess.CalledProcessError, FileNotFoundError):
-            print("   ⚠️  pre-commit not found. Install with: pip install pre-commit")
+            print(
+                "   [WARN] pre-commit not found. Install with: pip install pre-commit"
+            )
 
     def print_next_steps(self):
         """Display next steps."""
         print(
             f"""
-🎉 Python project '{self.project_name}' configured successfully!
+[SUCCESS] Python project '{self.project_name}' configured successfully!
 
-📋 Next steps:
+[NEXT] Next steps:
 1. cd {self.project_path}
 2. pip install -e ".[dev]"
 3. pre-commit install  # If not already done
 4. git add .
 5. git commit -m "Initial commit with Python dev environment"
 
-🛠️ Useful commands:
+[TOOLS] Useful commands:
 - make lint                    # Quality check
 - make format                  # Automatic formatting
 - make test                    # Tests
 - black . && isort .           # Manual formatting
 - pytest --cov                 # Tests with coverage
 
-📚 Documentation:
+[DOCS] Documentation:
 - docs/DEVELOPMENT.md          # Development guide
 - {self.python_tools_path}/PYTHON.md  # Complete Python documentation
 
-🐍 Happy Python coding!
+[END] Happy Python coding!
 """
         )
 
@@ -445,20 +447,12 @@ def main():
         project_name = args.project_name
         project_path = Path.cwd() / project_name
     else:
-        project_name = input("Nom du projet Python: ").strip()
-        if not project_name:
-            print("❌ Nom de projet requis")
-            return 1
-        project_path = Path.cwd() / project_name
+        # Ce cas ne devrait plus arriver car new.py gère le prompt
+        print("[ERROR] Nom de projet requis")
+        return 1
 
-    # Confirmer avant de continuer
-    if not args.current_dir:
-        response = input(
-            f"Create Python project '{project_name}' in {project_path}? (y/N): "
-        )
-        if response.lower() not in ("y", "yes", "o", "oui"):
-            print("Cancelled.")
-            return 0
+    # Plus de confirmation interactive pour éviter les timeouts
+    # La confirmation est gérée par new.py
 
     setup = PythonProjectSetup(project_path, project_name)
     setup.setup_all()

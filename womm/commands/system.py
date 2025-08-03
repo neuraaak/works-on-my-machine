@@ -24,28 +24,38 @@ def display_system_data(data: Dict) -> None:
         if not isinstance(data, dict):
             raise ValueError("Invalid data format: expected dictionary")
 
-        system_info = data.get('system_info', {})
-        package_managers = data.get('package_managers', {})
-        dev_environments = data.get('dev_environments', {})
-        recommendations = data.get('recommendations', {})
+        system_info = data.get("system_info", {})
+        package_managers = data.get("package_managers", {})
+        dev_environments = data.get("dev_environments", {})
+        recommendations = data.get("recommendations", {})
 
         # Format the data nicely
         content = []
         content.append("[bold blue]System Information[/bold blue]")
-        content.append(f"OS: {system_info.get('platform', 'unknown')} {system_info.get('platform_release', '')}")
+        content.append(
+            f"OS: {system_info.get('platform', 'unknown')} {system_info.get('platform_release', '')}"
+        )
         content.append(f"Architecture: {system_info.get('architecture', 'unknown')}")
         content.append(f"Python: {system_info.get('python_version', 'unknown')}")
         content.append(f"Shell: {system_info.get('shell', 'unknown')}")
 
-        content.append(f"\n[bold green]Package Managers[/bold green] ({len(package_managers)} available)")
+        content.append(
+            f"\n[bold green]Package Managers[/bold green] ({len(package_managers)} available)"
+        )
         for name, info in package_managers.items():
-            if info.get('available'):
-                content.append(f"✓ {name}: {info.get('version', 'unknown')} - {info.get('description', '')}")
+            if info.get("available"):
+                content.append(
+                    f"✓ {name}: {info.get('version', 'unknown')} - {info.get('description', '')}"
+                )
 
-        content.append(f"\n[bold yellow]Development Environments[/bold yellow] ({len(dev_environments)} detected)")
+        content.append(
+            f"\n[bold yellow]Development Environments[/bold yellow] ({len(dev_environments)} detected)"
+        )
         for _, info in dev_environments.items():
-            if info.get('available'):
-                content.append(f"✓ {info.get('name', 'unknown')}: {info.get('version', 'unknown')}")
+            if info.get("available"):
+                content.append(
+                    f"✓ {info.get('name', 'unknown')}: {info.get('version', 'unknown')}"
+                )
 
         content.append("\n[bold magenta]Recommendations[/bold magenta]")
         for category, recommendation in recommendations.items():
@@ -53,35 +63,45 @@ def display_system_data(data: Dict) -> None:
 
         # Add a blank line before the panel for better spacing
         console.print()
-        panel = create_panel("\n".join(content), title="System Detection Results", style="blue")
+        panel = create_panel(
+            "\n".join(content), title="System Detection Results", style="blue"
+        )
         console.print(panel)
 
     except ImportError:
         # Fallback to basic output
         print("\n=== System Detection Results ===")
-        print(f"OS: {data['system_info']['platform']} {data['system_info']['platform_release']}")
+        print(
+            f"OS: {data['system_info']['platform']} {data['system_info']['platform_release']}"
+        )
         print(f"Architecture: {data['system_info']['architecture']}")
         print(f"Python: {data['system_info']['python_version']}")
         print(f"Shell: {data['system_info']['shell']}")
 
         # Display package managers
-        if data.get('package_managers'):
+        if data.get("package_managers"):
             print(f"\nPackage Managers ({len(data['package_managers'])} available):")
-            for name, info in data['package_managers'].items():
-                if info.get('available'):
-                    print(f"✓ {name}: {info.get('version', 'unknown')} - {info.get('description', '')}")
+            for name, info in data["package_managers"].items():
+                if info.get("available"):
+                    print(
+                        f"✓ {name}: {info.get('version', 'unknown')} - {info.get('description', '')}"
+                    )
 
         # Display development environments
-        if data.get('dev_environments'):
-            print(f"\nDevelopment Environments ({len(data['dev_environments'])} detected):")
-            for _, info in data['dev_environments'].items():
-                if info.get('available'):
-                    print(f"✓ {info.get('name', 'unknown')}: {info.get('version', 'unknown')}")
+        if data.get("dev_environments"):
+            print(
+                f"\nDevelopment Environments ({len(data['dev_environments'])} detected):"
+            )
+            for _, info in data["dev_environments"].items():
+                if info.get("available"):
+                    print(
+                        f"✓ {info.get('name', 'unknown')}: {info.get('version', 'unknown')}"
+                    )
 
         # Display recommendations
-        if data.get('recommendations'):
+        if data.get("recommendations"):
             print("\nRecommendations:")
-            for category, recommendation in data['recommendations'].items():
+            for category, recommendation in data["recommendations"].items():
                 print(f"• {category}: {recommendation}")
 
 
@@ -111,7 +131,9 @@ def display_prerequisites_data(results: Dict) -> None:
 
         # Add summary
         content.append("\n[bold green]Summary[/bold green]")
-        available_count = sum(1 for info in results.values() if info.get("available", False))
+        available_count = sum(
+            1 for info in results.values() if info.get("available", False)
+        )
         total_count = len(results)
 
         if available_count == total_count:
@@ -124,7 +146,9 @@ def display_prerequisites_data(results: Dict) -> None:
 
         # Add a blank line before the panel for better spacing
         console.print()
-        panel = create_panel("\n".join(content), title="Prerequisites Status", style="green")
+        panel = create_panel(
+            "\n".join(content), title="Prerequisites Status", style="green"
+        )
         console.print(panel)
 
     except ImportError:
@@ -171,7 +195,9 @@ def system_detect():
 
     except ImportError as e:
         print(f"❌ Error: SystemDetector module not available: {e}")
-        print("💡 This is a development version. Please ensure all modules are properly installed.")
+        print(
+            "💡 This is a development version. Please ensure all modules are properly installed."
+        )
         sys.exit(1)
 
 
@@ -196,7 +222,9 @@ def system_install(check, interactive, tools):
             tools_to_process = list(tools) if tools else ["python", "node", "git"]
 
         # Set progress message based on mode
-        progress_message = "Checking prerequisites..." if check else "Processing prerequisites..."
+        progress_message = (
+            "Checking prerequisites..." if check else "Processing prerequisites..."
+        )
 
         with create_progress(progress_message) as (progress, task):
             # Use PrerequisiteManager directly
@@ -209,7 +237,9 @@ def system_install(check, interactive, tools):
             else:
                 # Install missing tools
                 results = manager.get_installation_status(tools_to_process)
-                progress.update(task, description="Prerequisites installation completed")
+                progress.update(
+                    task, description="Prerequisites installation completed"
+                )
 
             # Display the results
             display_prerequisites_data(results)
@@ -220,5 +250,7 @@ def system_install(check, interactive, tools):
 
     except ImportError as e:
         print(f"❌ Error: PrerequisiteManager module not available: {e}")
-        print("💡 This is a development version. Please ensure all modules are properly installed.")
+        print(
+            "💡 This is a development version. Please ensure all modules are properly installed."
+        )
         sys.exit(1)

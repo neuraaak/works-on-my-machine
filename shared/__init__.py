@@ -18,6 +18,26 @@ from .core.cli_manager import (
     run_silent,
 )
 
+# Result classes for structured returns
+from .core.results import (
+    BaseResult,
+    CommandExecutionResult,
+    ConfigurationResult,
+    DependencyCheckResult,
+    FileOperationResult,
+    InstallationResult,
+    ProjectDetectionResult,
+    SecurityResult,
+    SetupResult,
+    ValidationResult,
+    create_dependency_check_error,
+    create_dependency_check_success,
+    create_error_result,
+    create_setup_error,
+    create_setup_success,
+    create_success_result,
+)
+
 # Note: Other modules are available but not imported by default to avoid circular dependencies
 # Import them directly when needed:
 # from shared.security.security_validator import security_validator
@@ -33,4 +53,21 @@ __all__ = [
     "get_tool_version",
     "CLIManager",
     "CommandResult",
+    # Results
+    "BaseResult",
+    "DependencyCheckResult",
+    "InstallationResult",
+    "SetupResult",
+    "ValidationResult",
+    "SecurityResult",
+    "ProjectDetectionResult",
+    "FileOperationResult",
+    "CommandExecutionResult",
+    "ConfigurationResult",
+    "create_success_result",
+    "create_error_result",
+    "create_dependency_check_success",
+    "create_dependency_check_error",
+    "create_setup_success",
+    "create_setup_error",
 ]

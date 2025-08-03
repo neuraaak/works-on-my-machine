@@ -23,17 +23,20 @@ class TestSecurityValidator:
 
         assert validator.system in ["Windows", "Linux", "Darwin"]
         assert validator.max_path_length in [260, 4096]  # Windows vs Unix
-        assert hasattr(validator, 'DANGEROUS_PATTERNS')
-        assert hasattr(validator, 'ALLOWED_EXTENSIONS')
-        assert hasattr(validator, 'ALLOWED_COMMANDS')
+        assert hasattr(validator, "DANGEROUS_PATTERNS")
+        assert hasattr(validator, "ALLOWED_EXTENSIONS")
+        assert hasattr(validator, "ALLOWED_COMMANDS")
 
-    @pytest.mark.parametrize("name", [
-        "valid-project",
-        "valid_project",
-        "ValidProject",
-        "project123",
-        "a" * 50,  # Max length
-    ])
+    @pytest.mark.parametrize(
+        "name",
+        [
+            "valid-project",
+            "valid_project",
+            "ValidProject",
+            "project123",
+            "a" * 50,  # Max length
+        ],
+    )
     def test_validate_project_name_valid(self, name):
         """Test valid project name validation."""
         validator = SecurityValidator()
@@ -42,18 +45,21 @@ class TestSecurityValidator:
         assert is_valid, f"Valid name '{name}' was rejected: {error}"
         assert error == ""
 
-    @pytest.mark.parametrize("name,expected_error", [
-        ("", "Project name cannot be empty"),
-        ("a" * 51, "Project name too long"),
-        ("invalid;project", "Project name contains dangerous characters"),
-        ("invalid..project", "Project name contains dangerous characters"),
-        ("invalid<project", "Project name contains dangerous characters"),
-        ("con", "Project name 'con' is reserved by the system"),
-        ("prn", "Project name 'prn' is reserved by the system"),
-        ("invalid project", "Project name can only contain letters"),
-        ("invalid/project", "Project name can only contain letters"),
-        ("invalid\\project", "Project name can only contain letters"),
-    ])
+    @pytest.mark.parametrize(
+        "name,expected_error",
+        [
+            ("", "Project name cannot be empty"),
+            ("a" * 51, "Project name too long"),
+            ("invalid;project", "Project name contains dangerous characters"),
+            ("invalid..project", "Project name contains dangerous characters"),
+            ("invalid<project", "Project name contains dangerous characters"),
+            ("con", "Project name 'con' is reserved by the system"),
+            ("prn", "Project name 'prn' is reserved by the system"),
+            ("invalid project", "Project name can only contain letters"),
+            ("invalid/project", "Project name can only contain letters"),
+            ("invalid\\project", "Project name can only contain letters"),
+        ],
+    )
     def test_validate_project_name_invalid(self, name, expected_error):
         """Test invalid project name validation."""
         validator = SecurityValidator()
@@ -62,13 +68,16 @@ class TestSecurityValidator:
         assert not is_valid, f"Invalid name '{name}' was accepted"
         assert expected_error in error
 
-    @pytest.mark.parametrize("path", [
-        "/home/user/project",
-        "C:\\Users\\user\\project",
-        "./relative/path",
-        "project",
-        "src/main.py",
-    ])
+    @pytest.mark.parametrize(
+        "path",
+        [
+            "/home/user/project",
+            "C:\\Users\\user\\project",
+            "./relative/path",
+            "project",
+            "src/main.py",
+        ],
+    )
     def test_validate_path_valid(self, path):
         """Test valid path validation."""
         validator = SecurityValidator()
@@ -77,16 +86,19 @@ class TestSecurityValidator:
         assert is_valid, f"Valid path '{path}' was rejected: {error}"
         assert error == ""
 
-    @pytest.mark.parametrize("path", [
-        "path/../dangerous",
-        "path\\..\\dangerous",
-        "path;dangerous",
-        "path|dangerous",
-        "path`dangerous",
-        "path$(dangerous)",
-        "path<dangerous",
-        "path>dangerous",
-    ])
+    @pytest.mark.parametrize(
+        "path",
+        [
+            "path/../dangerous",
+            "path\\..\\dangerous",
+            "path;dangerous",
+            "path|dangerous",
+            "path`dangerous",
+            "path$(dangerous)",
+            "path<dangerous",
+            "path>dangerous",
+        ],
+    )
     def test_validate_path_invalid(self, path):
         """Test invalid path validation."""
         validator = SecurityValidator()
@@ -115,13 +127,16 @@ class TestSecurityValidator:
         assert not is_valid
         assert "does not exist" in error
 
-    @pytest.mark.parametrize("command", [
-        ["python", "--version"],
-        ["git", "status"],
-        ["npm", "install"],
-        ["black", "src/"],
-        ["flake8", "project"],
-    ])
+    @pytest.mark.parametrize(
+        "command",
+        [
+            ["python", "--version"],
+            ["git", "status"],
+            ["npm", "install"],
+            ["black", "src/"],
+            ["flake8", "project"],
+        ],
+    )
     def test_validate_command_valid(self, command):
         """Test valid command validation."""
         validator = SecurityValidator()
@@ -130,15 +145,18 @@ class TestSecurityValidator:
         assert is_valid, f"Valid command {command} was rejected: {error}"
         assert error == ""
 
-    @pytest.mark.parametrize("command", [
-        ["rm", "-rf", "/"],
-        ["sudo", "rm", "-rf", "/"],
-        ["python", ";", "rm", "-rf", "/"],
-        ["python", "&&", "rm", "-rf", "/"],
-        ["python", "|", "rm", "-rf", "/"],
-        ["python", "`rm -rf /`"],
-        ["python", "$(rm -rf /)"],
-    ])
+    @pytest.mark.parametrize(
+        "command",
+        [
+            ["rm", "-rf", "/"],
+            ["sudo", "rm", "-rf", "/"],
+            ["python", ";", "rm", "-rf", "/"],
+            ["python", "&&", "rm", "-rf", "/"],
+            ["python", "|", "rm", "-rf", "/"],
+            ["python", "`rm -rf /`"],
+            ["python", "$(rm -rf /)"],
+        ],
+    )
     def test_validate_command_invalid(self, command):
         """Test invalid command validation."""
         validator = SecurityValidator()
@@ -199,7 +217,7 @@ class TestSecurityValidator:
         validator = SecurityValidator()
 
         # Test dangerous characters
-        sanitized = validator.sanitize_filename("file<>:\"/\\|?*.txt")
+        sanitized = validator.sanitize_filename('file<>:"/\\|?*.txt')
         assert sanitized == "file_______.txt"
 
         # Test spaces
@@ -236,23 +254,28 @@ class TestSecurityValidator:
         assert not is_valid
         assert "extension not allowed" in error
 
-    @pytest.mark.parametrize("key_path,operation,expected", [
-        ("Software\\WorksOnMyMachine\\Test", "write", True),
-        ("Software\\Classes\\Directory\\shell\\Test", "write", True),
-        ("Software\\Classes\\Directory\\Background\\shell\\Test", "write", True),
-        ("Software\\Malicious\\Key", "write", False),
-        ("System\\CurrentControlSet\\Services", "write", False),
-    ])
+    @pytest.mark.parametrize(
+        "key_path,operation,expected",
+        [
+            ("Software\\WorksOnMyMachine\\Test", "write", True),
+            ("Software\\Classes\\Directory\\shell\\Test", "write", True),
+            ("Software\\Classes\\Directory\\Background\\shell\\Test", "write", True),
+            ("Software\\Malicious\\Key", "write", False),
+            ("System\\CurrentControlSet\\Services", "write", False),
+        ],
+    )
     def test_validate_registry_operation(self, key_path, operation, expected):
         """Test registry operation validation."""
         validator = SecurityValidator()
 
-        with patch('platform.system', return_value="Windows"):
+        with patch("platform.system", return_value="Windows"):
             is_valid, error = validator.validate_registry_operation(key_path, operation)
-            assert is_valid == expected, f"Registry validation failed for {key_path}: {error}"
+            assert (
+                is_valid == expected
+            ), f"Registry validation failed for {key_path}: {error}"
 
         # Test non-Windows system
-        with patch('platform.system', return_value="Linux"):
+        with patch("platform.system", return_value="Linux"):
             is_valid, error = validator.validate_registry_operation(key_path, operation)
             assert not is_valid
             assert "only supported on Windows" in error
@@ -364,10 +387,28 @@ class TestSecurityValidatorEdgeCases:
         validator = SecurityValidator()
 
         allowed_extensions = [
-            ".py", ".pyw", ".js", ".jsx", ".ts", ".tsx",
-            ".json", ".yaml", ".yml", ".md", ".txt",
-            ".toml", ".ini", ".cfg", ".conf",
-            ".bat", ".cmd", ".ps1", ".sh", ".bash", ".zsh", ".fish"
+            ".py",
+            ".pyw",
+            ".js",
+            ".jsx",
+            ".ts",
+            ".tsx",
+            ".json",
+            ".yaml",
+            ".yml",
+            ".md",
+            ".txt",
+            ".toml",
+            ".ini",
+            ".cfg",
+            ".conf",
+            ".bat",
+            ".cmd",
+            ".ps1",
+            ".sh",
+            ".bash",
+            ".zsh",
+            ".fish",
         ]
 
         for ext in allowed_extensions:
@@ -382,10 +423,26 @@ class TestSecurityValidatorEdgeCases:
         validator = SecurityValidator()
 
         allowed_commands = [
-            "python", "python3", "py", "node", "npm", "npx",
-            "git", "pip", "pip3", "black", "isort", "flake8",
-            "pytest", "pre-commit", "cspell", "eslint",
-            "prettier", "jest", "husky", "lint-staged"
+            "python",
+            "python3",
+            "py",
+            "node",
+            "npm",
+            "npx",
+            "git",
+            "pip",
+            "pip3",
+            "black",
+            "isort",
+            "flake8",
+            "pytest",
+            "pre-commit",
+            "cspell",
+            "eslint",
+            "prettier",
+            "jest",
+            "husky",
+            "lint-staged",
         ]
 
         for cmd in allowed_commands:
@@ -397,13 +454,13 @@ class TestSecurityValidatorEdgeCases:
         validator = SecurityValidator()
 
         # Test Windows paths on Windows
-        with patch('platform.system', return_value="Windows"):
+        with patch("platform.system", return_value="Windows"):
             validator.max_path_length = 260
             is_valid, error = validator.validate_path("C:\\Users\\user\\project")
             assert is_valid, f"Windows path was rejected: {error}"
 
         # Test Unix paths on Linux
-        with patch('platform.system', return_value="Linux"):
+        with patch("platform.system", return_value="Linux"):
             validator.max_path_length = 4096
             is_valid, error = validator.validate_path("/home/user/project")
             assert is_valid, f"Unix path was rejected: {error}"
@@ -413,11 +470,28 @@ class TestSecurityValidatorEdgeCases:
         validator = SecurityValidator()
 
         reserved_names = [
-            'con', 'prn', 'aux', 'nul',
-            'com1', 'com2', 'com3', 'com4', 'com5',
-            'com6', 'com7', 'com8', 'com9',
-            'lpt1', 'lpt2', 'lpt3', 'lpt4',
-            'lpt5', 'lpt6', 'lpt7', 'lpt8', 'lpt9'
+            "con",
+            "prn",
+            "aux",
+            "nul",
+            "com1",
+            "com2",
+            "com3",
+            "com4",
+            "com5",
+            "com6",
+            "com7",
+            "com8",
+            "com9",
+            "lpt1",
+            "lpt2",
+            "lpt3",
+            "lpt4",
+            "lpt5",
+            "lpt6",
+            "lpt7",
+            "lpt8",
+            "lpt9",
         ]
 
         for name in reserved_names:
