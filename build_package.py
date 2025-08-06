@@ -32,7 +32,7 @@ def build_package():
     clean_build_dirs()
 
     # Build the package
-    result = subprocess.run( #noqa: S603
+    result = subprocess.run(  # noqa: S603
         [sys.executable, "-m", "build", "--wheel", "--sdist"],
         capture_output=True,
         text=True,
@@ -52,7 +52,7 @@ def check_package():
     """Check the built package."""
     print("Checking package...")
 
-    result = subprocess.run( #noqa: S603
+    result = subprocess.run(  # noqa: S603
         [sys.executable, "-m", "twine", "check", "dist/*"],
         capture_output=True,
         text=True,
@@ -72,7 +72,7 @@ def upload_to_test_pypi():
     """Upload to Test PyPI."""
     print("Uploading to Test PyPI...")
 
-    result = subprocess.run( #noqa: S603
+    result = subprocess.run(  # noqa: S603
         [sys.executable, "-m", "twine", "upload", "--repository", "testpypi", "dist/*"],
         capture_output=True,
         text=True,
@@ -92,7 +92,7 @@ def upload_to_pypi():
     """Upload to PyPI."""
     print("Uploading to PyPI...")
 
-    result = subprocess.run( #noqa: S603
+    result = subprocess.run(  # noqa: S603
         [sys.executable, "-m", "twine", "upload", "dist/*"],
         capture_output=True,
         text=True,

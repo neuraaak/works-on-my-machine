@@ -4,11 +4,9 @@ Path management utilities for WOMM CLI.
 Provides path resolution and validation functions.
 """
 
-import sys
 from pathlib import Path
 
-# Add shared modules to path
-sys.path.insert(0, str(Path(__file__).parent.parent.parent / "shared"))
+from .imports import get_shared_module_path, get_languages_module_path
 
 
 def get_project_root() -> Path:
@@ -18,12 +16,17 @@ def get_project_root() -> Path:
 
 def get_shared_path() -> Path:
     """Get the shared modules path."""
-    return get_project_root() / "shared"
+    return get_shared_module_path()
 
 
 def resolve_script_path(relative_path: str) -> Path:
     """Resolve a script path relative to the project root."""
-    return get_project_root() / relative_path
+    # Handle both development and PyPI installation
+    if relative_path.startswith("languages/"):
+        languages_path = get_languages_module_path()
+        return languages_path / relative_path[10:]  # Remove "languages/" prefix
+    else:
+        return get_project_root() / relative_path
 
 
 def validate_script_exists(script_path: Path) -> bool:

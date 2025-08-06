@@ -5,11 +5,22 @@ Universal development tools for Python and JavaScript projects.
 Enhanced with comprehensive security validation.
 """
 
-__version__ = "1.0.0"
+# CONSTANTS
+########################################################
+# Package metadata and version information
+
+__version__ = "1.6.0"
 __author__ = "Works On My Machine Team"
 __description__ = "Universal development tools for Python and JavaScript projects"
 
-# Import main CLI group for easy access
+# IMPORTS
+########################################################
+# Main CLI group import for easy access
+
 from .cli import womm
+
+# EXPORTS
+########################################################
+# Public API exports
 
 __all__ = ["womm"]

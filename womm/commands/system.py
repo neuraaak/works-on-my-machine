@@ -4,10 +4,22 @@ System commands for WOMM CLI.
 Handles system detection and prerequisites installation.
 """
 
+# IMPORTS
+########################################################
+# Standard library imports
 import sys
 from typing import Dict
 
+# Third-party imports
 import click
+
+# Local imports
+# (None for this file)
+
+
+# MAIN FUNCTIONS
+########################################################
+# Core CLI functionality and command groups
 
 
 @click.group()
@@ -15,10 +27,16 @@ def system_group():
     """🔧 System detection and prerequisites."""
 
 
+# UTILITY FUNCTIONS
+########################################################
+# Helper functions and utilities
+
+
 def display_system_data(data: Dict) -> None:
     """Display system data in a Rich panel."""
     try:
-        from shared.ui import console, create_panel
+        from shared.ui.console import console
+        from shared.ui.panels import create_panel
 
         # Validate data structure
         if not isinstance(data, dict):
@@ -59,12 +77,15 @@ def display_system_data(data: Dict) -> None:
 
         content.append("\n[bold magenta]Recommendations[/bold magenta]")
         for category, recommendation in recommendations.items():
-            content.append(f"• {category}: {recommendation}")
+            content.append(f"- {category}: {recommendation}")
 
         # Add a blank line before the panel for better spacing
         console.print()
         panel = create_panel(
-            "\n".join(content), title="System Detection Results", style="blue"
+            "\n".join(content),
+            title="System Detection Results",
+            style="white",
+            border_style="dim white",
         )
         console.print(panel)
 
@@ -78,179 +99,160 @@ def display_system_data(data: Dict) -> None:
         print(f"Python: {data['system_info']['python_version']}")
         print(f"Shell: {data['system_info']['shell']}")
 
-        # Display package managers
-        if data.get("package_managers"):
-            print(f"\nPackage Managers ({len(data['package_managers'])} available):")
-            for name, info in data["package_managers"].items():
-                if info.get("available"):
-                    print(
-                        f"✓ {name}: {info.get('version', 'unknown')} - {info.get('description', '')}"
-                    )
 
-        # Display development environments
-        if data.get("dev_environments"):
-            print(
-                f"\nDevelopment Environments ({len(data['dev_environments'])} detected):"
-            )
-            for _, info in data["dev_environments"].items():
-                if info.get("available"):
-                    print(
-                        f"✓ {info.get('name', 'unknown')}: {info.get('version', 'unknown')}"
-                    )
-
-        # Display recommendations
-        if data.get("recommendations"):
-            print("\nRecommendations:")
-            for category, recommendation in data["recommendations"].items():
-                print(f"• {category}: {recommendation}")
-
-
-def display_prerequisites_data(results: Dict) -> None:
-    """Display prerequisites data in a Rich panel."""
-    try:
-        from shared.ui import console, create_panel
-
-        # Validate data structure
-        if not isinstance(results, dict):
-            raise ValueError("Invalid data format: expected dictionary")
-
-        # Format the data nicely
-        content = []
-        content.append("[bold blue]Prerequisites[/bold blue]")
-
-        for tool, info in results.items():
-            status_icon = "✅" if info.get("available", False) else "❌"
-            status_text = info.get("status", "unknown")
-            version = info.get("version", "unknown")
-
-            if info.get("available", False):
-                content.append(f"{status_icon} {tool}: {status_text} (v{version})")
-            else:
-                error = info.get("error", "Not installed")
-                content.append(f"{status_icon} {tool}: {status_text} - {error}")
-
-        # Add summary
-        content.append("\n[bold green]Summary[/bold green]")
-        available_count = sum(
-            1 for info in results.values() if info.get("available", False)
-        )
-        total_count = len(results)
-
-        if available_count == total_count:
-            content.append("• All prerequisites are available")
-            content.append("• No installation required")
-        else:
-            missing_count = total_count - available_count
-            content.append(f"• {available_count}/{total_count} prerequisites available")
-            content.append(f"• {missing_count} prerequisites need installation")
-
-        # Add a blank line before the panel for better spacing
-        console.print()
-        panel = create_panel(
-            "\n".join(content), title="Prerequisites Status", style="green"
-        )
-        console.print(panel)
-
-    except ImportError:
-        # Fallback to basic output
-        print("\n=== Prerequisites Status ===")
-        for tool, info in results.items():
-            status_icon = "✅" if info.get("available", False) else "❌"
-            status_text = info.get("status", "unknown")
-            version = info.get("version", "unknown")
-
-            if info.get("available", False):
-                print(f"{status_icon} {tool}: {status_text} (v{version})")
-            else:
-                error = info.get("error", "Not installed")
-                print(f"{status_icon} {tool}: {status_text} - {error}")
+# COMMAND FUNCTIONS
+########################################################
+# Command implementations
 
 
 @system_group.command("detect")
 def system_detect():
-    """Detect system information and available tools."""
+    """🔍 Detect system information and available tools."""
     try:
         from shared.core.system_detector import SystemDetector
-        from shared.ui import create_progress, print_header
+        from shared.ui.console import print_header
+        from shared.ui.progress import create_spinner_with_status
 
-        print_header("System Detection")
+        print_header("WOMM System Detection")
 
-        with create_progress("Analyzing system...") as (progress, task):
-            try:
-                # Use SystemDetector directly instead of executing external script
-                detector = SystemDetector()
-                data = detector.get_system_data()
+        with create_spinner_with_status("Detecting system information...") as (
+            progress,
+            task,
+        ):
+            # Update description and status
+            progress.update(
+                task,
+                description="🔍 Detecting system information...",
+                status="Initializing...",
+            )
 
-                progress.update(task, description="System detection completed")
+            detector = SystemDetector()
 
-                # Display the results
-                display_system_data(data)
+            # Update status during detection
+            progress.update(task, status="Scanning system...")
+            data = detector.get_system_data()
 
-            except Exception as e:
-                progress.update(task, description="System detection failed")
-                print(f"❌ Error during system detection: {e}")
-                sys.exit(1)
+            # Final status update
+            progress.update(task, status="Detection complete!")
 
-        sys.exit(0)
+        if data:
+            display_system_data(data)
+        else:
+            print("❌ Failed to detect system information")
+            sys.exit(1)
 
-    except ImportError as e:
-        print(f"❌ Error: SystemDetector module not available: {e}")
-        print(
-            "💡 This is a development version. Please ensure all modules are properly installed."
-        )
+    except ImportError:
+        print("❌ System detection module not available")
         sys.exit(1)
 
 
 @system_group.command("install")
 @click.option("--check", is_flag=True, help="Only check prerequisites")
-@click.option("--interactive", is_flag=True, help="Interactive installation mode")
-@click.argument(
-    "tools", nargs=-1, type=click.Choice(["python", "node", "git", "npm", "all"])
-)
-def system_install(check, interactive, tools):
-    """Install system prerequisites."""
+@click.argument("tools", nargs=-1, type=click.Choice(["python", "node", "git", "all"]))
+def system_install(check, tools):
+    """📦 Install system prerequisites."""
     try:
-        from shared.core.prerequisite_manager import PrerequisiteManager
-        from shared.ui import create_progress, print_header
+        from rich.table import Table
 
-        print_header("System Prerequisites Installation")
-
-        # Determine tools to process
-        if "all" in tools:
-            tools_to_process = ["python", "node", "git", "npm"]
-        else:
-            tools_to_process = list(tools) if tools else ["python", "node", "git"]
-
-        # Set progress message based on mode
-        progress_message = (
-            "Checking prerequisites..." if check else "Processing prerequisites..."
+        from shared.core.dependencies.runtime_manager import runtime_manager
+        from shared.ui.console import console, print_header
+        from shared.ui.progress import (
+            create_step_progress,
         )
 
-        with create_progress(progress_message) as (progress, task):
-            # Use PrerequisiteManager directly
-            manager = PrerequisiteManager()
+        print_header("WOMM System Prerequisites")
 
-            if check:
-                # Only check, don't install
-                results = manager.check_prerequisites(tools_to_process)
-                progress.update(task, description="Prerequisites check completed")
+        # Determine which tools to process
+        tools_to_process = (
+            ["python", "node", "git"] if not tools or "all" in tools else list(tools)
+        )
+
+        if check:
+            # Check target directory existence
+            with create_step_progress(
+                tools_to_process, "Checking system prerequisites..."
+            ) as (
+                progress,
+                task,
+                steps,
+            ):
+                # Only check prerequisites
+                results = {}
+                for i, step in enumerate(tools_to_process):
+                    progress.update(
+                        task,
+                        description=f"[bold blue]{step}",
+                        current_step=step,
+                        step=i + 1,
+                    )
+                    result = runtime_manager.check_runtime(step)
+                    results[step] = result
+
+                    # Advance progress bar
+                    progress.advance(task)
+
+            # Display results in a table
+            table = Table(title="Prerequisites Status")
+            table.add_column("Tool", style="cyan", no_wrap=True)
+            table.add_column("Status", style="bold")
+            table.add_column("Version", style="dim")
+            table.add_column("Path", style="dim")
+
+            for tool, result in results.items():
+                status = "✅ Installed" if result.success else "❌ Missing"
+                version = result.version or "N/A"
+                path = result.path or "N/A"
+                table.add_row(tool.capitalize(), status, version, path)
+
+            console.print("")
+            console.print(table)
+
+            # Check if any tools are missing
+            missing_tools = [
+                tool for tool, result in results.items() if not result.success
+            ]
+            if missing_tools:
+                console.print(f"\n⚠️  Missing tools: {', '.join(missing_tools)}")
+                console.print("💡 Run without --check flag to install them.")
+                sys.exit(1)
             else:
-                # Install missing tools
-                results = manager.get_installation_status(tools_to_process)
-                progress.update(
-                    task, description="Prerequisites installation completed"
+                console.print("\n✅ All prerequisites are installed!")
+
+        else:
+            # Install prerequisites
+            console.print("📦 Installing system prerequisites...\n")
+            results = runtime_manager.check_and_install_runtimes(tools_to_process)
+
+            # Display results
+            table = Table(title="Installation Results")
+            table.add_column("Tool", style="cyan", no_wrap=True)
+            table.add_column("Status", style="bold")
+            table.add_column("Version", style="dim")
+            table.add_column("Message", style="dim")
+
+            failed_installations = []
+            for tool, result in results.items():
+                if result.success:
+                    status = "✅ Success"
+                    version = result.version or "N/A"
+                else:
+                    status = "❌ Failed"
+                    version = "N/A"
+                    failed_installations.append(tool)
+
+                message = result.message or result.error or "N/A"
+                table.add_row(tool.capitalize(), status, version, message)
+
+            console.print(table)
+
+            if failed_installations:
+                console.print(
+                    f"\n❌ Failed to install: {', '.join(failed_installations)}"
                 )
-
-            # Display the results
-            display_prerequisites_data(results)
-
-        # Determine exit code
-        all_available = all(info.get("available", False) for info in results.values())
-        sys.exit(0 if all_available else 1)
+                sys.exit(1)
+            else:
+                console.print("\n🎉 All prerequisites installed successfully!")
 
     except ImportError as e:
-        print(f"❌ Error: PrerequisiteManager module not available: {e}")
-        print(
-            "💡 This is a development version. Please ensure all modules are properly installed."
-        )
+        print(f"❌ Dependency manager not available: {e}")
         sys.exit(1)

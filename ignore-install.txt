@@ -63,4 +63,5 @@ tests
 run_tests.py
 
 # Build tools (not needed for installation)
-build_package.py 
+build_package.py
+build_exe.py 

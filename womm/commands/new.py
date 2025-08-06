@@ -4,32 +4,111 @@ New project commands for WOMM CLI.
 Handles creation of new Python and JavaScript projects.
 """
 
+# IMPORTS
+########################################################
+# External modules and dependencies
+
 import sys
 from pathlib import Path
 
 import click
 
+from shared.core.dependencies.dependency_manager import dependency_manager
+
+# IMPORTS
+########################################################
+# Internal modules and dependencies
 from shared.core.results import SecurityResult, ValidationResult
-from shared.dependency_manager import dependency_manager
+from shared.ui.console import console
 
-# Import UI and Result classes
-from shared.ui import (
-    print_dependency_check_result,
-    print_installation_result,
-    print_new_project_complete,
-    print_new_project_error,
-    print_new_project_progress,
-    print_security_result,
-    print_validation_result,
-)
-
+# IMPORTS
+########################################################
+# Local utility imports
 from ..utils.path_manager import resolve_script_path
 from ..utils.security import SECURITY_AVAILABLE, run_secure_command, validate_user_input
+
+# MAIN FUNCTIONS
+########################################################
+# Core CLI functionality and command groups
 
 
 @click.group()
 def new_group():
     """🆕 Create new projects."""
+
+
+# UTILITY FUNCTIONS
+########################################################
+# Helper functions and utilities
+
+
+def print_new_project_progress(step: str, message: str):
+    """Display project creation progress"""
+    console.print(f"🔄 {step}: {message}", style="blue")
+
+
+def print_new_project_complete(project_type: str, project_name: str, project_path: str):
+    """Display project creation completion"""
+    console.print(
+        f"✅ {project_type} project '{project_name}' created successfully!",
+        style="green",
+    )
+    console.print(f"📁 Location: {project_path}", style="cyan")
+
+
+def print_new_project_error(project_type: str, project_name: str, error: str):
+    """Display project creation error"""
+    console.print(
+        f"❌ Failed to create {project_type} project '{project_name}': {error}",
+        style="red",
+    )
+
+
+def print_dependency_check_result(result):
+    """Display dependency check result"""
+    if result.all_available:
+        console.print("✅ All dependencies are available", style="green")
+    else:
+        console.print(
+            f"⚠️ Missing dependencies: {', '.join(result.missing)}", style="yellow"
+        )
+
+
+def print_installation_result(result):
+    """Display installation result"""
+    if result.success:
+        console.print("✅ Dependencies installed successfully", style="green")
+    else:
+        console.print(f"❌ Installation failed: {result.error}", style="red")
+
+
+def print_security_result(result):
+    """Display security validation result"""
+    if result.success:
+        console.print("✅ Security validation passed", style="green")
+    else:
+        console.print(f"❌ Security validation failed: {result.error}", style="red")
+
+
+def print_validation_result(result):
+    """Display input validation result"""
+    if result.success:
+        console.print("✅ Input validation passed", style="green")
+    else:
+        console.print(f"❌ Input validation failed: {result.error}", style="red")
+
+
+def print_prompt(message: str, required: bool = False) -> str:
+    """Display a prompt and get user input"""
+    prompt_text = f"{message}: "
+    if required:
+        prompt_text += "(required) "
+    return input(prompt_text)
+
+
+# COMMAND FUNCTIONS
+########################################################
+# Command implementations
 
 
 @new_group.command("python")
@@ -40,12 +119,10 @@ def new_group():
     help="Configure current directory instead of creating new one",
 )
 def new_python(project_name, current_dir):
-    """Create a new Python project with full development environment."""
+    """🐍 Create a new Python project with full development environment."""
 
     # 0. Prompt for project name if not provided and not current-dir
     if not project_name and not current_dir:
-        from shared.ui import print_prompt
-
         project_name = print_prompt("Nom du projet Python", required=True)
         if not project_name:
             print_new_project_error("python", "unknown", "Nom de projet requis")
@@ -151,12 +228,10 @@ def new_python(project_name, current_dir):
     help="JavaScript project type",
 )
 def new_javascript(project_name, current_dir, project_type):
-    """Create a new JavaScript/Node.js project with development tools."""
+    """🟨 Create a new JavaScript/Node.js project with development tools."""
 
     # 0. Prompt for project name if not provided and not current-dir
     if not project_name and not current_dir:
-        from shared.ui import print_prompt
-
         project_name = print_prompt("Nom du projet JavaScript", required=True)
         if not project_name:
             print_new_project_error("javascript", "unknown", "Nom de projet requis")
@@ -257,7 +332,7 @@ def new_javascript(project_name, current_dir, project_type):
 @click.argument("project_name", required=False)
 @click.option("--current-dir", is_flag=True, help="Configure current directory")
 def new_detect(project_name, current_dir):
-    """Auto-detect project type and create appropriate setup."""
+    """🔍 Auto-detect project type and create appropriate setup."""
 
     print_new_project_progress("Project detection", "Detecting project type")
     script_path = resolve_script_path("shared/project/project_detector.py")

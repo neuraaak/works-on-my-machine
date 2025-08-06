@@ -4,25 +4,24 @@ Spell checking commands for WOMM CLI.
 Handles CSpell configuration and spell checking.
 """
 
+# IMPORTS
+########################################################
+# External modules and dependencies
+
 import sys
 from pathlib import Path
 
 import click
 
+# IMPORTS
+########################################################
+# Internal modules and dependencies
 from shared.core.spell_manager import SpellManager
-from shared.ui import (
-    print_spell_add_result,
-    print_spell_check_start,
-    print_spell_dictionary_info,
-    print_spell_install_progress,
-    print_spell_install_result,
-    print_spell_result,
-    print_spell_setup_result,
-    print_spell_start,
-    print_spell_status,
-    print_spell_summary,
-    print_spell_tool_check_result,
-)
+from shared.ui.console import console
+
+# MAIN FUNCTIONS
+########################################################
+# Core CLI functionality and command groups
 
 
 @click.group()
@@ -30,9 +29,126 @@ def spell_group():
     """📝 Spell checking with CSpell."""
 
 
+# UTILITY FUNCTIONS
+########################################################
+# Helper functions and utilities
+
+
+def print_spell_add_result(result):
+    """Display spell add result"""
+    if result.success:
+        console.print("✅ Words added successfully", style="green")
+    else:
+        console.print(f"❌ Failed to add words: {result.message}", style="red")
+
+
+def print_spell_check_start(path: Path, fix: bool):
+    """Display spell check start message"""
+    mode = "fix" if fix else "check"
+    console.print(f"🔍 Starting spell {mode} for: {path}", style="blue")
+
+
+def print_spell_dictionary_info(dict_info):
+    """Display dictionary information"""
+    console.print("📚 Dictionary Information:", style="cyan")
+    console.print(
+        f"  Directory exists: {'✅' if dict_info['directory_exists'] else '❌'}"
+    )
+    console.print(f"  Total files: {dict_info['total_files']}")
+    if dict_info["files"]:
+        console.print("  Files:")
+        for file_path in dict_info["files"]:
+            console.print(f"    - {file_path}")
+
+
+def print_spell_install_progress():
+    """Display spell installation progress"""
+    console.print("📦 Installing CSpell...", style="blue")
+
+
+def print_spell_install_result(result):
+    """Display spell installation result"""
+    if result.success:
+        console.print("✅ CSpell installed successfully", style="green")
+    else:
+        console.print(f"❌ CSpell installation failed: {result.message}", style="red")
+
+
+def print_spell_result(result):
+    """Display spell result"""
+    if result.success:
+        console.print(f"✅ {result.message}", style="green")
+    else:
+        console.print(f"❌ {result.message}", style="red")
+
+
+def print_spell_setup_result(result):
+    """Display spell setup result"""
+    if result.success:
+        console.print("✅ CSpell setup completed successfully", style="green")
+    else:
+        console.print(f"❌ CSpell setup failed: {result.message}", style="red")
+
+
+def print_spell_start(operation: str):
+    """Display spell operation start"""
+    console.print(f"🔧 Starting {operation}...", style="blue")
+
+
+def print_spell_status(status_data):
+    """Display spell status"""
+    console.print("📊 CSpell Project Status:", style="cyan")
+    console.print(
+        f"  Project configured: {'✅' if status_data.get('configured') else '❌'}"
+    )
+    if status_data.get("config_file"):
+        console.print(f"  Config file: {status_data['config_file']}")
+    if status_data.get("words_count"):
+        console.print(f"  Custom words: {status_data['words_count']}")
+
+
+def print_spell_summary(summary):
+    """Display spell check summary"""
+    if summary.success:
+        console.print("✅ Spell check completed successfully", style="green")
+        if hasattr(summary, "issues_count") and summary.issues_count > 0:
+            console.print(
+                f"⚠️ Found {summary.issues_count} spelling issues", style="yellow"
+            )
+    else:
+        console.print(f"❌ Spell check failed: {summary.error}", style="red")
+
+
+def print_spell_tool_check_result(available: bool):
+    """Display CSpell tool availability check"""
+    if available:
+        console.print("✅ CSpell is available", style="green")
+    else:
+        console.print("❌ CSpell is not available", style="red")
+
+
+def print_prompt(message: str, required: bool = False) -> str:
+    """Display a prompt and get user input"""
+    prompt_text = f"{message}: "
+    if required:
+        prompt_text += "(required) "
+    return input(prompt_text)
+
+
+def confirm(message: str) -> bool:
+    """Display a confirmation prompt"""
+    response = input(f"{message} (y/N): ").lower().strip()
+    return response in ["y", "yes"]
+
+
+# COMMAND FUNCTIONS
+########################################################
+# Command implementations
+
+
 @spell_group.command("install")
 def spell_install():
-    """Install CSpell and dictionaries globally."""
+    """📦 Install CSpell and dictionaries globally."""
     spell_manager = SpellManager()
 
     # Check if CSpell is already available
@@ -65,7 +181,7 @@ def spell_install():
     help="Force project type",
 )
 def spell_setup(project_name, project_type):
-    """Set CSpell for current project."""
+    """⚙️ Set CSpell for current project."""
     spell_manager = SpellManager()
 
     print_spell_start("project setup")
@@ -77,7 +193,7 @@ def spell_setup(project_name, project_type):
 
 @spell_group.command("status")
 def spell_status():
-    """Display CSpell project status."""
+    """📊 Display CSpell project status."""
     spell_manager = SpellManager()
 
     result = spell_manager.get_project_status()
@@ -97,13 +213,11 @@ def spell_status():
 )
 @click.option("--interactive", is_flag=True, help="Interactive mode")
 def spell_add(words, file_path, interactive):
-    """Add words to CSpell configuration."""
+    """➕ Add words to CSpell configuration."""
     spell_manager = SpellManager()
 
     if interactive:
         # Interactive mode - prompt for words
-        from shared.ui import print_prompt
-
         word = print_prompt("Enter word to add", required=True)
         if word:
             words = [word]
@@ -139,7 +253,7 @@ def spell_add(words, file_path, interactive):
 @spell_group.command("add-all")
 @click.option("--force", is_flag=True, help="Skip confirmation prompt")
 def spell_add_all(force):
-    """Add all dictionaries from .cspell-dict/ to CSpell configuration."""
+    """📚 Add all dictionaries from .cspell-dict/ to CSpell configuration."""
     from shared.tools.dictionary_manager import get_dictionary_info
 
     # Get dictionary information
@@ -169,18 +283,15 @@ def spell_add_all(force):
     print_spell_dictionary_info(dict_info)
 
     # Confirm unless --force
-    if not force:
-        from shared.ui import confirm
-
-        if not confirm("Continue with adding all dictionaries?"):
-            print_spell_result(
-                type(
-                    "Result",
-                    (),
-                    {"success": False, "message": "Operation cancelled by user"},
-                )()
-            )
-            sys.exit(1)
+    if not force and not confirm("Continue with adding all dictionaries?"):
+        print_spell_result(
+            type(
+                "Result",
+                (),
+                {"success": False, "message": "Operation cancelled by user"},
+            )()
+        )
+        sys.exit(1)
 
     # Add all dictionaries
     spell_manager = SpellManager()
@@ -230,7 +341,7 @@ def spell_add_all(force):
 
 @spell_group.command("list-dicts")
 def spell_list_dicts():
-    """List available dictionaries in .cspell-dict/."""
+    """📋 List available dictionaries in .cspell-dict/."""
     from shared.tools.dictionary_manager import get_dictionary_info
 
     dict_info = get_dictionary_info()
@@ -243,7 +354,7 @@ def spell_list_dicts():
 @click.argument("path", type=click.Path(exists=True), default=".", required=False)
 @click.option("--fix", is_flag=True, help="Interactive fix mode")
 def spell_check(path, fix):
-    """Check spelling in files."""
+    """🔍 Check spelling in files."""
     spell_manager = SpellManager()
 
     # Show header first

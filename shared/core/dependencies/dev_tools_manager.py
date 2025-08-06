@@ -1,0 +1,295 @@
+#!/usr/bin/env python3
+"""
+Development Tools Manager for Works On My Machine.
+Manages language-specific development tools (black, isort, eslint, etc.).
+"""
+
+import shutil
+import sys
+from dataclasses import dataclass
+from typing import Dict, List, Optional
+
+from ..cli_manager import check_tool_available, run_command, run_silent
+from ..results import BaseResult
+
+
+@dataclass
+class DevToolResult(BaseResult):
+    """Result of a development tool operation."""
+
+    tool_name: str = ""
+    language: str = ""
+    tool_type: str = ""
+    path: Optional[str] = None
+
+
+# DEVELOPMENT TOOLS DEFINITIONS
+########################################################
+
+DEV_TOOLS = {
+    "python": {
+        "formatting": ["black", "isort"],
+        "linting": ["ruff", "flake8"],
+        "security": ["bandit"],
+        "testing": ["pytest"],
+        "type_checking": ["mypy"],
+    },
+    "javascript": {
+        "formatting": ["prettier"],
+        "linting": ["eslint"],
+        "testing": ["jest"],
+        "bundling": ["webpack", "vite"],
+    },
+    "universal": {
+        "spell_checking": ["cspell"],
+        "git_hooks": ["pre-commit"],
+    },
+}
+
+# Installation methods for each language
+INSTALLATION_METHODS = {
+    "python": "pip",
+    "javascript": "npm",
+    "universal": "auto",  # Auto-detect based on tool
+}
+
+# Special tool configurations
+TOOL_CONFIGS = {
+    "cspell": {
+        "check_method": "npx",  # Can be checked via npx
+        "install_method": "npm",
+    },
+    "pre-commit": {"check_method": "standard", "install_method": "pip"},
+}
+
+
+# MAIN CLASS
+########################################################
+
+
+class DevToolsManager:
+    """Manages development tools for different languages."""
+
+    def __init__(self):
+        self.cache = {}
+
+    def check_dev_tool(self, language: str, tool_type: str, tool: str) -> DevToolResult:
+        """Check if a development tool is installed."""
+        cache_key = f"{language}:{tool_type}:{tool}"
+
+        if cache_key in self.cache:
+            available = self.cache[cache_key]
+            return DevToolResult(
+                success=available,
+                tool_name=tool,
+                language=language,
+                tool_type=tool_type,
+                path=shutil.which(tool) if available else None,
+                message=f"Dev tool {tool} {'available' if available else 'not found'}",
+                error=None if available else f"Dev tool {tool} not installed",
+            )
+
+        # Check if tool is available
+        available = self._check_tool_availability(tool)
+        self.cache[cache_key] = available
+
+        return DevToolResult(
+            success=available,
+            tool_name=tool,
+            language=language,
+            tool_type=tool_type,
+            path=shutil.which(tool) if available else None,
+            message=f"Dev tool {tool} {'available' if available else 'not found'}",
+            error=None if available else f"Dev tool {tool} not installed",
+        )
+
+    def install_dev_tool(
+        self, language: str, tool_type: str, tool: str
+    ) -> DevToolResult:
+        """Install a development tool."""
+        # Check if already installed
+        if self.check_dev_tool(language, tool_type, tool).success:
+            return DevToolResult(
+                success=True,
+                tool_name=tool,
+                language=language,
+                tool_type=tool_type,
+                path=shutil.which(tool),
+                message=f"Dev tool {tool} already installed",
+            )
+
+        # Determine installation method
+        install_method = self._get_installation_method(language, tool)
+        success = False
+
+        if install_method == "pip":
+            success = self._install_python_tool(tool)
+        elif install_method == "npm":
+            success = self._install_javascript_tool(tool)
+        else:
+            return DevToolResult(
+                success=False,
+                tool_name=tool,
+                language=language,
+                tool_type=tool_type,
+                message=f"No installation method found for {tool}",
+                error="No installation method found",
+            )
+
+        if success:
+            # Clear cache for this tool
+            self._clear_tool_cache(language, tool_type, tool)
+
+            return DevToolResult(
+                success=True,
+                tool_name=tool,
+                language=language,
+                tool_type=tool_type,
+                path=shutil.which(tool),
+                message=f"Dev tool {tool} installed successfully",
+            )
+        else:
+            return DevToolResult(
+                success=False,
+                tool_name=tool,
+                language=language,
+                tool_type=tool_type,
+                message=f"Failed to install dev tool {tool}",
+                error="Installation failed",
+            )
+
+    def check_and_install_dev_tools(self, language: str) -> Dict[str, DevToolResult]:
+        """Check and install all dev tools for a language."""
+        if language not in DEV_TOOLS:
+            return {
+                "error": DevToolResult(
+                    success=False,
+                    tool_name="",
+                    language=language,
+                    tool_type="",
+                    message=f"Language {language} not supported",
+                    error=f"Language {language} not supported",
+                )
+            }
+
+        results = {}
+        for tool_type, tools in DEV_TOOLS[language].items():
+            for tool in tools:
+                result = self.check_dev_tool(language, tool_type, tool)
+                if not result.success:
+                    # Try to install the tool
+                    result = self.install_dev_tool(language, tool_type, tool)
+                results[tool] = result
+
+        return results
+
+    def get_required_tools(self, language: str) -> List[str]:
+        """Get list of required tools for a language."""
+        if language not in DEV_TOOLS:
+            return []
+
+        tools = []
+        for _, tool_list in DEV_TOOLS[language].items():
+            tools.extend(tool_list)
+
+        return tools
+
+    def get_tool_status(self, language: str = None) -> Dict[str, Dict]:
+        """Get comprehensive status of development tools."""
+        status = {}
+
+        languages_to_check = [language] if language else DEV_TOOLS.keys()
+
+        for lang in languages_to_check:
+            if lang not in DEV_TOOLS:
+                continue
+
+            status[lang] = {}
+            for tool_type, tools in DEV_TOOLS[lang].items():
+                status[lang][tool_type] = {}
+                for tool in tools:
+                    available = self._check_tool_availability(tool)
+                    status[lang][tool_type][tool] = {
+                        "installed": available,
+                        "path": shutil.which(tool) if available else None,
+                        "supported": True,
+                    }
+
+        return status
+
+    def _check_tool_availability(self, tool: str) -> bool:
+        """Check if a tool is available."""
+        # Standard check via PATH
+        if check_tool_available(tool):
+            return True
+
+        # Special checks for certain tools
+        if tool == "cspell":
+            # Check if cspell is available via npx
+            result = run_silent(["npx", "cspell", "--version"])
+            return result.success
+
+        return False
+
+    def _get_installation_method(self, language: str, tool: str) -> str:
+        """Get the installation method for a tool."""
+        # Check if tool has specific configuration
+        if tool in TOOL_CONFIGS:
+            return TOOL_CONFIGS[tool]["install_method"]
+
+        # Use language default
+        return INSTALLATION_METHODS.get(language, "auto")
+
+    def _install_python_tool(self, tool: str) -> bool:
+        """Install a Python development tool."""
+        cmd = [sys.executable, "-m", "pip", "install", tool]
+        result = run_command(cmd)
+        return result.success
+
+    def _install_javascript_tool(self, tool: str) -> bool:
+        """Install a JavaScript development tool."""
+        cmd = ["npm", "install", "-g", tool]
+        result = run_command(cmd)
+        return result.success
+
+    def _clear_tool_cache(self, language: str, tool_type: str, tool: str):
+        """Clear cache for a specific tool."""
+        cache_key = f"{language}:{tool_type}:{tool}"
+        if cache_key in self.cache:
+            del self.cache[cache_key]
+
+
+# GLOBAL INSTANCE
+########################################################
+
+dev_tools_manager = DevToolsManager()
+
+
+# CONVENIENCE FUNCTIONS
+########################################################
+
+
+def check_dev_tool(language: str, tool_type: str, tool: str) -> DevToolResult:
+    """Check if a development tool is installed."""
+    return dev_tools_manager.check_dev_tool(language, tool_type, tool)
+
+
+def install_dev_tool(language: str, tool_type: str, tool: str) -> DevToolResult:
+    """Install a development tool."""
+    return dev_tools_manager.install_dev_tool(language, tool_type, tool)
+
+
+def check_and_install_dev_tools(language: str) -> Dict[str, DevToolResult]:
+    """Check and install all dev tools for a language."""
+    return dev_tools_manager.check_and_install_dev_tools(language)
+
+
+def get_required_tools(language: str) -> List[str]:
+    """Get list of required tools for a language."""
+    return dev_tools_manager.get_required_tools(language)
+
+
+def get_dev_tools_status(language: str = None) -> Dict[str, Dict]:
+    """Get comprehensive status of development tools."""
+    return dev_tools_manager.get_tool_status(language)
+

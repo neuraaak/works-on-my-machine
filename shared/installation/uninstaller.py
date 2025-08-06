@@ -4,13 +4,20 @@ Uninstaller for Works On My Machine.
 Removes WOMM from the system and cleans up PATH entries.
 """
 
-import argparse
+# IMPORTS
+########################################################
+# Standard library imports
 import os
 import platform
 import shutil
 import sys
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, List, Optional
+
+# Third-party imports
+# (None for this file)
+# Local imports
+from shared.ui.console import print_install
 
 # Import CLI manager
 try:
@@ -37,6 +44,11 @@ SECURITY_AVAILABLE = (
 )
 
 
+# MAIN CLASS
+########################################################
+# Core uninstallation manager class
+
+
 class UninstallationManager:
     """Manages the uninstallation process for Works On My Machine."""
 
@@ -56,85 +68,273 @@ class UninstallationManager:
         self.actions = []
         self.platform = platform.system()
 
-    def uninstall(self, force: bool = False) -> Dict:
-        """Perform the uninstallation process.
+    # PUBLIC METHODS
+    ########################################################
+    # Main interface methods for uninstallation
+
+    def uninstall(
+        self,
+        force: bool = False,
+        target: Optional[str] = None,
+    ) -> None:
+        """
+        Perform WOMM uninstallation with integrated UI.
 
         Args:
-            force: Skip confirmation prompts
-
-        Returns:
-            Dictionary containing uninstallation results
+            force: Force uninstallation without confirmation
+            target: Custom target directory
         """
-        result = {
-            "success": False,
-            "target_path": str(self.target_path),
-            "platform": self.platform,
-            "actions": [],
-            "errors": [],
-            "requires_confirmation": False,
-        }
+        # Override target path if specified
+        if target:
+            self.target_path = Path(target).expanduser().resolve()
 
-        # Check if WOMM is installed
-        if not self.target_path.exists():
-            result["errors"].append(
-                "Works On My Machine is not installed at the specified location"
+        # Import UI modules
+        try:
+            from shared.ui.console import (
+                console,
+                print_error,
+                print_header,
+                print_success,
+                print_system,
             )
-            return result
+            from shared.ui.panels import create_panel
+            from shared.ui.progress import (
+                create_file_copy_progress,
+                create_spinner_with_status,
+                create_step_progress,
+            )
+            from shared.ui.prompts import confirm, show_warning_panel
+        except ImportError as e:
+            print(f"Error importing UI modules: {e}")
+            sys.exit(1)
+
+        print_header("W.O.M.M Uninstallation")
+
+        # Check target directory existence
+        with create_spinner_with_status("Checking target directory...") as (
+            progress,
+            task,
+        ):
+            # Check if WOMM is installed
+            if not self.target_path.exists():
+                progress.update(
+                    task, status="Following path not found: {self.target_path}"
+                )
+                print_error(
+                    "Works On My Machine is not installed at the specified location"
+                )
+                sys.exit(1)
+            else:
+                progress.update(
+                    task, status=f"Found installation at : {self.target_path}"
+                )
 
         # Check if force is required
         if not force and self._needs_confirmation():
-            result["requires_confirmation"] = True
-            return result
+            # Show warning panel for uninstallation
+            console.print("")
+            show_warning_panel(
+                "Uninstallation Confirmation",
+                f"This will completely remove WOMM from {self.target_path}.\n\n"
+                "This action cannot be undone.",
+            )
 
-        # Start uninstallation
-        success = True
+            # Ask for confirmation
+            if not confirm(
+                "Do you want to continue and remove WOMM completely?",
+                default=False,
+            ):
+                console.print("❌ Uninstallation cancelled", style="red")
+                sys.exit(0)
 
-        # 1. Remove from PATH
-        if self.platform == "Windows":
-            path_result = self._remove_from_windows_path()
-        else:
-            path_result = self._remove_from_unix_path()
+            console.print("")
+            print_system("Proceeding with uninstallation...")
 
-        if path_result["status"] == "failed":
-            success = False
-            result["errors"].extend(path_result["errors"])
+        # Remove from PATH with spinner
+        print("")
+        with create_spinner_with_status("Removing from PATH...") as (
+            progress,
+            task,
+        ):
+            path_result = self._remove_from_path()
+            if not path_result["success"]:
+                progress.update(task, status="Failed to remove from PATH")
+                progress.stop()
+                print_error(f"Failed to remove from PATH: {path_result['error']}")
+                sys.exit(1)
 
-        self.actions.append(path_result)
+            # Check if PATH was already configured
+            if path_result.get("warning") and path_result.get("path_deleted"):
+                progress.update(task, status="PATH already removed")
+            else:
+                progress.update(task, status="PATH removed successfully WOMM")
 
-        # 2. Remove WOMM directory
-        dir_result = self._remove_womm_directory()
-        if dir_result["status"] == "failed":
-            success = False
-            result["errors"].extend(dir_result["errors"])
+        # Remove WOMM directory with spinner
+        print("")
+        # Get list of files to remove for progress bar
+        files_to_remove = self._get_files_to_remove()
+        with create_file_copy_progress(files_to_remove, "Removing WOMM files...") as (
+            progress,
+            task,
+            files,
+        ):
+            # Iterate through each file and update progress
+            for file_path in files:
+                # Update progress bar with current file
+                filename = os.path.basename(file_path)
+                progress.update(task, current_file=filename)
 
-        self.actions.append(dir_result)
+                # Remove each file individually
+                try:
+                    import time
 
-        result["success"] = success
-        result["actions"] = self.actions
+                    target_file = self.target_path / file_path.rstrip("/")
 
-        return result
+                    if target_file.is_file():
+                        # Remove single file
+                        target_file.unlink()
+                        time.sleep(0.1)
+                    elif target_file.is_dir():
+                        # Remove directory
+                        shutil.rmtree(target_file)
+                        time.sleep(0.3)
+
+                    # Advance progress bar
+                    progress.advance(task)
+                except Exception as e:
+                    print_error(f"Failed to remove {file_path}: {e}")
+                    sys.exit(1)
+
+        # Remove the root directory itself
+        try:
+            if self.target_path.exists():
+                shutil.rmtree(self.target_path)
+        except Exception as e:
+            print_error(f"Failed to remove root directory {self.target_path}: {e}")
+            sys.exit(1)
+
+        # Verify uninstallation with step progress
+        try:
+            print("")
+            print_system("Verifying uninstallation...")
+            verification_steps = ["Files", "PATH", "Registry"]
+            with create_step_progress(
+                verification_steps, "Verifying uninstallation..."
+            ) as (
+                progress,
+                task,
+                steps,
+            ):
+                # Perform verification for each step
+                verification_results = []
+                for i, step in enumerate(steps):
+                    # Update progress bar with current step and step number
+                    progress.update(
+                        task,
+                        description=f"[bold blue]{step}",
+                        current_step=step,
+                        step=i + 1,
+                    )
+
+                    # Perform specific verification for each step
+                    if step == "Files":
+                        result = self._verify_files_removed()
+                    elif step == "PATH":
+                        result = self._verify_path_cleaned()
+                    elif step == "Registry":
+                        result = self._verify_registry_cleaned()
+                    else:
+                        result = {
+                            "success": False,
+                            "error": f"Unknown verification step: {step}",
+                        }
+
+                    verification_results.append(result)
+
+                    if not result["success"]:
+                        raise Exception(
+                            f"Verification failed for {step}: {result.get('error', 'Check failed')}"
+                        )
+
+                    # Advance progress bar
+                    progress.advance(task)
+
+            # Show verification details
+            for result in verification_results:
+                if result["success"]:
+                    print_success(f"✓ {result.get('message', 'Check passed')}")
+                else:
+                    print_error(f"✗ {result.get('error', 'Check failed')}")
+
+        except Exception as e:
+            print("")
+            print_error(f"Error during verification: {e}")
+            sys.exit(1)
+
+        # Uninstallation success
+        print("")
+        print_install("🎉 Uninstallation completed successfully!")
+
+        # Show completion panel
+        completion_content = (
+            "WOMM has been successfully removed from your system.\n\n"
+            "To complete the cleanup:\n"
+            "• Restart your terminal for PATH changes to take effect\n"
+            "• Remove any remaining WOMM references from your shell config files\n\n"
+            "Thank you for using Works On My Machine!"
+        )
+
+        completion_panel = create_panel(
+            completion_content,
+            title="✅ Uninstallation Complete",
+            style="bright_green",
+            border_style="bright_green",
+            padding=(1, 1),
+        )
+        print("")
+        console.print(completion_panel)
+
+        sys.exit(0)
+
+    # PRIVATE METHODS
+    ########################################################
+    # Internal methods for uninstallation process
 
     def _needs_confirmation(self) -> bool:
         """Check if uninstallation requires user confirmation."""
         return self.target_path.exists()
 
+    def _remove_from_path(self) -> Dict:
+        """Remove WOMM from PATH based on platform."""
+        if self.platform == "Windows":
+            return self._remove_from_windows_path()
+        else:
+            return self._remove_from_unix_path()
+
     def _remove_from_windows_path(self) -> Dict:
         """Remove WOMM directory from Windows user PATH using backup/restore strategy."""
-        action = {
-            "action": "remove_path",
-            "status": "failed",
+        result_dict = {
+            "success": False,
             "message": "",
-            "errors": [],
+            "error": "",
         }
+
+        # Import UI modules if interactive
+        try:
+            from shared.ui.console import print_error
+        except ImportError:
+            interactive = False
 
         try:
             # Step 1: Récupérer le PATH utilisateur actuel
-            result = run_silent(["reg", "query", "HKCU\\Environment", "/v", "PATH"])
+            query_result = run_silent(
+                ["reg", "query", "HKCU\\Environment", "/v", "PATH"]
+            )
 
             backup_user_path = ""  # Variable de secours
 
-            if result.success:
-                output = result.stdout
+            if query_result.success:
+                output = query_result.stdout
                 if isinstance(output, bytes):
                     output = output.decode("utf-8", errors="ignore")
 
@@ -145,16 +345,15 @@ class UninstallationManager:
                         if len(parts) > 1:
                             backup_user_path = parts[1].strip()
                             break
-            else:
-                action["status"] = "warning"
-                action["message"] = "PATH not found in registry"
-                return action
 
             # Step 2: Vérifier si WOMM path est présent
             if self.womm_path not in backup_user_path:
-                action["status"] = "warning"
-                action["message"] = f"WOMM path {self.womm_path} not found in user PATH"
-                return action
+                result_dict["warning"] = True
+                result_dict["path_deleted"] = False
+                result_dict["message"] = (
+                    f"WOMM path {self.womm_path} not found in user PATH"
+                )
+                return result_dict
 
             # Step 3: Retirer le path du dossier .womm
             new_entries = [
@@ -165,7 +364,7 @@ class UninstallationManager:
             new_user_path = ";".join(new_entries)
 
             # Step 4: Écrire le nouveau PATH utilisateur
-            result = run_silent(
+            update_result = run_silent(
                 [
                     "reg",
                     "add",
@@ -180,9 +379,9 @@ class UninstallationManager:
                 ]
             )
 
-            if not result.success:
-                action["errors"].append("Failed to update user PATH in registry")
-                return action
+            if not update_result.success:
+                result_dict["error"] = "Failed to update user PATH in registry"
+                return result_dict
 
             # Step 5: Vérifier que la suppression a réussi avec reg query
             verify_result = run_silent(
@@ -204,10 +403,8 @@ class UninstallationManager:
                         "/f",
                     ]
                 )
-                action["errors"].append(
-                    "Failed to verify PATH update - restored backup"
-                )
-                return action
+                result_dict["error"] = "Failed to verify PATH update - restored backup"
+                return result_dict
 
             # Step 6: Vérifier que le chemin WOMM n'est plus dans le registre
             verify_output = verify_result.stdout
@@ -230,10 +427,8 @@ class UninstallationManager:
                         "/f",
                     ]
                 )
-                action["errors"].append(
-                    "WOMM path still found in registry after removal"
-                )
-                return action
+                result_dict["error"] = "WOMM path still found in registry after removal"
+                return result_dict
 
             # Step 7: Mettre à jour la session courante
             current_full_path = os.environ.get("PATH", "")
@@ -244,11 +439,11 @@ class UninstallationManager:
             ]
             os.environ["PATH"] = ";".join(new_current_entries)
 
-            action["status"] = "success"
-            action["message"] = (
+            result_dict["success"] = True
+            result_dict["message"] = (
                 f"Removed {self.womm_path} from user PATH - verified with registry"
             )
-            return action
+            return result_dict
 
         except Exception as e:
             # En cas d'exception, rétablir le PATH avec la variable de secours
@@ -269,21 +464,21 @@ class UninstallationManager:
                         ]
                     )
                 except Exception:
-                    pass  # Ignore les erreurs de restauration
-            action["errors"].append(f"Windows user PATH removal error: {e}")
-            return action
+                    print_error(f"Error restoring PATH: {e}")
+
+            result_dict["error"] = f"Windows user PATH removal error: {e}"
+            return result_dict
 
     def _remove_from_unix_path(self) -> Dict:
         """Remove WOMM bin directory from Unix PATH."""
-        action = {
-            "action": "remove_path",
-            "status": "failed",
+        result = {
+            "success": False,
             "message": "",
-            "errors": [],
+            "error": "",
         }
 
         try:
-            bin_path_str = str(self.bin_path)
+            womm_path_str = str(self.womm_path)
             shell_files = [
                 Path.home() / ".bashrc",
                 Path.home() / ".zshrc",
@@ -296,7 +491,7 @@ class UninstallationManager:
             for shell_file in shell_files:
                 if shell_file.exists():
                     content = shell_file.read_text()
-                    path_line = f'export PATH="$PATH:{bin_path_str}"'
+                    path_line = f'export PATH="$PATH:{womm_path_str}"'
 
                     if path_line in content:
                         new_content = content.replace(path_line, "")
@@ -304,71 +499,118 @@ class UninstallationManager:
                         removed_from.append(shell_file.name)
 
             if removed_from:
-                action["status"] = "success"
-                action["message"] = f"Removed PATH entry from {', '.join(removed_from)}"
+                result["success"] = True
+                result["message"] = f"Removed PATH entry from {', '.join(removed_from)}"
             else:
-                action["status"] = "warning"
-                action["message"] = f"{bin_path_str} not found in shell config files"
+                result["warning"] = True
+                result["message"] = f"{womm_path_str} not found in shell config files"
 
-            return action
+            return result
 
         except Exception as e:
-            action["errors"].append(f"Error updating Unix PATH: {e}")
-            return action
+            result["error"] = f"Error updating Unix PATH: {e}"
+            return result
 
-    def _remove_womm_directory(self) -> Dict:
-        """Remove the WOMM directory."""
-        action = {
-            "action": "remove_directory",
-            "status": "failed",
+    def _get_files_to_remove(self) -> List[str]:
+        """Get list of files and directories to remove for progress bar."""
+        files_to_remove = []
+        target = self.target_path
+
+        if not target.exists():
+            return files_to_remove
+
+        # Add main files and directories
+        for item in target.iterdir():
+            if item.is_file():
+                files_to_remove.append(str(item.name))
+            elif item.is_dir():
+                files_to_remove.append(f"{item.name}/")
+
+        return files_to_remove
+
+    def _verify_files_removed(self) -> Dict:
+        """Verify that WOMM files were removed successfully."""
+        result_dict = {
+            "success": False,
             "message": "",
-            "errors": [],
+            "error": "",
         }
 
         try:
-            if self.target_path.exists():
-                shutil.rmtree(self.target_path)
-                action["status"] = "success"
-                action["message"] = f"WOMM directory removed: {self.target_path}"
+            if not self.target_path.exists():
+                result_dict["success"] = True
+                result_dict["message"] = "All WOMM files removed successfully"
+                return result_dict
             else:
-                action["status"] = "warning"
-                action["message"] = "WOMM directory not found"
-
-            return action
+                result_dict["error"] = (
+                    f"WOMM directory still exists: {self.target_path}"
+                )
+                return result_dict
 
         except Exception as e:
-            action["errors"].append(f"Error removing WOMM directory: {e}")
-            return action
+            result_dict["error"] = f"File removal verification error: {e}"
+            return result_dict
 
+    def _verify_path_cleaned(self) -> Dict:
+        """Verify that PATH was cleaned successfully."""
+        result_dict = {
+            "success": False,
+            "message": "",
+            "error": "",
+        }
 
-def main():
-    """Legacy main function - kept for backward compatibility."""
-    parser = argparse.ArgumentParser(description="Uninstall Works On My Machine")
-    parser.add_argument(
-        "--force",
-        "-f",
-        action="store_true",
-        help="Force uninstallation without confirmation",
-    )
-    parser.add_argument(
-        "--target", type=str, help="Custom target directory (default: ~/.womm)"
-    )
+        try:
+            current_path = os.environ.get("PATH", "")
+            womm_path = str(self.target_path)
 
-    args = parser.parse_args()
+            if womm_path not in current_path:
+                result_dict["success"] = True
+                result_dict["message"] = "PATH cleaned successfully"
+                return result_dict
+            else:
+                result_dict["error"] = "WOMM path still found in current PATH"
+                return result_dict
 
-    # Use UninstallationManager for actual uninstallation
-    manager = UninstallationManager(target=args.target)
-    result = manager.uninstall(force=args.force)
+        except Exception as e:
+            result_dict["error"] = f"PATH verification error: {e}"
+            return result_dict
 
-    # Simple console output for legacy compatibility
-    if result["success"]:
-        print("Uninstallation completed successfully")
-    else:
-        print("Uninstallation failed")
-        for error in result["errors"]:
-            print(f"Error: {error}")
-        sys.exit(1)
+    def _verify_registry_cleaned(self) -> Dict:
+        """Verify that Windows registry was cleaned successfully."""
+        result_dict = {
+            "success": False,
+            "message": "",
+            "error": "",
+        }
 
+        try:
+            if self.platform != "Windows":
+                result_dict["success"] = True
+                result_dict["message"] = "Registry check skipped (not Windows)"
+                return result_dict
 
-if __name__ == "__main__":
-    sys.exit(main())
+            # Check Windows registry
+            query_result = run_silent(
+                ["reg", "query", "HKCU\\Environment", "/v", "PATH"]
+            )
+
+            if not query_result.success:
+                result_dict["error"] = "Could not query Windows registry"
+                return result_dict
+
+            output = query_result.stdout
+            if isinstance(output, bytes):
+                output = output.decode("utf-8", errors="ignore")
+
+            womm_path = str(self.target_path)
+            if womm_path not in output:
+                result_dict["success"] = True
+                result_dict["message"] = "Windows registry cleaned successfully"
+                return result_dict
+            else:
+                result_dict["error"] = "WOMM path still found in Windows registry"
+                return result_dict
+
+        except Exception as e:
+            result_dict["error"] = f"Registry verification error: {e}"
+            return result_dict

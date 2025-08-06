@@ -4,11 +4,21 @@ Spell checking UI functions for WOMM CLI.
 Provides consistent display of spell checking results and operations.
 """
 
+# IMPORTS
+########################################################
+# Standard library imports
 from pathlib import Path
 from typing import List
 
+# Third-party imports
+# (None for this file)
+# Local imports
 from .console import console
 from .panels import create_error_panel, create_success_panel
+
+# MAIN FUNCTIONS
+########################################################
+# Core spell checking display functionality
 
 
 def print_spell_start(operation: str):
@@ -48,6 +58,11 @@ def print_spell_summary(summary):
     if hasattr(summary, "total_errors") and summary.total_errors > 0:
         print_spell_errors(summary.errors_by_file)
         print_spell_suggestions(summary.suggestions)
+
+
+# UTILITY FUNCTIONS
+########################################################
+# Helper functions for spell checking operations
 
 
 def print_spell_errors(errors_by_file: dict):

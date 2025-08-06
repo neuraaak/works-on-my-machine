@@ -4,6 +4,7 @@
 # Include README and documentation
 include README.md
 include LICENSE
+include pyproject.toml
 
 # Include package data
 recursive-include shared *.py

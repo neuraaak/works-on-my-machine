@@ -3,14 +3,31 @@
 Prompt utilities using Rich for beautiful user prompts.
 """
 
+# IMPORTS
+########################################################
+# Standard library imports
 from typing import List, Optional
 
+# Third-party imports
 from rich.console import Console
 from rich.panel import Panel
 from rich.prompt import Confirm, IntPrompt, Prompt
 from rich.text import Text
 
+# Local imports
+# (None for this file)
+
+
+# CONFIGURATION
+########################################################
+# Global variables and settings
+
 console = Console()
+
+
+# MAIN FUNCTIONS
+########################################################
+# Core prompt functionality
 
 
 def confirm(message: str, default: bool = False, show_default: bool = True) -> bool:
@@ -54,23 +71,38 @@ def prompt_path(message: str, default: Optional[str] = None) -> str:
     return Prompt.ask(message, default=default)
 
 
+# UTILITY FUNCTIONS
+########################################################
+# Helper functions for panel-based prompts
+
+
 def show_info_panel(title: str, content: str, style: str = "cyan") -> None:
     """Show an info panel."""
     panel = Panel(Text(content, style=style), title=f"ℹ️ {title}", border_style=style)
     console.print(panel)
 
 
-def show_warning_panel(title: str, content: str) -> None:
+def show_warning_panel(title: str, content: str, width: int = 80) -> None:
     """Show a warning panel."""
     panel = Panel(
-        Text(content, style="yellow"), title=f"⚠️ {title}", border_style="yellow"
+        Text(content, style="yellow"),
+        title=f"⚠️ {title}",
+        border_style="yellow",
+        width=width,
+        padding=(1, 1),
     )
     console.print(panel)
 
 
-def show_error_panel(title: str, content: str) -> None:
+def show_error_panel(title: str, content: str, width: int = 80) -> None:
     """Show an error panel."""
-    panel = Panel(Text(content, style="red"), title=f"❌ {title}", border_style="red")
+    panel = Panel(
+        Text(content, style="red"),
+        title=f"❌ {title}",
+        border_style="red",
+        width=width,
+        padding=(1, 1),
+    )
     console.print(panel)
 
 

@@ -4,12 +4,28 @@ UI functions for linting operations.
 Provides consistent display of linting results.
 """
 
+# IMPORTS
+########################################################
+# Standard library imports
+# (None for this file)
+
+# Third-party imports
 from rich.console import Console
 from rich.table import Table
 
+# Local imports
 from ..core.lint_manager import LintResult, LintSummary
 
+# CONFIGURATION
+########################################################
+# Global variables and settings
+
 console = Console()
+
+
+# MAIN FUNCTIONS
+########################################################
+# Core linting display functionality
 
 
 def print_lint_progress(step: str, description: str):
@@ -65,6 +81,11 @@ def print_lint_summary(summary: LintSummary):
             console.print(
                 f"[ERROR]:[FAILED] :: Tools: {', '.join(failed_tools)}", style="red"
             )
+
+
+# UTILITY FUNCTIONS
+########################################################
+# Helper functions for linting operations
 
 
 def print_lint_error(tool: str, error: str):

@@ -6,16 +6,22 @@ This script handles the installation of WOMM to the user's home directory,
 including PATH setup and environment configuration.
 """
 
-import argparse
+# IMPORTS
+########################################################
+# Standard library imports
 import os
 import platform
 import shutil
 import subprocess
+import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional
 
-# Import CLI manager
+# Third-party imports
+# (None for this file)
+
+# Local imports
 try:
     # Import security modules if available
     import importlib.util
@@ -77,7 +83,57 @@ except ImportError:
         return subprocess_run(cmd, **kwargs)
 
 
-def get_target_womm_path():
+# CONSTANTS
+########################################################
+# Configuration constants
+DEFAULT_EXCLUDE_PATTERNS = [
+    ".git",
+    ".gitignore",
+    ".pytest_cache",
+    "__pycache__",
+    "*.pyc",
+    "*.pyo",
+    "*.pyd",
+    ".coverage",
+    "htmlcov",
+    "build",
+    "dist",
+    "*.egg-info",
+    ".venv",
+    "venv",
+    "node_modules",
+    ".vscode",
+    ".idea",
+    "*.log",
+    ".DS_Store",
+    "Thumbs.db",
+    ".mypy_cache",
+    ".ruff_cache",
+    ".cursor",
+    "cspell.json",
+    "*_temp.*",
+    "*.mdc",
+    "benchmarks",
+    "coverage",
+    "ignore-install.txt",
+    "LICENSE",
+    "pyproject.toml",
+    "MANIFEST",
+    "Makefile",
+    "setup.py",
+    "tests",
+    "run_tests.py",
+    "build_package.py",
+    "build_exe.py",
+]
+
+
+# UTILITY FUNCTIONS
+########################################################
+# Helper functions for path management and file operations
+
+
+def get_target_womm_path() -> Path:
     """Get the standard target path for Works On My Machine.
 
     Returns:
@@ -86,7 +142,7 @@ def get_target_womm_path():
     return Path.home() / ".womm"
 
 
-def get_current_womm_path():
+def get_current_womm_path() -> Path:
     """Get the current script path.
 
     Returns:
@@ -125,45 +181,7 @@ def should_exclude_file(file_path: Path, source_path: Path) -> bool:
 
     # Fallback to default patterns if no ignore-install.txt or empty
     if not exclude_patterns:
-        exclude_patterns = [
-            ".git",
-            ".gitignore",
-            ".pytest_cache",
-            "__pycache__",
-            "*.pyc",
-            "*.pyo",
-            "*.pyd",
-            ".coverage",
-            "htmlcov",
-            "build",
-            "dist",
-            "*.egg-info",
-            ".venv",
-            "venv",
-            "node_modules",
-            ".vscode",
-            ".idea",
-            "*.log",
-            ".DS_Store",
-            "Thumbs.db",
-            ".mypy_cache",
-            ".ruff_cache",
-            ".cursor",
-            "cspell.json",
-            "*_temp.*",
-            "*.mdc",
-            "benchmarks",
-            "coverage",
-            "ignore-install.txt",
-            "LICENSE",
-            "pyproject.toml",
-            "MANIFEST",
-            "Makefile",
-            "setup.py",
-            "tests",
-            "run_tests.py",
-            "build_package.py",
-        ]
+        exclude_patterns = DEFAULT_EXCLUDE_PATTERNS
 
     file_name = file_path.name
     relative_path = file_path.relative_to(source_path)
@@ -178,6 +196,11 @@ def should_exclude_file(file_path: Path, source_path: Path) -> bool:
     return False
 
 
+# MAIN CLASS
+########################################################
+# Core installation manager class
+
+
 class InstallationManager:
     """Manages WOMM installation process with data-driven approach."""
 
@@ -186,173 +209,270 @@ class InstallationManager:
         self.current_path = get_current_womm_path()
         self.target_path = get_target_womm_path()
 
-    def install(self, force: bool = False, target: Optional[str] = None) -> Dict:
+    def install(
+        self,
+        force: bool = False,
+        target: Optional[str] = None,
+    ) -> None:
         """
-        Perform WOMM installation.
+        Perform WOMM installation with integrated UI.
 
         Args:
             force: Force installation even if target directory exists
             target: Custom target directory
-
-        Returns:
-            Dictionary containing installation results and data
         """
         # Override target path if specified
         if target:
             self.target_path = Path(target).expanduser().resolve()
 
-        actions = []
-        errors = []
+        # Import UI modules
+        try:
+            from shared.ui.console import (
+                console,
+                print_error,
+                print_header,
+                print_install,
+                print_success,
+                print_system,
+            )
+            from shared.ui.panels import create_panel
+            from shared.ui.progress import (
+                create_file_copy_progress,
+                create_spinner_with_status,
+                create_step_progress,
+            )
+            from shared.ui.prompts import confirm, show_warning_panel
+        except ImportError as e:
+            print(f"Error importing UI modules: {e}")
+            sys.exit(1)
+
+        print_header("W.O.M.M Installation")
+
+        # Check target directory existence
+        with create_spinner_with_status("Checking target directory...") as (
+            progress,
+            task,
+        ):
+            if self.target_path.exists() and not force:
+                progress.update(task, status="Directory already exists.")
+            else:
+                progress.update(
+                    task, status="Directory does not exist, ready for installation."
+                )
 
         # Check if target directory already exists
         if self.target_path.exists() and not force:
-            actions.append(
-                {
-                    "action": "check_existing",
-                    "status": "exists",
-                    "message": f"Directory {self.target_path} already exists",
-                }
+            # Show warning panel for existing directory
+            console.print("")
+            show_warning_panel(
+                "Directory Already Exists",
+                f"The directory {self.target_path} already exists.\n\n"
+                "This will overwrite the existing installation.",
             )
-            return {
-                "success": False,
-                "actions": actions,
-                "errors": errors,
-                "target_path": str(self.target_path),
-                "requires_confirmation": True,
-            }
 
-        # Copy WOMM to target directory
+            # Ask for confirmation
+            if not confirm(
+                "Do you want to continue and overwrite the existing directory?",
+                default=False,
+            ):
+                console.print("❌ Installation cancelled", style="red")
+                sys.exit(0)
+
+            console.print("")
+            print_system("Overwriting existing installation...")
+
+        # Copy WOMM to target directory with progress bar
         if self.current_path != self.target_path:
-            copy_result = self._copy_womm_to_user_directory()
-            if copy_result["success"]:
-                actions.append(
-                    {
-                        "action": "copy_files",
-                        "status": "success",
-                        "message": "WOMM copied to target directory",
-                    }
-                )
+            # Get list of files to copy for progress bar
+            files_to_copy = self._get_files_to_copy()
+            with create_file_copy_progress(files_to_copy, "Copying WOMM files...") as (
+                progress,
+                task,
+                files,
+            ):
+                # Iterate through each file and update progress
+                for file_path in files:
+                    # Update progress bar with current file
+                    filename = os.path.basename(file_path)
+                    progress.update(task, current_file=filename)
+
+                    # Copy each file individually
+                    try:
+                        import time
+
+                        source_file = self.current_path / file_path.rstrip("/")
+                        target_file = self.target_path / file_path.rstrip("/")
+
+                        if source_file.is_file():
+                            # Copy single file
+                            shutil.copy2(source_file, target_file)
+                            time.sleep(0.1)
+                        elif source_file.is_dir():
+                            # Copy directory
+                            shutil.copytree(
+                                source_file, target_file, dirs_exist_ok=True
+                            )
+                            time.sleep(0.3)
+
+                        # Advance progress bar
+                        progress.advance(task)
+                    except Exception as e:
+                        print_error(f"Failed to copy {file_path}: {e}")
+                        sys.exit(1)
+
+        # Backup current user PATH with spinner
+        print("")
+        with create_spinner_with_status("Backing up user PATH...") as (
+            progress,
+            task,
+        ):
+            progress.update(task, status="Creating PATH backup...")
+            backup_result = self._backup_user_path()
+            if backup_result["success"]:
+                progress.update(task, status="User PATH backed up successfully")
             else:
-                actions.append(
-                    {
-                        "action": "copy_files",
-                        "status": "failed",
-                        "message": copy_result["error"],
-                    }
-                )
-                errors.append(copy_result["error"])
+                progress.update(task, status="PATH backup failed.")
+                progress.stop()
+                print_error("PATH backup failed.")
 
-        # Backup current user PATH
-        backup_result = self._backup_user_path()
-        if backup_result["success"]:
-            actions.append(
-                {
-                    "action": "backup_path",
-                    "status": "success",
-                    "message": "User PATH backed up",
-                    "backup_file": backup_result["backup_file"],
-                }
-            )
-        else:
-            actions.append(
-                {
-                    "action": "backup_path",
-                    "status": "warning",
-                    "message": "PATH backup failed, but continuing",
-                }
-            )
+        # Create WOMM executable with spinner
+        print("")
+        with create_spinner_with_status("Creating WOMM executable...") as (
+            progress,
+            task,
+        ):
+            progress.update(task, status="Setting up executable...")
+            exec_result = self._create_womm_executable()
+            if not exec_result["success"]:
+                progress.update(task, status="Failed to create executable.")
+                progress.stop()
+                print_error(f"Failed to create executable: {exec_result['error']}")
+                sys.exit(1)
+            progress.update(task, status="Executable created successfully")
 
-        # Create WOMM executable
-        exec_result = self._create_womm_executable()
-        if exec_result["success"]:
-            actions.append(
-                {
-                    "action": "create_executable",
-                    "status": "success",
-                    "message": "WOMM executable created",
-                }
-            )
-        else:
-            actions.append(
-                {
-                    "action": "create_executable",
-                    "status": "failed",
-                    "message": exec_result["error"],
-                }
-            )
-            errors.append(exec_result["error"])
+        # Setup PATH with spinner
+        print("")
+        with create_spinner_with_status("Setting up PATH...") as (
+            progress,
+            task,
+        ):
+            path_result = self._setup_path()
+            if not path_result["success"]:
+                progress.update(task, status="Failed to setup PATH.")
+                progress.stop()
+                print_error(f"Failed to setup PATH: {path_result['error']}")
+                sys.exit(1)
 
-        # Setup PATH
-        path_result = self._setup_path()
-        if path_result["success"]:
-            actions.append(
-                {
-                    "action": "setup_path",
-                    "status": "success",
-                    "message": "PATH configured",
-                    "path_added": path_result["path_added"],
-                }
-            )
-        else:
-            actions.append(
-                {
-                    "action": "setup_path",
-                    "status": "failed",
-                    "message": path_result["error"],
-                }
-            )
-            errors.append(path_result["error"])
-
-        # Determine overall success
-        success = len(errors) == 0
-
-        # Verify installation if all steps succeeded
-        if success:
-            verification_result = self._verify_installation()
-            if verification_result["success"]:
-                actions.append(
-                    {
-                        "action": "verify_installation",
-                        "status": "success",
-                        "message": "Installation verified successfully",
-                        "checks": verification_result["checks"],
-                    }
-                )
+            # Check if PATH was already configured
+            if "already_in_path" in path_result and path_result["already_in_path"]:
+                progress.update(task, status="PATH already configured.")
             else:
-                actions.append(
-                    {
-                        "action": "verify_installation",
-                        "status": "failed",
-                        "message": "Installation verification failed",
-                        "checks": verification_result["checks"],
-                    }
-                )
-                success = False
-                errors.append("Installation verification failed")
+                progress.update(task, status="PATH configured successfully.")
 
-        return {
-            "success": success,
-            "actions": actions,
-            "errors": errors,
-            "target_path": str(self.target_path),
-            "current_path": str(self.current_path),
-            "commands_available": self._get_available_commands(),
-            "platform": platform.system(),
-            "requires_confirmation": False,
-        }
+        # Verify installation with step progress
+        try:
+            print("")
+            print_system("Verifying installation...")
+            verification_steps = ["Files", "Executable", "PATH", "Commands"]
+            with create_step_progress(
+                verification_steps, "Verifying installation..."
+            ) as (
+                progress,
+                task,
+                steps,
+            ):
+                # Perform verification for each step
+                verification_results = []
+                for i, step in enumerate(steps):
+                    # Update progress bar with current step and step number
+                    progress.update(
+                        task,
+                        description=f"[bold blue]{step}",
+                        current_step=step,
+                        step=i + 1,
+                    )
+
+                    # Perform specific verification for each step
+                    if step == "Files":
+                        result = self._verify_files_copied()
+                    elif step == "Executable":
+                        result = self._verify_executable_works()
+                    elif step == "PATH":
+                        result = self._verify_path_configured()
+                    elif step == "Commands":
+                        result = self._verify_commands_accessible()
+                    else:
+                        result = {
+                            "success": False,
+                            "error": f"Unknown verification step: {step}",
+                        }
+
+                    verification_results.append(result)
+
+                    if not result["success"]:
+                        raise Exception(
+                            f"Verification failed for {step}: {result.get('error', 'Check failed')}"
+                        )
+
+                    # Advance progress bar
+                    progress.advance(task)
+
+        except Exception as e:
+            print("")
+            print_error(f"Error during verification: {e}")
+            sys.exit(1)
+
+        # Show verification details
+        for result in verification_results:
+            if result["success"]:
+                print_success(f"✓ {result.get('message', 'Check passed')}")
+            else:
+                print_error(f"✗ {result.get('error', 'Check failed')}")
+
+        # Installation success
+        print("")
+        print_install("🎉 Installation completed successfully!")
+
+        # Show "to use immediately" panel
+        tip_content = (
+            "To use WOMM commands immediately in this terminal:\n\n"
+            f"Windows: set PATH=%PATH%;{self.target_path}\n"
+            f'Unix/Mac: export PATH="$PATH:{self.target_path}"\n\n'
+            "Or simply restart your terminal for permanent access."
+        )
+
+        tip_panel = create_panel(
+            tip_content,
+            title="💡 Quick Start Tip",
+            style="bright_magenta",
+            border_style="bright_magenta",
+            padding=(1, 1),
+        )
+        print("")
+        console.print(tip_panel)
+
+        sys.exit(0)
+
+    # PRIVATE METHODS
+    ########################################################
+    # Internal methods for installation process
 
     def _copy_womm_to_user_directory(self) -> Dict:
         """Copy WOMM files to user directory."""
+        result_dict = {
+            "success": False,
+            "message": "",
+            "error": "",
+        }
+
         try:
             source = self.current_path
             target = self.target_path
 
             # Validate paths
             if not source.exists():
-                return {
-                    "success": False,
-                    "error": f"Source directory does not exist: {source}",
-                }
+                result_dict["error"] = f"Source directory does not exist: {source}"
+                return result_dict
 
             # Create target directory
             target.mkdir(parents=True, exist_ok=True)
@@ -365,13 +485,22 @@ class InstallationManager:
 
             shutil.copytree(source, target, dirs_exist_ok=True, ignore=ignore_files)
 
-            return {"success": True}
+            result_dict["success"] = True
+            result_dict["message"] = f"WOMM files copied successfully to {target}"
+            return result_dict
 
         except Exception as e:
-            return {"success": False, "error": str(e)}
+            result_dict["error"] = str(e)
+            return result_dict
 
     def _backup_user_path(self) -> Dict:
         """Backup current user PATH."""
+        result_dict = {
+            "success": False,
+            "message": "",
+            "error": "",
+        }
+
         try:
             backup_dir = self.target_path / ".backup"
             backup_dir.mkdir(exist_ok=True)
@@ -389,9 +518,13 @@ class InstallationManager:
                         f.write(f"# User: {os.environ.get('USERNAME', 'unknown')}\n")
                         f.write("# Original PATH:\n")
                         f.write(f"{current_path}\n")
-                    return {"success": True, "backup_file": str(backup_file)}
+                    result_dict["success"] = True
+                    result_dict["message"] = f"PATH backup created: {backup_file.name}"
+                    result_dict["backup_file"] = str(backup_file)
+                    return result_dict
                 else:
-                    return {"success": False, "error": "Could not read Windows PATH"}
+                    result_dict["error"] = "Could not read Windows PATH"
+                    return result_dict
             else:
                 # Unix PATH backup
                 current_path = os.environ.get("PATH", "")
@@ -400,30 +533,47 @@ class InstallationManager:
                     f.write(f"# Platform: {platform.system()}\n")
                     f.write(f"# User: {os.environ.get('USER', 'unknown')}\n\n")
                     f.write(current_path)
-                return {"success": True, "backup_file": str(backup_file)}
+                result_dict["success"] = True
+                result_dict["message"] = f"PATH backup created: {backup_file.name}"
+                result_dict["backup_file"] = str(backup_file)
+                return result_dict
 
         except Exception as e:
-            return {"success": False, "error": str(e)}
+            result_dict["error"] = str(e)
+            return result_dict
 
     def _create_womm_executable(self) -> Dict:
         """Create WOMM executable."""
+        result_dict = {
+            "success": False,
+            "message": "",
+            "error": "",
+        }
+
         try:
             if platform.system() == "Windows":
                 # Create womm.bat
                 womm_bat = self.target_path / "womm.bat"
                 bat_content = f'@echo off\npython "{self.target_path}\\womm.py" %*'
                 womm_bat.write_text(bat_content, encoding="utf-8")
-                return {"success": True}
+                result_dict["success"] = True
+                result_dict["message"] = (
+                    "Windows executable (womm.bat) created successfully"
+                )
+                return result_dict
             else:
                 # Create Unix executable
                 womm_exec = self.target_path / "womm"
                 exec_content = f'#!/bin/bash\npython3 "{self.target_path}/womm.py" "$@"'
                 womm_exec.write_text(exec_content, encoding="utf-8")
                 womm_exec.chmod(0o755)
-                return {"success": True}
+                result_dict["success"] = True
+                result_dict["message"] = "Unix executable (womm) created successfully"
+                return result_dict
 
         except Exception as e:
-            return {"success": False, "error": str(e)}
+            result_dict["error"] = str(e)
+            return result_dict
 
     def _setup_path(self) -> Dict:
         """Setup PATH for WOMM with proper user PATH handling and backup/restore."""
@@ -442,14 +592,22 @@ class InstallationManager:
 
     def _setup_windows_user_path(self, womm_path: str) -> Dict:
         """Setup Windows user PATH with proper backup/restore strategy."""
+        result_dict = {
+            "success": False,
+            "message": "",
+            "error": "",
+        }
+
         try:
             # Step 1: Récupérer le PATH utilisateur actuel
-            result = run_silent(["reg", "query", "HKCU\\Environment", "/v", "PATH"])
+            query_result = run_silent(
+                ["reg", "query", "HKCU\\Environment", "/v", "PATH"]
+            )
 
             backup_user_path = ""  # Variable de secours
 
-            if result.success:
-                output = result.stdout
+            if query_result.success:
+                output = query_result.stdout
                 if isinstance(output, bytes):
                     output = output.decode("utf-8", errors="ignore")
 
@@ -463,11 +621,10 @@ class InstallationManager:
 
             # Step 2: Vérifier si déjà présent
             if womm_path in backup_user_path:
-                return {
-                    "success": True,
-                    "path_added": False,
-                    "message": "Already in user PATH",
-                }
+                result_dict["success"] = True
+                result_dict["path_added"] = False
+                result_dict["message"] = "Already in user PATH"
+                return result_dict
 
             # Step 3: Faire la MAJ en rajoutant le path du dossier .womm
             if backup_user_path:
@@ -476,7 +633,7 @@ class InstallationManager:
                 new_user_path = womm_path
 
             # Step 4: Écrire le nouveau PATH utilisateur
-            result = run_silent(
+            update_result = run_silent(
                 [
                     "reg",
                     "add",
@@ -491,11 +648,9 @@ class InstallationManager:
                 ]
             )
 
-            if not result.success:
-                return {
-                    "success": False,
-                    "error": "Failed to update user PATH in registry",
-                }
+            if not update_result.success:
+                result_dict["error"] = "Failed to update user PATH in registry"
+                return result_dict
 
             # Step 5: Vérifier que l'ajout a réussi avec reg query
             verify_result = run_silent(
@@ -518,10 +673,8 @@ class InstallationManager:
                             "/f",
                         ]
                     )
-                return {
-                    "success": False,
-                    "error": "Failed to verify PATH update - restored backup",
-                }
+                result_dict["error"] = "Failed to verify PATH update - restored backup"
+                return result_dict
 
             # Step 6: Vérifier que le chemin WOMM est bien dans le registre
             verify_output = verify_result.stdout
@@ -545,20 +698,19 @@ class InstallationManager:
                             "/f",
                         ]
                     )
-                return {
-                    "success": False,
-                    "error": "WOMM path not found in registry after update",
-                }
+                result_dict["error"] = "WOMM path not found in registry after update"
+                return result_dict
 
             # Step 7: Mettre à jour la session courante
             current_full_path = os.environ.get("PATH", "")
             os.environ["PATH"] = f"{womm_path};{current_full_path}"
 
-            return {
-                "success": True,
-                "path_added": True,
-                "message": "User PATH updated successfully - verified with registry",
-            }
+            result_dict["success"] = True
+            result_dict["path_added"] = True
+            result_dict["message"] = (
+                "User PATH updated successfully - verified with registry"
+            )
+            return result_dict
 
         except Exception as e:
             # En cas d'exception, rétablir le PATH avec la variable de secours
@@ -581,7 +733,8 @@ class InstallationManager:
                 except Exception as restore_error:
                     # Ignore les erreurs de restauration
                     print(f"Warning: Could not restore PATH: {restore_error}")
-            return {"success": False, "error": f"Windows user PATH setup error: {e}"}
+            result_dict["error"] = f"Windows user PATH setup error: {e}"
+            return result_dict
 
     def _persist_path_change(self, new_path: str) -> Dict:
         """Persist PATH change to system (registry on Windows, profile on Unix)."""
@@ -914,6 +1067,12 @@ class InstallationManager:
 
     def _verify_installation(self) -> Dict:
         """Verify that installation was successful."""
+        result_dict = {
+            "success": False,
+            "message": "",
+            "error": "",
+        }
+
         try:
             checks = []
 
@@ -927,17 +1086,23 @@ class InstallationManager:
 
             success = all(check["success"] for check in checks)
 
-            return {
-                "success": success,
-                "checks": checks,
-                "message": "Installation verification completed",
-            }
+            result_dict["success"] = success
+            result_dict["checks"] = checks
+            result_dict["message"] = "Installation verification completed"
+            return result_dict
 
         except Exception as e:
-            return {"success": False, "error": f"Installation verification error: {e}"}
+            result_dict["error"] = f"Installation verification error: {e}"
+            return result_dict
 
     def _verify_files_copied(self) -> Dict:
         """Verify that WOMM files were copied successfully."""
+        result_dict = {
+            "success": False,
+            "message": "",
+            "error": "",
+        }
+
         try:
             required_files = [
                 "womm.py",
@@ -951,18 +1116,25 @@ class InstallationManager:
                     missing_files.append(file_name)
 
             if missing_files:
-                return {
-                    "success": False,
-                    "error": f"Missing files: {', '.join(missing_files)}",
-                }
+                result_dict["error"] = f"Missing files: {', '.join(missing_files)}"
+                return result_dict
             else:
-                return {"success": True, "message": "All required files present"}
+                result_dict["success"] = True
+                result_dict["message"] = "All required files present"
+                return result_dict
 
         except Exception as e:
-            return {"success": False, "error": f"File verification error: {e}"}
+            result_dict["error"] = f"File verification error: {e}"
+            return result_dict
 
     def _verify_executable_works(self) -> Dict:
         """Verify that WOMM executable works correctly."""
+        result_dict = {
+            "success": False,
+            "message": "",
+            "error": "",
+        }
+
         try:
             if platform.system() == "Windows":
                 exec_path = self.target_path / "womm.bat"
@@ -970,445 +1142,92 @@ class InstallationManager:
                 exec_path = self.target_path / "womm"
 
             if not exec_path.exists():
-                return {"success": False, "error": "WOMM executable not found"}
+                result_dict["error"] = "WOMM executable not found"
+                return result_dict
 
             # Test basic functionality - avoid --help due to Unicode encoding issues
             # Just test that the executable can be run without arguments
-            result = run_silent([str(exec_path)])
+            test_result = run_silent([str(exec_path)])
             # Exit code 0 or 2 is acceptable (0=success, 2=missing command)
-            if result.returncode in [0, 2]:
-                return {"success": True, "message": "WOMM executable working correctly"}
+            if test_result.returncode in [0, 2]:
+                result_dict["success"] = True
+                result_dict["message"] = "WOMM executable working correctly"
+                return result_dict
             else:
-                return {
-                    "success": False,
-                    "error": f"WOMM executable failed basic test (exit code: {result.returncode})",
-                }
+                result_dict["error"] = (
+                    f"WOMM executable failed basic test (exit code: {test_result.returncode})"
+                )
+                return result_dict
 
         except Exception as e:
-            return {"success": False, "error": f"Executable verification error: {e}"}
+            result_dict["error"] = f"Executable verification error: {e}"
+            return result_dict
 
     def _verify_path_configured(self) -> Dict:
         """Verify that PATH is configured correctly."""
+        result_dict = {
+            "success": False,
+            "message": "",
+            "error": "",
+        }
+
         try:
             current_path = os.environ.get("PATH", "")
             womm_path = str(self.target_path)
 
             if womm_path in current_path:
-                return {"success": True, "message": "PATH configured correctly"}
+                result_dict["success"] = True
+                result_dict["message"] = "PATH configured correctly"
+                return result_dict
             else:
-                return {
-                    "success": False,
-                    "error": "WOMM path not found in current PATH",
-                }
+                result_dict["error"] = "WOMM path not found in current PATH"
+                return result_dict
 
         except Exception as e:
-            return {"success": False, "error": f"PATH verification error: {e}"}
+            result_dict["error"] = f"PATH verification error: {e}"
+            return result_dict
 
     def _verify_commands_accessible(self) -> Dict:
         """Verify that WOMM commands are accessible."""
+        result_dict = {
+            "success": False,
+            "message": "",
+            "error": "",
+        }
+
         try:
             # Test if womm command is accessible
             if platform.system() == "Windows":
                 # Lancer un nouvel invite de cmd en background pour checker
                 # car le terminal actuel n'a pas le PATH à jour
-                result = run_silent(["cmd", "/c", "where", "womm"])
+                test_result = run_silent(["cmd", "/c", "where", "womm"])
             else:
-                result = run_silent(["which", "womm"])
+                test_result = run_silent(["which", "womm"])
 
-            if result.success:
-                return {"success": True, "message": "WOMM commands accessible"}
+            if test_result.success:
+                result_dict["success"] = True
+                result_dict["message"] = "WOMM commands accessible"
+                return result_dict
             else:
-                return {"success": False, "error": "WOMM commands not accessible"}
+                result_dict["error"] = "WOMM commands not accessible"
+                return result_dict
 
         except Exception as e:
-            return {"success": False, "error": f"Command accessibility error: {e}"}
+            result_dict["error"] = f"Command accessibility error: {e}"
+            return result_dict
 
-    def _get_available_commands(self) -> List[Dict]:
-        """Get list of available commands after installation."""
-        return [
-            {
-                "command": "womm",
-                "description": "Main CLI interface",
-                "category": "Core",
-            },
-            {
-                "command": "womm install",
-                "description": "Install WOMM",
-                "category": "Setup",
-            },
-            {
-                "command": "womm uninstall",
-                "description": "Uninstall WOMM",
-                "category": "Setup",
-            },
-            {
-                "command": "womm new python",
-                "description": "Create Python project",
-                "category": "Projects",
-            },
-            {
-                "command": "womm new javascript",
-                "description": "Create JavaScript project",
-                "category": "Projects",
-            },
-            {
-                "command": "womm lint",
-                "description": "Lint code",
-                "category": "Development",
-            },
-            {
-                "command": "womm spell",
-                "description": "Spell check",
-                "category": "Development",
-            },
-            {
-                "command": "womm system",
-                "description": "System tools",
-                "category": "System",
-            },
-        ]
+    def _get_files_to_copy(self) -> List[str]:
+        """Get list of files and directories to copy for progress bar."""
+        files_to_copy = []
+        source = self.current_path
 
+        # Add main files and directories
+        for item in source.iterdir():
+            if should_exclude_file(item, source):
+                continue
+            if item.is_file():
+                files_to_copy.append(str(item.name))
+            elif item.is_dir():
+                files_to_copy.append(f"{item.name}/")
 
-# Legacy functions for backward compatibility
-def copy_womm_to_user_directory():
-    """Legacy function - use InstallationManager.install() instead."""
-    manager = InstallationManager()
-    result = manager._copy_womm_to_user_directory()
-    if not result["success"]:
-        raise Exception(result["error"])
-
-
-def backup_user_path(target_path: Path) -> bool:
-    """Legacy function - use InstallationManager.install() instead."""
-    manager = InstallationManager()
-    manager.target_path = target_path
-    result = manager._backup_user_path()
-    return result["success"]
-
-
-def restore_user_path(target_path: Path) -> bool:
-    """Restore user PATH from backup."""
-    try:
-        backup_dir = target_path / ".backup"
-        latest_backup = backup_dir / ".path"
-
-        if not latest_backup.exists():
-            return False
-
-        if platform.system() == "Windows":
-            # Windows user PATH restoration
-            with open(latest_backup, encoding="utf-8") as f:
-                content = f.read()
-                # Extract PATH from backup
-                for line in content.split("\n"):
-                    if not line.startswith("#") and line.strip():
-                        path_value = line.strip()
-                        result = run_silent(
-                            [
-                                "reg",
-                                "add",
-                                "HKCU\\Environment",
-                                "/v",
-                                "PATH",
-                                "/t",
-                                "REG_EXPAND_SZ",
-                                "/d",
-                                path_value,
-                                "/f",
-                            ]
-                        )
-                        return result.success
-        else:
-            # Unix PATH restoration
-            with open(latest_backup, encoding="utf-8") as f:
-                content = f.read()
-                for line in content.split("\n"):
-                    if not line.startswith("#") and line.strip():
-                        os.environ["PATH"] = line.strip()
-                        return True
-
-        return False
-
-    except Exception:
-        return False
-
-
-def setup_path():
-    """Legacy function - use InstallationManager.install() instead."""
-    manager = InstallationManager()
-    result = manager._setup_path()
-    if not result["success"]:
-        raise Exception(result["error"])
-
-
-def create_womm_executable():
-    """Legacy function - use InstallationManager.install() instead."""
-    manager = InstallationManager()
-    result = manager._create_womm_executable()
-    if not result["success"]:
-        raise Exception(result["error"])
-
-
-class PathManager:
-    """Manages PATH operations for Works On My Machine."""
-
-    def __init__(self, target: Optional[str] = None):
-        """Initialize the path manager.
-
-        Args:
-            target: Custom target directory (default: ~/.womm)
-        """
-        if target:
-            self.target_path = Path(target).expanduser().resolve()
-        else:
-            self.target_path = Path.home() / ".womm"
-
-        self.backup_dir = self.target_path / ".backup"
-        self.latest_backup = self.backup_dir / ".path"
-        self.platform = platform.system()
-
-    def backup_path(self) -> Dict:
-        """Backup the current user PATH.
-
-        Returns:
-            Dictionary containing backup results
-        """
-        result = {
-            "success": False,
-            "target_path": str(self.target_path),
-            "backup_location": str(self.backup_dir),
-            "backup_files": [],
-            "errors": [],
-        }
-
-        try:
-            # Create backup directory if it doesn't exist
-            self.backup_dir.mkdir(parents=True, exist_ok=True)
-
-            # Get current PATH
-            if self.platform == "Windows":
-                # Use environment variable for Windows
-                current_path = os.environ.get("PATH", "")
-                if not current_path:
-                    result["errors"].append(
-                        "Failed to read Windows PATH from environment"
-                    )
-                    return result
-            else:
-                current_path = os.environ.get("PATH", "")
-
-            # Create backup file with timestamp
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            backup_file = self.backup_dir / f".path_{timestamp}"
-
-            with open(backup_file, "w", encoding="utf-8") as f:
-                f.write(f"# WOMM PATH Backup - {timestamp}\n")
-                f.write(f"# Platform: {self.platform}\n")
-                f.write(f"# Target: {self.target_path}\n")
-                f.write("# Original PATH:\n")
-                f.write(f"{current_path}\n")
-
-            # Update latest backup reference (copy instead of symlink for Windows compatibility)
-            if self.latest_backup.exists():
-                self.latest_backup.unlink()
-            # Copy the backup file to .path (latest reference)
-            shutil.copy2(backup_file, self.latest_backup)
-
-            # Get list of all backup files
-            backup_files = list(self.backup_dir.glob(".path_*"))
-            result["backup_files"] = [
-                str(f.name) for f in sorted(backup_files, reverse=True)
-            ]
-            result["success"] = True
-
-            return result
-
-        except Exception as e:
-            result["errors"].append(f"Error creating PATH backup: {e}")
-            return result
-
-    def restore_path(self) -> Dict:
-        """Restore user PATH from backup.
-
-        Returns:
-            Dictionary containing restore results
-        """
-        result = {
-            "success": False,
-            "target_path": str(self.target_path),
-            "backup_used": "",
-            "errors": [],
-        }
-
-        try:
-            # Check if any backup files exist
-            backup_files = list(self.backup_dir.glob(".path_*"))
-            if not backup_files:
-                result["errors"].append("No PATH backup found")
-                return result
-
-            # Use the most recent backup if .path doesn't exist
-            if not self.latest_backup.exists():
-                backup_files.sort(key=lambda x: x.stat().st_mtime, reverse=True)
-                latest_file = backup_files[0]
-            else:
-                latest_file = self.latest_backup
-
-                # Read backup content
-            with open(latest_file, encoding="utf-8") as f:
-                content = f.read()
-
-            # Parse the backup content to extract PATH
-            if self.platform == "Windows":
-                # For Windows, the backup contains registry output
-                # Look for the PATH value in the registry output
-                lines = content.split("\n")
-                path_value = ""
-                for line in lines:
-                    if "REG_EXPAND_SZ" in line and "PATH" in line:
-                        # Extract the PATH value from registry output
-                        parts = line.split("REG_EXPAND_SZ")
-                        if len(parts) > 1:
-                            path_value = parts[1].strip()
-                            break
-            else:
-                # For Unix, extract the PATH value (skip comment lines)
-                lines = content.split("\n")
-                for line in lines:
-                    if not line.startswith("#") and line.strip():
-                        path_value = line.strip()
-                        break
-
-            if not path_value:
-                result["errors"].append("No valid PATH found in backup")
-                return result
-
-            # Restore PATH
-            if self.platform == "Windows":
-                restore_result = run_silent(
-                    [
-                        "reg",
-                        "add",
-                        "HKCU\\Environment",
-                        "/v",
-                        "PATH",
-                        "/t",
-                        "REG_EXPAND_SZ",
-                        "/d",
-                        path_value,
-                        "/f",
-                    ]
-                )
-                if not restore_result.success:
-                    result["errors"].append("Failed to restore Windows user PATH")
-                    return result
-            else:
-                # For Unix, we can only update current session
-                os.environ["PATH"] = path_value
-
-            result["backup_used"] = latest_file.name
-            result["success"] = True
-            return result
-
-        except Exception as e:
-            result["errors"].append(f"Error restoring PATH: {e}")
-            return result
-
-    def list_backups(self) -> Dict:
-        """List available PATH backups.
-
-        Returns:
-            Dictionary containing backup information
-        """
-        result = {
-            "success": False,
-            "target_path": str(self.target_path),
-            "backup_location": str(self.backup_dir),
-            "backups": [],
-            "latest_backup": "",
-            "errors": [],
-        }
-
-        try:
-            if not self.backup_dir.exists():
-                result["errors"].append("No backup directory found")
-                return result
-
-            # Get all backup files
-            backup_files = list(self.backup_dir.glob(".path_*"))
-            if not backup_files:
-                result["errors"].append("No PATH backups found")
-                return result
-
-            # Sort by modification time (newest first)
-            backup_files.sort(key=lambda x: x.stat().st_mtime, reverse=True)
-
-            for backup_file in backup_files:
-                try:
-                    stat = backup_file.stat()
-                    with open(backup_file, encoding="utf-8") as f:
-                        first_line = f.readline().strip()
-
-                    backup_info = {
-                        "name": backup_file.name,
-                        "size": stat.st_size,
-                        "modified": datetime.fromtimestamp(stat.st_mtime).strftime(
-                            "%Y-%m-%d %H:%M:%S"
-                        ),
-                        "description": (
-                            first_line
-                            if first_line.startswith("#")
-                            else "No description"
-                        ),
-                    }
-                    result["backups"].append(backup_info)
-
-                    # Mark as latest if it's the most recent
-                    if not result["latest_backup"]:
-                        result["latest_backup"] = backup_file.name
-
-                except Exception as e:
-                    result["errors"].append(f"Error listing backups: {e}")
-                    continue
-
-            result["success"] = True
-            return result
-
-        except Exception as e:
-            result["errors"].append(f"Error listing backups: {e}")
-            return result
-
-
-def main():
-    """Legacy main function - kept for backward compatibility."""
-    import sys
-
-    parser = argparse.ArgumentParser(description="Install Works On My Machine")
-    parser.add_argument(
-        "--force",
-        "-f",
-        action="store_true",
-        help="Force installation even if .womm directory exists",
-    )
-    parser.add_argument(
-        "--target", type=str, help="Custom target directory (default: ~/.womm)"
-    )
-
-    args = parser.parse_args()
-
-    # Use InstallationManager for actual installation
-    manager = InstallationManager()
-    result = manager.install(force=args.force, target=args.target)
-
-    # Simple console output for legacy compatibility
-    if result["success"]:
-        print("Installation completed successfully")
-    else:
-        print("Installation failed")
-        for error in result["errors"]:
-            print(f"Error: {error}")
-        sys.exit(1)
-
-
-if __name__ == "__main__":
-    main()
+        return files_to_copy

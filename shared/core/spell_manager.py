@@ -79,10 +79,11 @@ class SpellManager:
         """Install CSpell and essential dictionaries globally."""
         try:
             # Use dependency_manager to check and install Node.js/npm if needed
-            from shared.dependency_manager import check_and_install_dependencies
+            from shared.core.dependencies.runtime_manager import runtime_manager
 
             # Check if Node.js/npm are available
-            if not check_and_install_dependencies(["node", "npm"]):
+            install_result = runtime_manager.check_and_install_runtimes(["node"])
+            if not install_result.success:
                 return SpellResult(
                     success=False,
                     message="Node.js and npm are required but could not be installed.",

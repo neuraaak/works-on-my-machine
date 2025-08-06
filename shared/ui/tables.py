@@ -3,12 +3,29 @@
 Table utilities using Rich for beautiful table output.
 """
 
+# IMPORTS
+########################################################
+# Standard library imports
 from typing import Any, Dict, List
 
+# Third-party imports
 from rich.console import Console
 from rich.table import Table
 
+# Local imports
+# (None for this file)
+
+
+# CONFIGURATION
+########################################################
+# Global variables and settings
+
 console = Console()
+
+
+# MAIN FUNCTIONS
+########################################################
+# Core table creation functionality
 
 
 def create_table(
@@ -30,6 +47,11 @@ def create_table(
         table.add_row(*[str(cell) for cell in row])
 
     return table
+
+
+# UTILITY FUNCTIONS
+########################################################
+# Helper functions for specific table types
 
 
 def create_status_table(
