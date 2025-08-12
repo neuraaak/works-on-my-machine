@@ -6,7 +6,7 @@ Provides path resolution and validation functions.
 
 from pathlib import Path
 
-from .imports import get_shared_module_path, get_languages_module_path
+from .imports import get_languages_module_path, get_shared_module_path
 
 
 def get_project_root() -> Path:

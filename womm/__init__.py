@@ -1,26 +1,39 @@
 #!/usr/bin/env python3
 """
-Works On My Machine (WOMM) - Modular CLI Package.
-Universal development tools for Python and JavaScript projects.
-Enhanced with comprehensive security validation.
+Works On My Machine (WOMM) - Development Environment Manager
+
+A comprehensive tool for managing development environments, dependencies,
+and project setup across multiple programming languages.
+
+Author: WOMM Team
 """
 
-# CONSTANTS
-########################################################
-# Package metadata and version information
+__version__ = "2.0.0"
+__author__ = "WOMM Team"
+__description__ = "Development Environment Manager"
 
-__version__ = "1.6.0"
-__author__ = "Works On My Machine Team"
-__description__ = "Universal development tools for Python and JavaScript projects"
+# Core exports
+# Main CLI entry point
+from .cli import main
+from .core.dependencies.dev_tools_manager import dev_tools_manager
+from .core.dependencies.package_manager import package_manager
+from .core.dependencies.runtime_manager import runtime_manager
+from .core.utils.lint_manager import LintManager
+from .core.utils.spell_manager import SpellManager
 
-# IMPORTS
-########################################################
-# Main CLI group import for easy access
+# Language support
+from .languages import javascript, python
 
-from .cli import womm
-
-# EXPORTS
-########################################################
-# Public API exports
-
-__all__ = ["womm"]
+__all__ = [
+    "__version__",
+    "__author__",
+    "__description__",
+    "runtime_manager",
+    "package_manager",
+    "dev_tools_manager",
+    "SpellManager",
+    "LintManager",
+    "python",
+    "javascript",
+    "main",
+]

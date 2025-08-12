@@ -10,7 +10,6 @@ Modular CLI interface for universal development tools.
 
 import os
 import sys
-from pathlib import Path
 
 import click
 
@@ -28,9 +27,6 @@ if sys.platform == "win32":
 # Internal modules and command imports
 
 # Import and register all command modules
-# Add shared modules to path - works both for development and PyPI installation
-import importlib.util
-
 from . import __version__
 from .commands import (
     backup_path,
@@ -44,24 +40,34 @@ from .commands import (
     uninstall,
 )
 
-# CONFIGURATION
-########################################################
-# Path configuration and module setup
-
-# Check if shared module is available (PyPI installation)
-if importlib.util.find_spec("shared") is None:
-    # Fallback to path insertion (development)
-    sys.path.insert(0, str(Path(__file__).parent.parent / "shared"))
-
 # MAIN FUNCTIONS
 ########################################################
 # Core CLI functionality and command groups
 
 
 @click.group(invoke_without_command=True)
+@click.option(
+    "--log-level",
+    type=click.Choice(
+        ["debug", "info", "warn", "error", "critical"], case_sensitive=False
+    ),
+    default=None,
+    help="Configure console log level",
+)
+@click.option(
+    "--log-file",
+    type=click.Path(dir_okay=False, path_type=str),
+    default=None,
+    help="Enable file logging to the given path",
+)
+@click.option(
+    "--log-json/--no-log-json",
+    default=False,
+    help="Use JSON lines format for file logs",
+)
 @click.version_option(version=__version__)
 @click.pass_context
-def womm(ctx):
+def womm(ctx, log_level, log_file, log_json):
     """🛠️ Works On My Machine - Universal development tools.
 
     Automatic installation, cross-platform configuration, global commands
@@ -70,11 +76,26 @@ def womm(ctx):
     🔒 Enhanced with comprehensive security validation.
     """
 
+    # Configure logging early
+    from womm.core.ui.console import (
+        configure_logging,
+        get_log_level,
+        print_warn,
+        to_loglevel,
+    )
+
+    try:
+        if log_level or log_file or log_json:
+            level_to_set = to_loglevel(log_level) if log_level else get_log_level()
+            configure_logging(level=level_to_set, file=log_file, json_format=log_json)
+    except Exception as e:  # noqa: BLE001
+        print_warn(f"Failed to configure logging: {e}")
+
     # Show welcome message only when no subcommand is provided
     if ctx.invoked_subcommand is None:
         try:
-            from shared.ui import console
-            from shared.ui.panels import create_info_panel
+            from womm.core.ui import console
+            from womm.core.ui.panels import create_info_panel
 
             print(
                 r"""
@@ -114,7 +135,7 @@ Features:
 • Explore all available commands with --help
 """
 
-            from shared.ui.panels import create_panel
+            from womm.core.ui.panels import create_panel
 
             panel = create_panel(
                 info_content.strip(),
@@ -125,9 +146,9 @@ Features:
             )
             console.print(panel)
 
-        except ImportError:
-            # Fallback to basic output
-            pass
+        except Exception:
+            # In normal operation, UI should be available; if not, re-raise
+            raise
 
 
 # COMMAND REGISTRATION

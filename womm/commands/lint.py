@@ -13,11 +13,13 @@ from pathlib import Path
 
 import click
 
+from womm.core.ui.console import console
+
 # IMPORTS
 ########################################################
 # Internal modules and dependencies
-from shared.core.lint_manager import LintManager
-from shared.ui.console import console
+from womm.core.ui.lint import print_lint_summary
+from womm.core.utils.lint_manager import LintManager
 
 # MAIN FUNCTIONS
 ########################################################
@@ -37,7 +39,13 @@ def lint_group():
 @lint_group.command("python")
 @click.argument("path", type=click.Path(exists=True), default=".", required=False)
 @click.option("--fix", is_flag=True, help="Automatically fix code issues")
-def lint_python(path, fix):
+@click.option(
+    "--json",
+    "json_output",
+    is_flag=True,
+    help="Output detailed JSON diagnostics when available",
+)
+def lint_python(path, fix, json_output):
     """🐍 Lint Python code with ruff, black, and isort."""
     target_path = Path(path)
 
@@ -49,13 +57,10 @@ def lint_python(path, fix):
 
     # 3. Run Python linting
     console.print("🔍 Running ruff, black, and isort...")
-    summary = lint_manager.run_python_lint(target_path, fix)
+    summary = lint_manager.run_python_lint(target_path, fix, json_output=json_output)
 
-    # 4. Display results
-    if summary.success:
-        console.print("✅ Python linting completed successfully!", style="green")
-    else:
-        console.print(f"❌ Python linting failed: {summary.error}", style="red")
+    # 4. Display results (with details)
+    print_lint_summary(summary)
 
     # 5. Show fix suggestions if needed
     if not summary.success and not fix:
@@ -68,7 +73,13 @@ def lint_python(path, fix):
 @lint_group.command("all")
 @click.argument("path", type=click.Path(exists=True), default=".", required=False)
 @click.option("--fix", is_flag=True, help="Automatically fix code issues")
-def lint_all(path, fix):
+@click.option(
+    "--json",
+    "json_output",
+    is_flag=True,
+    help="Output detailed JSON diagnostics when available",
+)
+def lint_all(path, fix, json_output):
     """🔍 Lint all supported code in project."""
     target_path = Path(path)
 
@@ -80,13 +91,10 @@ def lint_all(path, fix):
 
     # 3. Run WOMM linting
     console.print("🔍 Running ruff and bandit...")
-    summary = lint_manager.run_womm_lint(target_path, fix)
+    summary = lint_manager.run_womm_lint(target_path, fix, json_output=json_output)
 
-    # 4. Display results
-    if summary.success:
-        console.print("✅ WOMM linting completed successfully!", style="green")
-    else:
-        console.print(f"❌ WOMM linting failed: {summary.error}", style="red")
+    # 4. Display results (with details)
+    print_lint_summary(summary)
 
     # 5. Show fix suggestions if needed
     if not summary.success and not fix:

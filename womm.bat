@@ -1,2 +1,2 @@
-@echo off  
-python "%~dp0womm.py" %* 
+@echo off
+python "%~dp0womm\scripts\womm.py" %* 

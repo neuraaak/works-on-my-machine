@@ -17,7 +17,7 @@
 ```bash
 # 1. Download/extract works-on-my-machine anywhere
 # 2. Run installation
-womm install     # or python init.py
+womm install
 
 # 3. Restart terminal
 # 4. Use anywhere!
@@ -32,7 +32,7 @@ womm lint python          # Lint Python code
 works-on-my-machine/
 ├── 📋 README.md                     # This file
 ├── 🔧 womm.py                       # Main CLI entry point (Click)
-├── 🔧 init.py, init.bat, init.ps1   # Installation wrappers (delegate to womm:install)
+├── 🔧 womm.bat                      # Windows batch wrapper
 ├── 📦 bin/                          # Global commands (added to PATH)
 ├── 🐍 languages/python/             # Python tools and scripts
 ├── 🟨 languages/javascript/         # JavaScript tools and scripts

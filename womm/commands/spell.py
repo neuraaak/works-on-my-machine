@@ -12,12 +12,15 @@ import sys
 from pathlib import Path
 
 import click
+from rich.json import JSON
+
+from womm.core.dependencies.dev_tools_manager import dev_tools_manager
+from womm.core.ui.console import console
 
 # IMPORTS
 ########################################################
 # Internal modules and dependencies
-from shared.core.spell_manager import SpellManager
-from shared.ui.console import console
+from womm.core.utils.spell_manager import SpellManager
 
 # MAIN FUNCTIONS
 ########################################################
@@ -154,22 +157,33 @@ def spell_install():
     # Check if CSpell is already available
     print_spell_tool_check_result(spell_manager.cspell_available)
 
-    if spell_manager.cspell_available:
-        print_spell_result(
-            type(
-                "Result",
-                (),
-                {"success": True, "message": "CSpell is already installed"},
-            )()
+    if not spell_manager.cspell_available:
+        # Delegate installation to DevToolsManager (ensures Node via runtime_manager)
+        print_spell_install_progress()
+        tool_result = dev_tools_manager.install_dev_tool(
+            language="universal", tool_type="spell_checking", tool="cspell"
         )
-        return
+        if not tool_result.success:
+            print_spell_install_result(
+                type(
+                    "Result",
+                    (),
+                    {
+                        "success": False,
+                        "message": tool_result.error
+                        or "Failed to install CSpell via dev tools manager",
+                    },
+                )()
+            )
+            sys.exit(1)
 
-    # Install CSpell
-    print_spell_install_progress()
-    result = spell_manager.install_cspell()
-    print_spell_install_result(result)
+    # At this point, CSpell should be available (via npx or global)
+    ok_result = type(
+        "Result", (), {"success": True, "message": "CSpell is installed"}
+    )()
+    print_spell_install_result(ok_result)
 
-    sys.exit(0 if result.success else 1)
+    sys.exit(0)
 
 
 @spell_group.command("setup")
@@ -254,7 +268,7 @@ def spell_add(words, file_path, interactive):
 @click.option("--force", is_flag=True, help="Skip confirmation prompt")
 def spell_add_all(force):
     """📚 Add all dictionaries from .cspell-dict/ to CSpell configuration."""
-    from shared.tools.dictionary_manager import get_dictionary_info
+    from womm.core.tools.dictionary_manager import get_dictionary_info
 
     # Get dictionary information
     dict_info = get_dictionary_info()
@@ -342,7 +356,7 @@ def spell_add_all(force):
 @spell_group.command("list-dicts")
 def spell_list_dicts():
     """📋 List available dictionaries in .cspell-dict/."""
-    from shared.tools.dictionary_manager import get_dictionary_info
+    from womm.core.tools.dictionary_manager import get_dictionary_info
 
     dict_info = get_dictionary_info()
     print_spell_dictionary_info(dict_info)
@@ -353,7 +367,13 @@ def spell_list_dicts():
 @spell_group.command("check")
 @click.argument("path", type=click.Path(exists=True), default=".", required=False)
 @click.option("--fix", is_flag=True, help="Interactive fix mode")
-def spell_check(path, fix):
+@click.option(
+    "--json",
+    "json_output",
+    is_flag=True,
+    help="Output detailed JSON diagnostics when available",
+)
+def spell_check(path, fix, json_output):
     """🔍 Check spelling in files."""
     spell_manager = SpellManager()
 
@@ -377,7 +397,11 @@ def spell_check(path, fix):
         sys.exit(1)
 
     # Perform spell check
-    summary = spell_manager.check_spelling(Path(path), fix)
+    summary = spell_manager.check_spelling(Path(path), fix, json_output=json_output)
     print_spell_summary(summary)
+
+    # Optional JSON output
+    if json_output and getattr(summary, "data", None) is not None:
+        console.print(JSON.from_data(summary.data))
 
     sys.exit(0 if summary.success else 1)

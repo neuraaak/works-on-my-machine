@@ -12,8 +12,12 @@ import sys
 # Third-party imports
 import click
 
+from womm.core.installation.installer import InstallationManager
+from womm.core.installation.path_manager import PathManager
+from womm.core.installation.uninstaller import UninstallationManager
+
 # Local imports
-from ..utils.security import SECURITY_AVAILABLE, security_validator
+from ..utils.security import security_validator
 
 # COMMAND FUNCTIONS
 ########################################################
@@ -33,22 +37,17 @@ from ..utils.security import SECURITY_AVAILABLE, security_validator
 def install(force, target):
     """🚀 Install Works On My Machine in user directory."""
     # Security validation for target path
-    if target and SECURITY_AVAILABLE:
+    if target:
         is_valid, error = security_validator.validate_path(target)
         if not is_valid:
             click.echo(f"[FAIL] Invalid target path: {error}", err=True)
             sys.exit(1)
 
     try:
-        from shared.installation.installer import InstallationManager
-
         # Use InstallationManager for installation with integrated UI
         manager = InstallationManager()
         manager.install(force=force, target=target)
 
-    except ImportError as e:
-        click.echo(f"[FAIL] Error importing installer: {e}", err=True)
-        sys.exit(1)
     except Exception as e:
         click.echo(f"[FAIL] Error during installation: {e}", err=True)
         sys.exit(1)
@@ -67,22 +66,17 @@ def install(force, target):
 def uninstall(force, target):
     """🗑️ Uninstall Works On My Machine from user directory."""
     # Security validation for target path
-    if target and SECURITY_AVAILABLE:
+    if target:
         is_valid, error = security_validator.validate_path(target)
         if not is_valid:
             click.echo(f"[FAIL] Invalid target path: {error}", err=True)
             sys.exit(1)
 
     try:
-        from shared.installation.uninstaller import UninstallationManager
-
         # Use UninstallationManager for uninstallation with integrated UI
         manager = UninstallationManager(target=target)
         manager.uninstall(force=force)
 
-    except ImportError as e:
-        click.echo(f"[FAIL] Error importing uninstaller: {e}", err=True)
-        sys.exit(1)
     except Exception as e:
         click.echo(f"[FAIL] Error during uninstallation: {e}", err=True)
         sys.exit(1)
@@ -101,15 +95,13 @@ def uninstall(force, target):
 def restore_path(target, list):
     """🔄 Restore user PATH from backup created during installation."""
     # Security validation for target path
-    if target and SECURITY_AVAILABLE:
+    if target:
         is_valid, error = security_validator.validate_path(target)
         if not is_valid:
             click.echo(f"[FAIL] Invalid target path: {error}", err=True)
             sys.exit(1)
 
     try:
-        from shared.installation.path_manager import PathManager
-
         # Use PathManager with integrated UI
         manager = PathManager(target=target)
 
@@ -120,9 +112,6 @@ def restore_path(target, list):
             # Restore PATH from backup
             manager.restore_path()
 
-    except ImportError as e:
-        click.echo(f"[FAIL] Error importing path manager: {e}", err=True)
-        sys.exit(1)
     except Exception as e:
         click.echo(f"[FAIL] Error during PATH restoration: {e}", err=True)
         sys.exit(1)
@@ -141,15 +130,13 @@ def restore_path(target, list):
 def backup_path(target, list):
     """💾 Show information about PATH backup."""
     # Security validation for target path
-    if target and SECURITY_AVAILABLE:
+    if target:
         is_valid, error = security_validator.validate_path(target)
         if not is_valid:
             click.echo(f"[FAIL] Invalid target path: {error}", err=True)
             sys.exit(1)
 
     try:
-        from shared.installation.path_manager import PathManager
-
         # Use PathManager with integrated UI
         manager = PathManager(target=target)
 
@@ -160,9 +147,6 @@ def backup_path(target, list):
             # Create new backup
             manager.backup_path()
 
-    except ImportError as e:
-        click.echo(f"[FAIL] Error importing path manager: {e}", err=True)
-        sys.exit(1)
     except Exception as e:
         click.echo(f"[FAIL] Error reading backup info: {e}", err=True)
         sys.exit(1)

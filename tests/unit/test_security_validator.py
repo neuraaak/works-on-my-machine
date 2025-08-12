@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 import pytest
 
-from shared.security_validator import (
+from womm.core.security_validator import (
     SecurityValidator,
     safe_command_execution,
     validate_user_input,

@@ -13,19 +13,19 @@ from pathlib import Path
 
 import click
 
-from shared.core.dependencies.dependency_manager import dependency_manager
+from womm.core.dependencies.runtime_manager import runtime_manager
+from womm.core.ui.console import console
 
 # IMPORTS
 ########################################################
 # Internal modules and dependencies
-from shared.core.results import SecurityResult, ValidationResult
-from shared.ui.console import console
+from womm.core.utils.results import SecurityResult, ValidationResult
 
 # IMPORTS
 ########################################################
 # Local utility imports
 from ..utils.path_manager import resolve_script_path
-from ..utils.security import SECURITY_AVAILABLE, run_secure_command, validate_user_input
+from ..utils.security import run_secure_command, security_validator, validate_user_input
 
 # MAIN FUNCTIONS
 ########################################################
@@ -129,7 +129,7 @@ def new_python(project_name, current_dir):
             sys.exit(1)
 
     # 1. Security validation for project name
-    if project_name and SECURITY_AVAILABLE:
+    if project_name:
         print_new_project_progress("Security validation", "Validating project name")
         is_valid, error = validate_user_input(project_name, "project_name")
         validation_result = ValidationResult(
@@ -146,15 +146,15 @@ def new_python(project_name, current_dir):
 
     # 2. Check dependencies
     print_new_project_progress("Dependency check", "Checking Python availability")
-    dep_check_result = dependency_manager.check_dependencies(["python"])
-    print_dependency_check_result(dep_check_result)
+    python_result = runtime_manager.check_runtime("python")
+    print_dependency_check_result(python_result)
 
     # 3. Install dependencies if needed
-    if not dep_check_result.all_available:
+    if not python_result.success:
         print_new_project_progress(
             "Dependency installation", "Installing missing dependencies"
         )
-        install_result = dependency_manager.install_dependencies(["python"])
+        install_result = runtime_manager.install_runtime("python")
         print_installation_result(install_result)
 
         if not install_result.success:
@@ -166,23 +166,20 @@ def new_python(project_name, current_dir):
     # 4. Security validation for script execution
     script_path = resolve_script_path("languages/python/scripts/setup_project.py")
 
-    if SECURITY_AVAILABLE:
-        print_new_project_progress("Script validation", "Validating setup script")
-        from ..utils.security import security_validator
+    print_new_project_progress("Script validation", "Validating setup script")
+    is_valid, error = security_validator.validate_script_execution(script_path)
+    security_result = SecurityResult(
+        success=is_valid, error=error, security_level="high"
+    )
+    print_security_result(security_result)
 
-        is_valid, error = security_validator.validate_script_execution(script_path)
-        security_result = SecurityResult(
-            success=is_valid, error=error, security_level="high"
+    if not is_valid:
+        print_new_project_error(
+            "python",
+            project_name or "unknown",
+            f"Script validation failed: {error}",
         )
-        print_security_result(security_result)
-
-        if not is_valid:
-            print_new_project_error(
-                "python",
-                project_name or "unknown",
-                f"Script validation failed: {error}",
-            )
-            sys.exit(1)
+        sys.exit(1)
 
     # 5. Build and execute command
     print_new_project_progress("Project setup", "Executing setup script")
@@ -193,12 +190,7 @@ def new_python(project_name, current_dir):
         cmd.append(project_name)
 
     # 6. Execute setup script
-    if SECURITY_AVAILABLE:
-        result = run_secure_command(cmd, "Setting up Python project")
-    else:
-        from shared.core.cli_manager import run_command
-
-        result = run_command(cmd, "Setting up Python project")
+    result = run_secure_command(cmd, "Setting up Python project")
 
     # 7. Handle result
     if result.success:
@@ -238,7 +230,7 @@ def new_javascript(project_name, current_dir, project_type):
             sys.exit(1)
 
     # 1. Security validation for project name
-    if project_name and SECURITY_AVAILABLE:
+    if project_name:
         print_new_project_progress("Security validation", "Validating project name")
         is_valid, error = validate_user_input(project_name, "project_name")
         validation_result = ValidationResult(
@@ -255,15 +247,15 @@ def new_javascript(project_name, current_dir, project_type):
 
     # 2. Check dependencies
     print_new_project_progress("Dependency check", "Checking Node.js availability")
-    dep_check_result = dependency_manager.check_dependencies(["node", "npm"])
-    print_dependency_check_result(dep_check_result)
+    node_result = runtime_manager.check_runtime("node")
+    print_dependency_check_result(node_result)
 
     # 3. Install dependencies if needed
-    if not dep_check_result.all_available:
+    if not node_result.success:
         print_new_project_progress(
             "Dependency installation", "Installing missing dependencies"
         )
-        install_result = dependency_manager.install_dependencies(["node", "npm"])
+        install_result = runtime_manager.install_runtime("node")
         print_installation_result(install_result)
 
         if not install_result.success:
@@ -277,23 +269,20 @@ def new_javascript(project_name, current_dir, project_type):
     # 4. Security validation for script execution
     script_path = resolve_script_path("languages/javascript/scripts/setup_project.py")
 
-    if SECURITY_AVAILABLE:
-        print_new_project_progress("Script validation", "Validating setup script")
-        from ..utils.security import security_validator
+    print_new_project_progress("Script validation", "Validating setup script")
+    is_valid, error = security_validator.validate_script_execution(script_path)
+    security_result = SecurityResult(
+        success=is_valid, error=error, security_level="high"
+    )
+    print_security_result(security_result)
 
-        is_valid, error = security_validator.validate_script_execution(script_path)
-        security_result = SecurityResult(
-            success=is_valid, error=error, security_level="high"
+    if not is_valid:
+        print_new_project_error(
+            "javascript",
+            project_name or "unknown",
+            f"Script validation failed: {error}",
         )
-        print_security_result(security_result)
-
-        if not is_valid:
-            print_new_project_error(
-                "javascript",
-                project_name or "unknown",
-                f"Script validation failed: {error}",
-            )
-            sys.exit(1)
+        sys.exit(1)
 
     # 5. Build and execute command
     print_new_project_progress(
@@ -308,12 +297,7 @@ def new_javascript(project_name, current_dir, project_type):
     cmd.extend(["--type", project_type])
 
     # 6. Execute setup script
-    if SECURITY_AVAILABLE:
-        result = run_secure_command(cmd, f"Setting up {project_type} project")
-    else:
-        from shared.core.cli_manager import run_command
-
-        result = run_command(cmd, f"Setting up {project_type} project")
+    result = run_secure_command(cmd, f"Setting up {project_type} project")
 
     # 7. Handle result
     if result.success:
@@ -335,27 +319,38 @@ def new_detect(project_name, current_dir):
     """🔍 Auto-detect project type and create appropriate setup."""
 
     print_new_project_progress("Project detection", "Detecting project type")
-    script_path = resolve_script_path("shared/project/project_detector.py")
 
-    cmd = [sys.executable, str(script_path)]
-    if current_dir:
-        cmd.append("--current-dir")
-    elif project_name:
-        cmd.append(project_name)
+    # Utiliser le détecteur interne au lieu d'un script externe inexistant
+    from womm.core.project.project_detector import (
+        ProjectDetector,
+        launch_project_setup,
+    )
 
-    from shared.core.cli_manager import run_command
+    detector = ProjectDetector(Path.cwd())
+    detected_type, confidence = detector.detect_project_type()
 
-    result = run_command(cmd, "Auto-detecting and setting up project")
-
-    if result.success:
-        project_path = Path.cwd() / (project_name or Path.cwd().name)
-        print_new_project_complete(
-            "Auto-detected", project_name or "current", str(project_path)
-        )
-    else:
+    if detected_type == "generic" or confidence == 0:
         print_new_project_error(
             "auto-detected",
             project_name or "unknown",
-            result.stderr or "Detection failed",
+            "No suitable project type detected",
+        )
+        sys.exit(1)
+
+    # Lancer la configuration directement
+    rc = launch_project_setup(
+        project_type=detected_type,
+        project_name=project_name,
+        current_dir=current_dir,
+    )
+
+    if rc == 0:
+        project_path = Path.cwd() / (project_name or Path.cwd().name)
+        print_new_project_complete(
+            detected_type.title(), project_name or "current", str(project_path)
+        )
+    else:
+        print_new_project_error(
+            detected_type, project_name or "unknown", "Detection/setup failed"
         )
         sys.exit(1)

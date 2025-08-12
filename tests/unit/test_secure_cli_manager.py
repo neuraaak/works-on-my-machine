@@ -8,7 +8,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from shared.secure_cli_manager import (
+from womm.core.secure_cli_manager import (
     SecureCLIManager,
     SecureCommandResult,
     check_tool_secure,
