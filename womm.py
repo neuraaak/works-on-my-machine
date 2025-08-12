@@ -1,22 +1,31 @@
 #!/usr/bin/env python3
 """
 Works On My Machine (WOMM) - Main CLI Entry Point.
-This is a root-level entry point that delegates to the package script.
+This is a root-level entry point for git clone installations.
+For PyPI installations, use 'womm' command directly.
 """
 
 import sys
 from pathlib import Path
 
-# Get the path to the package script
-package_script = Path(__file__).parent / "womm" / "scripts" / "womm.py"
 
-if not package_script.exists():
-    print("❌ Error: Could not find womm package script")
-    print(f"💡 Expected location: {package_script}")
-    sys.exit(1)
+def main():
+    """Main entry point for git clone usage."""
+    # Add the current directory to path to import womm package
+    project_root = Path(__file__).parent
+    sys.path.insert(0, str(project_root))
 
-# Execute the package script with the same arguments
-import subprocess
+    try:
+        # Import and run the CLI directly
+        from womm.cli import womm
 
-result = subprocess.run([sys.executable, str(package_script)] + sys.argv[1:])
-sys.exit(result.returncode)
+        womm()
+    except ImportError as e:
+        print("❌ Error: Could not import womm package")
+        print(f"💡 Make sure you're in the works-on-my-machine directory")
+        print(f"🔧 Error details: {e}")
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

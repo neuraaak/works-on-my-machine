@@ -6,35 +6,23 @@ include README.md
 include LICENSE
 include pyproject.toml
 
-# Include package data
-recursive-include shared *.py
-recursive-include shared *.json
-recursive-include shared *.yaml
-recursive-include shared *.yml
-recursive-include shared *.txt
-recursive-include shared *.template
-recursive-include shared *.config.*
-recursive-include shared templates *
-recursive-include shared configs *
-recursive-include shared vscode *
-
-recursive-include languages *.py
-recursive-include languages *.json
-recursive-include languages *.yaml
-recursive-include languages *.yml
-recursive-include languages *.txt
-recursive-include languages *.template
-recursive-include languages *.config.*
-recursive-include languages templates *
-recursive-include languages configs *
-recursive-include languages vscode *
-recursive-include languages scripts *
-
-recursive-include womm *.py
-
-# Include main scripts
+# Include main scripts for git clone usage
 include womm.py
 include womm.bat
+
+# Include complete womm package
+recursive-include womm *.py
+recursive-include womm *.json
+recursive-include womm *.yaml
+recursive-include womm *.yml
+recursive-include womm *.txt
+recursive-include womm *.template
+recursive-include womm *.config.*
+recursive-include womm *.md
+recursive-include womm templates *
+recursive-include womm configs *
+recursive-include womm vscode *
+recursive-include womm scripts *
 
 # Exclude development files
 global-exclude *.pyc

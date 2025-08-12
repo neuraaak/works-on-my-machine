@@ -277,11 +277,20 @@ class InstallationManager:
             task,
         ):
             progress.update(task, status="Creating PATH backup...")
-            backup_result = self._backup_user_path()
+            from womm.core.installation.path_manager import PathManager
+
+            path_manager = PathManager(target=str(self.target_path))
+            backup_result = path_manager._backup_path()
+
             if backup_result["success"]:
                 progress.update(task, status="User PATH backed up successfully")
                 # Keep backup reference for potential rollback
-                self._path_backup_file = backup_result.get("backup_file")
+                backup_files = backup_result.get("backup_files", [])
+                if backup_files:
+                    latest_name = backup_files[0]
+                    self._path_backup_file = str(
+                        (path_manager.backup_dir / latest_name).resolve()
+                    )
             else:
                 progress.update(task, status="PATH backup failed.")
                 progress.stop()
@@ -409,38 +418,6 @@ class InstallationManager:
     ########################################################
     # Internal methods for installation process
 
-    def _backup_user_path(self) -> Dict:
-        """Backup current user PATH using PathManager for consistency."""
-        try:
-            # Delegate to PathManager for a unified implementation
-            from womm.core.installation.path_manager import PathManager
-
-            manager = PathManager(target=str(self.target_path))
-            result = manager._backup_path()  # Internal util returns structured dict
-
-            if not result.get("success"):
-                return {
-                    "success": False,
-                    "error": "; ".join(result.get("errors", [])) or "Backup failed",
-                }
-
-            # Determine latest backup file (PathManager returns sorted names desc)
-            backups = result.get("backup_files", [])
-            if backups:
-                latest_name = backups[0]
-                backup_file_path = str((manager.backup_dir / latest_name).resolve())
-            else:
-                backup_file_path = ""
-
-            return {
-                "success": True,
-                "message": "PATH backup created via PathManager",
-                "backup_file": backup_file_path,
-            }
-
-        except Exception as e:
-            return {"success": False, "error": str(e)}
-
     def _create_womm_executable(self) -> Dict:
         """Create WOMM executable."""
         result_dict = {
@@ -451,11 +428,9 @@ class InstallationManager:
 
         try:
             if platform.system() == "Windows":
-                # Create womm.bat using the current Python interpreter to avoid PATH issues
+                # Create womm.bat using relative path (like dev version)
                 womm_bat = self.target_path / "womm.bat"
-                bat_content = (
-                    f'@echo off\n"{sys.executable}" "{self.target_path}\\womm.py" %*\n'
-                )
+                bat_content = '@echo off\npython "%~dp0womm.py" %*\n'
                 womm_bat.write_text(bat_content, encoding="utf-8")
                 result_dict["success"] = True
                 result_dict["message"] = (
@@ -463,9 +438,9 @@ class InstallationManager:
                 )
                 return result_dict
             else:
-                # Create Unix executable
+                # Create Unix executable using relative path
                 womm_exec = self.target_path / "womm"
-                exec_content = f'#!/bin/bash\npython3 "{self.target_path}/womm.py" "$@"'
+                exec_content = '#!/bin/bash\nDIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"\npython3 "$DIR/womm.py" "$@"'
                 womm_exec.write_text(exec_content, encoding="utf-8")
                 womm_exec.chmod(0o755)
                 result_dict["success"] = True
@@ -495,14 +470,6 @@ class InstallationManager:
     def _setup_windows_path(self, womm_path: str, original_path: str) -> Dict:
         """Setup Windows PATH with automatic rollback and safety verification."""
         try:
-            # Check if already in PATH
-            if womm_path in original_path:
-                return {
-                    "success": True,
-                    "path_added": False,
-                    "message": "Already in PATH",
-                }
-
             # Step 1: Get current user PATH from registry and store it
             result = run_silent(["reg", "query", "HKCU\\Environment", "/v", "PATH"])
 
@@ -514,7 +481,7 @@ class InstallationManager:
                 if not actual_user_path:
                     actual_user_path = ""
 
-                # Check if already in user PATH
+                # Check if already in user PATH (registry, not session)
                 if womm_path in actual_user_path:
                     # Ensure current session sees it too for immediate use and verification
                     system_path = os.environ.get("PATH", "")
