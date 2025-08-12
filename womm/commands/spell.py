@@ -20,7 +20,7 @@ from womm.core.ui.console import console
 # IMPORTS
 ########################################################
 # Internal modules and dependencies
-from womm.core.utils.spell_manager import SpellManager
+from womm.core.utils.spell_manager import spell_manager
 
 # MAIN FUNCTIONS
 ########################################################
@@ -152,13 +152,11 @@ def confirm(message: str) -> bool:
 @spell_group.command("install")
 def spell_install():
     """📦 Install CSpell and dictionaries globally."""
-    spell_manager = SpellManager()
-
     # Check if CSpell is already available
     print_spell_tool_check_result(spell_manager.cspell_available)
 
     if not spell_manager.cspell_available:
-        # Delegate installation to DevToolsManager (ensures Node via runtime_manager)
+        # Install CSpell via DevToolsManager (ensures Node via runtime_manager)
         print_spell_install_progress()
         tool_result = dev_tools_manager.install_dev_tool(
             language="universal", tool_type="spell_checking", tool="cspell"
@@ -177,9 +175,17 @@ def spell_install():
             )
             sys.exit(1)
 
-    # At this point, CSpell should be available (via npx or global)
+        # Refresh cspell availability check after installation
+        spell_manager.cspell_available = spell_manager._check_cspell_availability()
+
+    # Install essential dictionaries
+    print_spell_start("dictionary setup")
+    dict_result = spell_manager.setup_dictionaries()
+    print_spell_setup_result(dict_result)
+
+    # Final success message
     ok_result = type(
-        "Result", (), {"success": True, "message": "CSpell is installed"}
+        "Result", (), {"success": True, "message": "CSpell and dictionaries are ready"}
     )()
     print_spell_install_result(ok_result)
 
@@ -196,8 +202,6 @@ def spell_install():
 )
 def spell_setup(project_name, project_type):
     """⚙️ Set CSpell for current project."""
-    spell_manager = SpellManager()
-
     print_spell_start("project setup")
     result = spell_manager.setup_project(project_name, project_type)
     print_spell_setup_result(result)
@@ -208,8 +212,6 @@ def spell_setup(project_name, project_type):
 @spell_group.command("status")
 def spell_status():
     """📊 Display CSpell project status."""
-    spell_manager = SpellManager()
-
     result = spell_manager.get_project_status()
 
     if result.success:
@@ -228,8 +230,6 @@ def spell_status():
 @click.option("--interactive", is_flag=True, help="Interactive mode")
 def spell_add(words, file_path, interactive):
     """➕ Add words to CSpell configuration."""
-    spell_manager = SpellManager()
-
     if interactive:
         # Interactive mode - prompt for words
         word = print_prompt("Enter word to add", required=True)
@@ -308,7 +308,6 @@ def spell_add_all(force):
         sys.exit(1)
 
     # Add all dictionaries
-    spell_manager = SpellManager()
     success_count = 0
     error_count = 0
 
@@ -375,8 +374,6 @@ def spell_list_dicts():
 )
 def spell_check(path, fix, json_output):
     """🔍 Check spelling in files."""
-    spell_manager = SpellManager()
-
     # Show header first
     print_spell_check_start(Path(path), fix)
 

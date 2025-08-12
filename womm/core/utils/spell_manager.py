@@ -44,72 +44,65 @@ class SpellManager:
     """Manages spell checking operations with CSpell."""
 
     def __init__(self):
-        self.cspell_available = self._check_cspell_availability()
+        self._cspell_available = None  # Lazy-loaded availability check
+
+    @property
+    def cspell_available(self) -> bool:
+        """Check if CSpell is available (lazy-loaded)."""
+        if self._cspell_available is None:
+            self._cspell_available = self._check_cspell_availability()
+        return self._cspell_available
+
+    @cspell_available.setter
+    def cspell_available(self, value: bool):
+        """Allow manual override of cspell availability."""
+        self._cspell_available = value
 
     def _check_cspell_availability(self) -> bool:
         """Check if CSpell is available in the system."""
         try:
-            # Check via shutil.which (PATH)
+            # Check via shutil.which (PATH) - fastest check
             if shutil.which("cspell") is not None:
                 return True
 
-            # Check via npx (modern npm approach) - Windows compatible
+            # Check via npx (modern npm approach) with shorter timeout
             import platform
 
-            from .cli_manager import run_silent
+            from .cli_manager import CLIManager
+
+            # Use shorter timeout for availability checks to avoid blocking startup
+            cli = CLIManager(timeout=5)  # 5 seconds timeout instead of 30
 
             if platform.system() == "Windows":
-                result = run_silent(["cmd", "/c", "npx", "cspell", "--version"])
+                result = cli.run_silent(["cmd", "/c", "npx", "cspell", "--version"])
             else:
-                result = run_silent(["npx", "cspell", "--version"])
+                result = cli.run_silent(["npx", "cspell", "--version"])
 
             if result.success:
                 return True
 
-            # Check via npm (fallback)
+            # Check via npm (fallback) with short timeout
             if platform.system() == "Windows":
-                result = run_silent(["cmd", "/c", "npm", "list", "-g", "cspell"])
+                result = cli.run_silent(["cmd", "/c", "npm", "list", "-g", "cspell"])
             else:
-                result = run_silent(["npm", "list", "-g", "cspell"])
+                result = cli.run_silent(["npm", "list", "-g", "cspell"])
             return result.success and "cspell@" in result.stdout
         except Exception:
+            # If any exception occurs (including timeout), assume CSpell is not available
             return False
 
-    def install_cspell(self) -> SpellResult:
-        """Install CSpell and essential dictionaries globally."""
+    def setup_dictionaries(self) -> SpellResult:
+        """Install essential CSpell dictionaries globally."""
         try:
-            # Use dependency_manager to check and install Node.js/npm if needed
-            from womm.core.dependencies.runtime_manager import runtime_manager
-
-            # Check if Node.js/npm are available
-            install_results = runtime_manager.check_and_install_runtimes(["node"])
-            node_result = install_results.get("node")
-            if not node_result or not node_result.success:
+            # Ensure CSpell is available first
+            if not self.cspell_available:
                 return SpellResult(
                     success=False,
-                    message="Node.js and npm are required but could not be installed.",
-                    error="node_npm_not_found",
+                    message="CSpell must be installed before setting up dictionaries",
+                    error="cspell_not_available",
                 )
 
-            # Install CSpell using npx (modern approach)
             from .cli_manager import run_command
-
-            result = run_command(
-                ["npx", "--yes", "cspell", "--version"], "CSpell availability check"
-            )
-            if result.success:
-                return SpellResult(success=True, message="CSpell is available via npx")
-
-            # Fallback to global installation
-            result = run_command(
-                ["npm", "install", "-g", "cspell"], "CSpell installation"
-            )
-            if not result.success:
-                return SpellResult(
-                    success=False,
-                    message=f"CSpell installation failed: {result.stderr}",
-                    error="cspell_install_failed",
-                )
 
             # Install essential dictionaries
             dictionaries = [
@@ -127,34 +120,45 @@ class SpellManager:
             ]
 
             failed_dictionaries = []
+            installed_count = 0
+
             for dictionary in dictionaries:
                 try:
                     dict_result = run_command(
                         ["npm", "install", "-g", dictionary],
                         f"Installing dictionary {dictionary}",
                     )
-                    if not dict_result.success:
+                    if dict_result.success:
+                        installed_count += 1
+                    else:
                         failed_dictionaries.append(dictionary)
                 except Exception:
                     failed_dictionaries.append(dictionary)
 
-            if failed_dictionaries:
+            # Return results based on success rate
+            if installed_count == 0:
+                return SpellResult(
+                    success=False,
+                    message="Failed to install any dictionaries",
+                    error="all_dictionaries_failed",
+                )
+            elif failed_dictionaries:
                 return SpellResult(
                     success=True,
-                    message=f"CSpell installed with {len(failed_dictionaries)} dictionary failures",
-                    error=f"dictionaries_failed:{','.join(failed_dictionaries)}",
+                    message=f"Installed {installed_count}/{len(dictionaries)} dictionaries successfully",
+                    error=f"failed_dictionaries:{','.join(failed_dictionaries)}",
                 )
-
-            return SpellResult(
-                success=True,
-                message="CSpell and all dictionaries installed successfully",
-            )
+            else:
+                return SpellResult(
+                    success=True,
+                    message=f"All {installed_count} essential dictionaries installed successfully",
+                )
 
         except Exception as e:
             return SpellResult(
                 success=False,
-                message=f"Installation error: {e}",
-                error="installation_error",
+                message=f"Dictionary setup error: {e}",
+                error="dictionary_setup_error",
             )
 
     def setup_project(
@@ -444,3 +448,9 @@ class SpellManager:
             summary.message = "No spelling errors found"
 
         return summary
+
+
+# GLOBAL INSTANCE
+########################################################
+
+spell_manager = SpellManager()

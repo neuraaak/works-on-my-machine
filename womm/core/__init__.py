@@ -10,7 +10,8 @@ from .dependencies import dev_tools_manager, package_manager, runtime_manager
 from .ui import console, panels, progress, tables
 from .utils import cli_manager, results, system_detector
 from .utils.lint_manager import LintManager
-from .utils.spell_manager import SpellManager
+
+# Note: SpellManager with singleton is imported only when needed to avoid startup delays
 
 __all__ = [
     "runtime_manager",
