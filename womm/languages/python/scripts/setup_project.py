@@ -22,7 +22,7 @@ from pathlib import Path
 
 # Import security validator
 try:
-    from womm.core.security.security_validator import SecurityValidator
+    from ....core.security.security_validator import SecurityValidator
 
     SECURITY_AVAILABLE = True
 except ImportError:
@@ -139,7 +139,7 @@ class PythonProjectSetup:
         sys.path.insert(0, str(devtools_path))
 
         try:
-            from womm.core.tools.cspell_manager import setup_project_cspell
+            from ....core.tools.cspell_manager import setup_project_cspell
 
             success = setup_project_cspell(
                 self.project_path, "python", self.project_name
@@ -160,7 +160,7 @@ class PythonProjectSetup:
         sys.path.insert(0, str(devtools_path))
 
         try:
-            from womm.core.project.environment_manager import EnvironmentManager
+            from ....core.project.environment_manager import EnvironmentManager
 
             manager = EnvironmentManager(self.project_path, "python")
 

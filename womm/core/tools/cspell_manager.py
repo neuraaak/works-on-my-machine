@@ -22,7 +22,7 @@ def check_cspell_installed() -> bool:
 
     # Check via npm (fallback)
     try:
-        from womm.core.utils.cli_manager import run_silent
+        from ..utils.cli_manager import run_silent
 
         result = run_silent(["npm", "list", "-g", "cspell"])
         return result.success and "cspell@" in result.stdout
@@ -36,14 +36,14 @@ def install_cspell_global() -> bool:
 
     try:
         # Check that npm is available
-        from womm.core.utils.cli_manager import check_tool_available
+        from ..utils.cli_manager import check_tool_available
 
         if not check_tool_available("npm"):
             print("[ERROR] npm is not available. Please install Node.js first.")
             return False
 
         # CSpell installation
-        from womm.core.utils.cli_manager import run_command
+        from ..utils.cli_manager import run_command
 
         result = run_command(["npm", "install", "-g", "cspell"], "CSpell installation")
         if not result.success:
@@ -205,12 +205,12 @@ def run_spellcheck(path: Path, fix_mode: bool = False) -> bool:
         return False
 
     # Validation de sécurité préalable (sécurité toujours disponible)
-    from womm.core.security.security_validator import security_validator
+    from ..security.security_validator import security_validator
 
     use_security_validation = True
 
     # Utiliser le CLI manager standard avec validation de sécurité
-    from womm.core.utils.cli_manager import run_command
+    from ..utils.cli_manager import run_command
 
     # Essayer d'abord avec cspell direct
     cmd = ["cspell", str(path)]
@@ -344,7 +344,7 @@ def display_project_status(project_path: Path):
     if status["cspell_installed"] and status["config_exists"]:
         print("\n[CHECK] Quick verification...")
         try:
-            from womm.core.utils.cli_manager import run_command
+            from ..utils.cli_manager import run_command
 
             result = run_command(
                 ["npx", "cspell", "--no-progress", str(project_path)],

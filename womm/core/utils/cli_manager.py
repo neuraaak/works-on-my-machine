@@ -121,7 +121,7 @@ class CLIManager:
         # Security validation
         security_validated = False
         if validate_security:
-            from womm.core.security.security_validator import security_validator
+            from ..security.security_validator import security_validator
 
             is_valid, error = security_validator.validate_command(cmd)
             if not is_valid:
@@ -259,7 +259,7 @@ class CLIManager:
             return False
 
         # Additional security check
-        from womm.core.security.security_validator import security_validator
+        from ..security.security_validator import security_validator
 
         is_valid, _ = security_validator.validate_command([command])
         return is_valid

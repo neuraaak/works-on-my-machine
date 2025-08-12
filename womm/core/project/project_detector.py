@@ -257,7 +257,7 @@ def launch_project_setup(
     print(f"🚀 Launching: {' '.join(cmd)}")
 
     # Launch script
-    from womm.core.utils.cli_manager import run_command
+    from ..utils.cli_manager import run_command
 
     result = run_command(cmd, f"Configuring {project_type} project")
     return 0 if result.success else 1

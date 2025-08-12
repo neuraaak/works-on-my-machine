@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Optional
 
 # Import CLI manager
-from womm.core.utils.cli_manager import run_command, run_silent
+from ..utils.cli_manager import run_command, run_silent
 
 
 class EnvironmentManager:

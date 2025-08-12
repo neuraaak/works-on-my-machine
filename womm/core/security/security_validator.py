@@ -470,7 +470,7 @@ def safe_command_execution(
 
     # Execute with secure CLI manager
     try:
-        from womm.core.utils.cli_manager import run_command
+        from ..utils.cli_manager import run_command
 
         result = run_command(command, description)
         return result.success, result.stderr if not result.success else ""

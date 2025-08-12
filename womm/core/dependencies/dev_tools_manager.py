@@ -9,6 +9,7 @@ import sys
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
+from ..ui.console import print_deps, print_error, print_success
 from ..utils.cli_manager import check_tool_available, run_command, run_silent
 from ..utils.results import BaseResult
 
@@ -106,9 +107,12 @@ class DevToolsManager:
     def install_dev_tool(
         self, language: str, tool_type: str, tool: str
     ) -> DevToolResult:
-        """Install a development tool."""
+        """Install a development tool with integrated UI feedback."""
+        from ..ui.progress import create_spinner_with_status
+
         # Check if already installed
         if self.check_dev_tool(language, tool_type, tool).success:
+            print_success(f"Dev tool {tool} already installed")
             return DevToolResult(
                 success=True,
                 tool_name=tool,
@@ -118,61 +122,86 @@ class DevToolsManager:
                 message=f"Dev tool {tool} already installed",
             )
 
-        # Determine installation method
-        install_method = self._get_installation_method(language, tool)
+        with create_spinner_with_status(
+            f"Installing [bold cyan]{tool}[/bold cyan]..."
+        ) as (
+            progress,
+            task,
+        ):
+            # Determine installation method
+            progress.update(task, status="Determining installation method...")
+            install_method = self._get_installation_method(language, tool)
 
-        # Ensure required runtime is available (and attempt install if missing)
-        runtime_ok, runtime_error = self._ensure_required_runtime(install_method, tool)
-        if not runtime_ok:
-            return DevToolResult(
-                success=False,
-                tool_name=tool,
-                language=language,
-                tool_type=tool_type,
-                message="Required runtime not available",
-                error=runtime_error or "Required runtime not available",
+            # Ensure required runtime is available (and attempt install if missing)
+            progress.update(task, status="Checking runtime requirements...")
+            runtime_ok, runtime_error = self._ensure_required_runtime(
+                install_method, tool
             )
+            if not runtime_ok:
+                progress.update(task, status="Runtime requirements not met")
+                print_error(
+                    f"Runtime requirements not available for {tool}: {runtime_error}"
+                )
+                return DevToolResult(
+                    success=False,
+                    tool_name=tool,
+                    language=language,
+                    tool_type=tool_type,
+                    message="Required runtime not available",
+                    error=runtime_error or "Required runtime not available",
+                )
 
-        success = False
-        if install_method == "pip":
-            success = self._install_python_tool(tool)
-        elif install_method == "npm":
-            success = self._install_javascript_tool(tool)
-        else:
-            return DevToolResult(
-                success=False,
-                tool_name=tool,
-                language=language,
-                tool_type=tool_type,
-                message=f"No installation method found for {tool}",
-                error="No installation method found",
-            )
+            # Install the tool
+            progress.update(task, status=f"Installing via {install_method}...")
+            success = False
+            if install_method == "pip":
+                success = self._install_python_tool(tool)
+            elif install_method == "npm":
+                success = self._install_javascript_tool(tool)
+            else:
+                progress.update(task, status="No installation method found")
+                print_error(f"No installation method found for {tool}")
+                return DevToolResult(
+                    success=False,
+                    tool_name=tool,
+                    language=language,
+                    tool_type=tool_type,
+                    message=f"No installation method found for {tool}",
+                    error="No installation method found",
+                )
 
-        if success:
-            # Clear cache for this tool
-            self._clear_tool_cache(language, tool_type, tool)
+            if success:
+                # Clear cache for this tool
+                self._clear_tool_cache(language, tool_type, tool)
+                progress.update(task, status="Installation completed successfully!")
+                print_success(f"Dev tool {tool} installed successfully")
 
-            return DevToolResult(
-                success=True,
-                tool_name=tool,
-                language=language,
-                tool_type=tool_type,
-                path=shutil.which(tool),
-                message=f"Dev tool {tool} installed successfully",
-            )
-        else:
-            return DevToolResult(
-                success=False,
-                tool_name=tool,
-                language=language,
-                tool_type=tool_type,
-                message=f"Failed to install dev tool {tool}",
-                error="Installation failed",
-            )
+                return DevToolResult(
+                    success=True,
+                    tool_name=tool,
+                    language=language,
+                    tool_type=tool_type,
+                    path=shutil.which(tool),
+                    message=f"Dev tool {tool} installed successfully",
+                )
+            else:
+                progress.update(task, status="Installation failed")
+                print_error(f"Failed to install dev tool {tool}")
+                return DevToolResult(
+                    success=False,
+                    tool_name=tool,
+                    language=language,
+                    tool_type=tool_type,
+                    message=f"Failed to install dev tool {tool}",
+                    error="Installation failed",
+                )
 
     def check_and_install_dev_tools(self, language: str) -> Dict[str, DevToolResult]:
-        """Check and install all dev tools for a language."""
+        """Check and install all dev tools for a language with integrated UI."""
+        from ..ui.progress import create_spinner_with_status
+
         if language not in DEV_TOOLS:
+            print_error(f"Language {language} not supported")
             return {
                 "error": DevToolResult(
                     success=False,
@@ -184,14 +213,42 @@ class DevToolsManager:
                 )
             }
 
+        print_deps(f"Checking and installing {language} development tools...")
+
         results = {}
-        for tool_type, tools in DEV_TOOLS[language].items():
-            for tool in tools:
-                result = self.check_dev_tool(language, tool_type, tool)
-                if not result.success:
-                    # Try to install the tool
-                    result = self.install_dev_tool(language, tool_type, tool)
-                results[tool] = result
+        total_tools = sum(len(tools) for tools in DEV_TOOLS[language].values())
+        processed = 0
+
+        with create_spinner_with_status(
+            f"Processing [bold cyan]{language}[/bold cyan] dev tools..."
+        ) as (
+            progress,
+            task,
+        ):
+            for tool_type, tools in DEV_TOOLS[language].items():
+                for tool in tools:
+                    processed += 1
+                    progress.update(
+                        task, status=f"Processing {tool} ({processed}/{total_tools})..."
+                    )
+
+                    result = self.check_dev_tool(language, tool_type, tool)
+                    if not result.success:
+                        # Try to install the tool
+                        progress.update(task, status=f"Installing {tool}...")
+                        result = self.install_dev_tool(language, tool_type, tool)
+                    else:
+                        print_success(f"Dev tool {tool} already available")
+
+                    results[tool] = result
+
+            progress.update(task, status="All tools processed!")
+
+        # Summary
+        successful = sum(1 for result in results.values() if result.success)
+        print_deps(
+            f"Development tools summary: {successful}/{len(results)} tools available"
+        )
 
         return results
 
@@ -207,27 +264,69 @@ class DevToolsManager:
         return tools
 
     def get_tool_status(self, language: str = None) -> Dict[str, Dict]:
-        """Get comprehensive status of development tools."""
-        status = {}
+        """Get comprehensive status of development tools with UI output."""
+        from ..ui.progress import create_spinner
 
+        status = {}
         languages_to_check = [language] if language else DEV_TOOLS.keys()
 
-        for lang in languages_to_check:
-            if lang not in DEV_TOOLS:
-                continue
+        with create_spinner("Checking dev tools status...") as (progress, task):
+            for lang in languages_to_check:
+                if lang not in DEV_TOOLS:
+                    continue
 
-            status[lang] = {}
-            for tool_type, tools in DEV_TOOLS[lang].items():
-                status[lang][tool_type] = {}
-                for tool in tools:
-                    available = self._check_tool_availability(tool)
-                    status[lang][tool_type][tool] = {
-                        "installed": available,
-                        "path": shutil.which(tool) if available else None,
-                        "supported": True,
-                    }
+                progress.update(
+                    task, description=f"Checking [bold cyan]{lang}[/bold cyan] tools..."
+                )
+
+                status[lang] = {}
+                for tool_type, tools in DEV_TOOLS[lang].items():
+                    status[lang][tool_type] = {}
+                    for tool in tools:
+                        available = self._check_tool_availability(tool)
+                        status[lang][tool_type][tool] = {
+                            "installed": available,
+                            "path": shutil.which(tool) if available else None,
+                            "supported": True,
+                        }
+
+        # Display results in a table
+        if status:
+            self._display_status_table(status)
 
         return status
+
+    def _display_status_table(self, status: Dict[str, Dict]) -> None:
+        """Display development tools status in a formatted table."""
+        from rich.table import Table
+
+        from ..ui.console import console
+
+        table = Table(show_header=True, header_style="bold magenta")
+        table.add_column("Language", style="cyan")
+        table.add_column("Tool Type", style="blue")
+        table.add_column("Tool", style="white")
+        table.add_column("Status", justify="center")
+        table.add_column("Path", style="dim")
+
+        for language, lang_tools in status.items():
+            for tool_type, tools in lang_tools.items():
+                for tool, info in tools.items():
+                    status_icon = "✅" if info["installed"] else "❌"
+                    status_text = "Installed" if info["installed"] else "Missing"
+                    path_text = info.get("path", "Not found") or "Not found"
+
+                    table.add_row(
+                        language,
+                        tool_type,
+                        tool,
+                        f"{status_icon} {status_text}",
+                        path_text,
+                    )
+
+        console.print("\n")
+        console.print(table)
+        console.print("\n")
 
     def _check_tool_availability(self, tool: str) -> bool:
         """Check if a tool is available."""

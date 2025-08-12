@@ -74,6 +74,7 @@ nosetests.xml
 
 # Cursor AI
 .cursor/
+.github/
 
 # Other editors
 .idea/

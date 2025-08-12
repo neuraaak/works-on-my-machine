@@ -5,11 +5,11 @@ Provides security validation and secure command execution.
 Assume security modules are available (no fallbacks).
 """
 
-from womm.core.security.security_validator import (
+from ..core.security.security_validator import (
     security_validator,
     validate_user_input,
 )
-from womm.core.utils.cli_manager import run_secure
+from ..core.utils.cli_manager import run_secure
 
 
 def run_secure_command(cmd, description):

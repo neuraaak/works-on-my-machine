@@ -14,13 +14,13 @@ from pathlib import Path
 import click
 from rich.json import JSON
 
-from womm.core.dependencies.dev_tools_manager import dev_tools_manager
-from womm.core.ui.console import console
+from ..core.dependencies.dev_tools_manager import dev_tools_manager
+from ..core.ui.console import console
 
 # IMPORTS
 ########################################################
 # Internal modules and dependencies
-from womm.core.utils.spell_manager import spell_manager
+from ..core.utils.spell_manager import spell_manager
 
 # MAIN FUNCTIONS
 ########################################################
@@ -268,7 +268,7 @@ def spell_add(words, file_path, interactive):
 @click.option("--force", is_flag=True, help="Skip confirmation prompt")
 def spell_add_all(force):
     """📚 Add all dictionaries from .cspell-dict/ to CSpell configuration."""
-    from womm.core.tools.dictionary_manager import get_dictionary_info
+    from ..core.tools.dictionary_manager import get_dictionary_info
 
     # Get dictionary information
     dict_info = get_dictionary_info()
@@ -355,7 +355,7 @@ def spell_add_all(force):
 @spell_group.command("list-dicts")
 def spell_list_dicts():
     """📋 List available dictionaries in .cspell-dict/."""
-    from womm.core.tools.dictionary_manager import get_dictionary_info
+    from ..core.tools.dictionary_manager import get_dictionary_info
 
     dict_info = get_dictionary_info()
     print_spell_dictionary_info(dict_info)

@@ -22,7 +22,7 @@ def main():
         womm()
     except ImportError as e:
         print("❌ Error: Could not import womm package")
-        print(f"💡 Make sure you're in the works-on-my-machine directory")
+        print("💡 Make sure you're in the works-on-my-machine directory")
         print(f"🔧 Error details: {e}")
         sys.exit(1)
 

@@ -12,9 +12,9 @@ import sys
 # Third-party imports
 import click
 
-from womm.core.installation.installer import InstallationManager
-from womm.core.installation.path_manager import PathManager
-from womm.core.installation.uninstaller import UninstallationManager
+from ..core.installation.installer import InstallationManager
+from ..core.installation.path_manager import PathManager
+from ..core.installation.uninstaller import UninstallationManager
 
 # Local imports
 from ..utils.security import security_validator

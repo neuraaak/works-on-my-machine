@@ -16,7 +16,7 @@ import click
 # IMPORTS
 ########################################################
 # Internal modules and dependencies
-from ..utils.path_manager import resolve_script_path
+from ..utils.path_resolver import resolve_script_path
 
 # MAIN FUNCTIONS
 ########################################################
@@ -78,13 +78,13 @@ def context_register(target_path, label, registrator_args, backup, dry_run, verb
         sys.exit(0)
 
     if verbose:
-        from womm.core.ui.console import print_system
+        from ..core.ui.console import print_system
 
         print_system(f"Executing: {' '.join(map(str, cmd))}")
 
     result = run_command(cmd, "Registering context menu tools")
     if not result.success:
-        from womm.core.ui.console import print_error
+        from ..core.ui.console import print_error
 
         print_error(
             f"Registration failed (code {result.returncode}).\nSTDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}"
@@ -116,13 +116,13 @@ def context_unregister(remove_key, dry_run, verbose):
         sys.exit(0)
 
     if verbose:
-        from womm.core.ui.console import print_system
+        from ..core.ui.console import print_system
 
         print_system(f"Executing: {' '.join(map(str, cmd))}")
 
     result = run_command(cmd, "Unregistering context menu tools")
     if not result.success:
-        from womm.core.ui.console import print_error
+        from ..core.ui.console import print_error
 
         print_error(
             f"Unregistration failed (code {result.returncode}).\nSTDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}"
@@ -149,13 +149,13 @@ def context_list(dry_run, verbose):
         sys.exit(0)
 
     if verbose:
-        from womm.core.ui.console import print_system
+        from ..core.ui.console import print_system
 
         print_system(f"Executing: {' '.join(map(str, cmd))}")
 
     result = run_command(cmd, "Listing context menu entries")
     if not result.success:
-        from womm.core.ui.console import print_error
+        from ..core.ui.console import print_error
 
         print_error(
             f"List failed (code {result.returncode}).\nSTDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}"

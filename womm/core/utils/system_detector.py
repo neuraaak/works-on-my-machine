@@ -364,7 +364,7 @@ def main():
         data = detector.get_system_data()
         print(json.dumps(data, indent=2))
     elif args.export:
-        from womm.core.ui import print_success
+        from ..ui import print_success
 
         output_path = detector.export_report(Path(args.export))
         print_success(f"Report exported to: {output_path}")

@@ -36,8 +36,8 @@ from .commands import (
     path_cmd,
     spell,
     system,
-    uninstall,
 )
+from .commands.install import uninstall
 
 # MAIN FUNCTIONS
 ########################################################
@@ -76,7 +76,7 @@ def womm(ctx, log_level, log_file, log_json):
     """
 
     # Configure logging early
-    from womm.core.ui.console import (
+    from .core.ui.console import (
         configure_logging,
         get_log_level,
         print_warn,
@@ -93,8 +93,8 @@ def womm(ctx, log_level, log_file, log_json):
     # Show welcome message only when no subcommand is provided
     if ctx.invoked_subcommand is None:
         try:
-            from womm.core.ui import console
-            from womm.core.ui.panels import create_info_panel
+            from .core.ui import console
+            from .core.ui.panels import create_info_panel
 
             print(
                 r"""
@@ -134,7 +134,7 @@ Features:
 • Explore all available commands with --help
 """
 
-            from womm.core.ui.panels import create_panel
+            from .core.ui.panels import create_panel
 
             panel = create_panel(
                 info_content.strip(),

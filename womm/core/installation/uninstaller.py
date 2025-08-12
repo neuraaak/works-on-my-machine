@@ -14,14 +14,13 @@ import sys
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from womm.core.installation.path_manager_utils import (
-    extract_path_from_reg_output,
-)
-
 # Third-party imports
 # (None for this file)
 # Local imports
-from womm.core.utils.cli_manager import run_silent
+from ..utils.cli_manager import run_silent
+from .path_manager_utils import (
+    extract_path_from_reg_output,
+)
 
 # Security is assumed available; remove conditional availability
 
@@ -71,7 +70,7 @@ class UninstallationManager:
             self.target_path = Path(target).expanduser().resolve()
 
         # Import UI modules (assumed available)
-        from womm.core.ui.console import (
+        from ..ui.console import (
             console,
             print_error,
             print_header,
@@ -79,13 +78,13 @@ class UninstallationManager:
             print_success,
             print_system,
         )
-        from womm.core.ui.panels import create_panel
-        from womm.core.ui.progress import (
+        from ..ui.panels import create_panel
+        from ..ui.progress import (
             create_file_copy_progress,
             create_spinner_with_status,
             create_step_progress,
         )
-        from womm.core.ui.prompts import confirm, show_warning_panel
+        from ..ui.prompts import confirm, show_warning_panel
 
         print_header("W.O.M.M Uninstallation")
 
@@ -335,7 +334,7 @@ class UninstallationManager:
                 return result_dict
 
             # Step 3: Retirer le path du dossier .womm (comparaison normalisée)
-            from womm.core.installation.path_manager_utils import (
+            from .path_manager_utils import (
                 deduplicate_path_entries,
             )
 

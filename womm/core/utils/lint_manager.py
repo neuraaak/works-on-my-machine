@@ -9,6 +9,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Optional
 
+from ..ui.console import print_error, print_success, print_system
+from ..ui.progress import create_spinner_with_status
 from .cli_manager import run_command, run_silent
 from .results import BaseResult as Result
 
@@ -156,24 +158,33 @@ class LintManager:
         return target_dirs
 
     def check_tool_availability(self, tools: List[str]) -> Result:
-        """Check if required linting tools are available."""
+        """Check if required linting tools are available with UI feedback."""
         missing_tools = []
 
-        for tool in tools:
-            try:
-                result = run_silent([tool, "--version"])
-                if result.returncode != 0:
-                    raise Exception(f"Tool {tool} not available")
-            except Exception:
-                missing_tools.append(tool)
+        with create_spinner_with_status("Checking linting tools availability...") as (
+            progress,
+            task,
+        ):
+            for i, tool in enumerate(tools, 1):
+                progress.update(task, status=f"Checking {tool} ({i}/{len(tools)})...")
+                try:
+                    result = run_silent([tool, "--version"])
+                    if result.returncode != 0:
+                        raise Exception(f"Tool {tool} not available")
+                    print_success(f"Tool {tool} is available")
+                except Exception:
+                    missing_tools.append(tool)
+                    print_error(f"Tool {tool} is not available")
 
         if missing_tools:
+            print_error(f"Missing tools: {', '.join(missing_tools)}")
             return Result(
                 success=False,
                 message=f"Missing tools: {', '.join(missing_tools)}",
                 error="Install them with: pip install -e '.[dev]'",
             )
 
+        print_success("All linting tools are available")
         return Result(success=True, message="All tools available")
 
     def run_python_lint(
@@ -182,8 +193,10 @@ class LintManager:
         fix: bool = False,
         json_output: bool = False,
     ) -> LintSummary:
-        """Run Python linting with ruff, black, and isort."""
+        """Run Python linting with ruff, black, and isort with UI feedback."""
         target_dir = Path(target_path) if target_path else Path.cwd()
+
+        print_system(f"🎨 Starting Python linting for: {target_dir}")
 
         # Check tool availability
         tools = ["ruff", "black", "isort"]
@@ -193,14 +206,24 @@ class LintManager:
                 success=False, message=tool_check.message, error=tool_check.error
             )
 
-        # Detect directories
-        target_dirs = self.detect_python_dirs(target_dir)
+        # Detect directories with spinner
+        with create_spinner_with_status("Detecting Python directories...") as (
+            progress,
+            task,
+        ):
+            progress.update(task, status="Scanning for Python files...")
+            target_dirs = self.detect_python_dirs(target_dir)
+            progress.update(task, status=f"Found {len(target_dirs)} directories")
+
         if not target_dirs:
+            print_error("No Python folders found")
             return LintSummary(
                 success=False,
                 message="No Python folders found",
                 error=f"Target directory: {target_dir}",
             )
+
+        print_success(f"Found {len(target_dirs)} Python directories to analyze")
 
         summary = LintSummary(
             success=False,  # Will be updated based on tool results
@@ -208,25 +231,64 @@ class LintManager:
             error=f"Target directories: {', '.join(target_dirs)}",
         )
 
-        # Run linting tools
-        if fix:
-            # Fix mode
-            summary.tool_results.append(self._run_ruff_fix(target_dirs, target_dir))
-            summary.tool_results.append(self._run_black_format(target_dirs, target_dir))
-            summary.tool_results.append(self._run_isort_fix(target_dirs, target_dir))
-        else:
-            # Check mode
-            summary.tool_results.append(
-                self._run_ruff_check(target_dirs, target_dir, json_output=json_output)
-            )
-            summary.tool_results.append(self._run_black_check(target_dirs, target_dir))
-            summary.tool_results.append(self._run_isort_check(target_dirs, target_dir))
+        # Run linting tools with progress tracking
+        mode_text = "fix" if fix else "check"
+        with create_spinner_with_status(
+            f"Running Python linting ({mode_text} mode)..."
+        ) as (
+            progress,
+            task,
+        ):
+            if fix:
+                # Fix mode
+                progress.update(task, status="Running ruff fix...")
+                summary.tool_results.append(self._run_ruff_fix(target_dirs, target_dir))
+
+                progress.update(task, status="Running black format...")
+                summary.tool_results.append(
+                    self._run_black_format(target_dirs, target_dir)
+                )
+
+                progress.update(task, status="Running isort fix...")
+                summary.tool_results.append(
+                    self._run_isort_fix(target_dirs, target_dir)
+                )
+            else:
+                # Check mode
+                progress.update(task, status="Running ruff check...")
+                summary.tool_results.append(
+                    self._run_ruff_check(
+                        target_dirs, target_dir, json_output=json_output
+                    )
+                )
+
+                progress.update(task, status="Running black check...")
+                summary.tool_results.append(
+                    self._run_black_check(target_dirs, target_dir)
+                )
+
+                progress.update(task, status="Running isort check...")
+                summary.tool_results.append(
+                    self._run_isort_check(target_dirs, target_dir)
+                )
+
+            progress.update(task, status="Compiling results...")
 
         # Update summary
         summary.total_files = len(target_dirs)
         summary.total_issues = sum(r.issues_found for r in summary.tool_results)
         summary.total_fixed = sum(r.fixed_issues for r in summary.tool_results)
         summary.success = all(r.success for r in summary.tool_results)
+
+        # Final status
+        if summary.success:
+            print_success(
+                f"✨ Python linting completed successfully! ({summary.total_files} directories checked)"
+            )
+        else:
+            print_error(
+                f"❌ Python linting found {summary.total_issues} issues in {summary.total_files} directories"
+            )
 
         return summary
 
@@ -236,8 +298,10 @@ class LintManager:
         fix: bool = False,
         json_output: bool = False,
     ) -> LintSummary:
-        """Run linting for the works-on-my-machine project."""
+        """Run linting for the works-on-my-machine project with UI feedback."""
         target_dir = Path(target_path) if target_path else Path.cwd()
+
+        print_system(f"🎨 Starting WOMM project linting for: {target_dir}")
 
         # Check tool availability
         tools = ["ruff", "bandit"]
@@ -247,14 +311,24 @@ class LintManager:
                 success=False, message=tool_check.message, error=tool_check.error
             )
 
-        # Detect directories
-        target_dirs = self.detect_womm_dirs(target_dir)
+        # Detect directories with spinner
+        with create_spinner_with_status("Detecting WOMM project directories...") as (
+            progress,
+            task,
+        ):
+            progress.update(task, status="Scanning for WOMM Python files...")
+            target_dirs = self.detect_womm_dirs(target_dir)
+            progress.update(task, status=f"Found {len(target_dirs)} directories")
+
         if not target_dirs:
+            print_error("No Python directory found")
             return LintSummary(
                 success=False,
                 message="No Python directory found",
                 error=f"Target directory: {target_dir}",
             )
+
+        print_success(f"Found {len(target_dirs)} WOMM directories to analyze")
 
         summary = LintSummary(
             success=False,  # Will be updated based on tool results
@@ -262,23 +336,54 @@ class LintManager:
             error=f"Target directories: {', '.join(target_dirs)}",
         )
 
-        # Run linting tools
-        if fix:
-            # Fix mode
-            summary.tool_results.append(self._run_ruff_fix(target_dirs, target_dir))
-            summary.tool_results.append(self._run_ruff_format(target_dirs, target_dir))
-        else:
-            # Check mode
-            summary.tool_results.append(
-                self._run_ruff_check(target_dirs, target_dir, json_output=json_output)
-            )
-            summary.tool_results.append(self._run_bandit_check(target_dirs, target_dir))
+        # Run linting tools with progress tracking
+        mode_text = "fix" if fix else "check"
+        with create_spinner_with_status(
+            f"Running WOMM linting ({mode_text} mode)..."
+        ) as (
+            progress,
+            task,
+        ):
+            if fix:
+                # Fix mode
+                progress.update(task, status="Running ruff fix...")
+                summary.tool_results.append(self._run_ruff_fix(target_dirs, target_dir))
+
+                progress.update(task, status="Running ruff format...")
+                summary.tool_results.append(
+                    self._run_ruff_format(target_dirs, target_dir)
+                )
+            else:
+                # Check mode
+                progress.update(task, status="Running ruff check...")
+                summary.tool_results.append(
+                    self._run_ruff_check(
+                        target_dirs, target_dir, json_output=json_output
+                    )
+                )
+
+                progress.update(task, status="Running bandit security check...")
+                summary.tool_results.append(
+                    self._run_bandit_check(target_dirs, target_dir)
+                )
+
+            progress.update(task, status="Compiling results...")
 
         # Update summary
         summary.total_files = len(target_dirs)
         summary.total_issues = sum(r.issues_found for r in summary.tool_results)
         summary.total_fixed = sum(r.fixed_issues for r in summary.tool_results)
         summary.success = all(r.success for r in summary.tool_results)
+
+        # Final status
+        if summary.success:
+            print_success(
+                f"✨ WOMM linting completed successfully! ({summary.total_files} directories checked)"
+            )
+        else:
+            print_error(
+                f"❌ WOMM linting found {summary.total_issues} issues in {summary.total_files} directories"
+            )
 
         return summary
 

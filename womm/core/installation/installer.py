@@ -1,9 +1,22 @@
 #!/usr/bin/env python3
 """
-Install Works On My Machine in user directory.
+Installation Manager for Works On My Machine.
 
-This script handles the installation of WOMM to the user's home directory,
-including PATH setup and environment configuration.
+This module handles the complete installation process of WOMM to the user's
+home directory, including:
+
+- File copying and directory structure setup
+- PATH environment variable configuration
+- Registry modifications (Windows)
+- Backup creation for safe rollback
+- Interactive UI with progress tracking
+- Security validation throughout the process
+
+The installer supports both development (git clone) and PyPI installations,
+with automatic detection and appropriate handling for each scenario.
+
+Author: WOMM Team
+Version: 2.2.0
 """
 
 # IMPORTS
@@ -12,16 +25,16 @@ including PATH setup and environment configuration.
 import os
 import platform
 import shutil
-import sys
 from pathlib import Path
 from typing import Dict, List, Optional
 
+from ..utils.cli_manager import run_silent
+
 # Local/third-party imports
-from womm.core.installation.path_manager_utils import (
+from .path_manager_utils import (
     deduplicate_path_entries,
     extract_path_from_reg_output,
 )
-from womm.core.utils.cli_manager import run_silent
 
 # Security is assumed available; remove conditional availability
 
@@ -154,7 +167,32 @@ def should_exclude_file(file_path: Path, source_path: Path) -> bool:
 
 
 class InstallationManager:
-    """Manages WOMM installation process with data-driven approach."""
+    """Manages the complete WOMM installation process with integrated UI.
+
+    This class handles all aspects of installing Works On My Machine to the user's
+    system, including file operations, PATH management, and interactive progress
+    tracking. It provides a data-driven approach with comprehensive error handling
+    and rollback capabilities.
+
+    Features:
+        - Interactive installation with Rich UI components
+        - Automatic PATH backup and restoration
+        - Cross-platform compatibility (Windows, macOS, Linux)
+        - Security validation throughout the process
+        - Comprehensive error handling and rollback
+        - Support for both force and interactive modes
+
+    Attributes:
+        current_path (Path): Source directory of WOMM installation
+        target_path (Path): Target directory for installation
+        _path_backup_file (Optional[str]): Path to backup file for rollback
+
+    Example:
+        ```python
+        manager = InstallationManager()
+        manager.install(force=False, target=None)
+        ```
+    """
 
     def __init__(self):
         """Initialize the installation manager."""
@@ -169,18 +207,38 @@ class InstallationManager:
         target: Optional[str] = None,
     ) -> None:
         """
-        Perform WOMM installation with integrated UI.
+        Perform complete WOMM installation with integrated UI and progress tracking.
+
+        This method orchestrates the entire installation process, including:
+        - Pre-installation validation and directory setup
+        - File copying with progress tracking
+        - PATH environment variable modification
+        - Registry updates (Windows-specific)
+        - Interactive user confirmations
+        - Automatic rollback on failures
 
         Args:
-            force: Force installation even if target directory exists
-            target: Custom target directory
+            force (bool, optional): Force installation even if target directory exists.
+                Defaults to False. When True, existing installations are overwritten.
+            target (Optional[str], optional): Custom target directory path for installation.
+                Defaults to None, which uses the standard ~/.womm directory.
+
+        Raises:
+            PermissionError: If insufficient permissions for installation operations.
+            FileExistsError: If target directory exists and force=False.
+            OSError: If file operations fail during installation.
+            Exception: For any other installation-related errors.
+
+        Note:
+            The installation process creates automatic backups of PATH variables
+            and can be safely rolled back if interrupted or if errors occur.
         """
         # Override target path if specified
         if target:
             self.target_path = Path(target).expanduser().resolve()
 
         # Import UI modules
-        from womm.core.ui.console import (
+        from ..ui.console import (
             console,
             print_error,
             print_header,
@@ -188,13 +246,13 @@ class InstallationManager:
             print_success,
             print_system,
         )
-        from womm.core.ui.panels import create_panel
-        from womm.core.ui.progress import (
+        from ..ui.panels import create_panel
+        from ..ui.progress import (
             create_file_copy_progress,
             create_spinner_with_status,
             create_step_progress,
         )
-        from womm.core.ui.prompts import confirm, show_warning_panel
+        from ..ui.prompts import confirm, show_warning_panel
 
         print_header("W.O.M.M Installation")
 
@@ -277,7 +335,7 @@ class InstallationManager:
             task,
         ):
             progress.update(task, status="Creating PATH backup...")
-            from womm.core.installation.path_manager import PathManager
+            from .path_manager import PathManager
 
             path_manager = PathManager(target=str(self.target_path))
             backup_result = path_manager._backup_path()

@@ -16,6 +16,7 @@ from rich.table import Table
 
 # Local imports
 from ..utils.lint_manager import LintResult, LintSummary
+from .console import print_error, print_info, print_success
 
 # CONFIGURATION
 ########################################################
@@ -31,59 +32,82 @@ console = Console()
 
 def print_lint_progress(step: str, description: str):
     """Print linting progress step."""
-    console.print(f"[INFO]:[PROCESS] :: Step: {step} - {description}")
+    print_info(f"Step: {step} - {description}")
 
 
 def print_lint_result(result: LintResult):
     """Print individual linting tool result."""
     if result.success:
-        console.print(f"[INFO]:[SUCCESS] :: {result.tool_name}: {result.message}")
+        print_success(f"{result.tool_name}: {result.message}")
     else:
-        console.print(f"[ERROR]:[{result.tool_name}] :: {result.message}", style="red")
+        print_error(f"{result.tool_name}: {result.message}")
 
 
 def print_lint_summary(summary: LintSummary):
-    """Print comprehensive linting summary."""
-    if summary.success:
-        console.print(f"[INFO]:[SUCCESS] :: {summary.message}")
-        console.print(f"[INFO]:[DETAILS] :: {summary.error}")
+    """Print comprehensive linting summary with enhanced UI."""
 
-        # Create summary table
-        table = Table(title="Linting Summary")
-        table.add_column("Tool", style="cyan")
-        table.add_column("Status", style="green")
-        table.add_column("Files", justify="right")
-        table.add_column("Issues", justify="right")
+    if summary.success:
+        print_success(f"✅ {summary.message}")
+        if summary.error:
+            print_info(f"{summary.error}")
+
+        # Create enhanced summary table
+        table = Table(
+            title="🎨 Linting Summary", show_header=True, header_style="bold magenta"
+        )
+        table.add_column("Tool", style="cyan", no_wrap=True)
+        table.add_column("Status", justify="center")
+        table.add_column("Files", justify="right", style="blue")
+        table.add_column("Issues", justify="right", style="yellow")
+        table.add_column("Fixed", justify="right", style="green")
 
         for result in summary.tool_results:
             status = "✅ PASS" if result.success else "❌ FAIL"
+            status_style = "green" if result.success else "red"
+
             table.add_row(
                 result.tool_name,
-                status,
+                f"[{status_style}]{status}[/{status_style}]",
                 str(result.files_checked),
-                str(result.issues_found),
+                str(result.issues_found) if result.issues_found > 0 else "-",
+                str(result.fixed_issues) if result.fixed_issues > 0 else "-",
             )
 
+        print_info("")  # Empty line
         console.print(table)
 
-        # Overall summary
-        console.print(
-            f"\n[SUCCESS] All checks passed! ({summary.total_files} files checked)"
-        )
+        # Overall summary with emojis
+        total_issues = summary.total_issues
+        total_fixed = summary.total_fixed
+
+        if total_issues == 0:
+            print_success(
+                f"🎉 Perfect! All checks passed! ({summary.total_files} directories checked)"
+            )
+        elif total_fixed > 0:
+            print_success(
+                f"✨ Fixed {total_fixed} issues! ({summary.total_files} directories processed)"
+            )
+        else:
+            print_info(
+                f"⚠️  Found {total_issues} issues in {summary.total_files} directories"
+            )
 
     else:
-        console.print(f"[ERROR]:[LINTING] :: {summary.message}", style="red")
+        print_error(f"❌ {summary.message}")
         if summary.error:
-            console.print(f"[ERROR]:[DETAILS] :: {summary.error}", style="red")
+            print_error(f"{summary.error}")
 
-        # Show failed tools with optional JSON details
+        # Show failed tools with enhanced display
         failed = [r for r in summary.tool_results if not r.success]
         if failed:
-            console.print(
-                f"[ERROR]:[FAILED] :: Tools: {', '.join(r.tool_name for r in failed)}",
-                style="red",
-            )
+            print_error(f"💥 Failed tools: {', '.join(r.tool_name for r in failed)}")
+
+            # Show detailed results for failed tools
             for r in failed:
+                print_error(f"🔍 {r.tool_name} details:")
+                if r.message:
+                    print_info(f"{r.message}")
                 if r.data is not None:
                     console.print(JSON.from_data(r.data))
 
@@ -95,27 +119,27 @@ def print_lint_summary(summary: LintSummary):
 
 def print_lint_error(tool: str, error: str):
     """Print linting error."""
-    console.print(f"[ERROR]:[{tool}] :: {error}", style="red")
+    print_error(f"{tool}: {error}")
 
 
 def print_lint_fix_suggestions(target_dir: str, target_dirs: list):
     """Print suggestions for fixing linting issues."""
-    console.print("\n[INFO]:[SUGGESTIONS] :: To fix issues, run:")
-    console.print(f"   cd {target_dir}")
-    console.print(f"   ruff check --fix {' '.join(target_dirs)}")
-    console.print(f"   ruff format {' '.join(target_dirs)}")
-    console.print(f"   isort {' '.join(target_dirs)}")
+    print_info("To fix issues, run:")
+    print_info(f"   cd {target_dir}")
+    print_info(f"   ruff check --fix {' '.join(target_dirs)}")
+    print_info(f"   ruff format {' '.join(target_dirs)}")
+    print_info(f"   isort {' '.join(target_dirs)}")
 
 
 def print_lint_start(lint_type: str, target_path: str):
     """Print linting start message."""
-    console.print(f"[INFO]:[LINT] :: Starting {lint_type} linting")
-    console.print(f"[INFO]:[TARGET] :: Path: {target_path}")
+    print_info(f"Starting {lint_type} linting")
+    print_info(f"Target path: {target_path}")
 
 
 def print_tool_check_result(tool: str, available: bool):
     """Print tool availability check result."""
     if available:
-        console.print(f"[INFO]:[TOOL] :: {tool}: Available")
+        print_success(f"{tool}: Available")
     else:
-        console.print(f"[ERROR]:[TOOL] :: {tool}: Not available", style="red")
+        print_error(f"{tool}: Not available")

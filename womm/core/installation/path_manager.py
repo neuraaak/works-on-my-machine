@@ -15,13 +15,12 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, Optional
 
-from womm.core.installation.path_manager_utils import extract_path_from_reg_output
-
 # Third-party imports
 # (None for this file)
 # (no additional typing imports)
 # Local imports
-from womm.core.utils.cli_manager import run_silent
+from ..utils.cli_manager import run_silent
+from .path_manager_utils import extract_path_from_reg_output
 
 # MAIN CLASS
 ########################################################
@@ -55,13 +54,13 @@ class PathManager:
 
         This method handles the complete UI flow for listing backup information.
         """
-        from womm.core.ui.console import (
+        from ..ui.console import (
             print_error,
             print_header,
             print_success,
             print_system,
         )
-        from womm.core.ui.tables import create_backup_table
+        from ..ui.tables import create_backup_table
 
         print_header("W.O.M.M PATH Backup List")
 
@@ -94,7 +93,7 @@ class PathManager:
 
         This method handles the complete UI flow for creating a new backup.
         """
-        from womm.core.ui.console import (
+        from ..ui.console import (
             print_error,
             print_header,
             print_info,
@@ -159,7 +158,7 @@ class PathManager:
         from rich.console import Console
         from rich.table import Table
 
-        from womm.core.ui.console import (
+        from ..ui.console import (
             print_error,
             print_header,
             print_info,
@@ -231,7 +230,7 @@ class PathManager:
         print("")
 
         # Interactive selection with checkbox menu
-        from womm.core.ui.interactive import InteractiveMenu, format_backup_item
+        from ..ui.interactive import InteractiveMenu, format_backup_item
 
         menu = InteractiveMenu(title="Select Backup to Restore", border_style="cyan")
         selected_backup = menu.select_from_list(

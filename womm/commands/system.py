@@ -33,7 +33,7 @@ def system_group():
 @system_group.command("detect")
 def system_detect():
     """🔍 Detect system information and available tools."""
-    from womm.core.system import system_manager
+    from ..core.system import system_manager
 
     # Use SystemManager for system detection with integrated UI
     system_manager.detect_system()
@@ -54,7 +54,7 @@ def system_detect():
 @click.argument("tools", nargs=-1, type=click.Choice(["python", "node", "git", "all"]))
 def system_install(check, pm_args, ask_path, tools):
     """📦 Install system prerequisites."""
-    from womm.core.system import system_manager
+    from ..core.system import system_manager
 
     # Use SystemManager for prerequisites management with integrated UI
     if check:

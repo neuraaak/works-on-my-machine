@@ -13,18 +13,18 @@ from pathlib import Path
 
 import click
 
-from womm.core.dependencies.runtime_manager import runtime_manager
-from womm.core.ui.console import console
+from ..core.dependencies.runtime_manager import runtime_manager
+from ..core.ui.console import console
 
 # IMPORTS
 ########################################################
 # Internal modules and dependencies
-from womm.core.utils.results import SecurityResult, ValidationResult
+from ..core.utils.results import SecurityResult, ValidationResult
 
 # IMPORTS
 ########################################################
 # Local utility imports
-from ..utils.path_manager import resolve_script_path
+from ..utils.path_resolver import resolve_script_path
 from ..utils.security import run_secure_command, security_validator, validate_user_input
 
 # MAIN FUNCTIONS
@@ -321,7 +321,7 @@ def new_detect(project_name, current_dir):
     print_new_project_progress("Project detection", "Detecting project type")
 
     # Utiliser le détecteur interne au lieu d'un script externe inexistant
-    from womm.core.project.project_detector import (
+    from ..core.project.project_detector import (
         ProjectDetector,
         launch_project_setup,
     )
