@@ -136,17 +136,22 @@ class UninstallationManager:
             task,
         ):
             path_result = self._remove_from_path()
-            if not path_result["success"]:
+            # Treat 'already clean' as non-fatal and continue
+            if not path_result.get("success") and not path_result.get("warning"):
                 progress.update(task, status="Failed to remove from PATH")
                 progress.stop()
-                print_error(f"Failed to remove from PATH: {path_result['error']}")
+                print_error(
+                    f"Failed to remove from PATH: {path_result.get('error', 'unknown error')}"
+                )
                 sys.exit(1)
 
-            # Check if PATH was already configured
-            if path_result.get("warning") and path_result.get("path_deleted"):
-                progress.update(task, status="PATH already removed")
+            # Status feedback
+            if path_result.get("warning") and not path_result.get(
+                "path_deleted", False
+            ):
+                progress.update(task, status="PATH already clean")
             else:
-                progress.update(task, status="PATH removed successfully WOMM")
+                progress.update(task, status="PATH updated")
 
         # Remove WOMM directory with spinner
         print("")
@@ -310,25 +315,39 @@ class UninstallationManager:
             if query_result.success:
                 backup_user_path = extract_path_from_reg_output(query_result.stdout)
 
-            # Step 2: Vérifier si WOMM path est présent
-            if self.womm_path not in backup_user_path:
+            # Normalisation pour comparaison robuste (insensible à la casse, sans slash final)
+            import os as _os
+
+            def _norm(p: str) -> str:
+                return _os.path.expandvars(p).rstrip("/\\").lower()
+
+            womm_norm = _norm(self.womm_path)
+
+            # Step 2: Vérifier si WOMM path est présent (comparaison normalisée)
+            has_womm = any(_norm(e) == womm_norm for e in backup_user_path.split(";"))
+            if not has_womm:
                 result_dict["warning"] = True
                 result_dict["path_deleted"] = False
+                result_dict["success"] = True
                 result_dict["message"] = (
                     f"WOMM path {self.womm_path} not found in user PATH"
                 )
                 return result_dict
 
-            # Step 3: Retirer le path du dossier .womm
+            # Step 3: Retirer le path du dossier .womm (comparaison normalisée)
             from womm.core.installation.path_manager_utils import (
                 deduplicate_path_entries,
             )
 
-            new_entries = [
-                entry
-                for entry in backup_user_path.split(";")
-                if entry.strip() != self.womm_path
-            ]
+            new_entries = []
+            for entry in backup_user_path.split(";"):
+                part = entry.strip()
+                if not part:
+                    continue
+                if _norm(part) == womm_norm:
+                    # skip WOMM entry
+                    continue
+                new_entries.append(part)
             new_user_path = deduplicate_path_entries(";".join(new_entries))
 
             # Step 4: Écrire le nouveau PATH utilisateur (toujours REG_EXPAND_SZ)
@@ -359,20 +378,24 @@ class UninstallationManager:
                 result_dict["error"] = "Failed to verify PATH update"
                 return result_dict
 
-            # Step 6: Vérifier que le chemin WOMM n'est plus dans le registre
+            # Step 6: Vérifier que le chemin WOMM n'est plus dans le registre (comparaison normalisée)
             current_user_path = extract_path_from_reg_output(verify_result.stdout)
-
-            if self.womm_path in current_user_path:
+            still_has_womm = any(
+                _norm(e) == womm_norm for e in current_user_path.split(";")
+            )
+            if still_has_womm:
                 result_dict["error"] = "WOMM path still found in registry after removal"
                 return result_dict
 
             # Step 7: Mettre à jour la session courante
             current_full_path = os.environ.get("PATH", "")
-            # Retirer de la session courante aussi
-            current_entries = current_full_path.split(";")
-            new_current_entries = [
-                entry for entry in current_entries if entry.strip() != self.womm_path
-            ]
+            # Retirer de la session courante aussi (comparaison normalisée)
+            current_entries = [e for e in current_full_path.split(";") if e]
+            new_current_entries = []
+            for entry in current_entries:
+                if _norm(entry) == womm_norm:
+                    continue
+                new_current_entries.append(entry)
             os.environ["PATH"] = ";".join(new_current_entries)
 
             result_dict["success"] = True

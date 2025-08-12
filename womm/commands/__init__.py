@@ -8,13 +8,12 @@ Contains all command modules for the CLI interface.
 from . import context, lint, new, spell, system
 
 # Import individual commands for direct access
-from .install import backup_path, install, restore_path, uninstall
+from .install import install, path_cmd, uninstall
 
 __all__ = [
     "install",
     "uninstall",
-    "backup_path",
-    "restore_path",
+    "path_cmd",
     "new",
     "lint",
     "spell",

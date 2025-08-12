@@ -82,18 +82,21 @@ def uninstall(force, target):
         sys.exit(1)
 
 
-@click.command()
+@click.command("path")
+@click.option(
+    "--backup", "backup_flag", "-b", is_flag=True, help="Create a PATH backup"
+)
+@click.option(
+    "--restore", "restore_flag", "-r", is_flag=True, help="Restore PATH from backup"
+)
+@click.option(
+    "--list", "list_flag", "-l", is_flag=True, help="List available PATH backups"
+)
 @click.option(
     "--target", type=click.Path(), help="Custom target directory (default: ~/.womm)"
 )
-@click.option(
-    "--list",
-    "-l",
-    is_flag=True,
-    help="List available PATH backups instead of creating a new one",
-)
-def restore_path(target, list):
-    """🔄 Restore user PATH from backup created during installation."""
+def path_cmd(backup_flag, restore_flag, list_flag, target):
+    """🧭 PATH utilities: backup, restore, and list backups."""
     # Security validation for target path
     if target:
         is_valid, error = security_validator.validate_path(target)
@@ -101,52 +104,28 @@ def restore_path(target, list):
             click.echo(f"[FAIL] Invalid target path: {error}", err=True)
             sys.exit(1)
 
-    try:
-        # Use PathManager with integrated UI
-        manager = PathManager(target=target)
-
-        if list:
-            # List existing backups
-            manager.list_backup()
-        else:
-            # Restore PATH from backup
-            manager.restore_path()
-
-    except Exception as e:
-        click.echo(f"[FAIL] Error during PATH restoration: {e}", err=True)
+    # Validate mutually exclusive operations
+    selected = sum(bool(x) for x in (backup_flag, restore_flag, list_flag))
+    if selected > 1:
+        click.echo(
+            "[FAIL] Choose only one action among --backup, --restore, or --list",
+            err=True,
+        )
         sys.exit(1)
-
-
-@click.command()
-@click.option(
-    "--target", type=click.Path(), help="Custom target directory (default: ~/.womm)"
-)
-@click.option(
-    "--list",
-    "-l",
-    is_flag=True,
-    help="List available PATH backups instead of creating a new one",
-)
-def backup_path(target, list):
-    """💾 Show information about PATH backup."""
-    # Security validation for target path
-    if target:
-        is_valid, error = security_validator.validate_path(target)
-        if not is_valid:
-            click.echo(f"[FAIL] Invalid target path: {error}", err=True)
-            sys.exit(1)
+    # Default to list if nothing selected
+    if selected == 0:
+        list_flag = True
 
     try:
-        # Use PathManager with integrated UI
         manager = PathManager(target=target)
 
-        if list:
-            # List existing backups
+        if list_flag:
             manager.list_backup()
-        else:
-            # Create new backup
+        elif restore_flag:
+            manager.restore_path()
+        elif backup_flag:
             manager.backup_path()
 
     except Exception as e:
-        click.echo(f"[FAIL] Error reading backup info: {e}", err=True)
+        click.echo(f"[FAIL] PATH command error: {e}", err=True)
         sys.exit(1)

@@ -7,12 +7,15 @@ Handles PATH backup, restoration, and management operations.
 # IMPORTS
 ########################################################
 # Standard library imports
+import json
 import os
 import platform
 import shutil
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, Optional
+
+from womm.core.installation.path_manager_utils import extract_path_from_reg_output
 
 # Third-party imports
 # (None for this file)
@@ -40,7 +43,7 @@ class PathManager:
             self.target_path = Path.home() / ".womm"
 
         self.backup_dir = self.target_path / ".backup"
-        self.latest_backup = self.backup_dir / ".path"
+        self.latest_backup = self.backup_dir / ".path.json"
         self.platform = platform.system()
 
     # PUBLIC METHODS
@@ -106,35 +109,46 @@ class PathManager:
 
         # Get current PATH
         if self.platform == "Windows":
-            # Use environment variable for Windows
-            current_path = os.environ.get("PATH", "")
+            # Read PATH from user registry (HKCU), not from current session
+            query = run_silent(["reg", "query", "HKCU\\Environment", "/v", "PATH"])
+            if not query.success:
+                print_error("Failed to query Windows user PATH from registry")
+                return
+            current_path = extract_path_from_reg_output(query.stdout)
             if not current_path:
-                print_error("Failed to read Windows PATH from environment")
+                print_error("No PATH value found in Windows user registry")
                 return
         else:
             current_path = os.environ.get("PATH", "")
 
-        # Create backup file with timestamp
+        # Create JSON backup file with timestamp
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        backup_file = self.backup_dir / f".path_{timestamp}"
-
-        with open(backup_file, "w", encoding="utf-8") as f:
-            f.write(f"# WOMM PATH Backup - {timestamp}\n")
-            f.write(f"# Platform: {self.platform}\n")
-            f.write(f"# Target: {self.target_path}\n")
-            f.write("# Original PATH:\n")
-            f.write(f"{current_path}\n")
+        backup_json = self.backup_dir / f".path_{timestamp}.json"
+        sep = os.pathsep or ";"
+        entries = [p for p in current_path.split(sep) if p]
+        payload = {
+            "type": "womm_path_backup",
+            "version": 1,
+            "timestamp": timestamp,
+            "platform": self.platform,
+            "target": str(self.target_path),
+            "separator": sep,
+            "path_string": current_path,
+            "entries": entries,
+            "length": len(current_path),
+        }
+        with open(backup_json, "w", encoding="utf-8") as jf:
+            json.dump(payload, jf, indent=2, ensure_ascii=False)
 
         # Update latest backup reference (copy instead of symlink for Windows compatibility)
         if self.latest_backup.exists():
             self.latest_backup.unlink()
-        # Copy the backup file to .path (latest reference)
-        shutil.copy2(backup_file, self.latest_backup)
+        shutil.copy2(backup_json, self.latest_backup)
 
         # Display success results
-        print_success("PATH backup created successfully!")
+        print_success("PATH backup (JSON) created successfully!")
         print_system(f"Backup location: {self.backup_dir}")
-        print_system(f"Backup file: {backup_file.name}")
+        print_system(f"Backup file: {backup_json.name}")
         print_info(f"PATH length: {len(current_path)} characters")
 
     def restore_path(self) -> None:
@@ -156,8 +170,8 @@ class PathManager:
         console = Console()
         print_header("W.O.M.M PATH Restoration")
 
-        # Check if any backup files exist
-        backup_files = list(self.backup_dir.glob(".path_*"))
+        # Check if any backup files exist (JSON only)
+        backup_files = list(self.backup_dir.glob(".path_*.json"))
         if not backup_files:
             print_error("No PATH backup found")
             return
@@ -182,22 +196,11 @@ class PathManager:
                     "%Y-%m-%d %H:%M:%S"
                 )
 
-                # Read backup content to count PATH entries
-                with open(backup_file, encoding="utf-8") as f:
-                    content = f.read()
-
-                # Parse PATH entries
-                path_value = ""
-                lines = content.split("\n")
-
-                # Find the line after "# Original PATH:"
-                for j, line in enumerate(lines):
-                    if line.strip() == "# Original PATH:" and j + 1 < len(lines):
-                        path_value = lines[j + 1].strip()
-                        break
-
-                # Count PATH entries (split by separator)
-                path_entries = len(path_value.split(os.pathsep)) if path_value else 0
+                # Read backup JSON content
+                data = json.loads(backup_file.read_text(encoding="utf-8"))
+                path_value = data.get("path_string", "")
+                entries = data.get("entries", [])
+                path_entries = len(entries)
 
                 table.add_row(
                     str(i),
@@ -316,39 +319,49 @@ class PathManager:
 
             # Get current PATH
             if self.platform == "Windows":
-                # Use environment variable for Windows
-                current_path = os.environ.get("PATH", "")
-                if not current_path:
+                # Read PATH from user registry (HKCU), not from current session
+                query = run_silent(["reg", "query", "HKCU\\Environment", "/v", "PATH"])
+                if not query.success:
                     result["errors"].append(
-                        "Failed to read Windows PATH from environment"
+                        "Failed to query Windows user PATH from registry"
                     )
                     return result
-
+                current_path = extract_path_from_reg_output(query.stdout)
+                if not current_path:
+                    result["errors"].append(
+                        "No PATH value found in Windows user registry"
+                    )
+                    return result
             else:
                 current_path = os.environ.get("PATH", "")
 
-            # Create backup file with timestamp
+            # Create JSON backup file with timestamp
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            backup_file = self.backup_dir / f".path_{timestamp}"
-
-            with open(backup_file, "w", encoding="utf-8") as f:
-                f.write(f"# WOMM PATH Backup - {timestamp}\n")
-                f.write(f"# Platform: {self.platform}\n")
-                f.write(f"# Target: {self.target_path}\n")
-                f.write("# Original PATH:\n")
-                f.write(f"{current_path}\n")
+            backup_json = self.backup_dir / f".path_{timestamp}.json"
+            sep = os.pathsep or ";"
+            entries = [p for p in current_path.split(sep) if p]
+            payload = {
+                "type": "womm_path_backup",
+                "version": 1,
+                "timestamp": timestamp,
+                "platform": self.platform,
+                "target": str(self.target_path),
+                "separator": sep,
+                "path_string": current_path,
+                "entries": entries,
+                "length": len(current_path),
+            }
+            with open(backup_json, "w", encoding="utf-8") as jf:
+                json.dump(payload, jf, indent=2, ensure_ascii=False)
 
             # Update latest backup reference (copy instead of symlink for Windows compatibility)
             if self.latest_backup.exists():
                 self.latest_backup.unlink()
-            # Copy the backup file to .path (latest reference)
-            shutil.copy2(backup_file, self.latest_backup)
+            shutil.copy2(backup_json, self.latest_backup)
 
-            # Get list of all backup files
-            backup_files = list(self.backup_dir.glob(".path_*"))
-            result["backup_files"] = [
-                str(f.name) for f in sorted(backup_files, reverse=True)
-            ]
+            # Get list of all backup files (JSON only)
+            backup_files = sorted(self.backup_dir.glob(".path_*.json"), reverse=True)
+            result["backup_files"] = [str(f.name) for f in backup_files]
             result["success"] = True
 
             return result
@@ -377,8 +390,8 @@ class PathManager:
                 result["errors"].append("No backup directory found")
                 return result
 
-            # Get all backup files
-            backup_files = list(self.backup_dir.glob(".path_*"))
+            # Get all backup files (JSON only)
+            backup_files = list(self.backup_dir.glob(".path_*.json"))
             if not backup_files:
                 result["errors"].append("No PATH backups found")
                 return result
@@ -389,20 +402,14 @@ class PathManager:
             for backup_file in backup_files:
                 try:
                     stat = backup_file.stat()
-                    with open(backup_file, encoding="utf-8") as f:
-                        first_line = f.readline().strip()
-
+                    data = json.loads(backup_file.read_text(encoding="utf-8"))
                     backup_info = {
                         "name": backup_file.name,
                         "size": stat.st_size,
                         "modified": datetime.fromtimestamp(stat.st_mtime).strftime(
                             "%Y-%m-%d %H:%M:%S"
                         ),
-                        "description": (
-                            first_line
-                            if first_line.startswith("#")
-                            else "No description"
-                        ),
+                        "description": f"JSON backup ({data.get('timestamp','')})",
                     }
                     result["backups"].append(backup_info)
 

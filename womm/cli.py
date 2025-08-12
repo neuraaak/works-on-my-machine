@@ -29,12 +29,11 @@ if sys.platform == "win32":
 # Import and register all command modules
 from . import __version__
 from .commands import (
-    backup_path,
     context,
     install,
     lint,
     new,
-    restore_path,
+    path_cmd,
     spell,
     system,
     uninstall,
@@ -158,8 +157,7 @@ Features:
 # Register command groups
 womm.add_command(install)
 womm.add_command(uninstall)
-womm.add_command(backup_path)
-womm.add_command(restore_path)
+womm.add_command(path_cmd)
 
 womm.add_command(new.new_group)
 womm.add_command(lint.lint_group)
