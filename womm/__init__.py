@@ -8,7 +8,7 @@ and project setup across multiple programming languages.
 Author: WOMM Team
 """
 
-__version__ = "2.2.0"
+__version__ = "2.3.0"
 __author__ = "WOMM Team"
 __description__ = "Development Environment Manager"
 
