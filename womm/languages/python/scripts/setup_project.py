@@ -4,7 +4,18 @@ Python development environment initialization script.
 
 Usage:
     python setup_project.py [project_name]
-    python setup_project.py --current-dir
+        try:
+            from ....core.tools.cspell_utils import setup_project_cspell
+
+            success = setup_project_cspell(
+                project_path, "python", project_name
+            )
+            if success:
+                print("   [OK] CSpell configuration created")
+            else:
+                print("   [WARN] CSpell configuration failed")
+        except ImportError:
+            print("   [WARN] cspell_utils module not found")up_project.py --current-dir
 
 Features:
     - Copy development configurations
@@ -139,7 +150,7 @@ class PythonProjectSetup:
         sys.path.insert(0, str(devtools_path))
 
         try:
-            from ....core.tools.cspell_manager import setup_project_cspell
+            from ....core.tools.cspell_utils import setup_project_cspell
 
             success = setup_project_cspell(
                 self.project_path, "python", self.project_name
@@ -149,7 +160,7 @@ class PythonProjectSetup:
             else:
                 print("   [WARN] Error configuring CSpell")
         except ImportError:
-            print("   [WARN] cspell_manager module not found")
+            print("   [WARN] cspell_utils module not found")
 
     def setup_development_environment(self):
         """Configure the Python development environment."""

@@ -25,14 +25,18 @@ from rich.progress import (
 )
 
 # Local imports
-# (None for this file)
-
+from .console import PATTERN_COLORS
 
 # CONFIGURATION
 ########################################################
 # Global variables and settings
 
 console = Console()
+
+pattern_color = PATTERN_COLORS.get("SYSTEM", "white")
+
+# Build prefix with Rich markup
+prefix = f"[{pattern_color}]• [bold {pattern_color}]{'SYSTEM'.ljust(8)}[/bold {pattern_color}][dim white]:: [/dim white]"
 
 
 # MAIN FUNCTIONS
@@ -48,6 +52,7 @@ def create_progress(
 ):
     """Create a progress bar context manager."""
     progress = Progress(
+        TextColumn(prefix),
         SpinnerColumn(),
         TextColumn("[progress.description]{task.description}"),
         BarColumn(),
@@ -72,6 +77,7 @@ def create_spinner(
 ) -> Generator[Tuple[Progress, int], None, None]:
     """Create a simple spinner with description."""
     progress = Progress(
+        TextColumn(prefix),
         SpinnerColumn(),
         TextColumn("[progress.description]{task.description}"),
         console=console,
@@ -88,6 +94,7 @@ def create_spinner_with_status(
 ) -> Generator[Tuple[Progress, int], None, None]:
     """Create a spinner that can update status messages."""
     progress = Progress(
+        TextColumn(prefix),
         SpinnerColumn(),
         TextColumn("[progress.description]{task.description}"),
         TextColumn("[dim]{task.fields[status]}"),
@@ -110,6 +117,7 @@ def create_download_progress(
 ) -> Generator[Tuple[Progress, int], None, None]:
     """Create a download progress bar with speed and size information."""
     progress = Progress(
+        TextColumn(prefix),
         TextColumn("[progress.description]{task.description}"),
         BarColumn(),
         TaskProgressColumn(),
@@ -137,6 +145,7 @@ def create_file_download_progress(
         description: Main description
     """
     progress = Progress(
+        TextColumn(prefix),
         TextColumn("[bold blue]{task.description}"),
         BarColumn(),
         TaskProgressColumn(),
@@ -168,6 +177,7 @@ def create_dependency_progress(
         description: Main description
     """
     progress = Progress(
+        TextColumn(prefix),
         SpinnerColumn(),
         TextColumn("[bold green]{task.description}"),
         TextColumn("[dim]Dependency {task.fields[current]}/{task.fields[total]}"),
@@ -211,6 +221,7 @@ def create_package_install_progress(
         description: Main description
     """
     progress = Progress(
+        TextColumn(prefix),
         SpinnerColumn(),
         TextColumn("[bold cyan]{task.description}"),
         TextColumn("[dim]Package {task.fields[current]}/{task.fields[total]}"),
@@ -253,6 +264,7 @@ def create_package_install_progress(
 def track_installation_steps(steps: list, description: str = "Installation Progress"):
     """Track installation steps with progress bar."""
     progress = Progress(
+        TextColumn(prefix),
         SpinnerColumn(),
         TextColumn("[progress.description]{task.description}"),
         BarColumn(),
@@ -292,6 +304,7 @@ def create_step_progress(
     """
     # Build columns based on options
     columns = [
+        TextColumn(prefix),
         SpinnerColumn(),
         TextColumn("[bold blue]{task.description}"),
     ]
@@ -347,6 +360,7 @@ def create_file_copy_progress(
         description: Main description
     """
     progress = Progress(
+        TextColumn(prefix),
         SpinnerColumn(),
         TextColumn("[bold magenta]{task.description}"),
         BarColumn(),
@@ -377,6 +391,7 @@ def create_installation_progress(
         description: Main description
     """
     progress = Progress(
+        TextColumn(prefix),
         SpinnerColumn(),
         TextColumn("[bold green]{task.description}"),
         TextColumn("[dim]Step {task.fields[step]}/{task.fields[total_steps]}"),
@@ -421,6 +436,7 @@ def create_build_progress(
         description: Main description
     """
     progress = Progress(
+        TextColumn(prefix),
         SpinnerColumn(),
         TextColumn("[bold cyan]{task.description}"),
         TextColumn("[dim]{task.fields[current_phase]}"),
@@ -455,6 +471,7 @@ def create_deployment_progress(
         description: Main description
     """
     progress = Progress(
+        TextColumn(prefix),
         SpinnerColumn(),
         TextColumn("[bold magenta]{task.description}"),
         TextColumn("[dim]Stage {task.fields[stage]}/{task.fields[total_stages]}"),

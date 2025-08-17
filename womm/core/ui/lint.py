@@ -2,144 +2,184 @@
 """
 UI functions for linting operations.
 Provides consistent display of linting results.
+Refactored to work with new modular architecture.
 """
 
-# IMPORTS
-########################################################
-# Standard library imports
-# (None for this file)
+from typing import TYPE_CHECKING
 
-# Third-party imports
 from rich.console import Console
-from rich.json import JSON
 from rich.table import Table
 
-# Local imports
-from ..utils.lint_manager import LintResult, LintSummary
-from .console import print_error, print_info, print_success
+from .console import print_error, print_info, print_success, print_warn
 
-# CONFIGURATION
-########################################################
-# Global variables and settings
+if TYPE_CHECKING:
+    from ..utils.lint_manager import LintSummary
 
 console = Console()
 
 
-# MAIN FUNCTIONS
-########################################################
-# Core linting display functionality
+def display_lint_summary(summary: "LintSummary", mode: str = "check") -> None:
+    """
+    Display comprehensive linting summary with enhanced UI.
+
+    Args:
+        summary: LintSummary containing all results
+        mode: Mode of operation ("check" or "fix")
+    """
+    # Display scan summary first
+    if summary.scan_summary:
+        _display_scan_info(summary.scan_summary)
+
+    # Display tool results
+    _display_tool_results(summary.tool_results, mode)
+
+    # Display overall summary
+    _display_overall_summary(summary, mode)
 
 
-def print_lint_progress(step: str, description: str):
-    """Print linting progress step."""
-    print_info(f"Step: {step} - {description}")
+def _display_scan_info(scan_summary: dict) -> None:
+    """Display file scanning information."""
+    total_files = scan_summary.get("total_files", 0)
+    total_size = scan_summary.get("total_size", 0)
+    directories = scan_summary.get("directories", set())
+    extensions = scan_summary.get("extensions", {})
+
+    print_info(
+        f"📁 Scanned {total_files} files ({_format_size(total_size)}) across {len(directories)} directories"
+    )
+
+    if extensions:
+        ext_info = ", ".join(f"{ext}: {count}" for ext, count in extensions.items())
+        print_info(f"📄 File types: {ext_info}")
 
 
-def print_lint_result(result: LintResult):
-    """Print individual linting tool result."""
-    if result.success:
-        print_success(f"{result.tool_name}: {result.message}")
+def _display_tool_results(tool_results: dict, mode: str) -> None:
+    """Display results from each linting tool."""
+    if not tool_results:
+        print_warn("No tool results to display")
+        return
+
+    # Create results table
+    table = Table(title=f"🔧 Linting Results ({mode.title()} Mode)", show_header=True)
+    table.add_column("Tool", style="cyan", width=12)
+    table.add_column("Status", width=10)
+    table.add_column("Files", justify="right", width=8)
+
+    if mode == "check":
+        table.add_column("Issues", justify="right", width=8)
     else:
-        print_error(f"{result.tool_name}: {result.message}")
+        table.add_column("Fixed", justify="right", width=8)
 
+    table.add_column("Details", style="dim")
 
-def print_lint_summary(summary: LintSummary):
-    """Print comprehensive linting summary with enhanced UI."""
-
-    if summary.success:
-        print_success(f"✅ {summary.message}")
-        if summary.error:
-            print_info(f"{summary.error}")
-
-        # Create enhanced summary table
-        table = Table(
-            title="🎨 Linting Summary", show_header=True, header_style="bold magenta"
-        )
-        table.add_column("Tool", style="cyan", no_wrap=True)
-        table.add_column("Status", justify="center")
-        table.add_column("Files", justify="right", style="blue")
-        table.add_column("Issues", justify="right", style="yellow")
-        table.add_column("Fixed", justify="right", style="green")
-
-        for result in summary.tool_results:
-            status = "✅ PASS" if result.success else "❌ FAIL"
-            status_style = "green" if result.success else "red"
-
-            table.add_row(
-                result.tool_name,
-                f"[{status_style}]{status}[/{status_style}]",
-                str(result.files_checked),
-                str(result.issues_found) if result.issues_found > 0 else "-",
-                str(result.fixed_issues) if result.fixed_issues > 0 else "-",
-            )
-
-        print_info("")  # Empty line
-        console.print(table)
-
-        # Overall summary with emojis
-        total_issues = summary.total_issues
-        total_fixed = summary.total_fixed
-
-        if total_issues == 0:
-            print_success(
-                f"🎉 Perfect! All checks passed! ({summary.total_files} directories checked)"
-            )
-        elif total_fixed > 0:
-            print_success(
-                f"✨ Fixed {total_fixed} issues! ({summary.total_files} directories processed)"
-            )
+    for tool_name, result in tool_results.items():
+        # Status with emoji
+        if result.success:
+            status = "✅ PASS" if mode == "check" else "✅ FIXED"
+            status_style = "green"
         else:
-            print_info(
-                f"⚠️  Found {total_issues} issues in {summary.total_files} directories"
+            status = "❌ FAIL" if mode == "check" else "❌ ERROR"
+            status_style = "red"
+
+        # File count
+        files_count = str(result.files_checked)
+
+        # Issues or fixes count
+        if mode == "check":
+            count_value = str(result.issues_found)
+            count_style = "red" if result.issues_found > 0 else "green"
+        else:
+            count_value = str(result.fixed_issues)
+            count_style = "green" if result.fixed_issues > 0 else "dim"
+
+        # Details (truncated message)
+        details = _truncate_message(result.message)
+
+        table.add_row(
+            tool_name,
+            f"[{status_style}]{status}[/{status_style}]",
+            files_count,
+            f"[{count_style}]{count_value}[/{count_style}]",
+            details,
+        )
+
+    console.print(table)
+
+
+def _display_overall_summary(summary: "LintSummary", mode: str) -> None:
+    """Display overall summary of linting operation."""
+    if mode == "check":
+        if summary.success:
+            if summary.total_issues == 0:
+                print_success(
+                    f"✨ All checks passed! {summary.total_files} files are clean."
+                )
+            else:
+                print_warn(
+                    f"⚠️  Found {summary.total_issues} issues across {summary.total_files} files."
+                )
+        else:
+            print_error(
+                f"❌ Linting failed with {summary.total_issues} issues in {summary.total_files} files."
+            )
+    else:  # fix mode
+        if summary.success:
+            if summary.total_fixed > 0:
+                print_success(
+                    f"✨ Fixed {summary.total_fixed} issues across {summary.total_files} files!"
+                )
+            else:
+                print_info(f"✅ No issues to fix in {summary.total_files} files.")
+        else:
+            print_error(
+                f"❌ Failed to complete fixes. Processed {summary.total_files} files."
             )
 
+
+def _format_size(size_bytes: int) -> str:
+    """Format file size in human-readable format."""
+    if size_bytes < 1024:
+        return f"{size_bytes} B"
+    elif size_bytes < 1024 * 1024:
+        return f"{size_bytes / 1024:.1f} KB"
     else:
-        print_error(f"❌ {summary.message}")
-        if summary.error:
-            print_error(f"{summary.error}")
-
-        # Show failed tools with enhanced display
-        failed = [r for r in summary.tool_results if not r.success]
-        if failed:
-            print_error(f"💥 Failed tools: {', '.join(r.tool_name for r in failed)}")
-
-            # Show detailed results for failed tools
-            for r in failed:
-                print_error(f"🔍 {r.tool_name} details:")
-                if r.message:
-                    print_info(f"{r.message}")
-                if r.data is not None:
-                    console.print(JSON.from_data(r.data))
+        return f"{size_bytes / (1024 * 1024):.1f} MB"
 
 
-# UTILITY FUNCTIONS
-########################################################
-# Helper functions for linting operations
+def _truncate_message(message: str, max_length: int = 50) -> str:
+    """Truncate message for table display."""
+    if not message:
+        return ""
+
+    # Remove newlines and clean up
+    clean_message = " ".join(message.split())
+
+    if len(clean_message) <= max_length:
+        return clean_message
+
+    return clean_message[: max_length - 3] + "..."
 
 
-def print_lint_error(tool: str, error: str):
-    """Print linting error."""
-    print_error(f"{tool}: {error}")
+def display_tool_status(tool_summary: dict) -> None:
+    """
+    Display status of available linting tools.
 
+    Args:
+        tool_summary: Dictionary of tool names to status/version strings
+    """
+    table = Table(title="🔧 Linting Tools Status", show_header=True)
+    table.add_column("Tool", style="cyan", width=15)
+    table.add_column("Status", width=20)
+    table.add_column("Version/Details", style="dim")
 
-def print_lint_fix_suggestions(target_dir: str, target_dirs: list):
-    """Print suggestions for fixing linting issues."""
-    print_info("To fix issues, run:")
-    print_info(f"   cd {target_dir}")
-    print_info(f"   ruff check --fix {' '.join(target_dirs)}")
-    print_info(f"   ruff format {' '.join(target_dirs)}")
-    print_info(f"   isort {' '.join(target_dirs)}")
+    for tool_name, status in tool_summary.items():
+        if "not available" in status.lower():
+            status_display = "[red]❌ Not Available[/red]"
+            version_display = "Install required"
+        else:
+            status_display = "[green]✅ Available[/green]"
+            version_display = status
 
+        table.add_row(tool_name, status_display, version_display)
 
-def print_lint_start(lint_type: str, target_path: str):
-    """Print linting start message."""
-    print_info(f"Starting {lint_type} linting")
-    print_info(f"Target path: {target_path}")
-
-
-def print_tool_check_result(tool: str, available: bool):
-    """Print tool availability check result."""
-    if available:
-        print_success(f"{tool}: Available")
-    else:
-        print_error(f"{tool}: Not available")
+    console.print(table)

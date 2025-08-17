@@ -11,7 +11,7 @@ prerequisite
 registrator
 uninstaller
 cli_manager
-cspell_manager
+cspell_utils
 environment_manager
 project_detector
 secure_cli_manager

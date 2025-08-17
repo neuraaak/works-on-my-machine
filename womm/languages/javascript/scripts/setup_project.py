@@ -4,7 +4,18 @@ JavaScript/Node.js development environment initialization script.
 
 Usage:
     python setup_project.py [project_name] [--type=node|react|vue|vanilla]
-    python setup_project.py --current-dir
+    python setu        try:
+            from ....core.tools.cspell_utils import setup_project_cspell
+
+            success = setup_project_cspell(
+                project_path, "javascript", project_name
+            )
+            if success:
+                print("   [OK] CSpell configuration created")
+            else:
+                print("   [WARN] CSpell configuration failed")
+        except ImportError:
+            print("   [WARN] cspell_utils module not found") --current-dir
 
 Features:
     - Copy development configurations
@@ -196,7 +207,7 @@ class JavaScriptProjectSetup:
         sys.path.insert(0, str(devtools_path))
 
         try:
-            from ....core.tools.cspell_manager import setup_project_cspell
+            from ....core.tools.cspell_utils import setup_project_cspell
 
             success = setup_project_cspell(
                 self.project_path, "javascript", self.project_name
@@ -206,7 +217,7 @@ class JavaScriptProjectSetup:
             else:
                 print("   [WARN] Error during CSpell configuration")
         except ImportError:
-            print("   [WARN] cspell_manager module not found")
+            print("   [WARN] cspell_utils module not found")
 
     def setup_development_environment(self):
         """Configure the JavaScript development environment."""

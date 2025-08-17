@@ -33,6 +33,7 @@ PATTERN_COLORS = {
     "ERROR": "bright_red",  # 🔴 Error
     "WARN": "bright_yellow",  # 🟡 Warning
     "TIP": "bright_magenta",  # 🟣 Tip
+    "DEBUG": "dim white",  # ⚪ Debug (dimmed)
     # === SYSTEM PATTERNS ===
     "SYSTEM": "bright_blue",  # 🔵 System operations
     "INSTALL": "bright_green",  # 🟢 Installation
@@ -283,7 +284,12 @@ def print_pattern(level: LogLevel, pattern: str, message: str, **kwargs):
 
 def print_info(message: str, **kwargs):
     """Display an info message."""
-    print_pattern(LogLevel.INFO, "       ", message, **kwargs)
+    print_pattern(LogLevel.INFO, "INFO", message, **kwargs)
+
+
+def print_debug(message: str, **kwargs):
+    """Display a debug message."""
+    print_pattern(LogLevel.DEBUG, "DEBUG", message, **kwargs)
 
 
 def print_success(message: str, level: LogLevel = LogLevel.INFO, **kwargs):

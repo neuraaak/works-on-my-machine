@@ -1,104 +1,52 @@
 #!/usr/bin/env python3
 """
-Dictionary Manager for CSpell - Manages custom dictionaries.
-Adds all dictionary files from .cspell-dict/ to CSpell configuration.
+Dictionary Manager for CSpell - Pure utility functions for dictionary operations.
+Used by SpellManager for UI-integrated dictionary management.
 """
 
 import logging
-import sys
 from pathlib import Path
 from typing import List, Optional
 
-from .cspell_manager import add_words_from_file
+from .cspell_utils import add_words_from_file
 
 
-def add_all_dictionaries(project_path: Optional[Path] = None) -> bool:
+def add_all_dictionaries_from_dir(project_path: Path) -> bool:
     """
     Add all dictionary files from .cspell-dict/ to CSpell configuration.
+    Pure utility function without UI - used by SpellManager.
 
     Args:
-        project_path: Project root path (defaults to current directory)
+        project_path: Project root path
 
     Returns:
         bool: True if successful, False otherwise
     """
-    if project_path is None:
-        project_path = Path.cwd()
-
     cspell_dict_dir = project_path / ".cspell-dict"
 
     # Check if .cspell-dict directory exists
-    if not cspell_dict_dir.exists():
-        print("[ERROR] .cspell-dict directory not found")
-        print("[TIP] Create the directory and add dictionary files (.txt)")
-        print(f"[INFO] Expected location: {cspell_dict_dir}")
+    if not cspell_dict_dir.exists() or not cspell_dict_dir.is_dir():
         return False
-
-    if not cspell_dict_dir.is_dir():
-        print(f"[ERROR] {cspell_dict_dir} is not a directory")
-        return False
-
-    print("[INFO] Searching for dictionaries in .cspell-dict/...")
 
     # Find all .txt files
     dict_files = list(cspell_dict_dir.glob("*.txt"))
 
     if not dict_files:
-        print("[WARN] No dictionary files found in .cspell-dict/")
-        print("[TIP] Add .txt files with one word per line")
-        return False
-
-    print(f"[INFO] Found {len(dict_files)} dictionary files:")
-    for file in dict_files:
-        print(f"   - {file.name}")
-
-    # Evaluate before execution
-    print(f"\n[EVAL] Will add {len(dict_files)} dictionaries to CSpell configuration")
-    print("[EVAL] This will update cspell.json with new words")
-
-    # Ask for confirmation (optional, can be skipped with --force)
-    try:
-        response = input("[CONFIRM] Continue? (y/N): ").strip().lower()
-        if response not in ["y", "yes"]:
-            print("[INFO] Operation cancelled by user")
-            return False
-    except KeyboardInterrupt:
-        print("\n[INFO] Operation cancelled by user")
         return False
 
     # Process each dictionary file
     success_count = 0
-    error_count = 0
 
     for dict_file in dict_files:
-        print(f"\n[PROCESS] Adding dictionary: {dict_file.name}")
         try:
             success = add_words_from_file(project_path, dict_file)
             if success:
-                print(f"[OK] {dict_file.name} added successfully")
                 success_count += 1
-            else:
-                print(f"[WARN] Issue with {dict_file.name}")
-                error_count += 1
         except Exception as e:
-            print(f"[ERROR] Error with {dict_file.name}: {e}")
-            error_count += 1
+            logging.debug(f"Error with {dict_file.name}: {e}")
 
-    # Summary
-    print("\n[SUMMARY] Process completed:")
-    print(f"   - Success: {success_count}")
-    print(f"   - Errors: {error_count}")
-    print(f"   - Total: {len(dict_files)}")
-
-    if error_count == 0:
-        print("[SUCCESS] All dictionaries added successfully!")
-        return True
-    elif success_count > 0:
-        print("[PARTIAL] Some dictionaries added successfully")
-        return True
-    else:
-        print("[FAILED] No dictionaries could be added")
-        return False
+    # Return True if at least some dictionaries were added
+    return success_count > 0
 
 
 def list_available_dictionaries(project_path: Optional[Path] = None) -> List[Path]:
@@ -168,11 +116,22 @@ def get_dictionary_info(project_path: Optional[Path] = None) -> dict:
     return info
 
 
+# Backward compatibility wrapper for CLI usage
+def add_all_dictionaries(project_path: Optional[Path] = None) -> bool:
+    """Legacy function name for backward compatibility."""
+    if project_path is None:
+        project_path = Path.cwd()
+    return add_all_dictionaries_from_dir(project_path)
+
+
 if __name__ == "__main__":
+    import sys
+
     # Command line interface
     if len(sys.argv) > 1 and sys.argv[1] == "--list":
         dict_files = list_available_dictionaries()
         if dict_files:
+            # CLI output - using simple prints for direct command line usage
             print("Available dictionaries:")
             for file in dict_files:
                 print(f"  - {file.name}")

@@ -243,6 +243,7 @@ class UninstallationManager:
                     progress.advance(task)
 
             # Show verification details
+            print("")
             for result in verification_results:
                 if result["success"]:
                     print_success(f"✓ {result.get('message', 'Check passed')}")
