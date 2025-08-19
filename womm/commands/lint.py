@@ -10,9 +10,9 @@ from pathlib import Path
 
 import click
 
-from ..core.ui.console import print_info
-from ..core.ui.lint import display_lint_summary, display_tool_status
-from ..core.utils.lint_manager import LintManager
+from ..core.managers.lint.lint_manager import LintManager
+from ..core.ui.common.console import print_info
+from ..core.ui.lint.lint import display_lint_summary, display_tool_status
 
 
 @click.group()
@@ -53,10 +53,12 @@ def lint_python(path, fix, tools):
         summary = lint_manager.fix_python_code(
             target_paths=target_paths, tools=tool_list
         )
+        display_lint_summary(summary, mode="fix")
     else:
         summary = lint_manager.check_python_code(
             target_paths=target_paths, tools=tool_list
         )
+        display_lint_summary(summary, mode="check")
 
     # Exit with appropriate code
     sys.exit(0 if summary.success else 1)
@@ -96,10 +98,12 @@ def lint_all(path, fix, tools):
         summary = lint_manager.fix_python_code(
             target_paths=target_paths, tools=tool_list
         )
+        display_lint_summary(summary, mode="fix")
     else:
         summary = lint_manager.check_python_code(
             target_paths=target_paths, tools=tool_list
         )
+        display_lint_summary(summary, mode="check")
 
     # Exit with appropriate code
     sys.exit(0 if summary.success else 1)
@@ -108,7 +112,7 @@ def lint_all(path, fix, tools):
 @lint_group.command("status")
 def lint_status():
     """🔧 Show status of available linting tools."""
-    print_info("� Checking linting tools availability...")
+    print_info("🔍 Checking linting tools availability...")
 
     lint_manager = LintManager()
     tool_summary = lint_manager.get_tool_status()

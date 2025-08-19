@@ -12,12 +12,11 @@ import sys
 # Third-party imports
 import click
 
-from ..core.installation.installer import InstallationManager
-from ..core.installation.path_manager import PathManager
-from ..core.installation.uninstaller import UninstallationManager
-
 # Local imports
-from ..utils.security import security_validator
+from ..common.security import security_validator
+from ..core.managers.installation.installation_manager import InstallationManager
+from ..core.managers.installation.uninstallation_manager import UninstallationManager
+from ..core.managers.system.user_path_manager import PathManager
 
 # COMMAND FUNCTIONS
 ########################################################

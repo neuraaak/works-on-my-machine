@@ -16,7 +16,7 @@ import click
 # IMPORTS
 ########################################################
 # Internal modules and dependencies
-from ..core.utils.spell_manager import spell_manager
+from ..core.managers.spell.spell_manager import spell_manager
 
 # MAIN FUNCTIONS
 ########################################################
@@ -114,7 +114,7 @@ def spell_check(path, json_export, json_output):
     export_path = None
     if json_export:
         # Utiliser le chemin par défaut ~/.womm/spell-results/
-        from ..core.installation.installer import get_target_womm_path
+        from ..core.installation.installation_manager import get_target_womm_path
 
         womm_path = get_target_womm_path()
         export_path = womm_path / "spell-results"

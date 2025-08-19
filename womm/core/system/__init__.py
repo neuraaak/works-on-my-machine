@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """
-System management module for Works On My Machine.
+System utilities for Works On My Machine.
+
+This package contains standalone system utilities and scripts.
 """
 
-from .system_manager import SystemManager, system_manager
-
-__all__ = ["SystemManager", "system_manager"]
+# This module primarily contains standalone scripts
+# The registrator.py script is accessed via command line, not imported
+__all__ = []

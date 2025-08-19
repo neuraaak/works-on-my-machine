@@ -14,7 +14,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from ....core.utils.cli_manager import run_command
+from ....core.utils.cli_utils import run_command
 
 
 def is_security_excluded(path: Path) -> bool:
@@ -109,7 +109,7 @@ def main(target_path=None):
     tools = ["ruff", "black", "isort"]
     missing_tools = []
 
-    from ....core.utils.cli_manager import run_silent
+    from ....core.utils.cli_utils import run_silent
 
     for tool in tools:
         try:

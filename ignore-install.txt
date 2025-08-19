@@ -64,4 +64,7 @@ run_tests.py
 
 # Build tools (not needed for installation)
 build_package.py
-build_exe.py 
+build_exe.py
+
+# Generated files (created dynamically during installation)
+womm.bat 

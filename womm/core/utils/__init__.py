@@ -1,28 +1,20 @@
 """
-Core modules for Works On My Machine.
+Tools modules for Works On My Machine.
 
-This package contains core utilities and base functionality.
+This package contains specialized tools like CSpell and dictionary management.
 """
 
-from .cli_manager import (
-    CLIManager,
-    CommandResult,
-    check_tool_available,
-    get_tool_version,
-    run_command,
-    run_interactive,
-    run_silent,
+from .spell.cspell_utils import (
+    check_cspell_installed,
+    run_spellcheck,
+    setup_project_cspell,
 )
-
-# Note: system_detector functions are not exported at module level
-# Note: template_helpers functions are not exported at module level
+from .spell.dictionary_utils import add_all_dictionaries, get_dictionary_info
 
 __all__ = [
-    "run_command",
-    "run_silent",
-    "run_interactive",
-    "check_tool_available",
-    "get_tool_version",
-    "CLIManager",
-    "CommandResult",
+    "setup_project_cspell",
+    "run_spellcheck",
+    "check_cspell_installed",
+    "add_all_dictionaries",
+    "get_dictionary_info",
 ]

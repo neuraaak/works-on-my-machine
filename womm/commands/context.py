@@ -20,8 +20,9 @@ import click
 # Internal modules and dependencies
 from rich import print
 
-from ..core.installation.installer import get_target_womm_path
-from ..core.ui.console import (
+from ..common.path_resolver import resolve_script_path
+from ..core.managers.installation.installation_manager import get_target_womm_path
+from ..core.ui.common.console import (
     LogLevel,
     print_error,
     print_info,
@@ -29,12 +30,11 @@ from ..core.ui.console import (
     print_success,
     print_system,
 )
+from ..core.ui.common.panels import create_panel
+from ..core.ui.common.progress import create_spinner_with_status
+from ..core.ui.common.prompts import confirm, prompt_choice
 from ..core.ui.interactive import InteractiveMenu
-from ..core.ui.panels import create_panel
-from ..core.ui.progress import create_spinner_with_status
-from ..core.ui.prompts import confirm, prompt_choice
-from ..core.utils.cli_manager import run_command
-from ..utils.path_resolver import resolve_script_path
+from ..core.utils.cli_utils import run_command
 
 # UTILITY FUNCTIONS
 ########################################################

@@ -34,7 +34,7 @@ from pathlib import Path
 
 # Import security validator if available
 try:
-    from ....core.security.security_validator import SecurityValidator
+    from ....core.utils.security.security_validator import SecurityValidator
 
     SECURITY_AVAILABLE = True
 except ImportError:
@@ -207,7 +207,7 @@ class JavaScriptProjectSetup:
         sys.path.insert(0, str(devtools_path))
 
         try:
-            from ....core.tools.cspell_utils import setup_project_cspell
+            from ....core.utils.spell.cspell_utils import setup_project_cspell
 
             success = setup_project_cspell(
                 self.project_path, "javascript", self.project_name
@@ -228,7 +228,7 @@ class JavaScriptProjectSetup:
         sys.path.insert(0, str(devtools_path))
 
         try:
-            from ....core.project.environment_manager import EnvironmentManager
+            from ....core.managers.project.environment_manager import EnvironmentManager
 
             manager = EnvironmentManager(self.project_path, "javascript")
 

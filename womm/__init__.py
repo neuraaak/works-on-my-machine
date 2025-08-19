@@ -15,11 +15,11 @@ __description__ = "Development Environment Manager"
 # Core exports
 # Main CLI entry point
 from .cli import main
-from .core.dependencies.dev_tools_manager import dev_tools_manager
-from .core.dependencies.package_manager import package_manager
-from .core.dependencies.runtime_manager import runtime_manager
-from .core.utils.lint_manager import LintManager
-from .core.utils.spell_manager import SpellManager
+from .core.managers.dependencies.dev_tools_manager import dev_tools_manager
+from .core.managers.dependencies.package_manager import package_manager
+from .core.managers.dependencies.runtime_manager import runtime_manager
+from .core.managers.lint.lint_manager import LintManager
+from .core.managers.spell.spell_manager import SpellManager
 
 # Language support
 from .languages import javascript, python

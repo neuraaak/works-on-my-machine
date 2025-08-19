@@ -4,7 +4,7 @@ User Interface module using Rich for beautiful terminal output.
 """
 
 # Import and expose common Rich utilities
-from .console import (
+from .common.console import (
     LogLevel,
     console,
     get_log_level,

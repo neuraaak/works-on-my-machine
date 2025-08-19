@@ -33,9 +33,10 @@ def system_group():
 @system_group.command("detect")
 def system_detect():
     """🔍 Detect system information and available tools."""
-    from ..core.system import system_manager
+    from ..core.managers.system import SystemManager
 
     # Use SystemManager for system detection with integrated UI
+    system_manager = SystemManager()
     system_manager.detect_system()
 
 
@@ -54,9 +55,10 @@ def system_detect():
 @click.argument("tools", nargs=-1, type=click.Choice(["python", "node", "git", "all"]))
 def system_install(check, pm_args, ask_path, tools):
     """📦 Install system prerequisites."""
-    from ..core.system import system_manager
+    from ..core.managers.system import SystemManager
 
     # Use SystemManager for prerequisites management with integrated UI
+    system_manager = SystemManager()
     if check:
         system_manager.check_prerequisites(list(tools))
     else:

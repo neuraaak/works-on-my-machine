@@ -13,19 +13,22 @@ from pathlib import Path
 
 import click
 
-from ..core.dependencies.runtime_manager import runtime_manager
-from ..core.ui.console import console
+# IMPORTS
+########################################################
+# Local utility imports
+from ..common.path_resolver import resolve_script_path
 
 # IMPORTS
 ########################################################
 # Internal modules and dependencies
-from ..core.utils.results import SecurityResult, ValidationResult
-
-# IMPORTS
-########################################################
-# Local utility imports
-from ..utils.path_resolver import resolve_script_path
-from ..utils.security import run_secure_command, security_validator, validate_user_input
+from ..common.results import SecurityResult, ValidationResult
+from ..common.security import (
+    run_secure_command,
+    security_validator,
+    validate_user_input,
+)
+from ..core.managers.dependencies.runtime_manager import runtime_manager
+from ..core.ui.common.console import console
 
 # MAIN FUNCTIONS
 ########################################################
@@ -321,7 +324,7 @@ def new_detect(project_name, current_dir):
     print_new_project_progress("Project detection", "Detecting project type")
 
     # Utiliser le détecteur interne au lieu d'un script externe inexistant
-    from ..core.project.project_detector import (
+    from ..core.utils.project.project_detector import (
         ProjectDetector,
         launch_project_setup,
     )
