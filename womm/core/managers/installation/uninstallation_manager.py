@@ -15,13 +15,11 @@ from typing import Optional
 from ...utils.installation import (
     get_files_to_remove,
     get_target_womm_path,
-    verify_files_removed,
     verify_uninstallation_complete,
 )
 from ...utils.installation.path_management_utils import (
     remove_from_path,
 )
-
 
 # MAIN CLASS
 ########################################################
@@ -69,17 +67,19 @@ class UninstallationManager:
             print_success,
             print_system,
         )
+        from ...ui.common.extended.dynamic_progress import (
+            create_dynamic_layered_progress,
+        )
+        from ...ui.common.extended.progress_animations import ProgressAnimations
         from ...ui.common.panels import (
             create_panel,
+        )
+        from ...ui.common.progress import (
+            create_spinner_with_status,
         )
         from ...ui.common.prompts import (
             confirm,
             show_warning_panel,
-        )
-        from ...ui.common.progress import (
-            create_file_copy_progress,
-            create_spinner_with_status,
-            create_step_progress,
         )
 
         print_header("W.O.M.M Uninstallation")
@@ -153,50 +153,139 @@ class UninstallationManager:
                     print_system(f"  ... and {len(files_to_remove) - 5} more files")
             return True
 
-        # Actual uninstallation steps
-        uninstallation_steps = ["PATH", "Files", "Verification"]
+        # Define uninstallation stages with DynamicLayeredProgress
+        stages = [
+            {
+                "name": "main_uninstallation",
+                "type": "main",
+                "steps": [
+                    "PATH Cleanup",
+                    "File Removal",
+                    "Verification",
+                ],
+                "description": "WOMM Uninstallation Progress",
+                "style": "bold bright_white",
+            },
+            {
+                "name": "path_cleanup",
+                "type": "spinner",
+                "description": "Removing from PATH...",
+                "style": "bright_red",
+            },
+            {
+                "name": "file_removal",
+                "type": "progress",
+                "total": len(files_to_remove),
+                "description": "Removing installation files...",
+                "style": "bright_red",
+            },
+            {
+                "name": "verification",
+                "type": "steps",
+                "steps": [
+                    "File removal check",
+                    "Command accessibility test",
+                ],
+                "description": "Verifying uninstallation...",
+                "style": "bright_green",
+            },
+        ]
 
         print("")
-        with create_step_progress(uninstallation_steps, "Uninstalling W.O.M.M...") as (
-            progress,
-            task,
-            steps,
-        ):
-            # Step 1: Remove from PATH
-            progress.update(task, current_step="PATH", step=1)
+        with create_dynamic_layered_progress(stages) as progress:
+            animations = ProgressAnimations(progress.progress)
+
+            # Stage 1: PATH Cleanup
+            progress.update_layer("path_cleanup", 0, "Removing WOMM from PATH...")
             if not remove_from_path(self.target_path):
-                progress.stop()
+                progress.emergency_stop("Failed to remove from PATH")
                 print_error("Failed to remove from PATH")
                 if verbose:
                     print_system("❌ PATH cleanup failed")
                 return False
-            progress.advance(task)
-            if verbose:
-                print_system("✅ PATH environment variable cleaned")
 
-            # Step 2: Remove files
-            progress.update(task, current_step="Files", step=2)
-            if not self._remove_files(files_to_remove, verbose):
-                progress.stop()
+            progress.update_layer("path_cleanup", 0, "PATH cleanup completed")
+            from time import sleep
+
+            sleep(0.2)
+
+            # Complete PATH cleanup
+            progress.complete_layer("path_cleanup")
+            # Get task_id for animation
+            path_task_id = None
+            for tid, metadata in progress.layer_metadata.items():
+                if metadata["name"] == "path_cleanup":
+                    path_task_id = tid
+                    break
+            if path_task_id:
+                animations.success_flash(path_task_id, duration=0.5)
+
+            # Update main uninstallation progress
+            progress.update_layer("main_uninstallation", 0, "PATH cleanup completed")
+            sleep(0.3)
+
+            # Stage 2: File Removal
+            if not self._remove_files_with_progress(files_to_remove, progress, verbose):
+                progress.emergency_stop("Failed to remove files")
                 print_error("Failed to remove files")
                 if verbose:
                     print_system("❌ File removal failed")
                 return False
-            progress.advance(task)
-            if verbose:
-                print_system(f"✅ Removed installation directory: {self.target_path}")
 
-            # Step 3: Verification
-            progress.update(task, current_step="Verification", step=3)
-            if not verify_uninstallation_complete(self.target_path):
-                progress.stop()
+            # Complete file removal
+            progress.complete_layer("file_removal")
+            # Get task_id for animation
+            file_task_id = None
+            for tid, metadata in progress.layer_metadata.items():
+                if metadata["name"] == "file_removal":
+                    file_task_id = tid
+                    break
+            if file_task_id:
+                animations.success_flash(file_task_id, duration=0.5)
+
+            # Update main uninstallation progress
+            progress.update_layer(
+                "main_uninstallation", 1, "Files removed successfully"
+            )
+            sleep(0.3)
+
+            # Stage 3: Verification
+            if not self._verify_uninstallation_with_progress(progress):
+                progress.emergency_stop("Uninstallation verification failed")
                 print_error("Uninstallation verification failed")
                 if verbose:
                     print_system("❌ Verification checks failed")
                 return False
-            progress.advance(task)
-            if verbose:
-                print_system("✅ Uninstallation verification completed")
+
+            # Complete verification
+            progress.complete_layer("verification")
+            # Get task_id for animation
+            verify_task_id = None
+            for tid, metadata in progress.layer_metadata.items():
+                if metadata["name"] == "verification":
+                    verify_task_id = tid
+                    break
+            if verify_task_id:
+                animations.success_flash(verify_task_id, duration=0.5)
+
+            # Complete main uninstallation progress
+            progress.update_layer(
+                "main_uninstallation", 2, "Uninstallation completed successfully!"
+            )
+            sleep(0.3)
+
+            # Final animation for main uninstallation
+            main_task_id = None
+            for tid, metadata in progress.layer_metadata.items():
+                if metadata["name"] == "main_uninstallation":
+                    main_task_id = tid
+                    break
+            if main_task_id:
+                animations.success_flash(main_task_id, duration=1.0)
+                sleep(1.2)
+
+            # Complete and remove main uninstallation layer
+            progress.complete_layer("main_uninstallation")
 
         print("")
         print_success("✅ W.O.M.M uninstallation completed successfully!")
@@ -223,56 +312,77 @@ class UninstallationManager:
 
         return True
 
-    def _remove_files(self, files_to_remove: list[str], verbose: bool = False) -> bool:
-        """Remove WOMM installation files with progress bar.
+    def _remove_files_with_progress(
+        self, files_to_remove: list[str], progress, verbose: bool = False
+    ) -> bool:
+        """Remove WOMM installation files with progress tracking.
 
         Args:
-            files_to_remove: List of files to remove for progress tracking
+            files_to_remove: List of files and directories to remove for progress tracking
+            progress: DynamicLayeredProgress instance
             verbose: Show detailed progress information
 
         Returns:
             True if successful, False otherwise
         """
         try:
-            # Import progress bar and other utilities
-            from ...ui.common.progress import create_file_copy_progress
             import shutil
             from time import sleep
 
-            # Remove files with progress bar
-            with create_file_copy_progress(
-                files_to_remove, "Removing WOMM files..."
-            ) as (
-                progress,
-                task,
-                files,
-            ):
-                for file_path in files_to_remove:
-                    # Update progress with current file
-                    progress.update(task, current_file=file_path)
+            # Remove each file and directory in order (files first, then directories)
+            for i, item_path in enumerate(files_to_remove):
+                target_item = self.target_path / item_path.rstrip("/")
 
-                    # Remove each file/directory
-                    target_item = self.target_path / file_path.rstrip("/")
+                if not target_item.exists():
+                    continue
 
-                    if target_item.exists():
-                        if target_item.is_file():
-                            target_item.unlink()
-                        elif target_item.is_dir():
-                            shutil.rmtree(target_item)
+                # Update progress
+                item_name = Path(item_path).name
+                if item_path.endswith("/"):
+                    progress.update_layer(
+                        "file_removal", i + 1, f"Removing directory: {item_name}"
+                    )
+                else:
+                    progress.update_layer(
+                        "file_removal", i + 1, f"Removing file: {item_name}"
+                    )
 
-                    sleep(0.03)
+                try:
+                    if target_item.is_file():
+                        target_item.unlink()
+                        sleep(0.01)
+                        if verbose:
+                            from ...ui.common.console import print_system
 
-                    if verbose:
-                        from ...ui.common.console import print_system
+                            print_system(f"🗑️ Removed file: {item_path}")
+                    elif target_item.is_dir():
+                        shutil.rmtree(target_item)
+                        sleep(0.02)
+                        if verbose:
+                            from ...ui.common.console import print_system
 
-                        print_system(f"🗑️ Removed: {file_path}")
+                            print_system(f"🗑️ Removed directory: {item_path}")
+                except Exception as e:
+                    from ...ui.common.console import print_error
 
-                    # Advance progress
-                    progress.advance(task)
+                    print_error(f"Failed to remove {item_path}: {e}")
 
-            # Remove the root directory itself
+            # Finally remove the root directory itself
             if self.target_path.exists():
+                progress.update_layer(
+                    "file_removal",
+                    len(files_to_remove) + 1,
+                    "Removing installation directory",
+                )
                 shutil.rmtree(self.target_path)
+                sleep(0.1)
+
+                if verbose:
+                    from ...ui.common.console import print_system
+
+                    print_system(
+                        f"🗑️ Removed installation directory: {self.target_path}"
+                    )
 
             return True
 
@@ -280,4 +390,45 @@ class UninstallationManager:
             from ...ui.common.console import print_error
 
             print_error(f"Error removing files: {e}")
+            return False
+
+    def _verify_uninstallation_with_progress(self, progress) -> bool:
+        """Verify uninstallation with progress tracking.
+
+        Args:
+            progress: DynamicLayeredProgress instance
+
+        Returns:
+            True if verification passed, False otherwise
+        """
+        try:
+            from time import sleep
+
+            # Step 1: File removal check
+            progress.update_layer("verification", 0, "Checking file removal...")
+            if self.target_path.exists():
+                from ...ui.common.console import print_error
+
+                print_error(f"Installation directory still exists: {self.target_path}")
+                return False
+            sleep(0.2)
+
+            # Step 2: Command accessibility test
+            progress.update_layer("verification", 1, "Testing command accessibility...")
+            verification_result = verify_uninstallation_complete(self.target_path)
+            if not verification_result["success"]:
+                from ...ui.common.console import print_error
+
+                print_error(
+                    f"Verification failed: {verification_result.get('error', 'Unknown error')}"
+                )
+                return False
+            sleep(0.2)
+
+            return True
+
+        except Exception as e:
+            from ...ui.common.console import print_error
+
+            print_error(f"Error during verification: {e}")
             return False

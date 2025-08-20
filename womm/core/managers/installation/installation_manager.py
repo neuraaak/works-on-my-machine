@@ -94,16 +94,17 @@ class InstallationManager:
             print_success,
             print_system,
         )
-        from ...ui.common.panels import create_panel
-        from ...ui.common.progress import (
-            create_layered_progressbar,
-            create_spinner_with_status,
+        from ...ui.common.extended.dynamic_progress import (
+            create_dynamic_layered_progress,
         )
-        from ...ui.common.prompts import show_warning_panel
+        from ...ui.common.extended.progress_animations import ProgressAnimations
+        from ...ui.common.panels import create_panel
 
         print_header("W.O.M.M Installation")
 
         # Check target directory existence
+        from ...ui.common.progress import create_spinner_with_status
+
         with create_spinner_with_status("Checking target directory...") as (
             progress,
             task,
@@ -116,6 +117,8 @@ class InstallationManager:
                 and any(self.target_path.iterdir())
                 and not force
             ):
+                from ...ui.common.prompts import show_warning_panel
+
                 show_warning_panel(
                     "Installation directory already exists",
                     f"Target directory: {self.target_path}\n"
@@ -153,93 +156,241 @@ class InstallationManager:
                     print_system(f"  ... and {len(files_to_copy) - 5} more files")
             return True
 
-        # Actual installation steps
-        installation_steps = ["Files", "Executable", "PATH", "Verification"]
-        if backup:
-            installation_steps.insert(0, "Backup")
-
-        # Define layers for layered progress bar
-        layers = [
+        # Define installation stages with DynamicLayeredProgress
+        # Color palette: main layer is bright, sub-layers use softer colors
+        stages = [
             {
-                "name": "main_steps",
-                "total": len(installation_steps),
-                "description": "Installing W.O.M.M...",
-                "style": "bold blue",
+                "name": "main_installation",
+                "type": "main",
+                "steps": [
+                    "Preparation",
+                    "File Copy",
+                    "Executable",
+                    "Backup",
+                    "PATH Setup",
+                    "Verification",
+                ],
+                "description": "WOMM Installation Progress",
+                "style": "bold bright_white",
+            },
+            {
+                "name": "preparation",
+                "type": "spinner",
+                "description": "Preparing installation environment...",
+                "style": "bright_cyan",
             },
             {
                 "name": "file_copy",
+                "type": "progress",
                 "total": len(files_to_copy),
-                "description": "Copying files...",
-                "style": "dim white",
+                "description": "Copying project files...",
+                "style": "bright_magenta",
+            },
+            {
+                "name": "executable",
+                "type": "spinner",
+                "description": "Creating executable script...",
+                "style": "bright_cyan",
+            },
+            {
+                "name": "backup",
+                "type": "spinner",
+                "description": "Creating PATH backup...",
+                "style": "bright_cyan",
+            },
+            {
+                "name": "path_setup",
+                "type": "spinner",
+                "description": "Configuring PATH environment...",
+                "style": "bright_cyan",
+            },
+            {
+                "name": "verification",
+                "type": "steps",
+                "steps": [
+                    "File integrity check",
+                    "Essential files verification",
+                    "Command accessibility test",
+                    "PATH configuration test",
+                ],
+                "description": "Verifying installation...",
+                "style": "bright_green",
             },
         ]
 
         console.print("")
-        with create_layered_progressbar(layers) as (progress, task_ids):
-            # Step 1: Backup PATH (if enabled)
-            if backup:
-                progress.update(task_ids["main_steps"], details="Backup")
-                if not self._backup_path():
-                    print_error("Failed to backup PATH")
-                    return False
-                progress.advance(task_ids["main_steps"])
-                if verbose:
-                    print_system(f"✅ PATH backup saved: {self._path_backup_file}")
+        with create_dynamic_layered_progress(stages) as progress:
+            animations = ProgressAnimations(progress.progress)
 
-            # Step 2: Copy files
-            progress.update(task_ids["main_steps"], details="Files")
-            if not self._copy_files(
-                files_to_copy, verbose, progress, task_ids["file_copy"]
-            ):
-                progress.stop()
+            # Stage 1: Preparation
+            prep_messages = [
+                "Analyzing system requirements...",
+                "Checking target directory permissions...",
+                "Validating installation path...",
+                "Preparing file operations...",
+            ]
+
+            for msg in prep_messages:
+                progress.update_layer("preparation", 0, msg)
+                sleep(0.2)
+
+            # Complete preparation
+            progress.complete_layer("preparation")
+            # Get task_id for animation
+            prep_task_id = None
+            for tid, metadata in progress.layer_metadata.items():
+                if metadata["name"] == "preparation":
+                    prep_task_id = tid
+                    break
+            if prep_task_id:
+                animations.success_flash(prep_task_id, duration=0.5)
+
+            # Update main installation progress
+            progress.update_layer("main_installation", 0, "Preparation completed")
+            sleep(0.3)
+
+            # Stage 2: Copy files
+            if not self._copy_files_with_progress(files_to_copy, progress, verbose):
+                progress.emergency_stop("Failed to copy files")
                 print_error("Failed to copy files")
-                if backup:
-                    self._rollback_path()  # Rollback on failure
                 return False
-            progress.advance(task_ids["main_steps"])
-            if verbose:
-                print_system(
-                    f"✅ Copied {len(files_to_copy)} files to {self.target_path}"
-                )
 
-            # Step 3: Create executable
-            progress.update(task_ids["main_steps"], details="Executable")
+            # Complete file copy
+            progress.complete_layer("file_copy")
+            # Get task_id for animation
+            copy_task_id = None
+            for tid, metadata in progress.layer_metadata.items():
+                if metadata["name"] == "file_copy":
+                    copy_task_id = tid
+                    break
+            if copy_task_id:
+                animations.success_flash(copy_task_id, duration=0.5)
+
+            # Update main installation progress
+            progress.update_layer("main_installation", 1, "Files copied successfully")
+            sleep(0.3)
+
+            # Stage 3: Create executable
+            progress.update_layer("executable", 0, "Creating womm.py executable...")
             executable_result = create_womm_executable(self.target_path)
             if not executable_result["success"]:
-                progress.stop()
+                progress.emergency_stop(
+                    f"Failed to create executable: {executable_result.get('error')}"
+                )
                 print_error(
                     f"Failed to create executable: {executable_result.get('error')}"
                 )
-                if backup:
-                    self._rollback_path()  # Rollback on failure
                 return False
-            progress.advance(task_ids["main_steps"])
-            if verbose:
-                print_system("✅ Executable script created")
 
-            # Step 4: Setup PATH
-            progress.update(task_ids["main_steps"], details="PATH")
+            progress.update_layer("executable", 0, "Creating womm.bat wrapper...")
+            sleep(0.2)
+
+            # Complete executable creation
+            progress.complete_layer("executable")
+            # Get task_id for animation
+            exe_task_id = None
+            for tid, metadata in progress.layer_metadata.items():
+                if metadata["name"] == "executable":
+                    exe_task_id = tid
+                    break
+            if exe_task_id:
+                animations.success_flash(exe_task_id, duration=0.5)
+
+            # Update main installation progress
+            progress.update_layer("main_installation", 2, "Executable created")
+            sleep(0.3)
+
+            # Stage 4: Backup PATH
+            progress.update_layer(
+                "backup", 0, "Backing up current PATH configuration..."
+            )
+            if not self._backup_path():
+                progress.emergency_stop("Failed to backup PATH")
+                print_error("Failed to backup PATH")
+                return False
+
+            progress.update_layer("backup", 0, "PATH backup completed successfully")
+            sleep(0.2)
+
+            # Complete backup
+            progress.complete_layer("backup")
+            # Get task_id for animation
+            backup_task_id = None
+            for tid, metadata in progress.layer_metadata.items():
+                if metadata["name"] == "backup":
+                    backup_task_id = tid
+                    break
+            if backup_task_id:
+                animations.success_flash(backup_task_id, duration=0.5)
+
+            # Update main installation progress
+            progress.update_layer("main_installation", 3, "PATH backup completed")
+            sleep(0.3)
+
+            # Stage 5: Setup PATH
+            progress.update_layer(
+                "path_setup", 0, "Configuring PATH environment variable..."
+            )
             if not self._setup_path():
-                progress.stop()
+                progress.emergency_stop("Failed to setup PATH")
                 print_error("Failed to setup PATH")
-                if backup:
-                    self._rollback_path()  # Rollback on failure
+                self._rollback_path()  # Rollback on failure
                 return False
-            progress.advance(task_ids["main_steps"])
-            if verbose:
-                print_system("✅ PATH environment variable configured")
 
-            # Step 5: Verification
-            progress.update(task_ids["main_steps"], details="Verification")
-            if not self._verify_installation():
-                progress.stop()
+            progress.update_layer("path_setup", 0, "PATH configuration completed")
+            sleep(0.2)
+
+            # Complete PATH setup
+            progress.complete_layer("path_setup")
+            # Get task_id for animation
+            path_task_id = None
+            for tid, metadata in progress.layer_metadata.items():
+                if metadata["name"] == "path_setup":
+                    path_task_id = tid
+                    break
+            if path_task_id:
+                animations.success_flash(path_task_id, duration=0.5)
+
+            # Update main installation progress
+            progress.update_layer("main_installation", 4, "PATH configured")
+            sleep(0.3)
+
+            # Stage 6: Verification
+            if not self._verify_installation_with_progress(progress):
+                progress.emergency_stop("Installation verification failed")
                 print_error("Installation verification failed")
-                if backup:
-                    self._rollback_path()  # Rollback on failure
+                self._rollback_path()  # Rollback on failure
                 return False
-            progress.advance(task_ids["main_steps"])
-            if verbose:
-                print_system("✅ Installation verification completed")
+
+            # Complete verification
+            progress.complete_layer("verification")
+            # Get task_id for animation
+            verify_task_id = None
+            for tid, metadata in progress.layer_metadata.items():
+                if metadata["name"] == "verification":
+                    verify_task_id = tid
+                    break
+            if verify_task_id:
+                animations.success_flash(verify_task_id, duration=0.5)
+
+            # Complete main installation progress
+            progress.update_layer(
+                "main_installation", 5, "Installation completed successfully!"
+            )
+            sleep(0.3)
+
+            # Final animation for main installation
+            main_task_id = None
+            for tid, metadata in progress.layer_metadata.items():
+                if metadata["name"] == "main_installation":
+                    main_task_id = tid
+                    break
+            if main_task_id:
+                animations.success_flash(main_task_id, duration=1.0)
+                sleep(1.2)
+
+            # Complete and remove main installation layer
+            progress.complete_layer("main_installation")
 
         console.print("")
         print_success("✅ W.O.M.M installation completed successfully!")
@@ -267,6 +418,117 @@ class InstallationManager:
         console.print(completion_panel)
 
         return True
+
+    def _copy_files_with_progress(
+        self,
+        files_to_copy: list[str],
+        progress,
+        verbose: bool = False,
+    ) -> bool:
+        """Copy files from source to target directory with progress tracking.
+
+        Args:
+            files_to_copy: List of relative file paths to copy
+            progress: DynamicLayeredProgress instance
+            verbose: Show detailed progress information
+
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            # Create target directory
+            self.target_path.mkdir(parents=True, exist_ok=True)
+
+            # Copy files with progress tracking
+            from ...ui.common.console import print_system
+
+            for i, relative_file in enumerate(files_to_copy):
+                source_file = self.source_path / relative_file
+                target_file = self.target_path / relative_file
+
+                # Update file copy progress
+                file_name = Path(relative_file).name
+                progress.update_layer("file_copy", i + 1, f"Copying: {file_name}")
+
+                # Create parent directories
+                target_file.parent.mkdir(parents=True, exist_ok=True)
+
+                # Copy the file
+                shutil.copy2(source_file, target_file)
+                sleep(0.01)
+
+                if verbose:
+                    print_system(f"📄 Copied: {relative_file}")
+
+            return True
+
+        except Exception as e:
+            from ...ui.common.console import print_error
+
+            print_error(f"Error copying files: {e}")
+            return False
+
+    def _verify_installation_with_progress(self, progress) -> bool:
+        """Verify installation with progress tracking.
+
+        Args:
+            progress: DynamicLayeredProgress instance
+
+        Returns:
+            True if verification passed, False otherwise
+        """
+        try:
+            # Step 1: File integrity check
+            progress.update_layer("verification", 0, "Checking file integrity...")
+            files_result = verify_files_copied(self.source_path, self.target_path)
+            if not files_result["success"]:
+                from ...ui.common.console import print_error
+
+                print_error(
+                    f"File verification failed: {files_result.get('error', 'Files missing or corrupted')}"
+                )
+                return False
+            sleep(0.2)
+
+            # Step 2: Essential files verification
+            progress.update_layer("verification", 1, "Verifying essential files...")
+            essential_files = ["womm.py", "womm.bat"]
+            for essential_file in essential_files:
+                file_path = self.target_path / essential_file
+                if not file_path.exists():
+                    from ...ui.common.console import print_error
+
+                    print_error(f"Essential file missing: {essential_file}")
+                    return False
+            sleep(0.2)
+
+            # Step 3: Command accessibility test
+            progress.update_layer("verification", 2, "Testing command accessibility...")
+            commands_result = verify_commands_accessible(str(self.target_path))
+            if not commands_result["success"]:
+                from ...ui.common.console import print_error
+
+                print_error(f"Commands not accessible: {commands_result.get('error')}")
+                return False
+            sleep(0.2)
+
+            # Step 4: PATH configuration test
+            progress.update_layer("verification", 3, "Verifying PATH configuration...")
+            path_result = verify_path_configuration(str(self.target_path))
+            if not path_result["success"]:
+                from ...ui.common.console import print_error
+
+                print_error(f"PATH configuration failed: {path_result.get('error')}")
+                return False
+            sleep(0.2)
+
+            return True
+
+        except Exception as e:
+            from ...ui.common.console import print_error
+
+            print_error(f"Error during verification: {e}")
+            return False
 
     def _copy_files(
         self,
@@ -333,6 +595,7 @@ class InstallationManager:
 
             path_manager = PathManager(target=str(self.target_path))
             result = path_manager.add_to_path()
+            sleep(0.5)
 
             if not result["success"]:
                 from ...ui.common.console import print_error

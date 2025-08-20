@@ -523,7 +523,8 @@ def create_layered_progressbar(
             - 'total': Total items for this layer (optional, None for indeterminate)
             - 'description': Display description for the layer
             - 'style': Rich style for this layer (optional)
-        description: Main description
+            - 'type': Layer type - 'progress' (default) or 'steps'
+            - 'steps': List of step names (required if type='steps')
         show_time: Show elapsed and remaining time
 
     Returns:
@@ -555,16 +556,62 @@ def create_layered_progressbar(
 
         for i, layer in enumerate(layers):
             layer_name = layer.get("name", f"Layer_{i}")
-            layer_total = layer.get("total", None)
+            layer_type = layer.get("type", "progress")
             layer_desc = layer.get("description", layer_name)
             layer_style = layer.get("style", "default")
 
-            # Create task for this layer
-            task_id = progress.add_task(
-                f"[{layer_style}]{layer_desc}",
-                total=layer_total,
-                details="",  # Initialize details field
-            )
+            if layer_type == "steps":
+                # Handle step-based layer
+                steps = layer.get("steps", [])
+                layer_total = len(steps)
+                task_id = progress.add_task(
+                    f"[{layer_style}]{layer_desc}",
+                    total=layer_total,
+                    details="",  # Initialize details field
+                    steps=steps,  # Store steps for later use
+                )
+            else:
+                # Handle regular progress layer
+                layer_total = layer.get("total", None)
+                task_id = progress.add_task(
+                    f"[{layer_style}]{layer_desc}",
+                    total=layer_total,
+                    details="",  # Initialize details field
+                )
+
             task_ids[layer_name] = task_id
 
         yield progress, task_ids
+
+
+def update_layer_step(
+    progress: Progress, task_id: int, step_index: int, details: str = ""
+):
+    """
+    Update a step-based layer to show current step progress.
+
+    Args:
+        progress: Progress object
+        task_id: Task ID of the layer
+        step_index: Current step index (0-based)
+        step_name: Name of the current step
+        details: Additional details to display
+    """
+    # Get the task to access stored steps
+    task = progress._tasks[task_id]
+    steps = getattr(task, "steps", [])
+
+    if steps and step_index < len(steps):
+        current_step = steps[step_index]
+        step_progress = f"Step {step_index + 1}/{len(steps)}: {current_step}"
+
+        # Update the task with step information
+        progress.update(
+            task_id,
+            completed=step_index,
+            description=f"{task.description} - {step_progress}",
+            details=details,
+        )
+    else:
+        # Fallback if no steps available
+        progress.update(task_id, completed=step_index, details=details)

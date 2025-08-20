@@ -12,6 +12,7 @@ All functions here are stateless and can be used independently.
 import platform
 import stat
 from pathlib import Path
+from time import sleep
 from typing import Dict, List
 
 # Local imports
@@ -153,6 +154,7 @@ def create_womm_executable(target_path: Path) -> Dict:
         # Write the executable
         with open(executable_path, "w", encoding="utf-8") as f:
             f.write(script_content)
+            sleep(0.5)
 
         # Make executable on Unix systems
         if platform.system() != "Windows":
@@ -299,7 +301,7 @@ def get_files_to_remove(target_path: Path) -> List[str]:
         target_path: Target installation directory
 
     Returns:
-        List of relative file paths to remove
+        List of relative file and directory paths to remove
     """
     files_to_remove = []
 
@@ -307,12 +309,20 @@ def get_files_to_remove(target_path: Path) -> List[str]:
         return files_to_remove
 
     try:
-        # Add main files and directories
-        for item in target_path.iterdir():
-            if item.is_file():
-                files_to_remove.append(str(item.name))
-            elif item.is_dir():
-                files_to_remove.append(f"{item.name}/")
+        # Get all files and directories recursively
+        for item_path in target_path.rglob("*"):
+            if item_path.is_file():
+                # Add file with relative path
+                relative_path = item_path.relative_to(target_path)
+                files_to_remove.append(str(relative_path))
+            elif item_path.is_dir():
+                # Add directory with relative path (keep trailing slash for directories)
+                relative_path = item_path.relative_to(target_path)
+                files_to_remove.append(f"{relative_path}/")
+
+        # Sort to ensure files are removed before their parent directories
+        # Files first, then directories (reverse alphabetical for nested dirs)
+        files_to_remove.sort(key=lambda x: (x.endswith("/"), x))
 
         return files_to_remove
 
