@@ -16,10 +16,27 @@ from pathlib import Path
 from typing import Dict, Optional
 
 # Third-party imports
-# (None for this file)
-# (no additional typing imports)
+from rich.console import Console
+from rich.table import Table
+
 # Local imports
+from ...ui import (
+    InteractiveMenu,
+    create_backup_table,
+    format_backup_item,
+    print_error,
+    print_header,
+    print_info,
+    print_success,
+    print_system,
+)
 from ...utils.cli_utils import run_silent
+from ...utils.installation.path_management_utils import (
+    remove_from_unix_path,
+    remove_from_windows_path,
+    setup_unix_path,
+    setup_windows_path,
+)
 from ...utils.system.user_path_utils import extract_path_from_reg_output
 
 # MAIN CLASS
@@ -54,14 +71,6 @@ class PathManager:
 
         This method handles the complete UI flow for listing backup information.
         """
-        from ...ui import (
-            create_backup_table,
-            print_error,
-            print_header,
-            print_success,
-            print_system,
-        )
-
         print_header("W.O.M.M PATH Backup List")
 
         # Get backup information
@@ -76,8 +85,6 @@ class PathManager:
                 print("")
                 # Create and display backup table
                 backup_table = create_backup_table(result["backups"])
-                from rich.console import Console
-
                 console = Console()
                 console.print(backup_table)
             else:
@@ -93,14 +100,6 @@ class PathManager:
 
         This method handles the complete UI flow for creating a new backup.
         """
-        from ...ui import (
-            print_error,
-            print_header,
-            print_info,
-            print_success,
-            print_system,
-        )
-
         print_header("W.O.M.M PATH Backup Creation")
 
         # Create backup directory if it doesn't exist
@@ -155,17 +154,6 @@ class PathManager:
 
         This method handles the complete UI flow for PATH restoration.
         """
-        from rich.console import Console
-        from rich.table import Table
-
-        from ...ui import (
-            print_error,
-            print_header,
-            print_info,
-            print_success,
-            print_system,
-        )
-
         console = Console()
         print_header("W.O.M.M PATH Restoration")
 
@@ -230,8 +218,6 @@ class PathManager:
         print("")
 
         # Interactive selection with checkbox menu
-        from ...ui.interactive import InteractiveMenu, format_backup_item
-
         menu = InteractiveMenu(title="Select Backup to Restore", border_style="cyan")
         selected_backup = menu.select_from_list(
             backup_info_list, display_func=format_backup_item
@@ -291,8 +277,6 @@ class PathManager:
         print_info(f"Restored from backup: {selected_file.name}")
         print_info(f"Restored {path_entries} PATH entries")
         print_info("You may need to restart your terminal for changes to take effect")
-
-        # (No ImportError fallback: assume UI available)
 
     # PRIVATE METHODS
     ########################################################
@@ -437,14 +421,8 @@ class PathManager:
             womm_path = str(self.target_path)
 
             if self.platform == "Windows":
-                from ...utils.installation.path_management_utils import (
-                    setup_windows_path,
-                )
-
                 return setup_windows_path(womm_path, "")
             else:
-                from ...utils.installation.path_management_utils import setup_unix_path
-
                 return setup_unix_path(womm_path, "")
 
         except Exception as e:
@@ -460,16 +438,8 @@ class PathManager:
             womm_path = str(self.target_path)
 
             if self.platform == "Windows":
-                from ...utils.installation.path_management_utils import (
-                    remove_from_windows_path,
-                )
-
                 return remove_from_windows_path(womm_path)
             else:
-                from ...utils.installation.path_management_utils import (
-                    remove_from_unix_path,
-                )
-
                 return remove_from_unix_path(womm_path)
 
         except Exception as e:

@@ -14,6 +14,7 @@ from .common.console import (
     print_detect,
     print_error,
     print_header,
+    print_info,
     print_install,
     print_pattern,
     print_result,
@@ -29,6 +30,9 @@ from .common.console import (
     set_log_level,
     set_warn_level,
 )
+
+# Import table utilities
+from .common.tables import create_backup_table
 
 # Import interactive components
 from .interactive import InteractiveMenu, format_backup_item
@@ -47,6 +51,7 @@ __all__ = [
     "print_deps",
     "print_pattern",
     "print_header",
+    "print_info",
     "print_separator",
     "print_command",
     "print_result",
@@ -58,6 +63,8 @@ __all__ = [
     "set_warn_level",
     "set_error_level",
     "set_critical_level",
+    # Table utilities
+    "create_backup_table",
     # Interactive components
     "InteractiveMenu",
     "format_backup_item",

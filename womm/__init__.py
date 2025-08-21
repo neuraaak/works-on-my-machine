@@ -8,9 +8,9 @@ and project setup across multiple programming languages.
 Author: WOMM Team
 """
 
-__version__ = "2.3.0"
-__author__ = "WOMM Team"
-__description__ = "Development Environment Manager"
+__version__ = "2.4.1"
+__author__ = "Neuraaak"
+__description__ = "Universal development tools for multiple languages - Automatic installation, cross-platform configuration, global commands"
 
 # Core exports
 # Main CLI entry point
