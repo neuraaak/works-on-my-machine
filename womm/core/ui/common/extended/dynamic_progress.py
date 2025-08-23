@@ -435,6 +435,20 @@ class DynamicLayeredProgress:
         """
         return getattr(self, "_emergency_message", None)
 
+    def _get_task_id_by_name(self, layer_name: str) -> Optional[int]:
+        """Get task ID by layer name.
+
+        Args:
+            layer_name: Name of the layer
+
+        Returns:
+            Task ID if found, None otherwise
+        """
+        for task_id, metadata in self.layer_metadata.items():
+            if metadata["name"] == layer_name:
+                return task_id
+        return None
+
     def start(self):
         """Start the progress bar and create initial layers."""
         self.progress = self._create_progress_bar()

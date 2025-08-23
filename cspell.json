@@ -4,6 +4,7 @@
     "language": "en,fr",
     "words": [
         "access",
+        "Acro",
         "ad",
         "add",
         "adipiscing",
@@ -223,6 +224,7 @@
         "mdc",
         "mdx",
         "minim",
+        "mkv",
         "modifier",
         "mollit",
         "mongodb",
@@ -243,6 +245,9 @@
         "Nuxt",
         "nvim",
         "occaecat",
+        "odp",
+        "ods",
+        "odt",
         "of",
         "officia",
         "opencv",
@@ -381,6 +386,7 @@
         "uninstaller",
         "uninstaller.py",
         "uniquement",
+        "unregistration",
         "Unregistration",
         "unsafe",
         "untrusted",
@@ -436,6 +442,7 @@
         "yum",
         "yzhang",
         "zip-safe",
+        "zipfldr",
         "zypper"
     ],
     "dictionaries": [

@@ -5,9 +5,8 @@ Contains utility modules for CLI operations.
 """
 
 # Import utility modules
-from . import path_resolver, security
+from . import path_resolver
 
 __all__ = [
-    "security",
     "path_resolver",
 ]

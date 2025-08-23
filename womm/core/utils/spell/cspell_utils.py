@@ -10,10 +10,10 @@ import logging
 import os
 import platform
 import shutil
-import subprocess
 from pathlib import Path
 from typing import List, Optional
 
+from ....common.security import run_silent
 from ..system.user_path_utils import (
     deduplicate_path_entries,
     extract_path_from_reg_output,
@@ -31,12 +31,9 @@ def check_cspell_installed() -> bool:
 
     # Check via npx (common fallback) - direct subprocess for Windows compatibility
     try:
-        result = subprocess.run(  # noqa: S602
-            "npx cspell --version",  # noqa: S607
-            capture_output=True,
-            text=True,
+        result = run_silent(
+            "npx cspell --version",
             timeout=10,
-            shell=True,
         )
 
         logging.debug(
@@ -55,8 +52,6 @@ def check_cspell_installed() -> bool:
 
     # Check via npm (final fallback)
     try:
-        from ..cli_utils import run_silent
-
         result = run_silent(["npm", "list", "-g", "cspell"])
 
         logging.debug(
@@ -78,12 +73,9 @@ def _try_add_cspell_to_path_if_found_via_npx() -> bool:
 
         # Méthode 1: Utiliser 'npx --no-install cspell --version' pour vérifier si CSpell est déjà installé
         try:
-            result = subprocess.run(  # noqa: S603
-                ["npx", "--no-install", "cspell", "--version"],  # noqa: S607
-                capture_output=True,
-                text=True,
+            result = run_silent(
+                ["npx", "--no-install", "cspell", "--version"],
                 timeout=10,
-                shell=False,
             )
 
             if result.returncode == 0:
@@ -95,23 +87,17 @@ def _try_add_cspell_to_path_if_found_via_npx() -> bool:
 
         # Méthode 2: Vérifier dans npm list globalement installé
         try:
-            result = subprocess.run(  # noqa: S603
+            result = run_silent(
                 [npm_path, "list", "-g", "--depth=0", "cspell"],
-                capture_output=True,
-                text=True,
                 timeout=10,
-                shell=False,
             )
 
             if result.returncode == 0 and "cspell@" in result.stdout:
                 logging.debug("CSpell found in global npm packages")
                 # Récupérer le dossier bin global
-                bin_result = subprocess.run(  # noqa: S603
+                bin_result = run_silent(
                     [npm_path, "config", "get", "prefix"],
-                    capture_output=True,
-                    text=True,
                     timeout=5,
-                    shell=False,
                 )
 
                 if bin_result.returncode == 0 and bin_result.stdout.strip():
@@ -132,12 +118,9 @@ def _try_add_cspell_to_path_if_found_via_npx() -> bool:
 
         # Méthode 3: Utiliser 'npm root -g' pour trouver le dossier node_modules global
         try:
-            result = subprocess.run(  # noqa: S603
+            result = run_silent(
                 [npm_path, "root", "-g"],
-                capture_output=True,
-                text=True,
                 timeout=5,
-                shell=False,
             )
 
             if result.returncode == 0 and result.stdout.strip():
@@ -202,11 +185,8 @@ def _add_directory_to_user_path(directory_path: str) -> bool:
     try:
         if platform.system() == "Windows":
             # Méthode Windows : modifier le registre utilisateur
-            result = subprocess.run(
-                ["reg", "query", "HKCU\\Environment", "/v", "PATH"],  # noqa: S607
-                capture_output=True,
-                text=True,
-                shell=False,
+            result = run_silent(
+                ["reg", "query", "HKCU\\Environment", "/v", "PATH"],
             )
 
             if result.returncode == 0:
@@ -228,8 +208,8 @@ def _add_directory_to_user_path(directory_path: str) -> bool:
                 new_user_path = deduplicate_path_entries(new_user_path)
 
                 # Modifier le registre
-                reg_result = subprocess.run(  # noqa: S603
-                    [  # noqa: S607
+                reg_result = run_silent(
+                    [
                         "reg",
                         "add",
                         "HKCU\\Environment",
@@ -241,9 +221,6 @@ def _add_directory_to_user_path(directory_path: str) -> bool:
                         new_user_path,
                         "/f",
                     ],
-                    capture_output=True,
-                    text=True,
-                    shell=False,
                 )
 
                 if reg_result.returncode == 0:

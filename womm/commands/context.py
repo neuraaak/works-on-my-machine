@@ -9,8 +9,6 @@ Handles Windows context menu management.
 # External modules and dependencies
 
 import platform
-import sys
-from datetime import datetime
 from pathlib import Path
 
 import click
@@ -20,21 +18,18 @@ import click
 # Internal modules and dependencies
 from rich import print
 
-from ..common.path_resolver import resolve_script_path
 from ..core.managers.installation.installation_manager import get_target_womm_path
 from ..core.ui.common.console import (
     LogLevel,
     print_error,
+    print_header,
     print_info,
     print_pattern,
     print_success,
-    print_system,
 )
 from ..core.ui.common.panels import create_panel
 from ..core.ui.common.progress import create_spinner_with_status
-from ..core.ui.common.prompts import confirm, prompt_choice
 from ..core.ui.interactive import InteractiveMenu
-from ..core.utils.cli_utils import run_command
 
 # UTILITY FUNCTIONS
 ########################################################
@@ -50,91 +45,7 @@ def _check_windows_only() -> bool:
     return True
 
 
-def _execute_registrator_command(
-    cmd: list,
-    description: str,
-    dry_run: bool = False,
-    verbose: bool = False,
-    show_output: bool = False,
-) -> bool:
-    """Execute registrator command with consistent UI feedback and error handling."""
-    if dry_run:
-        print_info(f"Dry run: {' '.join(map(str, cmd))}")
-        return True
-
-    if verbose:
-        print_system(f"Executing: {' '.join(map(str, cmd))}")
-
-    if show_output:
-        # For commands like list/status that need to show output, use subprocess directly
-        import subprocess
-
-        try:
-            result = subprocess.run(cmd, cwd=None, check=False)  # noqa: S603
-            success = result.returncode == 0
-        except Exception as e:
-            print_error(f"Failed to execute command: {e}")
-            return False
-    else:
-        # For commands like register/unregister, use spinner
-        with create_spinner_with_status(f"Running {description}...") as (
-            progress,
-            task,
-        ):
-            progress.update(task, status=f"Executing {description}...")
-            result = run_command(cmd, description)
-            success = result.success
-
-    if success:
-        if not show_output:  # Only show success message if output wasn't already shown
-            print_success(f"{description} completed successfully")
-        return True
-    else:
-        if not show_output:
-            print_error(f"{description} failed")
-        return False
-
-
-def _get_python_executable() -> str:
-    """Get the appropriate Python executable for WOMM operations.
-
-    Uses the global Python installation (from PATH) that the user has
-    on their system, whether installed manually or via WOMM.
-    """
-    import shutil
-
-    # Try different Python executables in order of preference
-    python_candidates = ["python", "python3", "py"]
-
-    for candidate in python_candidates:
-        python_exe = shutil.which(candidate)
-        if python_exe:
-            return python_exe
-
-    # Last resort fallback to the current Python executable
-    return sys.executable
-
-
-def _get_registrator_script_path():
-    """Get the path to the registrator script."""
-    # Try to find it in the installed WOMM directory first
-    try:
-        womm_path = get_target_womm_path()
-        if womm_path.exists():
-            installed_registrator = (
-                womm_path / "womm" / "core" / "system" / "registrator.py"
-            )
-            if installed_registrator.exists():
-                return str(installed_registrator)
-    except Exception as e:
-        print_pattern(
-            LogLevel.DEBUG,
-            "SYSTEM",
-            f"Could not access installed WOMM registrator: {e}",
-        )
-
-    # Fallback to development path
-    return resolve_script_path("womm/core/system/registrator.py")
+# Legacy functions removed - now using ContextMenuManager directly
 
 
 def _get_backup_directory() -> str:
@@ -154,98 +65,7 @@ def _get_backup_directory() -> str:
     return "."
 
 
-def _generate_backup_filenames(backup_dir: str) -> tuple[str, str]:
-    """Generate timestamped and latest backup filenames."""
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    platform_name = platform.system()
-
-    # Timestamped backup file
-    timestamped_file = (
-        f"{backup_dir}/context_menu_backup_{platform_name}_{timestamp}.json"
-    )
-
-    # Latest backup file (without timestamp)
-    latest_file = f"{backup_dir}/context_menu_backup_{platform_name}.json"
-
-    return timestamped_file, latest_file
-
-
-def _execute_backup_with_timestamp(
-    python_exe: str, script_path: str, backup_dir: str, dry_run: bool, verbose: bool
-) -> tuple[bool, str]:
-    """Execute backup with timestamped filename and create latest copy."""
-    import shutil
-
-    # Generate filenames
-    timestamped_file, latest_file = _generate_backup_filenames(backup_dir)
-
-    # Execute backup to timestamped file
-    backup_cmd = [python_exe, str(script_path), "--backup", timestamped_file]
-    success = _execute_registrator_command(
-        backup_cmd, "Context menu backup", dry_run, verbose
-    )
-
-    if success and not dry_run:
-        # Copy timestamped backup to latest backup file
-        try:
-            shutil.copy2(timestamped_file, latest_file)
-            print_pattern(
-                LogLevel.DEBUG,
-                "SYSTEM",
-                f"Created latest backup reference: {latest_file}",
-            )
-        except Exception as e:
-            print_pattern(
-                LogLevel.DEBUG, "SYSTEM", f"Could not create latest backup copy: {e}"
-            )
-
-    return success, timestamped_file
-
-
-def _get_default_target() -> str:
-    """Get the default target path for context menu registration."""
-    import os
-
-    try:
-        # Try to find womm in PATH, but prefer installed version over dev version
-        womm_candidates = []
-        path_dirs = os.environ.get("PATH", "").split(os.pathsep)
-
-        for path_dir in path_dirs:
-            womm_bat = Path(path_dir) / "womm.bat"
-            if womm_bat.exists():
-                womm_candidates.append(str(womm_bat))
-
-        # Prefer the one in user directory over development directory
-        womm_exe = None
-        for candidate in womm_candidates:
-            if ".womm" in candidate and "Users" in candidate:
-                womm_exe = candidate
-                break
-
-        # If no user installation found, use first candidate
-        if not womm_exe and womm_candidates:
-            womm_exe = womm_candidates[0]
-
-        if womm_exe:
-            print_pattern(LogLevel.DEBUG, "SYSTEM", f"Found WOMM in PATH: {womm_exe}")
-            # Get the WOMM installation directory from the executable path
-            womm_install_path = Path(womm_exe).parent
-            # Create backup directory within the installation
-            backup_dir = womm_install_path / ".backup" / "context_menu"
-            backup_dir.mkdir(parents=True, exist_ok=True)
-            return str(backup_dir)
-
-        # Fallback to get_target_womm_path if womm not in PATH
-        womm_path = get_target_womm_path()
-        backup_dir = womm_path / ".backup" / "context_menu"
-        backup_dir.mkdir(parents=True, exist_ok=True)
-        return str(backup_dir)
-
-    except Exception as e:
-        print_pattern(LogLevel.DEBUG, "SYSTEM", f"Could not create default target: {e}")
-        # Final fallback to current directory
-        return "."
+# Legacy functions removed - now using ContextMenuManager directly
 
 
 def _show_tip_panel(content: str, title: str = "Tip"):
@@ -268,9 +88,13 @@ def _show_tip_panel(content: str, title: str = "Tip"):
 # Core CLI functionality and command groups
 
 
-@click.group()
-def context_group():
+@click.group(invoke_without_command=True)
+@click.help_option("-h", "--help")
+@click.pass_context
+def context_group(ctx):
     """Windows context menu management."""
+    if ctx.invoked_subcommand is None:
+        click.echo(ctx.get_help())
 
 
 # COMMAND FUNCTIONS
@@ -279,153 +103,336 @@ def context_group():
 
 
 @context_group.command("register")
+@click.help_option("-h", "--help")
 @click.option(
+    "-t",
     "--target",
     "target_path",
     type=click.Path(),
-    default=None,
-    help="Script or executable to register in context menu (default: backup directory)",
+    help="Script or executable to register in context menu",
 )
-@click.option("--label", required=True, help="Label to display in context menu")
 @click.option(
-    "--registrator-args",
-    multiple=True,
-    help="Extra args passed to registrator (e.g., shell type, icon)",
+    "-l",
+    "--label",
+    help="Label to display in context menu",
 )
-@click.option("--dry-run", is_flag=True, help="Show command without executing")
-@click.option("--verbose", is_flag=True, help="Verbose mode")
-def context_register(target_path, label, registrator_args, dry_run, verbose):
-    """📝 Register WOMM tools in Windows context menu."""
+@click.option(
+    "--icon",
+    default="auto",
+    help="Icon path or 'auto' for auto-detection (default: auto)",
+)
+@click.option(
+    "--root",
+    is_flag=True,
+    help="Register for root directories (drives) only",
+)
+@click.option(
+    "--file",
+    is_flag=True,
+    help="Register for single file selection",
+)
+@click.option(
+    "--files",
+    is_flag=True,
+    help="Register for multiple file selection",
+)
+@click.option(
+    "--background",
+    is_flag=True,
+    help="Register for background context only",
+)
+@click.option(
+    "--file-types",
+    multiple=True,
+    help="File types to register for (e.g., image, text, archive)",
+)
+@click.option(
+    "--extension",
+    "extensions",
+    multiple=True,
+    help="Custom file extensions (e.g., .py, .js)",
+)
+@click.option(
+    "-d",
+    "--dry-run",
+    is_flag=True,
+    help="Show what would be done without making changes",
+)
+@click.option(
+    "-i",
+    "--interactive",
+    is_flag=True,
+    help="Interactive mode - guided setup",
+)
+@click.option(
+    "-v",
+    "--verbose",
+    is_flag=True,
+    help="Verbose mode",
+)
+def context_register(
+    target_path,
+    label,
+    icon,
+    root,
+    file,
+    files,
+    background,
+    file_types,
+    extensions,
+    dry_run,
+    interactive,
+    verbose,
+):
+    """📝 Register scripts in Windows context menu."""
     if not _check_windows_only():
         return
 
-    # Use default target if none provided
-    if target_path is None:
-        target_path = _get_default_target()
-        print_info(f"Using default target: {target_path}")
+    print_header("📝 Context Menu Registration")
 
-    python_exe = _get_python_executable()
-    script_path = _get_registrator_script_path()
+    # Handle interactive mode
+    if interactive:
+        from ..core.ui.context.interactive_wizard import ContextMenuWizard
 
-    # Always create backup before registration
-    backup_dir = _get_backup_directory()
+        target_path, label, icon, context_params = ContextMenuWizard.run_setup()
+        if not target_path:  # User cancelled
+            return
+    else:
+        # Validate required parameters in non-interactive mode
+        if not target_path:
+            print_error("Missing required option: --target")
+            print_info("Use --interactive for guided setup")
+            return
+        if not label:
+            print_error("Missing required option: --label")
+            print_info("Use --interactive for guided setup")
+            return
 
-    with create_spinner_with_status("Creating backup before registration...") as (
+    # Import ContextMenuManager
+    from ..core.managers.context.managers.context_menu import ContextMenuManager
+
+    # Initialize manager
+    manager = ContextMenuManager()
+
+    # Create context parameters from flags
+    from ..core.managers.context.utils.context_parameters import ContextParameters
+
+    context_params = ContextParameters.from_flags(
+        root=root,
+        file=file,
+        files=files,
+        background=background,
+        file_types=list(file_types) if file_types else None,
+        extensions=list(extensions) if extensions else None,
+    )
+
+    if verbose:
+        print_info(f"Target: {target_path}")
+        print_info(f"Label: {label}")
+        print_info(f"Icon: {icon}")
+        print_info(f"Context: {context_params.get_description()}")
+
+    # Validation will be done in register_script()
+    if verbose:
+        print_info("Validating script and parameters...")
+
+    # Create backup before registration
+    if not dry_run:
+        backup_dir = _get_backup_directory()
+        backup_file = f"{backup_dir}/context_menu_backup_before_register.json"
+
+        with create_spinner_with_status("Creating backup before registration...") as (
+            progress,
+            task,
+        ):
+            progress.update(task, status="Creating backup...")
+            backup_result = manager.backup_entries(backup_file)
+
+        if not backup_result["success"]:
+            print_error(f"Backup failed: {backup_result['error']}")
+            return
+
+        if verbose:
+            print_info(f"Backup created: {backup_file}")
+
+    # Register script
+    with create_spinner_with_status("Registering script in context menu...") as (
         progress,
         task,
     ):
-        progress.update(task, status="Creating backup...")
-        success, backup_file = _execute_backup_with_timestamp(
-            python_exe, script_path, backup_dir, dry_run, verbose
+        progress.update(task, status="Adding registry entries...")
+        result = manager.register_script(
+            target_path, label, icon, dry_run, context_params
         )
-    if not success:
-        print_error("Backup failed, aborting registration")
-        return
 
-    # Build registrator command: python registrator.py <target> <label> [extra]
-    cmd = [python_exe, str(script_path), str(target_path), str(label)]
-    for extra in registrator_args:
-        cmd.extend(extra.split())
+    if result["success"]:
+        info = result["info"]
 
-    # Execute registration
-    success = _execute_registrator_command(
-        cmd, "Context menu registration", dry_run, verbose
-    )
+        if dry_run:
+            print_info("🔧 Would add to Windows Context Menu")
+            print_info(f"📜 Script: {info['script_path']}")
+            print_info(f"🎯 Type: {info['script_type']}")
+            print_info(f"🏷️  Title: {info['label']}")
+            print_info(f"🎨 Icon: {info['icon_path'] or 'Default file icon'}")
+            print_info(f"🔑 Registry Key: {info['registry_key']}")
+            print_info(f"⚡ Command: {info['command']}")
+            print_info(f"🎯 Context: {context_params.get_description()}")
+            print_info("\n🔍 Dry run mode - no changes made")
+            print_success("✅ Configuration validated successfully")
+        else:
+            # Import UI and show success message
+            from ..core.ui.context.context import ContextMenuUI
 
-    if success and not dry_run:
-        print_success(f"Tool '{label}' registered successfully in context menu")
+            ui = ContextMenuUI()
+            ui.show_register_success(label, info["registry_key"])
 
-        # Show helpful tip panel
-        tip_content = """Right-click in any folder to see your new context menu entry.
-
-• The entry will appear in both folder and background context menus
-• Use 'womm context list' to see all registered entries
-• Use 'womm context unregister --remove <key>' to remove entries later"""
-
-        _show_tip_panel(tip_content, "Context Menu Usage")
-
-    elif not success:
-        print_error("Registration failed - check the error details above")
+    else:
+        print_error(f"Registration failed: {result['error']}")
+        if verbose and "info" in result:
+            info = result["info"]
+            print_info(f"Script path: {info.get('script_path')}")
+            print_info(f"Script type: {info.get('script_type')}")
+            print_info(f"Registry key: {info.get('registry_key')}")
 
 
 @context_group.command("unregister")
+@click.help_option("-h", "--help")
 @click.option(
     "--remove",
     "remove_key",
     required=True,
     help="Key name to remove (as stored in registry)",
 )
-@click.option("--dry-run", is_flag=True, help="Show command without executing")
+@click.option(
+    "--dry-run", is_flag=True, help="Show what would be done without making changes"
+)
 @click.option("--verbose", is_flag=True, help="Verbose mode")
 def context_unregister(remove_key, dry_run, verbose):
-    """🗑️ Unregister WOMM tools from Windows context menu."""
+    """🗑️ Unregister scripts from Windows context menu."""
     if not _check_windows_only():
         return
 
-    python_exe = _get_python_executable()
-    script_path = _get_registrator_script_path()
-    cmd = [python_exe, str(script_path), "--remove", str(remove_key)]
+    print_header("🗑️ Context Menu Unregistration")
 
-    # Execute unregistration
-    success = _execute_registrator_command(
-        cmd, "Context menu unregistration", dry_run, verbose
-    )
+    # Import ContextMenuManager
+    from ..core.managers.context.managers.context_menu import ContextMenuManager
 
-    if success and not dry_run:
-        print_success(f"Entry '{remove_key}' removed successfully from context menu")
+    # Initialize manager
+    manager = ContextMenuManager()
 
-        # Show helpful tip panel
-        tip_content = """Context menu entry has been removed successfully.
+    if verbose:
+        print_info(f"Removing key: {remove_key}")
 
-• Changes will be visible after refreshing File Explorer
-• Use 'womm context list' to verify the removal
-• Use 'womm context register' to add new entries"""
+    # Unregister script
+    with create_spinner_with_status("Unregistering script from context menu...") as (
+        progress,
+        task,
+    ):
+        progress.update(task, status="Removing registry entries...")
+        result = manager.unregister_script(remove_key, dry_run)
 
-        _show_tip_panel(tip_content, "Unregistration Complete")
+    if result["success"]:
+        if dry_run:
+            print_info(f"🔍 Would remove context menu entry: {remove_key}")
+            print_success("✅ Dry run completed successfully")
+        else:
+            # Import UI and show success message
+            from ..core.ui.context.context import ContextMenuUI
 
-    elif not success:
-        print_error("Unregistration failed - check the error details above")
+            ui = ContextMenuUI()
+            ui.show_unregister_success(remove_key)
+
+    else:
+        print_error(f"Unregistration failed: {result['error']}")
 
 
 @context_group.command("list")
-@click.option("--dry-run", is_flag=True, help="Show command without executing")
-@click.option("--verbose", is_flag=True, help="Verbose mode")
-def context_list(dry_run, verbose):
+@click.help_option("-h", "--help")
+@click.option(
+    "-v",
+    "--verbose",
+    is_flag=True,
+    help="Verbose mode",
+)
+def context_list(verbose):  # noqa: ARG001
     """📋 List registered context menu entries."""
     if not _check_windows_only():
         return
 
-    python_exe = _get_python_executable()
-    script_path = _get_registrator_script_path()
-    cmd = [python_exe, str(script_path), "--list"]
+    print_header("📋 Context Menu List")
 
-    # Execute list command - show output since this is an informational command
-    success = _execute_registrator_command(
-        cmd, "Context menu listing", dry_run, verbose, show_output=True
-    )
+    # Import ContextMenuManager
+    from ..core.managers.context.managers.context_menu import ContextMenuManager
 
-    if success and not dry_run:
-        # Show helpful tip panel
-        tip_content = """Context menu management commands:
+    # Initialize manager
+    manager = ContextMenuManager()
 
-• womm context register --target <file> --label "<name>" - Add new entry
-• womm context unregister --remove <key> - Remove existing entry
-• womm context quick-setup - Setup common WOMM tools
-• womm context status - Check current registration status"""
+    # List entries
+    with create_spinner_with_status("Retrieving context menu entries...") as (
+        progress,
+        task,
+    ):
+        progress.update(task, status="Reading registry entries...")
+        result = manager.list_entries()
 
-        _show_tip_panel(tip_content, "Context Menu Commands")
+    if result["success"]:
+        entries = result["entries"]
 
-    elif not success:
-        print_error("Failed to retrieve context menu entries")
+        print("📋 Context Menu Entries:")
+        print("=" * 50)
+
+        for context_type in ["directory", "background"]:
+            print(f"\n{context_type.upper()} CONTEXT:")
+            context_entries = entries.get(context_type, [])
+
+            if not context_entries:
+                print("  No entries found")
+            else:
+                for entry in context_entries:
+                    print(f"  Key: {entry['key_name']}")
+                    print(f"    Display: {entry['display_name']}")
+                    if entry["command"]:
+                        print(f"    Command: {entry['command']}")
+                    if entry["icon"]:
+                        print(f"    Icon: {entry['icon']}")
+                    print()
+
+        # Import UI and show commands panel
+        from ..core.ui.context.context import ContextMenuUI
+
+        ui = ContextMenuUI()
+        ui.show_list_commands()
+
+    else:
+        print_error(f"Failed to retrieve context menu entries: {result['error']}")
 
 
 @context_group.command("quick-setup")
-@click.option("--dry-run", is_flag=True, help="Show commands without executing")
-@click.option("--verbose", is_flag=True, help="Verbose mode")
+@click.help_option("-h", "--help")
+@click.option(
+    "-d",
+    "--dry-run",
+    is_flag=True,
+    help="Show commands without executing",
+)
+@click.option(
+    "-v",
+    "--verbose",
+    is_flag=True,
+    help="Verbose mode",
+)
 def context_quick_setup(dry_run, verbose):
     """⚡ Quick setup common WOMM tools in context menu."""
     if not _check_windows_only():
         return
+
+    print_header("⚡ Quick Setup Common WOMM Tools")
+
+    # Import ContextMenuManager
+    from ..core.managers.context.managers.context_menu import ContextMenuManager
+
+    # Initialize manager
+    manager = ContextMenuManager()
 
     # Common WOMM tools to register
     tools = [
@@ -437,7 +444,6 @@ def context_quick_setup(dry_run, verbose):
         # Add more tools as needed
     ]
 
-    script_path = _get_registrator_script_path()
     success_count = 0
     total_tools = len(tools)
 
@@ -451,14 +457,21 @@ def context_quick_setup(dry_run, verbose):
             )
             if verbose:
                 print_info(f"Registering: {tool['description']}")
-            cmd = [sys.executable, str(script_path), tool["target"], tool["label"]]
 
-            success = _execute_registrator_command(
-                cmd, f"Register {tool['label']}", dry_run, verbose
+            # Register using ContextMenuManager
+            result = manager.register_script(
+                tool["target"], tool["label"], "auto", dry_run
             )
 
-            if success:
+            if result["success"]:
                 success_count += 1
+                if verbose:
+                    print_success(f"Registered: {tool['label']}")
+            else:
+                if verbose:
+                    print_error(
+                        f"Failed to register: {tool['label']} - {result['error']}"
+                    )
 
     if not dry_run:
         if success_count == total_tools:
@@ -466,29 +479,42 @@ def context_quick_setup(dry_run, verbose):
             print_info("Right-click in any folder to access WOMM tools")
         else:
             print_info(f"Registered {success_count}/{total_tools} tools successfully")
+    else:
+        print_info(f"Would register {total_tools} WOMM tools")
 
 
 @context_group.command("status")
+@click.help_option("-h", "--help")
 def context_status():
     """📊 Show context menu registration status (Windows only)."""
     if not _check_windows_only():
         return
 
-    python_exe = _get_python_executable()
-    script_path = _get_registrator_script_path()
-    cmd = [python_exe, str(script_path), "--list"]
+    print_header("📊 Context Menu Status")
 
-    # Execute status check - show output since this displays current status
+    # Import ContextMenuManager
+    from ..core.managers.context.managers.context_menu import ContextMenuManager
+
+    # Initialize manager
+    manager = ContextMenuManager()
+
+    # Get context menu entries
     with create_spinner_with_status("Checking context menu registration status...") as (
         progress,
         task,
     ):
         progress.update(task, status="Retrieving context menu entries...")
-        success = _execute_registrator_command(
-            cmd, "Context menu status check", show_output=True
+        result = manager.list_entries()
+
+    if result["success"]:
+        entries = result["entries"]
+        total_entries = sum(
+            len(entries.get(context_type, []))
+            for context_type in ["directory", "background"]
         )
 
-    if success:
+        print_success(f"Found {total_entries} context menu entries")
+
         # Show helpful information panel
         info_content = """Context menu status information:
 
@@ -517,89 +543,93 @@ def context_status():
 @click.option(
     "--output", "-o", help="Custom backup file path (default: auto-generated)"
 )
-@click.option("--dry-run", is_flag=True, help="Show command without executing")
-@click.option("--verbose", is_flag=True, help="Verbose mode")
-def context_backup(output, dry_run, verbose):
+@click.option(
+    "-v",
+    "--verbose",
+    is_flag=True,
+    help="Verbose mode",
+)
+def context_backup(output, verbose):  # noqa: ARG001
     """💾 Create backup of current context menu entries."""
+
     if not _check_windows_only():
         return
 
-    python_exe = _get_python_executable()
-    script_path = _get_registrator_script_path()
+    print_header("💾 Context Menu Backup")
+
+    # Import ContextMenuManager
+    from ..core.managers.context.managers.context_menu import ContextMenuManager
+
+    # Initialize manager
+    manager = ContextMenuManager()
 
     # Determine backup file path
     if output:
-        # Custom output path - use as is without timestamp
+        # Custom output path
         backup_file = output
         print_info(f"Backup location: {backup_file}")
-
-        # Build backup command
-        cmd = [python_exe, str(script_path), "--backup", backup_file]
-
-        # Execute backup with spinner
-        with create_spinner_with_status("Creating context menu backup...") as (
-            progress,
-            task,
-        ):
-            progress.update(task, status="Creating backup...")
-            success = _execute_registrator_command(
-                cmd, "Context menu backup", dry_run, verbose
-            )
-
-        if success and not dry_run:
-            print_success("Context menu backup created successfully!")
-            print_info(f"📄 Backup saved to: {backup_file}")
     else:
         # Auto-generated path with timestamp
+        from datetime import datetime
+
         backup_dir = _get_backup_directory()
-        print_info("Creating backup of context menu entries...")
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        backup_file = f"{backup_dir}/context_menu_backup_{timestamp}.json"
+        print_info(f"Backup location: {backup_file}")
 
-        success, backup_file = _execute_backup_with_timestamp(
-            python_exe, script_path, backup_dir, dry_run, verbose
-        )
+    # Create backup
+    with create_spinner_with_status("Creating context menu backup...") as (
+        progress,
+        task,
+    ):
+        progress.update(task, status="Reading registry entries...")
+        result = manager.backup_entries(backup_file)
 
-        if success and not dry_run:
-            print_success("Context menu backup created successfully!")
-            print_info(f"Timestamped backup: {backup_file}")
+    if result["success"]:
+        # Import UI and show success message
+        from ..core.ui.context.context import ContextMenuUI
 
-            # Show latest backup info
-            _, latest_file = _generate_backup_filenames(backup_dir)
-            print_info(f"Latest backup: {latest_file}")
-
-    if success and not dry_run:
-        # Show helpful tip panel
-        tip_content = f"""Context menu backup completed successfully.
-
-• Backup file: {backup_file}
-• Use this backup to restore context menu entries if needed
-• The backup includes all current registry entries for context menus
-• You can specify a custom backup location with --output"""
-
-        _show_tip_panel(tip_content, "Backup Information")
-
-    elif not success:
-        print_error("Backup failed - check the error details above")
+        ui = ContextMenuUI()
+        ui.show_backup_success(backup_file, result["entry_count"])
+    else:
+        print_error(f"Backup failed: {result['error']}")
 
 
 @context_group.command("restore")
+@click.help_option("-h", "--help")
 @click.option(
     "--backup-file",
     "-f",
     help="Specific backup file to restore (default: interactive selection)",
 )
-@click.option("--dry-run", is_flag=True, help="Show command without executing")
-@click.option("--verbose", is_flag=True, help="Verbose mode")
+@click.option(
+    "-d",
+    "--dry-run",
+    is_flag=True,
+    help="Show what would be done without making changes",
+)
+@click.option(
+    "-v",
+    "--verbose",
+    is_flag=True,
+    help="Verbose mode",
+)
 def context_restore(backup_file, dry_run, verbose):
     """🔄 Restore context menu entries from backup."""
     if not _check_windows_only():
         return
 
-    import json
-    from datetime import datetime
+    print_header("🔄 Context Menu Restore")
 
-    python_exe = _get_python_executable()
-    script_path = _get_registrator_script_path()
-    backup_dir = _get_backup_directory()
+    # Import ContextMenuManager and UI
+    from ..core.managers.context.managers.context_menu import ContextMenuManager
+    from ..core.ui.context.context import ContextMenuUI
+
+    # Initialize manager and UI
+    manager = ContextMenuManager()
+    ui = ContextMenuUI()
+
+    backup_dir = Path(_get_backup_directory())
 
     # If specific backup file provided, use it
     if backup_file:
@@ -610,138 +640,53 @@ def context_restore(backup_file, dry_run, verbose):
         selected_file = backup_path
     else:
         # Interactive selection from available backups
-        backup_files = list(Path(backup_dir).glob("context_menu_backup_*.json"))
-        if not backup_files:
-            print_error("No context menu backups found")
-            print_info(f"Checked directory: {backup_dir}")
-            return
-
-        # Sort by modification time (newest first)
-        backup_files.sort(key=lambda x: x.stat().st_mtime, reverse=True)
-
-        print_info("Available context menu backups:")
-        print("")
-
-        # Display backup options
-        for i, file in enumerate(backup_files, 1):
-            try:
-                stat = file.stat()
-                modified_date = datetime.fromtimestamp(stat.st_mtime).strftime(
-                    "%Y-%m-%d %H:%M:%S"
-                )
-                size_kb = stat.st_size / 1024
-
-                # Try to read backup info
-                try:
-                    with open(file, encoding="utf-8") as f:
-                        data = json.load(f)
-                    entry_count = len(data.get("entries", []))
-                    info = f" ({entry_count} entries)"
-                except Exception:
-                    info = ""
-
-                print_info(f"  {i}. {file.name}")
-                print_info(f"     📅 {modified_date} | 📦 {size_kb:.1f} KB{info}")
-
-            except Exception as e:
-                print_pattern(
-                    LogLevel.DEBUG, "SYSTEM", f"Error reading backup {file.name}: {e}"
-                )
-                continue
-
-        print("")
-
-        # Create backup file choices
-        backup_choices = []
-        for file in backup_files:
-            try:
-                size_kb = file.stat().st_size / 1024
-                modified_date = datetime.fromtimestamp(file.stat().st_mtime).strftime(
-                    "%Y-%m-%d %H:%M:%S"
-                )
-
-                # Try to read entry count from backup
-                info = ""
-                try:
-                    with open(file, encoding="utf-8") as f:
-                        data = json.load(f)
-                    entry_count = len(data.get("entries", []))
-                    info = f" ({entry_count} entries)"
-                except Exception:
-                    info = ""
-
-                choice_text = (
-                    f"{file.name} - 📅 {modified_date} | 📦 {size_kb:.1f} KB{info}"
-                )
-                backup_choices.append(choice_text)
-
-            except Exception as e:
-                print_pattern(
-                    LogLevel.DEBUG, "SYSTEM", f"Error reading backup {file.name}: {e}"
-                )
-                continue
-
-        # Show selection menu
-        try:
-            selected_choice = prompt_choice(
-                "Choose a backup to restore:", backup_choices
-            )
-
-            # Find the corresponding file
-            selected_index = backup_choices.index(selected_choice)
-            selected_file = backup_files[selected_index]
-
-        except (KeyboardInterrupt, ValueError):
-            print_info("📤 Restore cancelled")
+        selected_file = ui.show_backup_selection_menu(backup_dir, verbose)
+        if selected_file is None:
             return
 
     # Confirm restore operation
-    print_info(f"Selected backup: {selected_file.name}")
-
-    # Ask for confirmation
-    if not confirm(
-        "This will overwrite current context menu entries. Proceed?", default=False
-    ):
+    if not ui.confirm_restore_operation(selected_file):
         print_info("Restore cancelled")
         return
 
-    # Execute restore with spinner
-    cmd = [python_exe, str(script_path), "--restore", str(selected_file)]
-
+    # Execute restore
     with create_spinner_with_status("Restoring context menu from backup...") as (
         progress,
         task,
     ):
         progress.update(task, status="Restoring from backup...")
-        success = _execute_registrator_command(
-            cmd, "Context menu restore", dry_run, verbose
-        )
+        result = manager.restore_entries(str(selected_file))
 
-    if success and not dry_run:
-        print_success("Context menu restored successfully!")
-        print_info(f"Restored from: {selected_file.name}")
-
-        # Show helpful tip panel
-        tip_content = f"""Context menu restore completed successfully.
-
-• Restored from: {selected_file.name}
-• All context menu entries have been restored from the backup
-• Changes should be visible immediately in File Explorer
-• Use 'womm context list' to verify the restored entries"""
-
-        _show_tip_panel(tip_content, "Restore Complete")
-
-    elif not success:
-        print_error("Restore failed - check the error details above")
+    if result["success"]:
+        if dry_run:
+            print_info(f"🔍 Would restore from: {selected_file.name}")
+            print_success("✅ Dry run completed successfully")
+        else:
+            ui.show_restore_success(selected_file, result["entry_count"])
+    else:
+        print_error(f"Restore failed: {result['error']}")
 
 
 @context_group.command("cherry-pick")
-@click.option("--dry-run", is_flag=True, help="Show changes without executing")
-@click.option("--verbose", is_flag=True, help="Verbose mode")
+@click.help_option("-h", "--help")
+@click.option(
+    "-d",
+    "--dry-run",
+    is_flag=True,
+    help="Show changes without executing",
+)
+@click.option(
+    "-v",
+    "--verbose",
+    is_flag=True,
+    help="Verbose mode",
+)
 def context_cherry_pick(dry_run, verbose):
     """🍒 Cherry-pick specific context menu entries from backups."""
     if not _check_windows_only():
         return
+
+    print_header("🍒 Context Menu Cherry-Pick")
 
     try:
         # Get backup directory and scan for backups
@@ -845,38 +790,43 @@ def _format_entry_display_name(entry: dict) -> str:
 
 def _get_current_context_entries(verbose: bool) -> set:
     """Get currently installed context menu entries."""
-    python_exe = _get_python_executable()
-    script_path = _get_registrator_script_path()
-
-    cmd = [python_exe, str(script_path), "--list"]
-
     if verbose:
         print_info("Checking currently installed context menu entries...")
 
     try:
-        import subprocess
+        # Import ContextMenuManager
+        from ..core.managers.context.managers.context_menu import ContextMenuManager
 
-        result = subprocess.run(  # noqa: S603
-            cmd,
-            capture_output=True,
-            text=True,
-            check=True,
-            encoding="utf-8",
-            errors="ignore",
-        )  # noqa: S603
+        # Initialize manager
+        manager = ContextMenuManager()
 
-        # Parse the output to extract key names
-        current_keys = set()
-        for line in result.stdout.splitlines():
-            if "Key:" in line:
-                key_match = line.split("Key:")[-1].strip()
-                if key_match:
-                    current_keys.add(key_match)
+        # Get current entries
+        result = manager.list_entries()
 
-        if verbose:
-            print_info(f"Found {len(current_keys)} currently installed entries")
+        if result["success"]:
+            entries = result["entries"]
+            current_keys = set()
 
-        return current_keys
+            # Extract key names from all context types
+            for context_type in ["directory", "background"]:
+                context_entries = entries.get(context_type, [])
+                for entry in context_entries:
+                    key_name = entry.get("key_name")
+                    if key_name:
+                        current_keys.add(key_name)
+
+            if verbose:
+                print_info(f"Found {len(current_keys)} currently installed entries")
+
+            return current_keys
+        else:
+            if verbose:
+                print_pattern(
+                    LogLevel.DEBUG,
+                    "SYSTEM",
+                    f"Error listing entries: {result['error']}",
+                )
+            return set()
 
     except Exception as e:
         if verbose:
@@ -920,8 +870,11 @@ def _show_cherry_pick_menu(available_entries: list) -> list:
 
 def _apply_cherry_picked_entries(selected_entries: list, dry_run: bool, verbose: bool):
     """Apply the selected context menu entries."""
-    python_exe = _get_python_executable()
-    script_path = _get_registrator_script_path()
+    # Import ContextMenuManager
+    from ..core.managers.context.managers.context_menu import ContextMenuManager
+
+    # Initialize manager
+    manager = ContextMenuManager()
 
     with create_spinner_with_status(
         f"Applying {len(selected_entries)} selected entries..."
@@ -950,31 +903,35 @@ def _apply_cherry_picked_entries(selected_entries: list, dry_run: bool, verbose:
                 print_info(f"   Source: {source_backup}")
                 print_info(f"   Command: {command}")
 
-            # Build registrator command
-            cmd = [python_exe, str(script_path)]
-
             # Extract script path from command (simplified approach)
+            script_path = None
             if '"' in command:
                 script_match = command.split('"')[1]
-                if script_match:
-                    cmd.extend([script_match, muiverb or key_name])
+                if script_match and Path(script_match).exists():
+                    script_path = script_match
 
-                    # Add icon if present
-                    if icon:
-                        cmd.append(icon)
+            if not script_path:
+                print_pattern(
+                    LogLevel.WARNING,
+                    "SYSTEM",
+                    f"Skipping {key_name}: could not extract script path",
+                )
+                continue
 
-            # Execute command
+            # Execute registration
             if dry_run:
-                print_info(f"Dry run: {' '.join(cmd)}")
+                print_info(
+                    f"Dry run: Would register {script_path} as '{muiverb or key_name}'"
+                )
             else:
-                success = _execute_registrator_command(
-                    cmd, f"Installing {key_name}", dry_run=False, verbose=verbose
+                result = manager.register_script(
+                    script_path, muiverb or key_name, icon or "auto", dry_run=False
                 )
 
-                if success:
+                if result["success"]:
                     print_success(f"Installed: {key_name}")
                 else:
-                    print_error(f"Failed to install: {key_name}")
+                    print_error(f"Failed to install: {key_name} - {result['error']}")
 
     if not dry_run:
         print_success(

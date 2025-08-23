@@ -12,11 +12,12 @@ import sys
 # Third-party imports
 import click
 
-# Local imports
-from ..common.security import security_validator
 from ..core.managers.installation.installation_manager import InstallationManager
 from ..core.managers.installation.uninstallation_manager import UninstallationManager
 from ..core.managers.system.user_path_manager import PathManager
+
+# Local imports
+from ..core.utils.security.security_validator import security_validator
 
 # COMMAND FUNCTIONS
 ########################################################
@@ -24,14 +25,18 @@ from ..core.managers.system.user_path_manager import PathManager
 
 
 @click.command()
+@click.help_option("-h", "--help")
 @click.option(
-    "--force",
     "-f",
+    "--force",
     is_flag=True,
     help="Force installation even if .womm directory exists",
 )
 @click.option(
-    "--target", type=click.Path(), help="Custom target directory (default: ~/.womm)"
+    "-t",
+    "--target",
+    type=click.Path(),
+    help="Custom target directory (default: ~/.womm)",
 )
 def install(force, target):
     """🚀 Install Works On My Machine in user directory."""
@@ -53,14 +58,15 @@ def install(force, target):
 
 
 @click.command()
+@click.help_option("-h", "--help")
 @click.option(
-    "--force",
-    "-f",
-    is_flag=True,
-    help="Force uninstallation without confirmation",
+    "-f", "--force", is_flag=True, help="Force uninstallation without confirmation"
 )
 @click.option(
-    "--target", type=click.Path(), help="Custom target directory (default: ~/.womm)"
+    "-t",
+    "--target",
+    type=click.Path(),
+    help="Custom target directory (default: ~/.womm)",
 )
 def uninstall(force, target):
     """🗑️ Uninstall Works On My Machine from user directory."""
@@ -82,17 +88,21 @@ def uninstall(force, target):
 
 
 @click.command("path")
+@click.help_option("-h", "--help")
 @click.option(
-    "--backup", "backup_flag", "-b", is_flag=True, help="Create a PATH backup"
+    "-b", "--backup", "backup_flag", is_flag=True, help="Create a PATH backup"
 )
 @click.option(
-    "--restore", "restore_flag", "-r", is_flag=True, help="Restore PATH from backup"
+    "-r", "--restore", "restore_flag", is_flag=True, help="Restore PATH from backup"
 )
 @click.option(
-    "--list", "list_flag", "-l", is_flag=True, help="List available PATH backups"
+    "-l", "--list", "list_flag", is_flag=True, help="List available PATH backups"
 )
 @click.option(
-    "--target", type=click.Path(), help="Custom target directory (default: ~/.womm)"
+    "-t",
+    "--target",
+    type=click.Path(),
+    help="Custom target directory (default: ~/.womm)",
 )
 def path_cmd(backup_flag, restore_flag, list_flag, target):
     """🧭 PATH utilities: backup, restore, and list backups."""

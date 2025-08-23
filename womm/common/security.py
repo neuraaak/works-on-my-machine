@@ -29,10 +29,7 @@ MIGRATION FROM SUBPROCESS:
 Assume security modules are available (no fallbacks).
 """
 
-from ..core.utils.security.security_validator import (
-    security_validator,
-    validate_user_input,
-)
+# Import moved to functions to avoid circular imports
 
 
 def run_secure_command(cmd, description=""):
@@ -48,6 +45,7 @@ def run_secure_command(cmd, description=""):
     """
     # Import CLI manager for secure execution
     from ..core.utils.cli_utils import run_secure
+    from ..core.utils.security.security_validator import security_validator
 
     # Validate command first
     command_list = cmd.split() if isinstance(cmd, str) else list(cmd)
@@ -95,7 +93,7 @@ def run_command(cmd, description="", **kwargs):
     return result
 
 
-def run_silent(cmd, description="", **kwargs):
+def run_silent(cmd, **kwargs):
     """
     Silent command execution without output.
 
@@ -104,7 +102,6 @@ def run_silent(cmd, description="", **kwargs):
 
     Args:
         cmd: Command to execute (string or list)
-        description: Description for logging
         **kwargs: Additional arguments (cwd, timeout, etc.)
 
     Returns:
@@ -120,8 +117,6 @@ def run_silent(cmd, description="", **kwargs):
 
 
 __all__ = [
-    "security_validator",
-    "validate_user_input",
     "run_secure_command",
     "run_command",
     "run_silent",

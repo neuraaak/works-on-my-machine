@@ -17,9 +17,7 @@ from ...utils.installation import (
     get_target_womm_path,
     verify_uninstallation_complete,
 )
-from ...utils.installation.path_management_utils import (
-    remove_from_path,
-)
+from ...utils.installation.path_management_utils import remove_from_path
 
 # MAIN CLASS
 ########################################################
@@ -71,16 +69,9 @@ class UninstallationManager:
             create_dynamic_layered_progress,
         )
         from ...ui.common.extended.progress_animations import ProgressAnimations
-        from ...ui.common.panels import (
-            create_panel,
-        )
-        from ...ui.common.progress import (
-            create_spinner_with_status,
-        )
-        from ...ui.common.prompts import (
-            confirm,
-            show_warning_panel,
-        )
+        from ...ui.common.panels import create_panel
+        from ...ui.common.progress import create_spinner_with_status
+        from ...ui.common.prompts import confirm, show_warning_panel
 
         print_header("W.O.M.M Uninstallation")
 

@@ -24,20 +24,26 @@ from ..common.path_resolver import resolve_script_path
 from ..common.results import SecurityResult, ValidationResult
 from ..common.security import (
     run_secure_command,
-    security_validator,
-    validate_user_input,
 )
 from ..core.managers.dependencies.runtime_manager import runtime_manager
 from ..core.ui.common.console import console
+from ..core.utils.security.security_validator import (
+    security_validator,
+    validate_user_input,
+)
 
 # MAIN FUNCTIONS
 ########################################################
 # Core CLI functionality and command groups
 
 
-@click.group()
-def new_group():
+@click.group(invoke_without_command=True)
+@click.help_option("-h", "--help")
+@click.pass_context
+def new_group(ctx):
     """🆕 Create new projects."""
+    if ctx.invoked_subcommand is None:
+        click.echo(ctx.get_help())
 
 
 # UTILITY FUNCTIONS
@@ -115,8 +121,10 @@ def print_prompt(message: str, required: bool = False) -> str:
 
 
 @new_group.command("python")
+@click.help_option("-h", "--help")
 @click.argument("project_name", required=False)
 @click.option(
+    "-c",
     "--current-dir",
     is_flag=True,
     help="Configure current directory instead of creating new one",
@@ -209,13 +217,16 @@ def new_python(project_name, current_dir):
 
 
 @new_group.command("javascript")
+@click.help_option("-h", "--help")
 @click.argument("project_name", required=False)
 @click.option(
+    "-c",
     "--current-dir",
     is_flag=True,
     help="Configure current directory instead of creating new one",
 )
 @click.option(
+    "-t",
     "--type",
     "project_type",
     type=click.Choice(["node", "react", "vue", "express"]),
@@ -316,8 +327,14 @@ def new_javascript(project_name, current_dir, project_type):
 
 
 @new_group.command("detect")
+@click.help_option("-h", "--help")
 @click.argument("project_name", required=False)
-@click.option("--current-dir", is_flag=True, help="Configure current directory")
+@click.option(
+    "-c",
+    "--current-dir",
+    is_flag=True,
+    help="Configure current directory",
+)
 def new_detect(project_name, current_dir):
     """🔍 Auto-detect project type and create appropriate setup."""
 

@@ -9,11 +9,7 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 from ....common.results import ToolResult
-from .lint_utils import (
-    check_tool_availability,
-    run_tool_check,
-    run_tool_fix,
-)
+from .lint_utils import check_tool_availability, run_tool_check, run_tool_fix
 
 
 class PythonLintingTools:

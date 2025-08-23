@@ -10,24 +10,38 @@ from pathlib import Path
 
 import click
 
-from ..core.managers.lint.lint_manager import LintManager
-from ..core.ui.common.console import print_info
-from ..core.ui.lint.lint import display_lint_summary, display_tool_status
+# Lazy imports - modules will be imported when needed
 
 
-@click.group()
-def lint_group():
+@click.group(invoke_without_command=True)
+@click.help_option("-h", "--help")
+@click.pass_context
+def lint_group(ctx):
     """🎨 Code quality and linting tools."""
+    if ctx.invoked_subcommand is None:
+        click.echo(ctx.get_help())
 
 
 @lint_group.command("python")
+@click.help_option("-h", "--help")
 @click.argument("path", type=click.Path(exists=True), default=".", required=False)
-@click.option("--fix", is_flag=True, help="Automatically fix code issues")
 @click.option(
-    "--tools", help="Comma-separated list of tools to run (ruff,black,isort,bandit)"
+    "-f",
+    "--fix",
+    is_flag=True,
+    help="Automatically fix code issues",
+)
+@click.option(
+    "-t",
+    "--tools",
+    help="Comma-separated list of tools to run (ruff,black,isort,bandit)",
 )
 def lint_python(path, fix, tools):
     """🐍 Lint Python code with ruff, black, isort, and bandit."""
+    # Lazy imports
+    from ..core.managers.lint.lint_manager import LintManager
+    from ..core.ui.lint.lint import display_lint_summary
+
     target_path = Path(path)
 
     # Parse tools if provided
@@ -65,11 +79,25 @@ def lint_python(path, fix, tools):
 
 
 @lint_group.command("all")
+@click.help_option("-h", "--help")
 @click.argument("path", type=click.Path(exists=True), default=".", required=False)
-@click.option("--fix", is_flag=True, help="Automatically fix code issues")
-@click.option("--tools", help="Comma-separated list of tools to run")
+@click.option(
+    "-f",
+    "--fix",
+    is_flag=True,
+    help="Automatically fix code issues",
+)
+@click.option(
+    "-t",
+    "--tools",
+    help="Comma-separated list of tools to run",
+)
 def lint_all(path, fix, tools):
     """🔍 Lint all supported code in project (alias for python)."""
+    # Lazy imports
+    from ..core.managers.lint.lint_manager import LintManager
+    from ..core.ui.lint.lint import display_lint_summary
+
     # For now, "all" is the same as "python" since we only support Python
     # This can be extended later for other languages
 
@@ -110,8 +138,14 @@ def lint_all(path, fix, tools):
 
 
 @lint_group.command("status")
+@click.help_option("-h", "--help")
 def lint_status():
     """🔧 Show status of available linting tools."""
+    # Lazy imports
+    from ..core.managers.lint.lint_manager import LintManager
+    from ..core.ui.common.console import print_info
+    from ..core.ui.lint.lint import display_tool_status
+
     print_info("🔍 Checking linting tools availability...")
 
     lint_manager = LintManager()

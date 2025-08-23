@@ -44,6 +44,7 @@ def _display_scan_info(scan_summary: dict) -> None:
     directories = scan_summary.get("directories", set())
     extensions = scan_summary.get("extensions", {})
 
+    console.print("")
     print_info(
         f"📁 Scanned {total_files} files ({_format_size(total_size)}) across {len(directories)} directories"
     )

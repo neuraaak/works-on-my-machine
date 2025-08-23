@@ -28,15 +28,7 @@ if sys.platform == "win32":
 
 # Import and register all command modules
 from . import __version__
-from .commands import (
-    context,
-    install,
-    lint,
-    new,
-    path_cmd,
-    spell,
-    system,
-)
+from .commands import context, install, lint, new, path_cmd, spell, system
 from .commands.install import uninstall
 
 # MAIN FUNCTIONS
@@ -45,6 +37,7 @@ from .commands.install import uninstall
 
 
 @click.group(invoke_without_command=True)
+@click.help_option("-h", "--help")
 @click.option(
     "--log-level",
     type=click.Choice(
@@ -93,7 +86,7 @@ def womm(ctx, log_level, log_file, log_json):
     # Show welcome message only when no subcommand is provided
     if ctx.invoked_subcommand is None:
         try:
-            from .core.ui.common import console
+            from .core.ui.common.console import console
             from .core.ui.common.panels import create_info_panel
 
             print(
@@ -131,7 +124,7 @@ Features:
 • Use WOMM commands in any directory
 • Install globally for easy access
 • Run security checks before using tools
-• Explore all available commands with --help
+• Explore all available commands with --help or -h
 """
 
             from .core.ui.common.panels import create_panel

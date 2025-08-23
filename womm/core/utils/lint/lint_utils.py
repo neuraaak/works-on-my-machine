@@ -8,11 +8,11 @@ Handles generic tool execution and result processing.
 import json
 import logging
 import re
-import subprocess
 from pathlib import Path
 from typing import List
 
 from ....common.results import ToolResult
+from ....common.security import run_silent
 
 
 def run_tool_check(
@@ -51,11 +51,9 @@ def run_tool_check(
     full_command = [tool_name] + args + relative_targets
 
     try:
-        result = subprocess.run(
+        result = run_silent(
             full_command,
             cwd=str(cwd),  # Convert Path to string
-            capture_output=True,
-            text=True,
             timeout=300,  # 5 minute timeout
         )
 
@@ -92,20 +90,21 @@ def run_tool_check(
             data=parsed_data,
         )
 
-    except subprocess.TimeoutExpired:
-        return ToolResult(
-            success=False,
-            tool_name=tool_name,
-            message=f"{tool_name} timed out after 5 minutes",
-            files_checked=len(target_dirs),
-        )
-    except Exception as exc:
-        return ToolResult(
-            success=False,
-            tool_name=tool_name,
-            message=f"Failed to execute {tool_name}: {str(exc)}",
-            files_checked=len(target_dirs),
-        )
+    except Exception as e:
+        if "timeout" in str(e).lower():
+            return ToolResult(
+                success=False,
+                tool_name=tool_name,
+                message=f"{tool_name} timed out after 5 minutes",
+                files_checked=len(target_dirs),
+            )
+        else:
+            return ToolResult(
+                success=False,
+                tool_name=tool_name,
+                message=f"Failed to execute {tool_name}: {str(e)}",
+                files_checked=len(target_dirs),
+            )
 
 
 def run_tool_fix(
@@ -139,11 +138,9 @@ def run_tool_fix(
     full_command = [tool_name] + args + relative_targets
 
     try:
-        result = subprocess.run(
+        result = run_silent(
             full_command,
             cwd=str(cwd),  # Convert Path to string
-            capture_output=True,
-            text=True,
             timeout=300,  # 5 minute timeout
         )
 
@@ -171,20 +168,21 @@ def run_tool_fix(
             fixed_issues=fixed_issues,
         )
 
-    except subprocess.TimeoutExpired:
-        return ToolResult(
-            success=False,
-            tool_name=tool_name,
-            message=f"{tool_name} timed out after 5 minutes",
-            files_checked=len(target_dirs),
-        )
-    except Exception as exc:
-        return ToolResult(
-            success=False,
-            tool_name=tool_name,
-            message=f"Failed to execute {tool_name}: {str(exc)}",
-            files_checked=len(target_dirs),
-        )
+    except Exception as e:
+        if "timeout" in str(e).lower():
+            return ToolResult(
+                success=False,
+                tool_name=tool_name,
+                message=f"{tool_name} timed out after 5 minutes",
+                files_checked=len(target_dirs),
+            )
+        else:
+            return ToolResult(
+                success=False,
+                tool_name=tool_name,
+                message=f"Failed to execute {tool_name}: {str(e)}",
+                files_checked=len(target_dirs),
+            )
 
 
 def check_tool_availability(tool_name: str) -> bool:
@@ -198,7 +196,6 @@ def check_tool_availability(tool_name: str) -> bool:
         bool: True if tool is available, False otherwise
     """
     import shutil
-    import subprocess
 
     try:
         # First check if command exists in PATH
@@ -206,14 +203,10 @@ def check_tool_availability(tool_name: str) -> bool:
             return False
 
         # Try to run --version with a timeout
-        result = subprocess.run(
+        result = run_silent(
             [tool_name, "--version"],
-            capture_output=True,
-            text=True,
             timeout=5,  # 5 second timeout
         )
-        return result.returncode == 0
-    except (subprocess.TimeoutExpired, FileNotFoundError, PermissionError):
-        return False
+        return result.success
     except Exception:
         return False

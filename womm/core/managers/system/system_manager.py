@@ -22,8 +22,8 @@ from ...ui.common.console import (
 from ...ui.common.progress import create_spinner_with_status
 from ...utils.system.system_detector import SystemDetector
 
-# Local imports
-from ..dependencies.runtime_manager import runtime_manager
+# Local imports - moved to methods to avoid slow startup
+# from ..dependencies.runtime_manager import runtime_manager
 
 # MAIN CLASS
 ########################################################
@@ -34,7 +34,15 @@ class SystemManager:
 
     def __init__(self):
         """Initialize the SystemManager."""
-        self.detector = SystemDetector()
+        # Lazy initialization to avoid slow startup
+        self._detector = None
+
+    @property
+    def detector(self):
+        """Lazy load SystemDetector when needed."""
+        if self._detector is None:
+            self._detector = SystemDetector()
+        return self._detector
 
     def detect_system(self) -> None:
         """Detect system information and available tools with UI."""
@@ -70,6 +78,9 @@ class SystemManager:
 
         from ...ui.common.console import print_system
 
+        # Lazy import to avoid slow startup
+        from ..dependencies.runtime_manager import runtime_manager
+
         print_system("Checking system prerequisites...")
 
         # Determine which tools to process
@@ -101,7 +112,13 @@ class SystemManager:
 
         # Step 1: Ensure a package manager is available (no auto-install)
         from ..dependencies.package_manager import package_manager
-        from ..dependencies.runtime_manager import RUNTIMES, RuntimeResult
+
+        # Lazy import to avoid slow startup
+        from ..dependencies.runtime_manager import (
+            RUNTIMES,
+            RuntimeResult,
+            runtime_manager,
+        )
 
         print_system("Checking system prerequisites...")
 
@@ -155,11 +172,11 @@ class SystemManager:
             console.print("✅ Tous les runtimes sont déjà installés !")
             return
 
-        print_system("\n🚀 Installation des runtimes sélectionnés...")
+        print_system("🚀 Installation des runtimes sélectionnés...")
 
         installation_results = {}
         for runtime in selected_runtimes:
-            print_system(f"\n📦 Installation de {runtime}...")
+            print_system(f"📦 Installation de {runtime}...")
 
             with create_spinner_with_status(f"Installing {runtime}...") as (
                 progress,
@@ -229,6 +246,8 @@ class SystemManager:
     def _interactive_runtime_selection(self, current_status: Dict) -> List[str]:
         """Interactive runtime selection using the new select_multiple_from_list method."""
         from ...ui.interactive import InteractiveMenu
+
+        # Lazy import to avoid slow startup
         from ..dependencies.runtime_manager import RUNTIMES
 
         # Prepare items for selection
