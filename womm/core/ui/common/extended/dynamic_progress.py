@@ -380,11 +380,19 @@ class DynamicLayeredProgress:
         if task_id is None:
             return
 
-        # Update with error styling
+        # Import Rich Text for proper error styling
+        from rich.text import Text
+
+        # Update with error styling using Rich Text objects
+        error_description = Text(
+            f"❌ {self.progress._tasks[task_id].description}", style="red"
+        )
+        error_details = Text(f"Error: {error}", style="red")
+
         self.progress.update(
             task_id,
-            description=f"[red]{self.progress._tasks[task_id].description}[/red]",
-            details=f"[red]Error: {error}[/red]",
+            description=error_description,
+            details=error_details,
         )
 
     def emergency_stop(self, error_message: str = "Critical error occurred"):
@@ -399,17 +407,23 @@ class DynamicLayeredProgress:
         if not self.progress:
             return
 
+        # Import Rich Text for proper error styling
+        from rich.text import Text
+
         # Apply error styling to all active layers
         for task_id in list(self.active_layers):
             # Check if task still exists before updating
             if task_id in self.progress._tasks:
                 task = self.progress._tasks[task_id]
 
-                # Apply error styling
+                # Apply error styling using Rich Text objects
+                error_description = Text(f"❌ {task.description}", style="bold red")
+                error_details = Text(f"Stopped: {error_message}", style="red")
+
                 self.progress.update(
                     task_id,
-                    description=f"[bold red]❌ {task.description}[/bold red]",
-                    details=f"[red]Stopped: {error_message}[/red]",
+                    description=error_description,
+                    details=error_details,
                 )
 
         # Stop the progress bar to freeze the display

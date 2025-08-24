@@ -462,5 +462,9 @@ def validate_user_input(input_value: str, input_type: str) -> Tuple[bool, str]:
         return security_validator.validate_path(input_value)
     elif input_type == "command":
         return security_validator.validate_command(input_value)
+    elif input_type == "template_name":
+        return security_validator.validate_project_name(
+            input_value
+        )  # Use same validation as project_name
     else:
         return False, f"Unknown input type: {input_type}"

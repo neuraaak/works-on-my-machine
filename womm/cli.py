@@ -28,7 +28,17 @@ if sys.platform == "win32":
 
 # Import and register all command modules
 from . import __version__
-from .commands import context, install, lint, new, path_cmd, spell, system
+from .commands import (
+    context,
+    install,
+    lint,
+    new,
+    path_cmd,
+    setup,
+    spell,
+    system,
+    template,
+)
 from .commands.install import uninstall
 
 # MAIN FUNCTIONS
@@ -157,6 +167,8 @@ womm.add_command(lint.lint_group)
 womm.add_command(spell.spell_group)
 womm.add_command(system.system_group)
 womm.add_command(context.context_group)
+womm.add_command(setup.setup_group)
+womm.add_command(template.template_group)
 
 # UTILITY FUNCTIONS
 ########################################################

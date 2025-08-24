@@ -1,123 +1,30 @@
 #!/usr/bin/env python3
 """
 New project commands for WOMM CLI.
-Handles creation of new Python and JavaScript projects.
+Handles creation of new Python and JavaScript projects using the modular architecture.
 """
 
-# IMPORTS
-########################################################
-# External modules and dependencies
-
 import sys
-from pathlib import Path
+from typing import Optional
 
 import click
 
-# IMPORTS
-########################################################
-# Local utility imports
-from ..common.path_resolver import resolve_script_path
-
-# IMPORTS
-########################################################
-# Internal modules and dependencies
-from ..common.results import SecurityResult, ValidationResult
-from ..common.security import (
-    run_secure_command,
+from ..core.managers.project import ProjectManager
+from ..core.ui.common.console import (
+    print_error,
+    print_header,
 )
-from ..core.managers.dependencies.runtime_manager import runtime_manager
-from ..core.ui.common.console import console
-from ..core.utils.security.security_validator import (
-    security_validator,
-    validate_user_input,
-)
-
-# MAIN FUNCTIONS
-########################################################
-# Core CLI functionality and command groups
+from ..core.ui.project import ProjectWizard
+from ..core.utils.security.security_validator import validate_user_input
 
 
 @click.group(invoke_without_command=True)
 @click.help_option("-h", "--help")
 @click.pass_context
 def new_group(ctx):
-    """🆕 Create new projects."""
+    """🆕 Create new projects with modern development setup."""
     if ctx.invoked_subcommand is None:
         click.echo(ctx.get_help())
-
-
-# UTILITY FUNCTIONS
-########################################################
-# Helper functions and utilities
-
-
-def print_new_project_progress(step: str, message: str):
-    """Display project creation progress"""
-    console.print(f"🔄 {step}: {message}", style="blue")
-
-
-def print_new_project_complete(project_type: str, project_name: str, project_path: str):
-    """Display project creation completion"""
-    console.print(
-        f"✅ {project_type} project '{project_name}' created successfully!",
-        style="green",
-    )
-    console.print(f"📁 Location: {project_path}", style="cyan")
-
-
-def print_new_project_error(project_type: str, project_name: str, error: str):
-    """Display project creation error"""
-    console.print(
-        f"❌ Failed to create {project_type} project '{project_name}': {error}",
-        style="red",
-    )
-
-
-def print_dependency_check_result(result):
-    """Display dependency check result"""
-    if result.all_available:
-        console.print("✅ All dependencies are available", style="green")
-    else:
-        console.print(
-            f"⚠️ Missing dependencies: {', '.join(result.missing)}", style="yellow"
-        )
-
-
-def print_installation_result(result):
-    """Display installation result"""
-    if result.success:
-        console.print("✅ Dependencies installed successfully", style="green")
-    else:
-        console.print(f"❌ Installation failed: {result.error}", style="red")
-
-
-def print_security_result(result):
-    """Display security validation result"""
-    if result.success:
-        console.print("✅ Security validation passed", style="green")
-    else:
-        console.print(f"❌ Security validation failed: {result.error}", style="red")
-
-
-def print_validation_result(result):
-    """Display input validation result"""
-    if result.success:
-        console.print("✅ Input validation passed", style="green")
-    else:
-        console.print(f"❌ Input validation failed: {result.error}", style="red")
-
-
-def print_prompt(message: str, required: bool = False) -> str:
-    """Display a prompt and get user input"""
-    prompt_text = f"{message}: "
-    if required:
-        prompt_text += "(required) "
-    return input(prompt_text)
-
-
-# COMMAND FUNCTIONS
-########################################################
-# Command implementations
 
 
 @new_group.command("python")
@@ -127,92 +34,69 @@ def print_prompt(message: str, required: bool = False) -> str:
     "-c",
     "--current-dir",
     is_flag=True,
-    help="Configure current directory instead of creating new one",
+    help="Use current directory instead of creating a new one",
 )
-def new_python(project_name, current_dir):
+@click.option(
+    "-t",
+    "--target",
+    help="Target directory where to create the project (default: current directory)",
+)
+@click.option(
+    "-i",
+    "--interactive",
+    is_flag=True,
+    help="Run in interactive mode with guided setup",
+)
+@click.option(
+    "--author-name",
+    help="Author name for the project",
+)
+@click.option(
+    "--author-email",
+    help="Author email for the project",
+)
+@click.option(
+    "--project-url",
+    help="Project URL",
+)
+@click.option(
+    "--project-repository",
+    help="Project repository URL",
+)
+def new_python(
+    project_name: Optional[str],
+    current_dir: bool,
+    target: Optional[str],
+    interactive: bool,
+    author_name: Optional[str],
+    author_email: Optional[str],
+    project_url: Optional[str],
+    project_repository: Optional[str],
+):
     """🐍 Create a new Python project with full development environment."""
 
-    # 0. Prompt for project name if not provided and not current-dir
-    if not project_name and not current_dir:
-        project_name = print_prompt("Nom du projet Python", required=True)
-        if not project_name:
-            print_new_project_error("python", "unknown", "Nom de projet requis")
-            sys.exit(1)
+    # Initialize project manager
+    project_manager = ProjectManager()
 
-    # 1. Security validation for project name
-    if project_name:
-        print_new_project_progress("Security validation", "Validating project name")
-        is_valid, error = validate_user_input(project_name, "project_name")
-        validation_result = ValidationResult(
-            success=is_valid,
-            input_type="project_name",
-            input_value=project_name,
-            error=error,
+    try:
+        # Interactive mode
+        if interactive:
+            return _run_interactive_python_setup(project_manager)
+
+        # Non-interactive mode
+        return _run_direct_python_setup(
+            project_manager,
+            project_name,
+            current_dir,
+            target,
+            author_name,
+            author_email,
+            project_url,
+            project_repository,
         )
-        print_validation_result(validation_result)
 
-        if not is_valid:
-            print_new_project_error("python", project_name, error)
-            sys.exit(1)
-
-    # 2. Check dependencies
-    print_new_project_progress("Dependency check", "Checking Python availability")
-    python_result = runtime_manager.check_runtime("python")
-    print_dependency_check_result(python_result)
-
-    # 3. Install dependencies if needed
-    if not python_result.success:
-        print_new_project_progress(
-            "Dependency installation", "Installing missing dependencies"
-        )
-        install_result = runtime_manager.install_runtime("python")
-        print_installation_result(install_result)
-
-        if not install_result.success:
-            print_new_project_error(
-                "python", project_name or "unknown", "Dependency installation failed"
-            )
-            sys.exit(1)
-
-    # 4. Security validation for script execution
-    script_path = resolve_script_path("languages/python/scripts/setup_project.py")
-
-    print_new_project_progress("Script validation", "Validating setup script")
-    is_valid, error = security_validator.validate_script_execution(script_path)
-    security_result = SecurityResult(
-        success=is_valid, error=error, security_level="high"
-    )
-    print_security_result(security_result)
-
-    if not is_valid:
-        print_new_project_error(
-            "python",
-            project_name or "unknown",
-            f"Script validation failed: {error}",
-        )
-        sys.exit(1)
-
-    # 5. Build and execute command
-    print_new_project_progress("Project setup", "Executing setup script")
-    cmd = [sys.executable, str(script_path)]
-    if current_dir:
-        cmd.append("--current-dir")
-    elif project_name:
-        cmd.append(project_name)
-
-    # 6. Execute setup script
-    result = run_secure_command(cmd, "Setting up Python project")
-
-    # 7. Handle result
-    if result.success:
-        project_path = Path.cwd() / (project_name or Path.cwd().name)
-        print_new_project_complete(
-            "Python", project_name or "current", str(project_path)
-        )
-    else:
-        print_new_project_error(
-            "python", project_name or "unknown", result.stderr or "Setup failed"
-        )
+    except Exception as e:
+        print_error(f"Error creating Python project: {e}")
         sys.exit(1)
 
 
@@ -223,154 +107,242 @@ def new_python(project_name, current_dir):
     "-c",
     "--current-dir",
     is_flag=True,
-    help="Configure current directory instead of creating new one",
+    help="Use current directory instead of creating a new one",
 )
 @click.option(
     "-t",
+    "--target",
+    help="Target directory where to create the project (default: current directory)",
+)
+@click.option(
     "--type",
     "project_type",
-    type=click.Choice(["node", "react", "vue", "express"]),
+    type=click.Choice(["node", "react", "vue"]),
     default="node",
     help="JavaScript project type",
 )
-def new_javascript(project_name, current_dir, project_type):
+@click.option(
+    "-i",
+    "--interactive",
+    is_flag=True,
+    help="Run in interactive mode with guided setup",
+)
+@click.option(
+    "--author-name",
+    help="Author name for the project",
+)
+@click.option(
+    "--author-email",
+    help="Author email for the project",
+)
+@click.option(
+    "--project-url",
+    help="Project URL",
+)
+@click.option(
+    "--project-repository",
+    help="Project repository URL",
+)
+def new_javascript(
+    project_name: Optional[str],
+    current_dir: bool,
+    target: Optional[str],
+    project_type: str,
+    interactive: bool,
+    author_name: Optional[str],
+    author_email: Optional[str],
+    project_url: Optional[str],
+    project_repository: Optional[str],
+):
     """🟨 Create a new JavaScript/Node.js project with development tools."""
 
-    # 0. Prompt for project name if not provided and not current-dir
-    if not project_name and not current_dir:
-        project_name = print_prompt("Nom du projet JavaScript", required=True)
-        if not project_name:
-            print_new_project_error("javascript", "unknown", "Nom de projet requis")
-            sys.exit(1)
+    # Initialize project manager
+    project_manager = ProjectManager()
 
-    # 1. Security validation for project name
-    if project_name:
-        print_new_project_progress("Security validation", "Validating project name")
-        is_valid, error = validate_user_input(project_name, "project_name")
-        validation_result = ValidationResult(
-            success=is_valid,
-            input_type="project_name",
-            input_value=project_name,
-            error=error,
+    try:
+        # Interactive mode
+        if interactive:
+            return _run_interactive_javascript_setup(project_manager)
+
+        # Non-interactive mode
+        return _run_direct_javascript_setup(
+            project_manager,
+            project_name,
+            current_dir,
+            target,
+            project_type,
+            author_name,
+            author_email,
+            project_url,
+            project_repository,
         )
-        print_validation_result(validation_result)
 
-        if not is_valid:
-            print_new_project_error("javascript", project_name, error)
-            sys.exit(1)
-
-    # 2. Check dependencies
-    print_new_project_progress("Dependency check", "Checking Node.js availability")
-    node_result = runtime_manager.check_runtime("node")
-    print_dependency_check_result(node_result)
-
-    # 3. Install dependencies if needed
-    if not node_result.success:
-        print_new_project_progress(
-            "Dependency installation", "Installing missing dependencies"
-        )
-        install_result = runtime_manager.install_runtime("node")
-        print_installation_result(install_result)
-
-        if not install_result.success:
-            print_new_project_error(
-                "javascript",
-                project_name or "unknown",
-                "Dependency installation failed",
-            )
-            sys.exit(1)
-
-    # 4. Security validation for script execution
-    script_path = resolve_script_path("languages/javascript/scripts/setup_project.py")
-
-    print_new_project_progress("Script validation", "Validating setup script")
-    is_valid, error = security_validator.validate_script_execution(script_path)
-    security_result = SecurityResult(
-        success=is_valid, error=error, security_level="high"
-    )
-    print_security_result(security_result)
-
-    if not is_valid:
-        print_new_project_error(
-            "javascript",
-            project_name or "unknown",
-            f"Script validation failed: {error}",
-        )
+    except Exception as e:
+        print_error(f"Error creating JavaScript project: {e}")
         sys.exit(1)
 
-    # 5. Build and execute command
-    print_new_project_progress(
-        "Project setup", f"Executing {project_type} setup script"
+
+# Helper functions for interactive modes
+def _run_interactive_python_setup(project_manager: ProjectManager) -> int:
+    """Run interactive Python project setup."""
+    print_header("🐍 Interactive Python Project Setup")
+
+    # Get project configuration
+    config = ProjectWizard.run_interactive_setup()
+    if not config:
+        print_error("Project setup cancelled")
+        return 1
+
+    # Create project
+    success = project_manager.create_project(
+        project_type="python",
+        project_name=config.get("project_name"),
+        target=str(config.get("project_path").parent),
+        **config.get("options", {}),
     )
-    cmd = [sys.executable, str(script_path)]
-    if current_dir:
-        cmd.append("--current-dir")
-    elif project_name:
-        cmd.append(project_name)
 
-    cmd.extend(["--type", project_type])
-
-    # 6. Execute setup script
-    result = run_secure_command(cmd, f"Setting up {project_type} project")
-
-    # 7. Handle result
-    if result.success:
-        project_path = Path.cwd() / (project_name or Path.cwd().name)
-        print_new_project_complete(
-            "JavaScript", project_name or "current", str(project_path)
-        )
+    if success:
+        return 0
     else:
-        print_new_project_error(
-            "javascript", project_name or "unknown", result.stderr or "Setup failed"
-        )
-        sys.exit(1)
+        return 1
 
 
-@new_group.command("detect")
-@click.help_option("-h", "--help")
-@click.argument("project_name", required=False)
-@click.option(
-    "-c",
-    "--current-dir",
-    is_flag=True,
-    help="Configure current directory",
-)
-def new_detect(project_name, current_dir):
-    """🔍 Auto-detect project type and create appropriate setup."""
+def _run_interactive_javascript_setup(project_manager: ProjectManager) -> int:
+    """Run interactive JavaScript project setup."""
+    print_header("🟨 Interactive JavaScript Project Setup")
 
-    print_new_project_progress("Project detection", "Detecting project type")
+    # Get project configuration
+    config = ProjectWizard.run_interactive_setup()
+    if not config:
+        print_error("Project setup cancelled")
+        return 1
 
-    # Utiliser le détecteur interne au lieu d'un script externe inexistant
-    from ..core.utils.project.project_detector import (
-        ProjectDetector,
-        launch_project_setup,
+    # Determine the project type based on configuration
+    js_project_type = config.get("project_type", "node")
+
+    # Map the project type to the correct ProjectManager type
+    if js_project_type in ["react", "vue"]:
+        pm_project_type = js_project_type  # Use directly: "react" or "vue"
+    else:
+        pm_project_type = "javascript"  # Use "javascript" for node, library, cli
+
+    # Prepare options
+    options = config.get("options", {})
+
+    # Add project_type to options only when using "javascript" as main type
+    # and it's not already in options
+    if pm_project_type == "javascript" and "project_type" not in options:
+        options["project_type"] = js_project_type
+
+    # Remove project_type from options to avoid conflict with create_project parameter
+    options.pop("project_type", None)
+
+    # Create project
+    success = project_manager.create_project(
+        project_type=pm_project_type,
+        project_name=config.get("project_name"),
+        target=str(config.get("project_path").parent),
+        **options,
     )
 
-    detector = ProjectDetector(Path.cwd())
-    detected_type, confidence = detector.detect_project_type()
+    if success:
+        return 0
+    else:
+        return 1
 
-    if detected_type == "generic" or confidence == 0:
-        print_new_project_error(
-            "auto-detected",
-            project_name or "unknown",
-            "No suitable project type detected",
-        )
-        sys.exit(1)
 
-    # Lancer la configuration directement
-    rc = launch_project_setup(
-        project_type=detected_type,
+# Helper functions for direct modes
+def _run_direct_python_setup(
+    project_manager: ProjectManager,
+    project_name: Optional[str],
+    current_dir: bool,
+    target: Optional[str],
+    author_name: Optional[str],
+    author_email: Optional[str],
+    project_url: Optional[str],
+    project_repository: Optional[str],
+) -> int:
+    """Run direct Python project setup."""
+
+    # Validate project name if provided
+    if project_name and not current_dir:
+        is_valid, error = validate_user_input(project_name, "project_name")
+        if not is_valid:
+            print_error(f"Invalid project name: {error}")
+            return 1
+
+    # Prepare options
+    options = {}
+    if author_name:
+        options["author_name"] = author_name
+    if author_email:
+        options["author_email"] = author_email
+    if project_url:
+        options["project_url"] = project_url
+    if project_repository:
+        options["project_repository"] = project_repository
+    if target:
+        options["target"] = target
+
+    # Create project
+    success = project_manager.create_project(
+        project_type="python",
         project_name=project_name,
         current_dir=current_dir,
+        **options,
     )
 
-    if rc == 0:
-        project_path = Path.cwd() / (project_name or Path.cwd().name)
-        print_new_project_complete(
-            detected_type.title(), project_name or "current", str(project_path)
-        )
+    if success:
+        return 0
     else:
-        print_new_project_error(
-            detected_type, project_name or "unknown", "Detection/setup failed"
-        )
-        sys.exit(1)
+        return 1
+
+
+def _run_direct_javascript_setup(
+    project_manager: ProjectManager,
+    project_name: Optional[str],
+    current_dir: bool,
+    target: Optional[str],
+    project_type: str,
+    author_name: Optional[str],
+    author_email: Optional[str],
+    project_url: Optional[str],
+    project_repository: Optional[str],
+) -> int:
+    """Run direct JavaScript project setup."""
+
+    # Validate project name if provided
+    if project_name and not current_dir:
+        is_valid, error = validate_user_input(project_name, "project_name")
+        if not is_valid:
+            print_error(f"Invalid project name: {error}")
+            return 1
+
+    # Prepare options
+    options = {}
+    if author_name:
+        options["author_name"] = author_name
+    if author_email:
+        options["author_email"] = author_email
+    if project_url:
+        options["project_url"] = project_url
+    if project_repository:
+        options["project_repository"] = project_repository
+    if target:
+        options["target"] = target
+
+    # Create project
+    # Map CLI types to ProjectManager types
+    pm_project_type = "javascript" if project_type == "node" else project_type
+
+    success = project_manager.create_project(
+        project_type=pm_project_type,
+        project_name=project_name,
+        current_dir=current_dir,
+        **options,
+    )
+
+    if success:
+        return 0
+    else:
+        return 1

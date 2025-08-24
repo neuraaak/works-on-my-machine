@@ -8,10 +8,7 @@ This script automates code quality checks:
 - isort for import organization
 """
 
-import argparse
 
-# Import the new CLI manager
-import sys
 from pathlib import Path
 
 from ....core.utils.cli_utils import run_command
@@ -268,42 +265,3 @@ def fix_code(target_path=None):
     else:
         print("⚠️  Some fixes failed.")
         return 1
-
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description="Linting script for Python projects",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
-Exemples:
-    # Analyze current directory
-    python lint.py
-
-    # Analyze specific directory
-    python lint.py /path/to/project
-
-    # Automatically fix code
-    python lint.py --fix
-
-    # Fix specific directory
-    python lint.py /path/to/project --fix
-        """,
-    )
-
-    parser.add_argument(
-        "path",
-        nargs="?",
-        help="Path to project to analyze (default: current directory)",
-    )
-    parser.add_argument(
-        "--fix",
-        action="store_true",
-        help="Automatically fix code instead of just analyzing it",
-    )
-
-    args = parser.parse_args()
-
-    if args.fix:
-        sys.exit(fix_code(args.path))
-    else:
-        sys.exit(main(args.path))

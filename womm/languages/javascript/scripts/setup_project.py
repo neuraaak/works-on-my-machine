@@ -25,7 +25,6 @@ Features:
     - Configure VSCode and NPM
 """
 
-import argparse
 import json
 import shutil
 import subprocess
@@ -227,26 +226,8 @@ class JavaScriptProjectSetup:
         devtools_path = Path.home() / ".womm"
         sys.path.insert(0, str(devtools_path))
 
-        try:
-            from ....core.managers.project.environment_manager import EnvironmentManager
-
-            manager = EnvironmentManager(self.project_path, "javascript")
-
-            if manager.prompt_install_tools():
-                if manager.setup_javascript_environment():
-                    manager.create_activation_scripts()
-                    print("   [OK] Development environment configured")
-                    return True
-                else:
-                    print("   [WARN] Error configuring development environment")
-                    return False
-            else:
-                print("   [SKIP] Development environment setup skipped")
-                return True
-
-        except ImportError:
-            print("   [WARN] environment_manager module not found")
-            return False
+        print("   [INFO] Development environment setup skipped (legacy)")
+        return True
 
     def create_package_json(self):
         """Create the package.json file."""
@@ -637,49 +618,3 @@ describe('App Component', () => {{
 [END] Happy JavaScript coding!
 """
         )
-
-
-def main():
-    """Execute the main function."""
-    parser = argparse.ArgumentParser(
-        description="Configure a JavaScript development environment"
-    )
-    parser.add_argument(
-        "project_name", nargs="?", help="Project name (optional if --current-dir)"
-    )
-    parser.add_argument(
-        "--current-dir",
-        action="store_true",
-        help="Configure current directory instead of creating a new one",
-    )
-    parser.add_argument(
-        "--type",
-        choices=["node", "react", "vue", "vanilla"],
-        default="node",
-        help="JavaScript project type (default: node)",
-    )
-
-    args = parser.parse_args()
-
-    if args.current_dir:
-        project_path = Path.cwd()
-        project_name = project_path.name
-    elif args.project_name:
-        project_name = args.project_name
-        project_path = Path.cwd() / project_name
-    else:
-        # Ce cas ne devrait plus arriver car new.py gère le prompt
-        print("[ERROR] Nom de projet requis")
-        return 1
-
-    # Plus de confirmation interactive pour éviter les timeouts
-    # La confirmation est gérée par new.py
-    project_type = args.type
-
-    setup = JavaScriptProjectSetup(project_path, project_name, project_type)
-    setup.setup_all()
-    return 0
-
-
-if __name__ == "__main__":
-    sys.exit(main())

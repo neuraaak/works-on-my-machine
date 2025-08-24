@@ -25,7 +25,6 @@ Features:
     - Configure VSCode
 """
 
-import argparse
 import shutil
 import subprocess
 import sys
@@ -170,26 +169,8 @@ class PythonProjectSetup:
         devtools_path = Path.home() / ".womm"
         sys.path.insert(0, str(devtools_path))
 
-        try:
-            from ....core.managers.project.environment_manager import EnvironmentManager
-
-            manager = EnvironmentManager(self.project_path, "python")
-
-            if manager.prompt_install_tools():
-                if manager.setup_python_environment():
-                    manager.create_activation_scripts()
-                    print("   [OK] Development environment configured")
-                    return True
-                else:
-                    print("   [WARN] Error configuring development environment")
-                    return False
-            else:
-                print("   [SKIP] Development environment setup skipped")
-                return True
-
-        except ImportError:
-            print("   [WARN] environment_manager module not found")
-            return False
+        print("   [INFO] Development environment setup skipped (legacy)")
+        return True
 
     def create_project_files(self):
         """Create the basic project files."""
@@ -433,42 +414,3 @@ def test_import():
 [END] Happy Python coding!
 """
         )
-
-
-def main():
-    """Fonction principale."""
-    parser = argparse.ArgumentParser(
-        description="Configure a Python development environment"
-    )
-    parser.add_argument(
-        "project_name", nargs="?", help="Project name (optional if --current-dir)"
-    )
-    parser.add_argument(
-        "--current-dir",
-        action="store_true",
-        help="Configure current directory instead of creating a new one",
-    )
-
-    args = parser.parse_args()
-
-    if args.current_dir:
-        project_path = Path.cwd()
-        project_name = project_path.name
-    elif args.project_name:
-        project_name = args.project_name
-        project_path = Path.cwd() / project_name
-    else:
-        # Ce cas ne devrait plus arriver car new.py gère le prompt
-        print("[ERROR] Nom de projet requis")
-        return 1
-
-    # Plus de confirmation interactive pour éviter les timeouts
-    # La confirmation est gérée par new.py
-
-    setup = PythonProjectSetup(project_path, project_name)
-    setup.setup_all()
-    return 0
-
-
-if __name__ == "__main__":
-    sys.exit(main())
