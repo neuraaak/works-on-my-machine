@@ -1,5 +1,5 @@
 # WOMM Package Manifest
-# This file controls what files are included in the PyPI package
+# This file controls what files are included in the package distribution
 
 # Include README and documentation
 include README.md
@@ -54,8 +54,29 @@ global-exclude benchmarks
 global-exclude coverage
 global-exclude ignore-install.txt
 global-exclude MANIFEST
-global-exclude pyproject.toml
+# pyproject.toml is needed for package installation
 global-exclude Makefile
 global-exclude setup.py
 global-exclude tests
-global-exclude run_tests.py 
+global-exclude tests/run_tests.py
+
+# Exclude PyPI deployment files
+global-exclude PYPI_DEPLOYMENT.md
+
+# Exclude temporary and cache directories
+global-exclude temp/
+global-exclude tmp/
+global-exclude _temp/
+global-exclude .cache/
+
+# Exclude documentation (not needed for installation)
+global-exclude docs/
+
+# Exclude development configuration
+global-exclude .pre-commit-config.yaml
+global-exclude .cspell-dict/
+
+# Exclude backup files
+global-exclude *.bak
+global-exclude *.backup
+global-exclude *.orig 

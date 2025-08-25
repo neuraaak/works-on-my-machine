@@ -1,210 +1,283 @@
-# 🛠️ Works On My Machine - Multi-Language Development Environment
+# 🛠️ Works On My Machine (WOMM)
 
-> **Universal development tools for Python and JavaScript**  
-> Automatic installation, cross-platform configuration, global commands
+[![Python](https://img.shields.io/badge/Python-3.8+-blue.svg?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
+[![License](https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge)](LICENSE)
+[![Version](https://img.shields.io/badge/Version-2.6.1-orange.svg?style=for-the-badge)](https://github.com/neuraaak/works-on-my-machine)
+[![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg?style=for-the-badge)](https://github.com/neuraaak/works-on-my-machine)
+[![Status](https://img.shields.io/badge/Status-Beta-yellow.svg?style=for-the-badge)](https://github.com/neuraaak/works-on-my-machine)
 
-## 📚 Documentation Navigation
+[![Tests](https://img.shields.io/badge/Tests-TODO-orange.svg?style=flat-square)](https://github.com/neuraaak/works-on-my-machine)
+[![Documentation](https://img.shields.io/badge/Documentation-Complete-blue.svg?style=flat-square)](docs/README.md)
+[![Maintenance](https://img.shields.io/badge/Maintenance-Active-brightgreen.svg?style=flat-square)](https://github.com/neuraaak/works-on-my-machine)
 
-**🏠 [Main Documentation](README.md)** (You are here)  
-**📚 [Documentation Index](docs/README.md)**  
-**🐍 [Python Development](docs/languages/python/PYTHON.md)**  
-**🟨 [JavaScript Development](docs/languages/javascript/JAVASCRIPT.md)**  
-**⚙️ [Environment Setup](docs/ENVIRONMENT_SETUP.md)**  
-**🔧 [Prerequisites Installation](docs/PREREQUISITE_INSTALLER.md)**
-
-## 🚀 Quick Installation
-
-```bash
-# 1. Download/extract works-on-my-machine anywhere
-# 2. Run installation
-womm install
-
-# 3. Restart terminal
-# 4. Use anywhere!
-womm new python my-app     # Create Python project
-womm new javascript my-app # Create JavaScript project
-womm lint python          # Lint Python code
-```
-
-## 📁 Project Structure
-
-```
-works-on-my-machine/
-├── 📋 README.md                     # This file
-├── 🔧 womm.py                       # Main CLI entry point (Click)
-├── 🔧 womm.bat                      # Windows batch wrapper
-├── 📦 bin/                          # Global commands (added to PATH)
-├── 🐍 languages/python/             # Python tools and scripts
-├── 🟨 languages/javascript/         # JavaScript tools and scripts
-├── 🔄 shared/                       # Shared utilities
-├── 📚 docs/                         # Complete documentation (→ see [docs/README.md](docs/README.md))
-└── 🧪 tests/                        # Test framework
-```
-
-## 🎯 Available Commands
-
-After initialization, usable from any directory:
-
-### 🆕 Project Creation
-- `womm new python name` - Python project with complete environment
-- `womm new javascript name` - JavaScript/Node.js project with tooling
-- `womm new detect name` - Auto-detect project type and setup
-
-### 🔧 Installation Management
-- `womm install` - Install WOMM in user directory
-- `womm uninstall` - Remove WOMM from system
-
-### 🔍 Linting and Quality
-- `womm lint python` - Lint Python code with flake8, black, isort
-- `womm lint all` - Lint all supported code in project
-
-### 📝 Spell Checking
-- `womm spell install` - Install CSpell globally
-- `womm spell setup project` - Setup CSpell for project
-- `womm spell check` - Check spelling in files
-
-### 🔧 System Management
-- `womm system detect` - Detect system information and tools
-- `womm system install python node git npm` - Install prerequisites
-
-### 📦 Deployment
-- `womm deploy tools` - Deploy tools to global directory
-
-### 🖱️ Windows Context Menu
-- `womm context register` - Register WOMM tools in context menu
-- `womm context unregister` - Remove WOMM tools from context menu
-- `womm context list` - List registered context menu entries
-
-## 🔧 Architecture & CLI Management
-
-### Modern Click CLI System
-Works On My Machine uses a modern Click-based CLI system that provides:
-
-- **Beautiful command interface** with automatic help generation
-- **Command grouping** for organized functionality
-- **Automatic argument parsing** and validation
-- **Cross-platform compatibility** with consistent behavior
-- **Integration** with system command execution via `shared/cli_manager.py`
-
-### CLI Features
-```bash
-# Main help
-womm --help
-
-# Group help
-womm new --help
-womm system --help
-
-# Command help
-womm new python --help
-womm system install --help
-```
-
-### System Command Integration
-```python
-from shared.cli_manager import run_command, run_silent, check_tool_available
-
-# Execution with logging
-result = run_command(["npm", "install"], "Installing dependencies")
-
-# Silent execution
-result = run_silent(["python", "--version"])
-
-# Tool availability check
-if check_tool_available("git"):
-    print("Git available")
-```
-
-## 📚 Language-Specific Documentation
-
-### 🐍 **Python** → [docs/languages/python/PYTHON.md](docs/languages/python/PYTHON.md)
-- Complete configuration (Black, isort, flake8, pytest)
-- PyProject.toml, pre-commit, VSCode templates
-- Development scripts and Makefile
-
-### 🟨 **JavaScript** → [docs/languages/javascript/JAVASCRIPT.md](docs/languages/javascript/JAVASCRIPT.md)
-- Modern tools (ESLint, Prettier, TypeScript)
-- package.json, tsconfig.json templates
-- Support for Node.js, React, Vue, etc.
-
-## 📚 Complete Documentation Index
-
-### 🚀 **Getting Started**
-- **📋 [README.md](README.md)** - Main documentation (this file)
-- **📚 [Documentation Index](docs/README.md)** - Complete documentation hub
-- **⚙️ [Environment Setup](docs/ENVIRONMENT_SETUP.md)** - Development environment management
-- **🔧 [Prerequisites Installation](docs/PREREQUISITE_INSTALLER.md)** - Required tools installation
-
-### 🌐 **Language-Specific Guides**
-- **🐍 [Python Development](docs/languages/python/PYTHON.md)** - Python tools and configuration
-- **🟨 [JavaScript Development](docs/languages/javascript/JAVASCRIPT.md)** - JavaScript/Node.js tools
-
-### 📋 **Documentation Standards**
-- **📚 [Documentation Rules](docs/DOCUMENTATION_RULES.md)** - Standards and guidelines for documentation
-- **🔧 [Common Commands](docs/COMMON_COMMANDS.md)** - Centralized command reference
-
-### 📚 **Quick Navigation**
-
-| Topic | Description | File |
-|-------|-------------|------|
-| **Project Setup** | How to use Works On My Machine | [README.md](README.md) |
-| **Documentation Hub** | Complete documentation index | [docs/README.md](docs/README.md) |
-| **Environment Manager** | Automatic dev environment setup | [docs/ENVIRONMENT_SETUP.md](docs/ENVIRONMENT_SETUP.md) |
-| **Prerequisites** | Install Python, Node.js, Git automatically | [docs/PREREQUISITE_INSTALLER.md](docs/PREREQUISITE_INSTALLER.md) |
-| **Python Tools** | Black, flake8, pytest, pre-commit setup | [docs/languages/python/PYTHON.md](docs/languages/python/PYTHON.md) |
-| **JavaScript Tools** | ESLint, Prettier, Jest, Husky setup | [docs/languages/javascript/JAVASCRIPT.md](docs/languages/javascript/JAVASCRIPT.md) |
-
-### 🎯 **By Use Case**
-
-**Setting up a new Python project:**
-1. 📋 [Installation](README.md#-quick-installation) 
-2. 🐍 [Python Guide](docs/languages/python/PYTHON.md)
-3. ⚙️ [Environment Setup](docs/ENVIRONMENT_SETUP.md)
-
-**Setting up a new JavaScript project:**
-1. 📋 [Installation](README.md#-quick-installation)
-2. 🟨 [JavaScript Guide](docs/languages/javascript/JAVASCRIPT.md) 
-3. ⚙️ [Environment Setup](docs/ENVIRONMENT_SETUP.md)
-
-**Installing prerequisites:**
-1. 🔧 [Prerequisites Guide](docs/PREREQUISITE_INSTALLER.md)
-2. 📋 [Main Installation](README.md#-quick-installation)
-
-## ⚙️ Features
-
-### ✅ **Cross-Platform**
-- **Windows**: Batch + PowerShell + Python
-- **Linux/Mac**: Bash + Python
-- Automatic PATH configuration
-
-### ✅ **Intelligent**
-- **Auto-relocation** to `%USER%/.womm`
-- **Automatic project detection**
-- **Adaptive configuration** based on OS
-
-### ✅ **Professional**
-- **Automatic pre-commit hooks**
-- **Shared VSCode** configuration
-- **Industry standards** (Black, ESLint, etc.)
-
-## 🔧 Technical Architecture
-
-### Installation
-1. **Smart Init** detects location and relocates if necessary
-2. **PATH Setup** permanently adds `{USER_HOME}/.womm/bin`
-3. **Click CLI** provides modern command interface
-
-### Usage
-1. **Automatic detection** of project type (Python/JS)
-2. **Selection** of appropriate tools
-3. **Adapted configuration** and templates
-
-## 📋 Version History
-
-- **v1.0** - Modern Click CLI with full feature set
-- **v0.9** - Multi-language restructuring (Python + JavaScript)
-- **v0.8** - Initial release with Python support
+> **Universal development environment manager for Python and JavaScript**  
+> 🚀 **One command to rule them all** - Automatic setup, cross-platform configuration, professional tooling
 
 ---
 
-**This system makes dev-tools entirely self-sufficient! 🎉**
+## 🎯 What is WOMM?
+
+**Works On My Machine** is a comprehensive development environment manager that eliminates the "it works on my machine" problem. It provides a unified CLI tool that automatically sets up professional development environments for Python and JavaScript projects.
+
+### ✨ **Key Features**
+
+- 🚀 **One-Command Setup** - Complete project initialization with professional tooling
+- 🔧 **Cross-Platform** - Works seamlessly on Windows, macOS, and Linux
+- 🎯 **Smart Detection** - Automatically detects project types and applies appropriate configurations
+- 📦 **Template System** - Create reusable project templates from existing projects
+- 🛠️ **Professional Tooling** - Pre-configured with industry-standard tools (Black, ESLint, Prettier, etc.)
+- 🔄 **Interactive Mode** - Guided setup with beautiful CLI interfaces
+- 📚 **Comprehensive Documentation** - Complete guides for every feature
+
+---
+
+## 🚀 Quick Start
+
+### **Installation**
+
+```bash
+# Clone the repository
+git clone https://github.com/neuraaak/works-on-my-machine.git
+cd works-on-my-machine
+
+# Install WOMM globally
+python womm.py install
+
+# Restart your terminal, then use WOMM anywhere!
+```
+
+### **Create Your First Project**
+
+```bash
+# Create a Python project with full tooling
+womm new python my-awesome-app
+
+# Create a JavaScript/React project
+womm new javascript my-react-app
+
+# Let WOMM detect and setup automatically
+womm new detect my-project
+```
+
+### **Setup Existing Projects**
+
+```bash
+# Setup Python project with professional tooling
+womm setup python
+
+# Setup JavaScript project with ESLint, Prettier, etc.
+womm setup javascript
+
+# Auto-detect and setup
+womm setup detect
+```
+
+---
+
+## 🎯 Available Commands
+
+### **🆕 Project Creation**
+
+```bash
+womm new python <name>     # Create Python project with virtual env, Black, pytest
+womm new javascript <name> # Create JavaScript project with ESLint, Prettier
+womm new detect <name>     # Auto-detect project type and create
+womm new --interactive     # Guided project creation
+```
+
+### **⚙️ Project Setup**
+
+```bash
+womm setup python          # Setup Python project (dependencies, tools, config)
+womm setup javascript      # Setup JavaScript project (npm, ESLint, etc.)
+womm setup detect          # Auto-detect and setup project
+womm setup --interactive   # Guided setup process
+```
+
+### **🔍 Code Quality**
+
+```bash
+womm lint python           # Lint Python code (Black, isort, flake8)
+womm lint javascript       # Lint JavaScript code (ESLint, Prettier)
+womm lint all              # Lint all supported code in project
+womm spell check           # Check spelling in project files
+```
+
+### **📦 Template Management**
+
+```bash
+womm template create       # Create template from current project
+womm template list         # List available templates
+womm template info <name>  # Show template details
+womm template delete <name> # Delete template
+```
+
+### **🔧 System Management**
+
+```bash
+womm system detect         # Detect system information and tools
+womm system install <tools> # Install prerequisites (python, node, git)
+womm install               # Install WOMM globally
+womm uninstall             # Remove WOMM from system
+```
+
+### **🖱️ Windows Integration**
+
+```bash
+womm context register      # Register WOMM in Windows context menu
+womm context unregister    # Remove from context menu
+womm context list          # List registered entries
+```
+
+---
+
+## 🏗️ What WOMM Sets Up
+
+### **🐍 Python Projects**
+
+- ✅ **Virtual Environment** with `venv`
+- ✅ **Code Formatting** with Black and isort
+- ✅ **Linting** with flake8 and ruff
+- ✅ **Testing** with pytest and coverage
+- ✅ **Pre-commit Hooks** for quality assurance
+- ✅ **VSCode Configuration** for consistent development
+- ✅ **pyproject.toml** with modern Python packaging
+- ✅ **Development Scripts** for common tasks
+
+### **🟨 JavaScript Projects**
+
+- ✅ **Package Management** with npm/yarn
+- ✅ **Code Formatting** with Prettier
+- ✅ **Linting** with ESLint
+- ✅ **Testing** with Jest
+- ✅ **Git Hooks** with Husky
+- ✅ **VSCode Configuration** for JavaScript development
+- ✅ **TypeScript Support** (optional)
+- ✅ **Modern ES6+ Configuration**
+
+### **🔧 Professional Tooling**
+
+- ✅ **Cross-Platform Compatibility**
+- ✅ **Consistent Code Style** across team
+- ✅ **Automated Quality Checks**
+- ✅ **Integrated Development Environment**
+- ✅ **Best Practices** out of the box
+
+---
+
+## 📚 Documentation
+
+### **📖 [Complete Documentation](docs/README.md)**
+
+- **📋 [CLI Commands](docs/cli/README.md)** - All available commands and options
+- **🐍 [Python Guide](docs/cli/NEW.md)** - Python project creation and setup
+- **🟨 [JavaScript Guide](docs/cli/SETUP.md)** - JavaScript project setup
+- **📦 [Templates](docs/cli/TEMPLATES.md)** - Template management system
+- **🔧 [Installation](docs/cli/INSTALL.md)** - Installation and configuration
+- **🛠️ [System Tools](docs/cli/SYSTEM.md)** - System detection and management
+
+### **🔌 [API Reference](docs/api/README.md)**
+
+- **🏗️ [Architecture](docs/api/ARCHITECTURE.md)** - Technical architecture overview
+- **📦 [Templates API](docs/api/TEMPLATES_REFERENCE.md)** - Template system reference
+
+---
+
+## 🎯 Use Cases
+
+### **👨‍💻 Individual Developers**
+
+- **Quick Project Setup** - Start coding in minutes, not hours
+- **Consistent Environments** - Same setup across all your machines
+- **Professional Standards** - Industry-standard tooling without the hassle
+
+### **👥 Development Teams**
+
+- **Standardized Workflows** - Everyone uses the same tools and configurations
+- **Onboarding** - New team members can start contributing immediately
+- **Quality Assurance** - Automated code quality checks for all projects
+
+### **🏢 Organizations**
+
+- **Template Library** - Create and share project templates across teams
+- **Best Practices** - Enforce coding standards and development workflows
+- **Cross-Platform** - Works consistently across Windows, macOS, and Linux
+
+---
+
+## 🛠️ Technical Architecture
+
+### **Core Components**
+
+- **CLI Interface** - Modern Click-based command-line interface
+- **Project Managers** - Language-specific project creation and setup
+- **Template System** - Dynamic template generation and management
+- **System Detection** - Automatic detection of tools and environments
+- **UI Components** - Rich terminal interfaces with progress tracking
+
+### **Supported Platforms**
+
+- **Windows** - Full support with batch scripts and PowerShell
+- **macOS** - Native Unix-like environment support
+- **Linux** - Complete compatibility with various distributions
+
+### **Language Support**
+
+- **Python** - 3.8+ with modern tooling ecosystem
+- **JavaScript** - Node.js with modern development tools
+- **Extensible** - Framework for adding more languages
+
+---
+
+## 🤝 Contributing
+
+We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
+
+### **Development Setup**
+
+```bash
+# Clone and setup development environment
+git clone https://github.com/neuraaak/works-on-my-machine.git
+cd works-on-my-machine
+
+# Install in development mode
+pip install -e .
+
+# Run tests
+pytest
+
+# Run linting
+womm lint python
+```
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+## 🙏 Acknowledgments
+
+- **Click** - For the excellent CLI framework
+- **Rich** - For beautiful terminal interfaces
+- **InquirerPy** - For interactive command-line prompts
+- **Black, ESLint, Prettier** - For code quality tools
+- **The Python and JavaScript communities** - For amazing development tools
+
+---
+
+## 📊 Project Status
+
+- **Version**: 2.6.1
+- **Status**: Beta (actively maintained)
+- **Python Support**: 3.8+
+- **Platforms**: Windows, macOS, Linux
+- **Languages**: Python, JavaScript
+
+---
+
+**Made with ❤️ by the WOMM Team**
+
+_"It works on my machine, and now it will work on yours too!"_ 🚀

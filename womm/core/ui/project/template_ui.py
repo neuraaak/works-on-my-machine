@@ -45,12 +45,12 @@ def print_template_list(templates: Dict[str, List[str]]) -> None:
 def print_template_info(template_name: str, template_info: Dict) -> None:
     """Display detailed template information in a Rich panel."""
     content = f"""
-[b]Name:[/b] {template_info.get('name', 'N/A')}
-[b]Description:[/b] {template_info.get('description', 'No description')}
-[b]Project Type:[/b] {template_info.get('project_type', 'unknown')}
-[b]Version:[/b] {template_info.get('version', 'N/A')}
-[b]Author:[/b] {template_info.get('author', 'N/A')}
-[b]Source Project:[/b] {template_info.get('source_project', 'N/A')}
+[b]Name:[/b] {template_info.get("name", "N/A")}
+[b]Description:[/b] {template_info.get("description", "No description")}
+[b]Project Type:[/b] {template_info.get("project_type", "unknown")}
+[b]Version:[/b] {template_info.get("version", "N/A")}
+[b]Author:[/b] {template_info.get("author", "N/A")}
+[b]Source Project:[/b] {template_info.get("source_project", "N/A")}
 
 [b]Template Variables:[/b]
 """

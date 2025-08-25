@@ -35,9 +35,9 @@ def _print_python_new_summary(project_path: Path, project_name: str) -> None:
     """Print Python project creation summary."""
     content = f"""
 📁 Project location: {project_path}
-🐍 Python package: {project_name.replace('-', '_')}
+🐍 Python package: {project_name.replace("-", "_")}
 
-{'=' * 50}
+{"=" * 50}
 
 🚀 Next steps:
 1. Activate virtual environment:
@@ -57,7 +57,7 @@ def _print_python_new_summary(project_path: Path, project_name: str) -> None:
    flake8 .
 
 6. Run the project:
-   python src/{project_name.replace('-', '_')}/main.py
+   python src/{project_name.replace("-", "_")}/main.py
 
 💡 The project includes:
   • Virtual environment (venv)
@@ -80,14 +80,16 @@ def _print_python_new_summary(project_path: Path, project_name: str) -> None:
 
 
 def _print_javascript_new_summary(
-    project_path: Path, project_name: str, project_type: str  # noqa: ARG001
+    project_path: Path,
+    project_name: str,
+    project_type: str,  # noqa: ARG001
 ) -> None:
     """Print JavaScript project creation summary."""
     content = f"""
 📁 Project location: {project_path}
 🟨 Project type: {project_type}
 
-{'=' * 50}
+{"=" * 50}
 
 🚀 Next steps:
 1. Install dependencies:
@@ -146,14 +148,16 @@ def _print_javascript_new_summary(
 
 
 def _print_generic_new_summary(
-    project_path: Path, project_name: str, project_type: str  # noqa: ARG001
+    project_path: Path,
+    project_name: str,
+    project_type: str,  # noqa: ARG001
 ) -> None:
     """Print generic project creation summary."""
     content = f"""
 📁 Project location: {project_path}
 📋 Project type: {project_type}
 
-{'=' * 50}
+{"=" * 50}
 
 🚀 Next steps:
 1. Navigate to project directory:

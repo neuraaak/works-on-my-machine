@@ -29,7 +29,8 @@ class ContextMenuUI:
 
     @staticmethod
     def show_backup_selection_menu(
-        backup_dir: Path, verbose: bool = False  # noqa: ARG004
+        backup_dir: Path,
+        verbose: bool = False,  # noqa: ARG004
     ) -> Optional[Path]:
         """
         Show interactive menu for selecting a backup file to restore.

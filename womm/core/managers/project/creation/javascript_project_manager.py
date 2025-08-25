@@ -649,7 +649,9 @@ createApp(App).mount('#app')
         html_file.write_text(html_content, encoding="utf-8")
 
     def _create_config_files(
-        self, project_path: Path, project_type: str  # noqa: ARG002
+        self,
+        project_path: Path,
+        project_type: str,  # noqa: ARG002
     ) -> bool:
         """Create configuration files."""
         try:
@@ -712,7 +714,10 @@ createApp(App).mount('#app')
             return False
 
     def _create_source_files(
-        self, project_path: Path, project_name: str, project_type: str  # noqa: ARG002
+        self,
+        project_path: Path,
+        project_name: str,
+        project_type: str,  # noqa: ARG002
     ) -> bool:
         """Create source files based on project type."""
         try:
@@ -810,7 +815,10 @@ module.exports = {
             return False
 
     def _initialize_npm_project(
-        self, project_path: Path, project_name: str, **kwargs  # noqa: ARG002
+        self,
+        project_path: Path,
+        project_name: str,
+        **kwargs,  # noqa: ARG002
     ) -> bool:
         """Initialize npm project."""
         try:

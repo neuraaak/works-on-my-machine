@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "works-on-my-machine"
-version = "2.6.1"
+version = "2.6.3"
 description = "Universal development tools for Python and JavaScript - Automatic installation, cross-platform configuration, global commands"
 readme = "README.md"
 license = { text = "MIT" }
@@ -157,6 +157,7 @@ extend-exclude = '''
   | \.vscode
   | __pycache__
   | \.egg-info
+  | \.hooks
 )/
 '''
 
@@ -181,6 +182,7 @@ skip = [
     ".vscode",
     "__pycache__",
     ".egg-info",
+    ".hooks",
 ]
 
 # Configuration MyPy
@@ -259,6 +261,7 @@ omit = [
     "*/.benchmarks/*",
     "*/.vscode/*",
     "*/.egg-info/*",
+    "*/.hooks/*",
     "setup.py",
     "lint.py",
     "init.py",
@@ -294,7 +297,7 @@ directory = "htmlcov"
 
 # Bandit configuration (security)
 [tool.bandit]
-exclude_dirs = ["tests", "build", "dist", "venv", ".venv"]
+exclude_dirs = ["tests", "build", "dist", "venv", ".venv", ".hooks"]
 skips = ["B101", "B601"]
 
 # Configuration Ruff (remplace flake8)

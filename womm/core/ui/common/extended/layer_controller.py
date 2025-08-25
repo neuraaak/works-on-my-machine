@@ -173,7 +173,8 @@ class LayerController:
         elif layer_type == LayerType.SPINNER:
             # Handle spinner layer - update status message
             self.progress.update(
-                task_id, status=details  # Use details as status message
+                task_id,
+                status=details,  # Use details as status message
             )
         elif layer_type == LayerType.DOWNLOAD:
             # Handle download layer - update progress and details
