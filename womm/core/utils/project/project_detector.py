@@ -207,7 +207,9 @@ def interactive_project_selection() -> str:
                     )
                     return detected_type
                 else:
-                    logging.warning("⚠️  No type detected, using Python type by default")
+                    logging.warning(
+                        "⚠️  No type detected, using Python type by default"
+                    )
                     return "python"
 
             choice_idx = int(choice) - 1

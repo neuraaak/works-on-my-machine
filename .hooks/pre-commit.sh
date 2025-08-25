@@ -1,0 +1,39 @@
+#!/bin/bash
+# Pre-commit hook for WOMM project (Bash version)
+# Runs code quality checks before allowing commits
+
+set -e  # Exit on any error
+
+# Get project root (parent of .hooks directory)
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$PROJECT_ROOT"
+
+echo "🔍 Running pre-commit checks..."
+
+# Check if lint.py exists
+if [ ! -f "lint.py" ]; then
+    echo "❌ Error: lint.py not found in project root"
+    exit 1
+fi
+
+# Check if Python is available
+if ! command -v python &> /dev/null; then
+    echo "❌ Error: Python not found in PATH"
+    exit 1
+fi
+
+# Run linting checks with check-only mode
+echo "🔧 Running code quality checks..."
+if python lint.py --check-only; then
+    echo "✅ Pre-commit checks passed!"
+    exit 0
+else
+    echo "❌ Pre-commit checks failed!"
+    echo ""
+    echo "💡 To fix issues automatically, run:"
+    echo "   python lint.py --fix"
+    echo ""
+    echo "💡 To see detailed output, run:"
+    echo "   python lint.py --check-only --verbose"
+    exit 1
+fi

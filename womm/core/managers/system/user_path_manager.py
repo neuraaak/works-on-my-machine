@@ -392,7 +392,7 @@ class PathManager:
                         "modified": datetime.fromtimestamp(stat.st_mtime).strftime(
                             "%Y-%m-%d %H:%M:%S"
                         ),
-                        "description": f"JSON backup ({data.get('timestamp','')})",
+                        "description": f"JSON backup ({data.get('timestamp', '')})",
                     }
                     result["backups"].append(backup_info)
 

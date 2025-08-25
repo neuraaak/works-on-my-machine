@@ -1,0 +1,24 @@
+#!/bin/bash
+# Post-commit hook for WOMM project
+# Automatically detects platform and runs appropriate tag management script
+
+set -e  # Exit on any error
+
+# Get the directory of this script
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Detect platform and run appropriate script
+if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" || "$OSTYPE" == "win32" ]]; then
+    # Windows - try PowerShell first, fallback to bash
+    if command -v pwsh >/dev/null 2>&1; then
+        echo "🪟 Using PowerShell for Windows..."
+        pwsh -File "$SCRIPT_DIR/post-commit.ps1"
+    else
+        echo "🪟 Using Bash for Windows..."
+        bash "$SCRIPT_DIR/post-commit.sh"
+    fi
+else
+    # Unix/Linux/macOS - use bash
+    echo "🐧 Using Bash for Unix/Linux/macOS..."
+    bash "$SCRIPT_DIR/post-commit.sh"
+fi

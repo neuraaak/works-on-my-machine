@@ -54,11 +54,11 @@ global-exclude benchmarks
 global-exclude coverage
 global-exclude ignore-install.txt
 global-exclude MANIFEST
-global-exclude pyproject.toml
+# pyproject.toml is needed for package installation
 global-exclude Makefile
 global-exclude setup.py
 global-exclude tests
-global-exclude run_tests.py
+global-exclude tests/run_tests.py
 
 # Exclude PyPI deployment files
 global-exclude PYPI_DEPLOYMENT.md

@@ -1,0 +1,147 @@
+#!/bin/bash
+# Post-commit hook for WOMM project (Bash version)
+# Automatically creates version tags after commits
+
+set -e  # Exit on any error
+
+# Get project root (parent of .hooks directory)
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$PROJECT_ROOT"
+
+echo "🏷️  Running post-commit tag management..."
+
+# Function to read version from pyproject.toml
+get_version_from_pyproject() {
+    local pyproject_path="$PROJECT_ROOT/pyproject.toml"
+    if [[ -f "$pyproject_path" ]]; then
+        local version
+        version=$(grep -E '^version\s*=\s*"' "$pyproject_path" | sed -E 's/version\s*=\s*"([^"]+)"/\1/')
+        if [[ -n "$version" ]]; then
+            echo "$version"
+            return 0
+        fi
+    fi
+    return 1
+}
+
+# Function to read version from setup.py (fallback)
+get_version_from_setup() {
+    local setup_path="$PROJECT_ROOT/setup.py"
+    if [[ -f "$setup_path" ]]; then
+        local version
+        version=$(grep -E "version\s*=\s*['\"]" "$setup_path" | sed -E "s/.*version\s*=\s*['\"]([^'\"]+)['\"].*/\1/")
+        if [[ -n "$version" ]]; then
+            echo "$version"
+            return 0
+        fi
+    fi
+    return 1
+}
+
+# Function to get major version
+get_major_version() {
+    local version="$1"
+    if [[ "$version" =~ ^([0-9]+)\. ]]; then
+        echo "${BASH_REMATCH[1]}"
+        return 0
+    fi
+    return 1
+}
+
+# Function to create or move tag
+set_git_tag() {
+    local tag_name="$1"
+    local commit_hash="$2"
+    
+    # Check if tag exists
+    if git tag -l "$tag_name" >/dev/null 2>&1; then
+        echo "🔄 Moving existing tag '$tag_name' to current commit..."
+        # Delete local tag
+        git tag -d "$tag_name" >/dev/null 2>&1 || true
+        # Delete remote tag if it exists
+        git push origin ":refs/tags/$tag_name" >/dev/null 2>&1 || true
+    fi
+    
+    # Create new tag
+    if git tag "$tag_name" "$commit_hash"; then
+        echo "✅ Created tag '$tag_name' on commit $commit_hash"
+        return 0
+    else
+        echo "❌ Failed to create tag '$tag_name'"
+        return 1
+    fi
+}
+
+# Function to push tag to remote
+push_git_tag() {
+    local tag_name="$1"
+    
+    echo "📤 Pushing tag '$tag_name' to remote..."
+    if git push origin "$tag_name" >/dev/null 2>&1; then
+        echo "✅ Tag '$tag_name' pushed to remote"
+    else
+        echo "⚠️  Failed to push tag '$tag_name' to remote (may not exist)"
+    fi
+}
+
+# Main execution
+main() {
+    # Get current commit hash
+    local commit_hash
+    commit_hash=$(git rev-parse HEAD)
+    if [[ $? -ne 0 ]]; then
+        echo "❌ Failed to get current commit hash"
+        exit 1
+    fi
+    
+    echo "📝 Current commit: $commit_hash"
+    
+    # Read version from pyproject.toml or setup.py
+    local version
+    version=$(get_version_from_pyproject) || version=$(get_version_from_setup)
+    
+    if [[ -z "$version" ]]; then
+        echo "❌ Could not find version in pyproject.toml or setup.py"
+        exit 1
+    fi
+    
+    echo "📦 Project version: $version"
+    
+    # Get major version
+    local major_version
+    major_version=$(get_major_version "$version")
+    if [[ -z "$major_version" ]]; then
+        echo "❌ Could not extract major version from '$version'"
+        exit 1
+    fi
+    
+    # Create version tag (e.g., v2.6.1)
+    local version_tag="v$version"
+    local version_tag_created=false
+    if set_git_tag "$version_tag" "$commit_hash"; then
+        version_tag_created=true
+    fi
+    
+    # Create major version tag (e.g., v2-latest)
+    local major_tag="v$major_version-latest"
+    local major_tag_created=false
+    if set_git_tag "$major_tag" "$commit_hash"; then
+        major_tag_created=true
+    fi
+    
+    # Push tags to remote if they were created successfully
+    if [[ "$version_tag_created" == "true" ]]; then
+        push_git_tag "$version_tag"
+    fi
+    
+    if [[ "$major_tag_created" == "true" ]]; then
+        push_git_tag "$major_tag"
+    fi
+    
+    echo "🎉 Post-commit tag management completed!"
+    echo "   Version tag: $version_tag"
+    echo "   Major tag: $major_tag"
+}
+
+# Run main function
+main "$@"

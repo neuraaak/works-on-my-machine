@@ -8,7 +8,7 @@ and project setup across multiple programming languages.
 Author: WOMM Team
 """
 
-__version__ = "2.6.1"
+__version__ = "2.6.2"
 __author__ = "Neuraaak"
 __description__ = "Universal development tools for multiple languages - Automatic installation, cross-platform configuration, global commands"
 

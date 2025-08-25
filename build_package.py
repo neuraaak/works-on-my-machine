@@ -5,9 +5,8 @@ This script builds the package and optionally uploads it to PyPI.
 """
 
 import os
-import sys
 import subprocess
-from pathlib import Path
+import sys
 
 
 def run_command(command, description=""):

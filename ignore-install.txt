@@ -60,7 +60,6 @@ setup.py
 
 # Tests (not needed for installation)
 tests
-run_tests.py
 
 # Build tools (not needed for installation)
 # build_package.py - Keep for PyPI deployment
