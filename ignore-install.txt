@@ -32,6 +32,7 @@ node_modules
 # IDE and editor files
 .vscode
 .idea
+.cursor
 
 # Logs
 *.log
@@ -43,7 +44,6 @@ Thumbs.db
 # Additional development files
 .mypy_cache
 .ruff_cache
-.cursor
 *_temp.*
 *.mdc
 cspell.json
@@ -63,8 +63,31 @@ tests
 run_tests.py
 
 # Build tools (not needed for installation)
-build_package.py
-build_exe.py
+# build_package.py - Keep for PyPI deployment
 
 # Generated files (created dynamically during installation)
-womm.bat 
+womm.bat
+
+# Temporary and cache directories
+temp/
+tmp/
+_temp/
+.cache/
+
+# Documentation (not needed for installation)
+docs/
+
+# Development configuration
+.pre-commit-config.yaml
+.cspell-dict/
+
+# OS specific files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Backup files
+*.bak
+*.backup
+*.orig 
