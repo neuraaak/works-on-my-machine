@@ -74,6 +74,7 @@ nosetests.xml
 
 # Cursor AI
 .cursor/
+.github/
 
 # Other editors
 .idea/
@@ -110,6 +111,8 @@ $RECYCLE.BIN/
 *.tmp
 *.temp
 _temp/
+temp/
+tmp/
 
 # ===================================
 # Sensitive files (from memory)
@@ -165,3 +168,32 @@ node_modules/
 *.pyo
 *.pyd
 .Python
+
+# ===================================
+# Build and deployment files
+# ===================================
+# PyPI deployment files (kept for distribution)
+# build_package.py - Keep for PyPI deployment
+# PYPI_DEPLOYMENT.md - Removed (documentation was redundant)
+
+# ===================================
+# Additional patterns
+# ===================================
+# Temporary files
+*.tmp
+*.temp
+*~
+
+# IDE specific
+.vscode/settings.json
+.vscode/launch.json
+.vscode/tasks.json
+
+# OS specific
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Project specific
+commit_message.txt

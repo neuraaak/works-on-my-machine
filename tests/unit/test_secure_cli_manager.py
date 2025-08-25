@@ -8,7 +8,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from shared.secure_cli_manager import (
+from womm.core.secure_cli_manager import (
     SecureCLIManager,
     SecureCommandResult,
     check_tool_secure,
@@ -207,7 +207,7 @@ class TestSecureCLIManager:
             mock_run.return_value = Mock(success=True, security_validated=True)
 
             manager = SecureCLIManager()
-            result = manager.run_silent(["python", "--version"])
+            manager.run_silent(["python", "--version"])
 
             mock_run.assert_called_once()
             call_args = mock_run.call_args
@@ -220,7 +220,7 @@ class TestSecureCLIManager:
             mock_run.return_value = Mock(success=True, security_validated=True)
 
             manager = SecureCLIManager()
-            result = manager.run_interactive(["python", "--version"])
+            manager.run_interactive(["python", "--version"])
 
             mock_run.assert_called_once()
             call_args = mock_run.call_args
@@ -232,7 +232,7 @@ class TestSecureCLIManager:
             mock_run.return_value = Mock(success=True, security_validated=True)
 
             manager = SecureCLIManager()
-            result = manager.run_with_validation(["python", "--version"], "Test")
+            manager.run_with_validation(["python", "--version"], "Test")
 
             mock_run.assert_called_once()
             call_args = mock_run.call_args
@@ -420,7 +420,7 @@ class TestSecureCLIManagerEdgeCases:
             mock_subprocess.return_value = Mock(returncode=0, stdout="", stderr="")
 
             manager = SecureCLIManager(verbose=False)
-            result = manager.run("echo 'test'", shell=True)
+            manager.run("echo 'test'", shell=True)
 
             mock_subprocess.assert_called_once()
             call_args = mock_subprocess.call_args
@@ -432,7 +432,7 @@ class TestSecureCLIManagerEdgeCases:
             mock_subprocess.return_value = Mock(returncode=0, stdout="", stderr="")
 
             manager = SecureCLIManager(verbose=False)
-            result = manager.run(["python"], input_data="print('hello')")
+            manager.run(["python"], input_data="print('hello')")
 
             mock_subprocess.assert_called_once()
             call_args = mock_subprocess.call_args
@@ -445,7 +445,7 @@ class TestSecureCLIManagerEdgeCases:
 
             manager = SecureCLIManager(verbose=False)
             custom_env = {"TEST_VAR": "test_value"}
-            result = manager.run(["python", "--version"], env=custom_env)
+            manager.run(["python", "--version"], env=custom_env)
 
             mock_subprocess.assert_called_once()
             call_args = mock_subprocess.call_args
@@ -478,7 +478,7 @@ class TestSecureCLIManagerEdgeCases:
             mock_subprocess.return_value = Mock(returncode=0, stdout="", stderr="")
 
             manager = SecureCLIManager(verbose=False)
-            result = manager.run(["python", "--version"], timeout=60)
+            manager.run(["python", "--version"], timeout=60)
 
             mock_subprocess.assert_called_once()
             call_args = mock_subprocess.call_args
@@ -491,7 +491,7 @@ class TestSecureCLIManagerEdgeCases:
 
             manager = SecureCLIManager(verbose=False)
             custom_cwd = Path("/custom/path")
-            result = manager.run(["python", "--version"], cwd=custom_cwd)
+            manager.run(["python", "--version"], cwd=custom_cwd)
 
             mock_subprocess.assert_called_once()
             call_args = mock_subprocess.call_args

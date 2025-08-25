@@ -4,107 +4,113 @@ Build script for WOMM PyPI package.
 This script builds the package and optionally uploads it to PyPI.
 """
 
-import shutil
+import os
 import subprocess
 import sys
-from pathlib import Path
 
 
-def clean_build_dirs():
-    """Clean build and dist directories."""
-    dirs_to_clean = ["build", "dist", "*.egg-info"]
+def run_command(command, description=""):
+    """Run a command and return success status."""
+    if description:
+        print(f"🔄 {description}...")
 
-    for pattern in dirs_to_clean:
-        for path in Path(".").glob(pattern):
-            if path.is_dir():
-                print(f"Removing {path}")
+    try:
+        result = subprocess.run(command, check=True, capture_output=True, text=True)
+        if result.stdout:
+            print(result.stdout)
+        return True
+    except subprocess.CalledProcessError as e:
+        print(f"❌ Error: {e}")
+        if e.stderr:
+            print(f"Error output: {e.stderr}")
+        return False
+
+
+def clean_build():
+    """Clean previous build artifacts."""
+    print("🧹 Cleaning previous build artifacts...")
+
+    # Remove build directories
+    for path in ["build", "dist", "*.egg-info"]:
+        if os.path.exists(path):
+            if os.path.isdir(path):
+                import shutil
+
                 shutil.rmtree(path)
             else:
-                print(f"Removing {path}")
-                path.unlink()
+                os.remove(path)
+
+    print("✅ Build artifacts cleaned")
 
 
 def build_package():
     """Build the package."""
-    print("Building WOMM package...")
+    print("🔨 Building WOMM package...")
 
     # Clean previous builds
-    clean_build_dirs()
+    clean_build()
 
     # Build the package
-    result = subprocess.run( #noqa: S603
-        [sys.executable, "-m", "build", "--wheel", "--sdist"],
-        capture_output=True,
-        text=True,
-    )
+    commands = [
+        [sys.executable, "-m", "build", "--wheel"],
+        [sys.executable, "-m", "build", "--sdist"],
+    ]
 
-    if result.returncode != 0:
-        print("Build failed:")
-        print(result.stderr)
-        return False
+    for command in commands:
+        if not run_command(command, "Building package"):
+            return False
 
-    print("Build successful!")
-    print(result.stdout)
+    print("✅ Package built successfully")
     return True
 
 
 def check_package():
     """Check the built package."""
-    print("Checking package...")
+    print("🔍 Checking package...")
 
-    result = subprocess.run( #noqa: S603
+    commands = [
         [sys.executable, "-m", "twine", "check", "dist/*"],
-        capture_output=True,
-        text=True,
-    )
+    ]
 
-    if result.returncode != 0:
-        print("Package check failed:")
-        print(result.stderr)
-        return False
+    for command in commands:
+        if not run_command(command, "Checking package"):
+            return False
 
-    print("Package check passed!")
-    print(result.stdout)
+    print("✅ Package check passed")
     return True
 
 
 def upload_to_test_pypi():
     """Upload to Test PyPI."""
-    print("Uploading to Test PyPI...")
+    print("🚀 Uploading to Test PyPI...")
 
-    result = subprocess.run( #noqa: S603
+    commands = [
         [sys.executable, "-m", "twine", "upload", "--repository", "testpypi", "dist/*"],
-        capture_output=True,
-        text=True,
-    )
+    ]
 
-    if result.returncode != 0:
-        print("Upload to Test PyPI failed:")
-        print(result.stderr)
-        return False
+    for command in commands:
+        if not run_command(command, "Uploading to Test PyPI"):
+            print("❌ Upload to Test PyPI failed:")
+            return False
 
-    print("Upload to Test PyPI successful!")
-    print(result.stdout)
+    print("✅ Upload to Test PyPI successful!")
     return True
 
 
 def upload_to_pypi():
     """Upload to PyPI."""
-    print("Uploading to PyPI...")
+    print("🚀 Uploading to PyPI...")
 
-    result = subprocess.run( #noqa: S603
+    commands = [
         [sys.executable, "-m", "twine", "upload", "dist/*"],
-        capture_output=True,
-        text=True,
-    )
+    ]
 
-    if result.returncode != 0:
-        print("Upload to PyPI failed:")
-        print(result.stderr)
-        return False
+    for command in commands:
+        if not run_command(command, "Uploading to PyPI"):
+            print("❌ Upload to PyPI failed:")
+            return False
 
-    print("Upload to PyPI successful!")
-    print(result.stdout)
+    print("✅ Upload to PyPI successful!")
     return True
 
 
@@ -118,34 +124,32 @@ def main():
         print("  upload       - Upload to PyPI")
         return
 
-    command = sys.argv[1]
+    action = sys.argv[1]
 
-    if command == "build":
+    if action == "build":
         if not build_package():
             sys.exit(1)
 
-    elif command == "check":
-        if not check_package():
-            sys.exit(1)
-
-    elif command == "test-upload":
+    elif action == "check":
         if not build_package():
             sys.exit(1)
         if not check_package():
+            sys.exit(1)
+
+    elif action == "test-upload":
+        if not build_package():
             sys.exit(1)
         if not upload_to_test_pypi():
             sys.exit(1)
 
-    elif command == "upload":
+    elif action == "upload":
         if not build_package():
-            sys.exit(1)
-        if not check_package():
             sys.exit(1)
         if not upload_to_pypi():
             sys.exit(1)
 
     else:
-        print(f"Unknown command: {command}")
+        print(f"❌ Unknown action: {action}")
         sys.exit(1)
 
 

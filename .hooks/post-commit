@@ -1,0 +1,90 @@
+#!/bin/sh
+# Post-commit bash hook for automatic tag creation
+# Project: WOMM (Works On My Machine)
+# Usage: Copy this file to .git/hooks/post-commit (without extension)
+
+# Function to get version from pyproject.toml
+get_version_from_pyproject() {
+    if [ -f "pyproject.toml" ]; then
+        version=$(grep -E '^version\s*=\s*"' pyproject.toml | sed 's/.*version\s*=\s*"\([^"]*\)".*/\1/')
+        if [ -n "$version" ]; then
+            echo "$version"
+            return 0
+        fi
+    fi
+    return 1
+}
+
+# Function to get version from setup.py
+get_version_from_setup() {
+    if [ -f "setup.py" ]; then
+        version=$(grep -E "version\s*=\s*['\"]" setup.py | sed "s/.*version\s*=\s*['\"]\([^'\"]*\)['\"].*/\1/")
+        if [ -n "$version" ]; then
+            echo "$version"
+            return 0
+        fi
+    fi
+    return 1
+}
+
+# Function to create or update a tag
+create_or_update_tag() {
+    local tag_name="$1"
+    
+    # Check if tag already exists
+    if git rev-parse "$tag_name" >/dev/null 2>&1; then
+        # Update existing tag (force update)
+        if git tag -f "$tag_name"; then
+            echo "✓ [AUTO-TAG] Updated: $tag_name"
+        else
+            echo "❌ [AUTO-TAG] Update error: $tag_name"
+            return 1
+        fi
+    else
+        # Create lightweight tag
+        if git tag "$tag_name"; then
+            echo "✓ [AUTO-TAG] Created: $tag_name"
+        else
+            echo "❌ [AUTO-TAG] Creation error: $tag_name"
+            return 1
+        fi
+    fi
+    return 0
+}
+
+# Get version (priority: pyproject.toml then setup.py)
+version=$(get_version_from_pyproject)
+if [ $? -ne 0 ]; then
+    version=$(get_version_from_setup)
+fi
+
+if [ -n "$version" ]; then
+    # Classic version tag
+    tag_name="v$version"
+    create_or_update_tag "$tag_name"
+    
+    # Major version "latest" tag
+    major_version=$(echo "$version" | sed 's/^\([0-9]*\)\..*/\1/')
+    latest_tag_name=""
+    if [ -n "$major_version" ]; then
+        latest_tag_name="v$major_version-latest"
+        create_or_update_tag "$latest_tag_name"
+    fi
+    
+    # Automatic tag push (always executed)
+    if git push origin "$tag_name" --force >/dev/null 2>&1; then
+        echo "✓ [AUTO-TAG] Pushed: $tag_name"
+    else
+        echo "⚠️  [AUTO-TAG] Push error: $tag_name"
+    fi
+    
+    if [ -n "$latest_tag_name" ]; then
+        if git push origin "$latest_tag_name" --force >/dev/null 2>&1; then
+            echo "✓ [AUTO-TAG] Pushed: $latest_tag_name"
+        else
+            echo "⚠️  [AUTO-TAG] Push error: $latest_tag_name"
+        fi
+    fi
+else
+    echo "→ [AUTO-TAG] No version found"
+fi
