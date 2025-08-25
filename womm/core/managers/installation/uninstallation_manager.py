@@ -9,9 +9,20 @@ Removes WOMM from the system and cleans up PATH entries.
 # Standard library imports
 import platform
 from pathlib import Path
+from time import sleep
 from typing import Optional
 
 # Local imports
+from ...exceptions.uninstallation_exceptions import (
+    DirectoryRemovalError,
+    FileRemovalError,
+    InstallationNotFoundError,
+    PathCleanupError,
+    UninstallationFailedError,
+    UninstallationManagerError,
+    UninstallationProgressError,
+    UninstallationVerificationError,
+)
 from ...utils.installation import (
     get_files_to_remove,
     get_target_womm_path,
@@ -33,12 +44,58 @@ class UninstallationManager:
         Args:
             target: Custom target directory (default: ~/.womm)
         """
-        if target:
-            self.target_path = Path(target).expanduser().resolve()
-        else:
-            self.target_path = get_target_womm_path()
+        try:
+            if target:
+                self.target_path = Path(target).expanduser().resolve()
+            else:
+                self.target_path = get_target_womm_path()
+        except Exception as e:
+            raise InstallationNotFoundError(
+                reason=f"Failed to initialize uninstallation manager: {e}",
+                details="This is an unexpected error that should be reported",
+            ) from e
 
         self.platform = platform.system()
+
+    def _cleanup_path(self) -> bool:
+        """Cleanup PATH environment variable using path management utils.
+
+        Returns:
+            True if successful, False otherwise
+
+        Raises:
+            PathCleanupError: If PATH cleanup fails
+        """
+        try:
+            result = remove_from_path(self.target_path)
+            sleep(0.5)
+
+            if not result:
+                from ...ui.common.console import print_error
+
+                print_error("PATH cleanup failed: remove_from_path returned False")
+
+                raise PathCleanupError(
+                    target_path=str(self.target_path),
+                    reason="PATH cleanup failed",
+                    details="remove_from_path utility returned False",
+                )
+
+            return True
+
+        except PathCleanupError:
+            # Re-raise our custom exceptions
+            raise
+        except Exception as e:
+            from ...ui.common.console import print_error
+
+            print_error(f"Unexpected error during PATH cleanup: {e}")
+
+            raise PathCleanupError(
+                target_path=str(self.target_path),
+                reason=f"Unexpected error during PATH cleanup: {e}",
+                details="This is an unexpected error that should be reported",
+            ) from e
 
     def uninstall(
         self,
@@ -68,7 +125,6 @@ class UninstallationManager:
         from ...ui.common.extended.dynamic_progress import (
             create_dynamic_layered_progress,
         )
-        from ...ui.common.extended.progress_animations import ProgressAnimations
         from ...ui.common.panels import create_panel
         from ...ui.common.progress import create_spinner_with_status
         from ...ui.common.prompts import confirm, show_warning_panel
@@ -145,11 +201,13 @@ class UninstallationManager:
             return True
 
         # Define uninstallation stages with DynamicLayeredProgress
+        # Color palette: unified cyan for all steps, semantic colors for states
         stages = [
             {
                 "name": "main_uninstallation",
                 "type": "main",
                 "steps": [
+                    "Preparation",
                     "PATH Cleanup",
                     "File Removal",
                     "Verification",
@@ -158,17 +216,23 @@ class UninstallationManager:
                 "style": "bold bright_white",
             },
             {
+                "name": "preparation",
+                "type": "spinner",
+                "description": "Preparing uninstallation environment...",
+                "style": "bright_blue",
+            },
+            {
                 "name": "path_cleanup",
                 "type": "spinner",
                 "description": "Removing from PATH...",
-                "style": "bright_red",
+                "style": "bright_blue",
             },
             {
                 "name": "file_removal",
                 "type": "progress",
                 "total": len(files_to_remove),
                 "description": "Removing installation files...",
-                "style": "bright_red",
+                "style": "bright_blue",
             },
             {
                 "name": "verification",
@@ -178,105 +242,117 @@ class UninstallationManager:
                     "Command accessibility test",
                 ],
                 "description": "Verifying uninstallation...",
-                "style": "bright_green",
+                "style": "bright_blue",
             },
         ]
 
         print("")
         with create_dynamic_layered_progress(stages) as progress:
-            animations = ProgressAnimations(progress.progress)
+            try:
+                # Stage 1: Preparation
+                prep_messages = [
+                    "Analyzing uninstallation requirements...",
+                    "Checking installation integrity...",
+                    "Validating removal permissions...",
+                    "Preparing cleanup operations...",
+                ]
 
-            # Stage 1: PATH Cleanup
-            progress.update_layer("path_cleanup", 0, "Removing WOMM from PATH...")
-            if not remove_from_path(self.target_path):
-                progress.emergency_stop("Failed to remove from PATH")
-                print_error("Failed to remove from PATH")
-                if verbose:
-                    print_system("❌ PATH cleanup failed")
-                return False
+                for msg in prep_messages:
+                    progress.update_layer("preparation", 0, msg)
+                    sleep(0.2)
 
-            progress.update_layer("path_cleanup", 0, "PATH cleanup completed")
-            from time import sleep
+                # Complete preparation
+                progress.complete_layer("preparation")
 
-            sleep(0.2)
+                # Update main uninstallation progress
+                progress.update_layer("main_uninstallation", 0, "Preparation completed")
+                sleep(0.3)
 
-            # Complete PATH cleanup
-            progress.complete_layer("path_cleanup")
-            # Get task_id for animation
-            path_task_id = None
-            for tid, metadata in progress.layer_metadata.items():
-                if metadata["name"] == "path_cleanup":
-                    path_task_id = tid
-                    break
-            if path_task_id:
-                animations.success_flash(path_task_id, duration=0.5)
+                # Stage 2: PATH Cleanup
+                progress.update_layer("path_cleanup", 0, "Removing WOMM from PATH...")
+                if not self._cleanup_path():
+                    progress.emergency_stop("Failed to remove from PATH")
+                    raise UninstallationFailedError(
+                        stage="path_cleanup",
+                        reason="Failed to remove from PATH",
+                        details="remove_from_path utility returned False",
+                    )
 
-            # Update main uninstallation progress
-            progress.update_layer("main_uninstallation", 0, "PATH cleanup completed")
-            sleep(0.3)
+                progress.update_layer("path_cleanup", 0, "PATH cleanup completed")
+                sleep(0.2)
 
-            # Stage 2: File Removal
-            if not self._remove_files_with_progress(files_to_remove, progress, verbose):
-                progress.emergency_stop("Failed to remove files")
-                print_error("Failed to remove files")
-                if verbose:
-                    print_system("❌ File removal failed")
-                return False
+                # Complete PATH cleanup
+                progress.complete_layer("path_cleanup")
 
-            # Complete file removal
-            progress.complete_layer("file_removal")
-            # Get task_id for animation
-            file_task_id = None
-            for tid, metadata in progress.layer_metadata.items():
-                if metadata["name"] == "file_removal":
-                    file_task_id = tid
-                    break
-            if file_task_id:
-                animations.success_flash(file_task_id, duration=0.5)
+                # Update main uninstallation progress
+                progress.update_layer(
+                    "main_uninstallation", 1, "PATH cleanup completed"
+                )
+                sleep(0.3)
 
-            # Update main uninstallation progress
-            progress.update_layer(
-                "main_uninstallation", 1, "Files removed successfully"
-            )
-            sleep(0.3)
+                # Stage 3: File Removal
+                self._remove_files_with_progress(files_to_remove, progress, verbose)
 
-            # Stage 3: Verification
-            if not self._verify_uninstallation_with_progress(progress):
-                progress.emergency_stop("Uninstallation verification failed")
-                print_error("Uninstallation verification failed")
-                if verbose:
-                    print_system("❌ Verification checks failed")
-                return False
+                # Complete file removal
+                progress.complete_layer("file_removal")
 
-            # Complete verification
-            progress.complete_layer("verification")
-            # Get task_id for animation
-            verify_task_id = None
-            for tid, metadata in progress.layer_metadata.items():
-                if metadata["name"] == "verification":
-                    verify_task_id = tid
-                    break
-            if verify_task_id:
-                animations.success_flash(verify_task_id, duration=0.5)
+                # Update main uninstallation progress
+                progress.update_layer(
+                    "main_uninstallation", 2, "Files removed successfully"
+                )
+                sleep(0.3)
 
-            # Complete main uninstallation progress
-            progress.update_layer(
-                "main_uninstallation", 2, "Uninstallation completed successfully!"
-            )
-            sleep(0.3)
+                # Stage 4: Verification
+                self._verify_uninstallation_with_progress(progress)
 
-            # Final animation for main uninstallation
-            main_task_id = None
-            for tid, metadata in progress.layer_metadata.items():
-                if metadata["name"] == "main_uninstallation":
-                    main_task_id = tid
-                    break
-            if main_task_id:
-                animations.success_flash(main_task_id, duration=1.0)
-                sleep(1.2)
+                # Complete verification
+                progress.complete_layer("verification")
 
-            # Complete and remove main uninstallation layer
-            progress.complete_layer("main_uninstallation")
+                # Complete main uninstallation progress
+                progress.update_layer(
+                    "main_uninstallation", 3, "Uninstallation completed successfully!"
+                )
+                sleep(0.3)
+
+                # Complete and remove main uninstallation layer
+                progress.complete_layer("main_uninstallation")
+
+            except (
+                InstallationNotFoundError,
+                PathCleanupError,
+                FileRemovalError,
+                DirectoryRemovalError,
+                UninstallationVerificationError,
+                UninstallationProgressError,
+                UninstallationFailedError,
+            ) as e:
+                # Stop progress first, then print error details
+                progress.emergency_stop(f"Uninstallation failed: {type(e).__name__}")
+
+                # Now safe to print error details
+                from ...ui.common.console import print_error
+
+                print_error(
+                    f"Uninstallation failed at stage '{getattr(e, 'stage', 'unknown')}': {e}"
+                )
+                if hasattr(e, "details") and e.details:
+                    print_error(f"Details: {e.details}")
+
+                # Re-raise our custom exceptions
+                raise
+            except Exception as e:
+                # Handle any other unexpected errors
+                progress.emergency_stop("Unexpected error during uninstallation")
+
+                # Print unexpected error details
+                from ...ui.common.console import print_error
+
+                print_error(f"Unexpected error during uninstallation: {e}")
+
+                raise UninstallationManagerError(
+                    message=f"Unexpected error during uninstallation: {e}",
+                    details="This is an unexpected error that should be reported",
+                ) from e
 
         print("")
         print_success("✅ W.O.M.M uninstallation completed successfully!")
@@ -314,7 +390,12 @@ class UninstallationManager:
             verbose: Show detailed progress information
 
         Returns:
-            True if successful, False otherwise
+            True if successful
+
+        Raises:
+            FileRemovalError: If file removal operations fail
+            DirectoryRemovalError: If directory removal operations fail
+            UninstallationProgressError: If progress tracking fails
         """
         try:
             import shutil
@@ -353,10 +434,32 @@ class UninstallationManager:
                             from ...ui.common.console import print_system
 
                             print_system(f"🗑️ Removed directory: {item_path}")
-                except Exception as e:
-                    from ...ui.common.console import print_error
-
-                    print_error(f"Failed to remove {item_path}: {e}")
+                except PermissionError as e:
+                    if target_item.is_file():
+                        raise FileRemovalError(
+                            file_path=str(target_item),
+                            reason=f"Permission denied: {e}",
+                            details=f"Cannot remove file due to permissions: {item_path}",
+                        ) from e
+                    else:
+                        raise DirectoryRemovalError(
+                            directory_path=str(target_item),
+                            reason=f"Permission denied: {e}",
+                            details=f"Cannot remove directory due to permissions: {item_path}",
+                        ) from e
+                except OSError as e:
+                    if target_item.is_file():
+                        raise FileRemovalError(
+                            file_path=str(target_item),
+                            reason=f"OS error: {e}",
+                            details=f"Failed to remove file: {item_path}",
+                        ) from e
+                    else:
+                        raise DirectoryRemovalError(
+                            directory_path=str(target_item),
+                            reason=f"OS error: {e}",
+                            details=f"Failed to remove directory: {item_path}",
+                        ) from e
 
             # Finally remove the root directory itself
             if self.target_path.exists():
@@ -365,23 +468,41 @@ class UninstallationManager:
                     len(files_to_remove) + 1,
                     "Removing installation directory",
                 )
-                shutil.rmtree(self.target_path)
-                sleep(0.1)
+                try:
+                    shutil.rmtree(self.target_path)
+                    sleep(0.1)
 
-                if verbose:
-                    from ...ui.common.console import print_system
+                    if verbose:
+                        from ...ui.common.console import print_system
 
-                    print_system(
-                        f"🗑️ Removed installation directory: {self.target_path}"
-                    )
+                        print_system(
+                            f"🗑️ Removed installation directory: {self.target_path}"
+                        )
+                except PermissionError as e:
+                    raise DirectoryRemovalError(
+                        directory_path=str(self.target_path),
+                        reason=f"Permission denied: {e}",
+                        details="Cannot remove installation directory due to permissions",
+                    ) from e
+                except OSError as e:
+                    raise DirectoryRemovalError(
+                        directory_path=str(self.target_path),
+                        reason=f"OS error: {e}",
+                        details="Failed to remove installation directory",
+                    ) from e
 
             return True
 
+        except (FileRemovalError, DirectoryRemovalError, UninstallationProgressError):
+            # Re-raise our custom exceptions
+            raise
         except Exception as e:
-            from ...ui.common.console import print_error
-
-            print_error(f"Error removing files: {e}")
-            return False
+            # Convert unexpected errors to our exception type
+            raise UninstallationProgressError(
+                stage="file_removal",
+                reason=f"Unexpected error during file removal: {e}",
+                details="This is an unexpected error that should be reported",
+            ) from e
 
     def _verify_uninstallation_with_progress(self, progress) -> bool:
         """Verify uninstallation with progress tracking.
@@ -390,36 +511,51 @@ class UninstallationManager:
             progress: DynamicLayeredProgress instance
 
         Returns:
-            True if verification passed, False otherwise
+            True if verification passed
+
+        Raises:
+            UninstallationVerificationError: If verification operations fail
+            UninstallationProgressError: If progress tracking fails
         """
         try:
-            from time import sleep
-
             # Step 1: File removal check
             progress.update_layer("verification", 0, "Checking file removal...")
             if self.target_path.exists():
-                from ...ui.common.console import print_error
-
-                print_error(f"Installation directory still exists: {self.target_path}")
-                return False
+                raise UninstallationVerificationError(
+                    verification_step="file_removal_check",
+                    reason=f"Installation directory still exists: {self.target_path}",
+                    details="The target directory was not removed during uninstallation",
+                )
             sleep(0.2)
 
             # Step 2: Command accessibility test
             progress.update_layer("verification", 1, "Testing command accessibility...")
-            verification_result = verify_uninstallation_complete(self.target_path)
-            if not verification_result["success"]:
-                from ...ui.common.console import print_error
+            try:
+                verification_result = verify_uninstallation_complete(self.target_path)
+            except Exception as e:
+                raise UninstallationVerificationError(
+                    verification_step="command_accessibility_test",
+                    reason=f"Verification utility failed: {e}",
+                    details="The verification utility function raised an exception",
+                ) from e
 
-                print_error(
-                    f"Verification failed: {verification_result.get('error', 'Unknown error')}"
+            if not verification_result["success"]:
+                raise UninstallationVerificationError(
+                    verification_step="command_accessibility_test",
+                    reason=f"Verification failed: {verification_result.get('message', 'Unknown error')}",
+                    details="The verification utility returned a failure status",
                 )
-                return False
             sleep(0.2)
 
             return True
 
+        except (UninstallationVerificationError, UninstallationProgressError):
+            # Re-raise our custom exceptions
+            raise
         except Exception as e:
-            from ...ui.common.console import print_error
-
-            print_error(f"Error during verification: {e}")
-            return False
+            # Convert unexpected errors to our exception type
+            raise UninstallationProgressError(
+                stage="verification",
+                reason=f"Unexpected error during verification: {e}",
+                details="This is an unexpected error that should be reported",
+            ) from e

@@ -15,6 +15,18 @@ from pathlib import Path
 from time import sleep
 from typing import Dict, List
 
+from ...exceptions.installation_exceptions import (
+    ExecutableVerificationError,
+    FileVerificationError,
+)
+from ...exceptions.uninstallation_exceptions import (
+    FileRemovalVerificationError,
+    UninstallationDirectoryAccessError,
+    UninstallationFileListError,
+    UninstallationPermissionError,
+    UninstallationVerificationUtilityError,
+)
+
 # Local imports
 from ..cli_utils import run_silent
 
@@ -52,6 +64,7 @@ DEFAULT_EXCLUDE_PATTERNS = [
     "*_test.py",
     "ignore-install.txt",
     "womm.bat",  # Generated dynamically, should not be copied
+    "womm-installed.py",  # Avoid copying previous installation artifacts
 ]
 
 # FUNCTIONS
@@ -202,6 +215,9 @@ def verify_files_copied(source_path: Path, target_path: Path) -> Dict:
 
     Returns:
         Dictionary with verification results
+
+    Raises:
+        FileVerificationError: If files are missing or corrupted
     """
     try:
         files_to_check = get_files_to_copy(source_path)
@@ -217,20 +233,42 @@ def verify_files_copied(source_path: Path, target_path: Path) -> Dict:
             elif source_file.stat().st_size != target_file.stat().st_size:
                 size_mismatches.append(str(relative_file))
 
-        success = len(missing_files) == 0 and len(size_mismatches) == 0
+        # If there are issues, raise appropriate exceptions
+        if missing_files:
+            raise FileVerificationError(
+                verification_type="copy_verification",
+                file_path=str(missing_files[0]),  # First missing file
+                reason=f"Missing {len(missing_files)} files",
+                details=f"Missing files: {missing_files[:5]}{'...' if len(missing_files) > 5 else ''}",
+            )
 
+        if size_mismatches:
+            raise FileVerificationError(
+                verification_type="copy_verification",
+                file_path=str(size_mismatches[0]),  # First mismatched file
+                reason=f"Size mismatch in {len(size_mismatches)} files",
+                details=f"Size mismatches: {size_mismatches[:5]}{'...' if len(size_mismatches) > 5 else ''}",
+            )
+
+        # All files verified successfully
         return {
-            "success": success,
+            "success": True,
             "total_files": len(files_to_check),
-            "missing_files": missing_files,
-            "size_mismatches": size_mismatches,
+            "missing_files": [],
+            "size_mismatches": [],
         }
 
+    except FileVerificationError:
+        # Re-raise our custom exceptions
+        raise
     except Exception as e:
-        return {
-            "success": False,
-            "error": str(e),
-        }
+        # Convert unexpected errors to our exception type
+        raise FileVerificationError(
+            verification_type="copy_verification",
+            file_path=str(target_path),
+            reason=f"Unexpected error during file verification: {e}",
+            details="This is an unexpected error that should be reported",
+        ) from e
 
 
 def verify_executable_works(target_path: Path) -> Dict:
@@ -241,6 +279,9 @@ def verify_executable_works(target_path: Path) -> Dict:
 
     Returns:
         Dictionary with verification results
+
+    Raises:
+        ExecutableVerificationError: If executable is missing or fails to work
     """
     try:
         if platform.system() == "Windows":
@@ -251,10 +292,11 @@ def verify_executable_works(target_path: Path) -> Dict:
             test_command = [str(executable_path), "--version"]
 
         if not executable_path.exists():
-            return {
-                "success": False,
-                "error": f"Executable not found: {executable_path}",
-            }
+            raise ExecutableVerificationError(
+                executable_name="womm",
+                reason=f"Executable not found at {executable_path}",
+                details=f"Platform: {platform.system()}",
+            )
 
         # Test the executable
         result = run_silent(test_command, capture_output=True)
@@ -276,17 +318,22 @@ def verify_executable_works(target_path: Path) -> Dict:
             if isinstance(stderr_str, bytes):
                 stderr_str = stderr_str.decode()
 
-            return {
-                "success": False,
-                "error": f"Executable test failed with code {result.returncode}",
-                "stderr": stderr_str,
-            }
+            raise ExecutableVerificationError(
+                executable_name="womm",
+                reason=f"Executable test failed with code {result.returncode}",
+                details=f"stderr: {stderr_str}",
+            )
 
+    except ExecutableVerificationError:
+        # Re-raise our custom exceptions
+        raise
     except Exception as e:
-        return {
-            "success": False,
-            "error": str(e),
-        }
+        # Convert unexpected errors to our exception type
+        raise ExecutableVerificationError(
+            executable_name="womm",
+            reason=f"Unexpected error during executable verification: {e}",
+            details="This is an unexpected error that should be reported",
+        ) from e
 
 
 # UNINSTALLATION UTILITIES
@@ -302,6 +349,11 @@ def get_files_to_remove(target_path: Path) -> List[str]:
 
     Returns:
         List of relative file and directory paths to remove
+
+    Raises:
+        UninstallationFileListError: If file list generation fails
+        UninstallationDirectoryAccessError: If directory access fails
+        UninstallationPermissionError: If permission issues occur
     """
     files_to_remove = []
 
@@ -309,16 +361,33 @@ def get_files_to_remove(target_path: Path) -> List[str]:
         return files_to_remove
 
     try:
+        # Check if we have permission to access the directory
+        if not target_path.is_dir():
+            raise UninstallationDirectoryAccessError(
+                directory_path=str(target_path),
+                operation="list_generation",
+                reason="Target path is not a directory",
+                details=f"Path exists but is not a directory: {target_path}",
+            )
+
         # Get all files and directories recursively
         for item_path in target_path.rglob("*"):
-            if item_path.is_file():
-                # Add file with relative path
-                relative_path = item_path.relative_to(target_path)
-                files_to_remove.append(str(relative_path))
-            elif item_path.is_dir():
-                # Add directory with relative path (keep trailing slash for directories)
-                relative_path = item_path.relative_to(target_path)
-                files_to_remove.append(f"{relative_path}/")
+            try:
+                if item_path.is_file():
+                    # Add file with relative path
+                    relative_path = item_path.relative_to(target_path)
+                    files_to_remove.append(str(relative_path))
+                elif item_path.is_dir():
+                    # Add directory with relative path (keep trailing slash for directories)
+                    relative_path = item_path.relative_to(target_path)
+                    files_to_remove.append(f"{relative_path}/")
+            except PermissionError as e:
+                raise UninstallationPermissionError(
+                    target_path=str(item_path),
+                    operation="file_scanning",
+                    reason=f"Permission denied: {e}",
+                    details=f"Cannot access file/directory: {item_path}",
+                ) from e
 
         # Sort to ensure files are removed before their parent directories
         # Files first, then directories (reverse alphabetical for nested dirs)
@@ -326,8 +395,16 @@ def get_files_to_remove(target_path: Path) -> List[str]:
 
         return files_to_remove
 
-    except Exception:
-        return []
+    except (UninstallationDirectoryAccessError, UninstallationPermissionError):
+        # Re-raise our custom exceptions
+        raise
+    except Exception as e:
+        # Convert unexpected errors to our exception type
+        raise UninstallationFileListError(
+            target_path=str(target_path),
+            reason=f"Unexpected error during file list generation: {e}",
+            details="This is an unexpected error that should be reported",
+        ) from e
 
 
 def verify_files_removed(target_path: Path) -> Dict:
@@ -338,25 +415,46 @@ def verify_files_removed(target_path: Path) -> Dict:
 
     Returns:
         Dictionary with success status and details
+
+    Raises:
+        FileRemovalVerificationError: If files were not removed successfully
+        UninstallationDirectoryAccessError: If directory access fails during verification
     """
-    result = {
-        "success": False,
-        "message": "",
-        "error": "",
-    }
-
     try:
-        if not target_path.exists():
-            result["success"] = True
-            result["message"] = "All WOMM files removed successfully"
+        # Check if we can access the directory for verification
+        if target_path.exists():
+            try:
+                # Try to access the directory to see if it's accessible
+                target_path.stat()
+            except PermissionError as e:
+                raise UninstallationDirectoryAccessError(
+                    directory_path=str(target_path),
+                    operation="verification",
+                    reason=f"Permission denied during verification: {e}",
+                    details=f"Cannot access directory for verification: {target_path}",
+                ) from e
+
+            # Directory exists and is accessible
+            raise FileRemovalVerificationError(
+                verification_type="removal_verification",
+                file_path=str(target_path),
+                reason="WOMM directory still exists after removal",
+                details=f"Directory path: {target_path}",
+            )
         else:
-            result["error"] = f"WOMM directory still exists: {target_path}"
+            return {"success": True, "message": "All WOMM files removed successfully"}
 
-        return result
-
+    except (FileRemovalVerificationError, UninstallationDirectoryAccessError):
+        # Re-raise our custom exceptions
+        raise
     except Exception as e:
-        result["error"] = f"File removal verification error: {e}"
-        return result
+        # Convert unexpected errors to our exception type
+        raise FileRemovalVerificationError(
+            verification_type="removal_verification",
+            file_path=str(target_path),
+            reason=f"File removal verification error: {e}",
+            details="This is an unexpected error that should be reported",
+        ) from e
 
 
 def verify_uninstallation_complete(target_path: Path) -> Dict:
@@ -367,37 +465,61 @@ def verify_uninstallation_complete(target_path: Path) -> Dict:
 
     Returns:
         Dictionary with success status and details
-    """
-    result = {
-        "success": False,
-        "message": "",
-        "error": "",
-    }
 
+    Raises:
+        UninstallationVerificationUtilityError: If uninstallation verification fails
+        UninstallationDirectoryAccessError: If directory access fails during verification
+    """
     try:
         # Check that target directory is gone
         if target_path.exists():
-            result["error"] = f"Installation directory still exists: {target_path}"
-            return result
+            try:
+                # Try to access the directory to see if it's accessible
+                target_path.stat()
+            except PermissionError as e:
+                raise UninstallationDirectoryAccessError(
+                    directory_path=str(target_path),
+                    operation="verification",
+                    reason=f"Permission denied during verification: {e}",
+                    details=f"Cannot access directory for verification: {target_path}",
+                ) from e
+
+            # Directory exists and is accessible
+            raise UninstallationVerificationUtilityError(
+                verification_step="directory_removal",
+                reason=f"Installation directory still exists: {target_path}",
+                details="The target directory was not removed during uninstallation",
+            )
 
         # Simple check that womm command is no longer accessible
         from ....common.security import run_silent
 
-        cmd_result = run_silent("womm --version", timeout=10)
+        try:
+            cmd_result = run_silent("womm --version", timeout=10)
+        except Exception:
+            # If command execution fails, that's actually success (command not found)
+            return {
+                "success": True,
+                "message": "WOMM command no longer accessible (execution failed)",
+            }
 
         # If command is not found (exit code 9009 on Windows), that's success
         if cmd_result.returncode == 9009:  # Command not found on Windows
-            result["success"] = True
-            result["message"] = "WOMM command no longer accessible"
+            return {"success": True, "message": "WOMM command no longer accessible"}
         else:
             # Command still found, but this might be from another installation
-            result["success"] = True  # Don't fail uninstallation for this
-            result["message"] = (
-                "WOMM command still accessible (may be from another installation)"
-            )
+            return {
+                "success": True,  # Don't fail uninstallation for this
+                "message": "WOMM command still accessible (may be from another installation)",
+            }
 
-        return result
-
+    except (UninstallationVerificationUtilityError, UninstallationDirectoryAccessError):
+        # Re-raise our custom exceptions
+        raise
     except Exception as e:
-        result["error"] = f"Uninstallation verification error: {e}"
-        return result
+        # Convert unexpected errors to our exception type
+        raise UninstallationVerificationUtilityError(
+            verification_step="unexpected_error",
+            reason=f"Uninstallation verification error: {e}",
+            details="This is an unexpected error that should be reported",
+        ) from e

@@ -26,20 +26,9 @@ if sys.platform == "win32":
 ########################################################
 # Internal modules and command imports
 
-# Import and register all command modules
+# Import version and core commands only to avoid circular imports
 from . import __version__
-from .commands import (
-    context,
-    install,
-    lint,
-    new,
-    path_cmd,
-    setup,
-    spell,
-    system,
-    template,
-)
-from .commands.install import uninstall
+from .commands import install, path_cmd, refresh_env, uninstall
 
 # MAIN FUNCTIONS
 ########################################################
@@ -161,14 +150,57 @@ Features:
 womm.add_command(install)
 womm.add_command(uninstall)
 womm.add_command(path_cmd)
+womm.add_command(refresh_env)
 
-womm.add_command(new.new_group)
-womm.add_command(lint.lint_group)
-womm.add_command(spell.spell_group)
-womm.add_command(system.system_group)
-womm.add_command(context.context_group)
-womm.add_command(setup.setup_group)
-womm.add_command(template.template_group)
+# Dynamic imports to avoid circular dependencies
+try:
+    from .commands import new
+
+    womm.add_command(new.new_group)
+except ImportError:
+    pass
+
+try:
+    from .commands import lint
+
+    womm.add_command(lint.lint_group)
+except ImportError:
+    pass
+
+try:
+    from .commands import spell
+
+    womm.add_command(spell.spell_group)
+except ImportError:
+    pass
+
+try:
+    from .commands import system
+
+    womm.add_command(system.system_group)
+except ImportError:
+    pass
+
+try:
+    from .commands import context
+
+    womm.add_command(context.context_group)
+except ImportError:
+    pass
+
+try:
+    from .commands import setup
+
+    womm.add_command(setup.setup_group)
+except ImportError:
+    pass
+
+try:
+    from .commands import template
+
+    womm.add_command(template.template_group)
+except ImportError:
+    pass
 
 # UTILITY FUNCTIONS
 ########################################################

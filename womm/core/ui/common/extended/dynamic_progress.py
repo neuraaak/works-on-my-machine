@@ -291,7 +291,7 @@ class DynamicLayeredProgress:
             self.progress.update(task_id, completed=progress, details=details)
 
     def complete_layer(self, layer_name: str):
-        """Mark a layer as completed and make it disappear.
+        """Mark a layer as completed and animate its success.
 
         Args:
             layer_name: Name of the layer to complete
@@ -309,11 +309,14 @@ class DynamicLayeredProgress:
         if task_id is None:
             return
 
-        # Mark as completed (100%)
+        # Mark as completed based on layer type
         metadata = self.layer_metadata[task_id]
         if metadata["type"] == "steps":
             steps = metadata["config"].get("steps", [])
             self.progress.update(task_id, completed=len(steps))
+        elif metadata["type"] == "spinner":
+            # For spinners, just mark as completed (no progress to update)
+            pass
         else:
             total = metadata["config"].get("total", 100)
             self.progress.update(task_id, completed=total)
@@ -325,14 +328,70 @@ class DynamicLayeredProgress:
             return
 
         # Remove the layer (only for sub-layers)
-        self.progress.remove_task(task_id)
-        self.active_layers.remove(task_id)
         self.completed_layers.append(layer_name)
-        del self.layer_metadata[task_id]
+        metadata["state"] = "completed"
+
+        # Animate success for this specific layer
+        self._animate_layer_success(task_id, metadata)
 
         # Update main layer progress if it exists
         if self.has_main_layer:
             self._update_main_layer_progress()
+
+    def _animate_layer_success(self, task_id: int, metadata: dict):  # noqa: ARG002
+        """Animate success for a specific layer and then remove it.
+
+        Args:
+            task_id: Task ID to animate
+            metadata: Layer metadata
+        """
+        import time
+
+        from rich.text import Text
+
+        from .progress_animations import ProgressAnimations
+
+        animations = ProgressAnimations(self.progress)
+
+        # Flash green 2 times
+        for flash in range(2):
+            if task_id in self.progress._tasks:
+                task = self.progress._tasks[task_id]
+
+                # Clean description (remove all icons)
+                clean_description = (
+                    str(task.description)
+                    .replace("❌ ", "")
+                    .replace("⚠️ ", "")
+                    .replace("✅ ", "")
+                )
+
+                if flash % 2 == 0:  # Green flash
+                    success_description = Text(
+                        clean_description, style="bold green on green"
+                    )
+                else:  # Normal green
+                    success_description = Text(clean_description, style="bold green")
+
+                self.progress.update(
+                    task_id,
+                    description=success_description,
+                )
+
+            time.sleep(0.1)  # Quick flash
+
+        # Fade out this specific layer
+        if task_id in self.progress._tasks:
+            animations.fade_out_layer(task_id, duration=1.5)
+            time.sleep(1.5)  # Wait for fade out
+
+        # Remove the layer after animation
+        if task_id in self.progress._tasks:
+            self.progress.remove_task(task_id)
+            if task_id in self.active_layers:
+                self.active_layers.remove(task_id)
+            if task_id in self.layer_metadata:
+                del self.layer_metadata[task_id]
 
     def _update_main_layer_progress(self):
         """Update main layer progress based on completed sub-layers."""
@@ -397,10 +456,10 @@ class DynamicLayeredProgress:
         )
 
     def emergency_stop(self, error_message: str = "Critical error occurred"):
-        """Emergency stop all layers and freeze the progress bar.
+        """Emergency stop all layers with animated failure effects.
 
-        This method immediately stops all active layers, applies error styling,
-        and freezes the progress bar for clean error reporting.
+        This method immediately stops all active layers, applies error styling
+        with animated failure sequence, and freezes the progress bar for clean error reporting.
 
         Args:
             error_message: The error message to display
@@ -408,17 +467,60 @@ class DynamicLayeredProgress:
         if not self.progress:
             return
 
-        # Import Rich Text for proper error styling
+        # Import for animations and time
+        import time
+
         from rich.text import Text
 
-        # Apply error styling to all active layers
+        # Create failure animation sequence: flash red 3 times
+        for flash in range(3):
+            # Apply flash effect to all active layers
+            for task_id in list(self.active_layers):
+                # Check if task still exists before updating
+                if task_id in self.progress._tasks:
+                    task = self.progress._tasks[task_id]
+
+                    # Clean description (remove all icons)
+                    clean_description = (
+                        str(task.description)
+                        .replace("❌ ", "")
+                        .replace("⚠️ ", "")
+                        .replace("✅ ", "")
+                    )
+
+                    if flash % 2 == 0:  # Red flash
+                        error_description = Text(
+                            clean_description, style="bold red on red"
+                        )
+                        error_details = Text(
+                            f"Stopped: {error_message}", style="red on red"
+                        )
+                    else:  # Normal red
+                        error_description = Text(clean_description, style="bold red")
+                        error_details = Text(f"Stopped: {error_message}", style="red")
+
+                    self.progress.update(
+                        task_id,
+                        description=error_description,
+                        details=error_details,
+                    )
+
+            # Brief pause for flash effect
+            time.sleep(0.15)
+
+        # Final state: settle on clean error display
         for task_id in list(self.active_layers):
-            # Check if task still exists before updating
             if task_id in self.progress._tasks:
                 task = self.progress._tasks[task_id]
 
-                # Apply error styling using Rich Text objects
-                error_description = Text(f"❌ {task.description}", style="bold red")
+                # Final error state (clean, no symbols)
+                clean_description = (
+                    str(task.description)
+                    .replace("❌ ", "")
+                    .replace("⚠️ ", "")
+                    .replace("✅ ", "")
+                )
+                error_description = Text(f"{clean_description}", style="bold red")
                 error_details = Text(f"Stopped: {error_message}", style="red")
 
                 self.progress.update(
@@ -487,10 +589,56 @@ class DynamicLayeredProgress:
             for stage in self.stages:
                 self._create_layer(stage)
 
-    def stop(self):
-        """Stop the progress bar."""
-        if self.progress:
-            self.progress.stop()
+    def stop(self, success: bool = True, show_success_animation: bool = True):
+        """Stop the progress bar with appropriate animations based on context.
+
+        Args:
+            success: Whether this stop represents a successful completion
+            show_success_animation: Whether to show success animations and fade out
+        """
+        if not self.progress:
+            return
+
+        # Import for animations and time
+        import time
+
+        from rich.text import Text
+
+        from .progress_animations import ProgressAnimations
+
+        ProgressAnimations(self.progress)
+
+        if success and show_success_animation:
+            # SUCCESS CASE: Final cleanup for any remaining layers
+            # Note: Individual layers are already animated in complete_layer()
+
+            # Just wait a moment for any final animations to complete
+            time.sleep(0.5)
+
+        elif not success:
+            # ERROR/WARNING CASE: Freeze current state, no animations
+            # Remove all icons and freeze
+            for task_id in list(self.active_layers):
+                if task_id in self.progress._tasks:
+                    task = self.progress._tasks[task_id]
+                    # Clean description (remove all icons)
+                    clean_description = (
+                        str(task.description)
+                        .replace("❌ ", "")
+                        .replace("⚠️ ", "")
+                        .replace("✅ ", "")
+                    )
+                    error_description = Text(clean_description, style="bold orange")
+
+                    self.progress.update(
+                        task_id,
+                        description=error_description,
+                    )
+
+            # Don't clean up layers - freeze current state for debugging
+
+        # Stop the underlying Rich progress
+        self.progress.stop()
 
 
 # CONTEXT MANAGER
@@ -520,7 +668,9 @@ def create_dynamic_layered_progress(
     finally:
         # Check if emergency stopped before normal cleanup
         if not progress_bar.is_emergency_stopped():
-            progress_bar.stop()
+            # Normal completion - assume success (caller should use emergency_stop for failures)
+            is_success = True  # Context manager normal exit = success
+            progress_bar.stop(success=is_success, show_success_animation=is_success)
         else:
             # If emergency stopped, the progress bar is already stopped
             # Just print the emergency message if available

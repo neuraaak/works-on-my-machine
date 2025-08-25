@@ -4,21 +4,12 @@ WOMM CLI Commands Package.
 Contains all command modules for the CLI interface.
 """
 
-# Import all command modules
-from . import context, lint, new, setup, spell, system, template
-
 # Import individual commands for direct access
-from .install import install, path_cmd, uninstall
+from .install import install, path_cmd, refresh_env, uninstall
 
 __all__ = [
     "install",
     "uninstall",
     "path_cmd",
-    "new",
-    "lint",
-    "spell",
-    "system",
-    "context",
-    "setup",
-    "template",
+    "refresh_env",
 ]

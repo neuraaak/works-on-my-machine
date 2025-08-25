@@ -13,8 +13,13 @@ import platform
 from pathlib import Path
 from typing import Dict
 
+from ...exceptions.installation_exceptions import (
+    ExecutableVerificationError,
+    PathUtilityError,
+)
+
 # Local imports
-from ....common.security import run_silent
+from ..cli_utils import run_silent
 from ..system.user_path_utils import (
     deduplicate_path_entries,
     extract_path_from_reg_output,
@@ -409,6 +414,9 @@ def verify_path_configuration(entry_path: str) -> Dict:
 
     Returns:
         Dictionary with verification results
+
+    Raises:
+        PathUtilityError: If PATH configuration verification fails
     """
     try:
         if platform.system() == "Windows":
@@ -419,10 +427,12 @@ def verify_path_configuration(entry_path: str) -> Dict:
             )
 
             if result.returncode != 0:
-                return {
-                    "success": False,
-                    "error": "Failed to query PATH from registry",
-                }
+                raise PathUtilityError(
+                    operation="path_verification",
+                    path=entry_path,
+                    reason="Failed to query PATH from registry",
+                    details=f"Return code: {result.returncode}",
+                )
 
             # Handle stdout properly
             stdout_str = result.stdout
@@ -458,21 +468,35 @@ def verify_path_configuration(entry_path: str) -> Dict:
         else:
             found_in_path = len(path_entries) > 0
 
+        if not found_in_path:
+            raise PathUtilityError(
+                operation="path_verification",
+                path=entry_path,
+                reason="WOMM path not found in system PATH",
+                details=f"Platform: {platform.system()}, Checked locations: {path_entries if platform.system() != 'Windows' else 'Registry'}",
+            )
+
         return {
-            "success": found_in_path,
+            "success": True,
             "entry_path": entry_path,
-            "found_in_path": found_in_path,
+            "found_in_path": True,
             "platform": platform.system(),
             "checked_locations": (
                 path_entries if platform.system() != "Windows" else "Registry"
             ),
         }
 
+    except PathUtilityError:
+        # Re-raise our custom exceptions
+        raise
     except Exception as e:
-        return {
-            "success": False,
-            "error": str(e),
-        }
+        # Convert unexpected errors to our exception type
+        raise PathUtilityError(
+            operation="path_verification",
+            path=entry_path,
+            reason=f"Unexpected error during PATH verification: {e}",
+            details="This is an unexpected error that should be reported",
+        ) from e
 
 
 def verify_commands_accessible(entry_path: str) -> Dict:
@@ -483,6 +507,9 @@ def verify_commands_accessible(entry_path: str) -> Dict:
 
     Returns:
         Dictionary with verification results
+
+    Raises:
+        ExecutableVerificationError: If executable is not accessible
     """
     try:
         # First test: Check if executable exists at the specified path
@@ -495,13 +522,11 @@ def verify_commands_accessible(entry_path: str) -> Dict:
 
         # Test 1: Local executable exists and works
         if not local_executable.exists():
-            return {
-                "success": False,
-                "womm_accessible": False,
-                "error": f"WOMM executable not found at {local_executable}",
-                "local_test": False,
-                "global_test": None,
-            }
+            raise ExecutableVerificationError(
+                executable_name="womm",
+                reason=f"WOMM executable not found at {local_executable}",
+                details=f"Platform: {platform.system()}",
+            )
 
         # Test local executable
         local_result = run_silent(
@@ -509,10 +534,44 @@ def verify_commands_accessible(entry_path: str) -> Dict:
         )
         local_works = local_result.returncode == 0
 
+        # Debug info for local test failure
+        if not local_works:
+            import tempfile
+
+            # Clean stdout/stderr of problematic Unicode characters
+            stdout_clean = (
+                str(local_result.stdout).encode("ascii", "replace").decode("ascii")
+                if local_result.stdout
+                else "None"
+            )
+            stderr_clean = (
+                str(local_result.stderr).encode("ascii", "replace").decode("ascii")
+                if local_result.stderr
+                else "None"
+            )
+
+            debug_file = Path(tempfile.gettempdir()) / "womm_local_test_debug.txt"
+            with open(debug_file, "w", encoding="utf-8") as f:
+                f.write("Local executable test failed:\n")
+                f.write(f"Executable: {local_executable}\n")
+                f.write(f"Exists: {local_executable.exists()}\n")
+                f.write(f"Command: {[str(local_executable), '--version']}\n")
+                f.write(f"Return code: {local_result.returncode}\n")
+                f.write(f"Stdout: {stdout_clean}\n")
+                f.write(f"Stderr: {stderr_clean}\n")
+                if local_executable.exists():
+                    f.write(f"File size: {local_executable.stat().st_size}\n")
+                    try:
+                        with open(local_executable, encoding="utf-8") as exe_file:
+                            f.write(f"Content:\n{exe_file.read()}\n")
+                    except Exception as e:
+                        f.write(f"Could not read executable content: {e}\n")
+
         # Test 2: Global accessibility via PATH
         global_result = run_silent(global_command, capture_output=True)
         global_works = global_result.returncode == 0
 
+        # Logic for handling local vs global test results is handled below in unified way
         if local_works and global_works:
             # Handle stdout properly
             stdout_str = global_result.stdout
@@ -527,26 +586,47 @@ def verify_commands_accessible(entry_path: str) -> Dict:
                 "version_output": stdout_str,
                 "executable_path": str(local_executable),
             }
+        elif local_works and not global_works:
+            # Local works but global doesn't - this is common on Windows after fresh install
+            return {
+                "success": True,  # Consider this a success since local works
+                "womm_accessible": True,
+                "local_test": True,
+                "global_test": False,
+                "warning": "Global command not yet accessible in current session (normal after fresh installation)",
+                "executable_path": str(local_executable),
+                "path_status": "timing_issue",
+            }
         else:
-            # Handle stderr properly
+            # Both local and global failed - this is a real problem
             stderr_str = (
                 global_result.stderr if not global_works else local_result.stderr
             )
             if isinstance(stderr_str, bytes):
                 stderr_str = stderr_str.decode()
 
-            return {
-                "success": False,
-                "womm_accessible": False,
-                "local_test": local_works,
-                "global_test": global_works,
-                "error": "WOMM command not fully accessible",
-                "stderr": stderr_str,
-                "executable_path": str(local_executable),
-            }
+            # Clean stderr of problematic Unicode characters
+            stderr_clean = (
+                stderr_str.encode("ascii", "replace").decode("ascii")
+                if stderr_str
+                else "None"
+            )
 
+            raise ExecutableVerificationError(
+                executable_name="womm",
+                reason="WOMM command not accessible - both local and global tests failed",
+                details=f"Local: {local_works}, Global: {global_works}, stderr: {stderr_clean}",
+            )
+
+    except ExecutableVerificationError:
+        # Re-raise our custom exceptions
+        raise
     except Exception as e:
-        return {
-            "success": False,
-            "error": str(e),
-        }
+        # Convert unexpected errors to our exception type
+        # Clean the error message of Unicode characters that can't be encoded
+        error_msg = str(e).encode("ascii", "replace").decode("ascii")
+        raise ExecutableVerificationError(
+            executable_name="womm",
+            reason=f"Unexpected error during command verification: {error_msg}",
+            details="This is an unexpected error that should be reported",
+        ) from e

@@ -16,14 +16,18 @@ def main():
     sys.path.insert(0, str(project_root))
 
     try:
-        # Import and run the CLI directly
-        from womm.cli import womm
+        # Import and run the CLI directly with dynamic import to avoid circular imports
+        import importlib
 
-        womm()
+        cli_module = importlib.import_module("womm.cli")
+        cli_module.womm()
     except ImportError as e:
         print("❌ Error: Could not import womm package")
         print("💡 Make sure you're in the works-on-my-machine directory")
         print(f"🔧 Error details: {e}")
+        sys.exit(1)
+    except Exception as e:
+        print(f"❌ Error running WOMM: {e}")
         sys.exit(1)
 
 

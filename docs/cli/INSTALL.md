@@ -16,6 +16,7 @@
 **🔌 [API Documentation](../api/README.md)**
 
 ## 📋 Table of Contents
+
 - [🎯 Overview](#-overview)
 - [🚀 Quick Installation](#-quick-installation)
 - [🐍 Python Installation](#-python-installation)
@@ -30,12 +31,14 @@
 WOMM can be installed using various methods depending on your system and preferences. The installation process includes dependency management and system configuration.
 
 ### ✅ **Installation Methods**
+
 - **pip** - Python package manager
 - **conda** - Anaconda package manager
 - **Source** - Direct from repository
 - **Docker** - Containerized installation
 
 ### 🔄 **Installation Workflow**
+
 ```
 System Check → Method Selection → Installation → Configuration → Verification
 ```
@@ -43,6 +46,7 @@ System Check → Method Selection → Installation → Configuration → Verific
 ## 🚀 Quick Installation
 
 ### **Using pip (Recommended)**
+
 ```bash
 # Install from PyPI
 pip install works-on-my-machine
@@ -52,9 +56,13 @@ pip install --user works-on-my-machine
 
 # Install specific version
 pip install works-on-my-machine==2.6.0
+
+# Install without environment refresh (Windows only)
+pip install works-on-my-machine --no-refresh-env
 ```
 
 ### **Using conda**
+
 ```bash
 # Install from conda-forge
 conda install -c conda-forge works-on-my-machine
@@ -64,6 +72,7 @@ conda install -n myenv -c conda-forge works-on-my-machine
 ```
 
 ### **From Source**
+
 ```bash
 # Clone repository
 git clone https://github.com/your-repo/works-on-my-machine.git
@@ -76,16 +85,19 @@ pip install -e .
 ## 🐍 Python Installation
 
 ### **Prerequisites**
+
 - Python 3.8 or higher
 - pip package manager
 - Git (for source installation)
 
 ### **System Requirements**
+
 - **Windows**: Windows 10 or higher
 - **macOS**: macOS 10.15 or higher
 - **Linux**: Ubuntu 18.04+, CentOS 7+, or equivalent
 
 ### **Installation Steps**
+
 ```bash
 # 1. Check Python version
 python --version
@@ -101,6 +113,7 @@ womm --version
 ```
 
 ### **Virtual Environment Installation**
+
 ```bash
 # Create virtual environment
 python -m venv womm-env
@@ -118,6 +131,7 @@ pip install works-on-my-machine
 ## 📦 Package Managers
 
 ### **pip Installation**
+
 ```bash
 # Basic installation
 pip install works-on-my-machine
@@ -130,6 +144,7 @@ pip install works-on-my-machine[full]
 ```
 
 ### **conda Installation**
+
 ```bash
 # Add conda-forge channel
 conda config --add channels conda-forge
@@ -142,6 +157,7 @@ conda create -n womm-env works-on-my-machine
 ```
 
 ### **Homebrew (macOS)**
+
 ```bash
 # Install via Homebrew
 brew install works-on-my-machine
@@ -151,6 +167,7 @@ brew upgrade works-on-my-machine
 ```
 
 ### **Chocolatey (Windows)**
+
 ```bash
 # Install via Chocolatey
 choco install works-on-my-machine
@@ -162,6 +179,7 @@ choco upgrade works-on-my-machine
 ## 🔧 Configuration
 
 ### **Post-Installation Setup**
+
 ```bash
 # Initialize WOMM configuration
 womm init
@@ -174,6 +192,7 @@ womm setup --global
 ```
 
 ### **Configuration Files**
+
 ```bash
 # Global configuration
 ~/.womm/config.yaml
@@ -186,6 +205,7 @@ womm setup --global
 ```
 
 ### **Environment Variables**
+
 ```bash
 # Set WOMM home directory
 export WOMM_HOME=~/.womm
@@ -198,6 +218,7 @@ export WOMM_LOG_LEVEL=INFO
 ```
 
 ### **Path Configuration**
+
 ```bash
 # Add WOMM to PATH (Windows)
 set PATH=%PATH%;%USERPROFILE%\AppData\Local\Programs\Python\Scripts
@@ -206,9 +227,35 @@ set PATH=%PATH%;%USERPROFILE%\AppData\Local\Programs\Python\Scripts
 export PATH="$HOME/.local/bin:$PATH"
 ```
 
+## 🔄 Environment Refresh (Windows)
+
+### **Automatic Refresh**
+
+WOMM automatically refreshes environment variables after installation on Windows using the `RefreshEnv.cmd` script. This ensures that PATH changes are immediately available without restarting the terminal.
+
+### **Manual Refresh**
+
+```bash
+# Refresh environment variables manually
+womm refresh-env
+
+# Refresh with custom target directory
+womm refresh-env --target /custom/path
+```
+
+### **Disable Automatic Refresh**
+
+```bash
+# Install without automatic environment refresh
+womm install --no-refresh-env
+
+# This is useful in automated environments or when manual control is preferred
+```
+
 ## 🗑️ Uninstallation
 
 ### **pip Uninstallation**
+
 ```bash
 # Remove WOMM
 pip uninstall works-on-my-machine
@@ -221,6 +268,7 @@ pip cache purge
 ```
 
 ### **conda Uninstallation**
+
 ```bash
 # Remove from current environment
 conda remove works-on-my-machine
@@ -233,6 +281,7 @@ conda env remove -n womm-env
 ```
 
 ### **Complete Cleanup**
+
 ```bash
 # Remove configuration files
 rm -rf ~/.womm
@@ -245,6 +294,7 @@ rm -rf ~/.womm/logs
 ```
 
 ### **System-Specific Cleanup**
+
 ```bash
 # Windows cleanup
 rmdir /s /q "%USERPROFILE%\.womm"
@@ -259,6 +309,7 @@ rm -rf ~/.womm
 ## 🔄 Updates
 
 ### **Check for Updates**
+
 ```bash
 # Check current version
 womm --version
@@ -271,6 +322,7 @@ pip index versions works-on-my-machine
 ```
 
 ### **Update WOMM**
+
 ```bash
 # Update via pip
 pip install --upgrade works-on-my-machine
@@ -284,6 +336,7 @@ pip install -e .
 ```
 
 ### **Automatic Updates**
+
 ```bash
 # Enable auto-updates
 womm config --set auto-update true
@@ -300,6 +353,7 @@ womm update --auto
 ### **Installation Issues**
 
 **Permission errors:**
+
 ```bash
 # Use user installation
 pip install --user works-on-my-machine
@@ -314,6 +368,7 @@ pip install works-on-my-machine
 ```
 
 **Network issues:**
+
 ```bash
 # Use alternative index
 pip install -i https://pypi.org/simple/ works-on-my-machine
@@ -327,6 +382,7 @@ pip install works-on-my-machine-*.whl
 ```
 
 **Dependency conflicts:**
+
 ```bash
 # Check conflicts
 pip check works-on-my-machine
@@ -343,6 +399,7 @@ pip install works-on-my-machine
 ### **Configuration Issues**
 
 **Path not found:**
+
 ```bash
 # Check installation location
 pip show works-on-my-machine
@@ -355,6 +412,7 @@ ln -s ~/.local/bin/womm /usr/local/bin/womm
 ```
 
 **Configuration errors:**
+
 ```bash
 # Reset configuration
 womm config --reset
@@ -369,6 +427,7 @@ womm config --init
 ### **Runtime Issues**
 
 **Import errors:**
+
 ```bash
 # Check Python environment
 python -c "import womm"
@@ -381,6 +440,7 @@ python --version
 ```
 
 **Command not found:**
+
 ```bash
 # Check installation
 which womm
@@ -394,6 +454,7 @@ echo $PATH
 ```
 
 ### **Debug Mode**
+
 Enable verbose output for troubleshooting:
 
 ```bash
@@ -408,6 +469,7 @@ cat ~/.womm/logs/install.log
 ```
 
 ### **Log Files**
+
 WOMM creates detailed logs for troubleshooting:
 
 ```bash

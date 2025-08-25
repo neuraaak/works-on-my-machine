@@ -201,7 +201,7 @@ class LayerController:
             self.progress.update(task_id, completed=len(steps))
         elif layer_type == LayerType.SPINNER:
             # Spinners don't have completion progress, just update status
-            self.progress.update(task_id, status="✅ Completed")
+            self.progress.update(task_id, status="Completed")
         else:
             total = layer_metadata["config"].get("total", 100)
             if layer_type == LayerType.DOWNLOAD:
