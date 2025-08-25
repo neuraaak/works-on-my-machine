@@ -15,40 +15,46 @@
 ```
 docs/
 ├── 📋 README.md                   # This file - Documentation index
-├── 🔧 COMMON_COMMANDS.md          # Centralized command reference
-├── 📋 DOCUMENTATION_RULES.md      # Documentation standards
-├── ⚙️ ENVIRONMENT_SETUP.md        # Development environment management
-├── 🔧 PREREQUISITE_INSTALLER.md   # Required tools installation
-├── 🐍 languages/python/           # Python development documentation
-│   └── PYTHON.md
-├── 🟨 languages/javascript/       # JavaScript development documentation
-│   └── JAVASCRIPT.md
-├── 🔄 shared/                     # Shared utilities documentation
-│   ├── CLI_ARCHITECTURE.md
-│   └── system/
-│       └── REGISTRATOR.md
-└── 🧪 tests/                      # Testing documentation
-    └── README.md
+├── 🔧 cli/                        # CLI documentation and user guides
+│   ├── README.md                  # CLI documentation index
+│   ├── TEMPLATES.md               # Template management guide
+│   ├── NEW.md                     # Project creation guide
+│   ├── SETUP.md                   # Project setup guide
+│   └── COMMON_COMMANDS.md         # Command reference
+├── 🔌 api/                        # Technical API documentation
+│   ├── README.md                  # API documentation index
+│   ├── TEMPLATES_REFERENCE.md     # Template system reference
+│   ├── ARCHITECTURE.md            # System architecture
+│   └── PROJECT_MANAGER.md         # Project manager documentation
+├── 🧪 tests/                      # Testing documentation
+│   └── README.md
+├── 📊 diagrams/                   # Architecture diagrams
+│   ├── flow-new.md
+│   ├── flow-install.md
+│   └── architecture-globale.md
+└── 📋 DOCUMENTATION_RULES.md      # Documentation standards
 ```
 
 ## 🎯 Quick Navigation
 
 ### 🚀 **Getting Started**
 - **📋 [Main Project README](../README.md)** - Project overview and installation
-- **⚙️ [Environment Setup](ENVIRONMENT_SETUP.md)** - Development environment management
-- **🔧 [Prerequisites Installation](PREREQUISITE_INSTALLER.md)** - Required tools installation
+- **🔧 [CLI Documentation](cli/README.md)** - Complete CLI user guides
+- **🔌 [API Documentation](api/README.md)** - Technical architecture and internals
 
-### 🌐 **Language-Specific Guides**
-- **🐍 [Python Development](languages/python/PYTHON.md)** - Python tools and configuration
-- **🟨 [JavaScript Development](languages/javascript/JAVASCRIPT.md)** - JavaScript/Node.js tools
+### 📋 **User Documentation**
+- **📋 [Template Management](cli/TEMPLATES.md)** - Complete template guide
+- **🚀 [Project Creation](cli/NEW.md)** - Creating new projects
+- **⚙️ [Project Setup](cli/SETUP.md)** - Configuring existing projects
+- **🔧 [Common Commands](cli/COMMON_COMMANDS.md)** - Command reference
 
-### 📋 **Documentation Standards**
-- **📚 [Documentation Rules](DOCUMENTATION_RULES.md)** - Standards and guidelines for documentation
-- **🔧 [Common Commands](COMMON_COMMANDS.md)** - Centralized command reference
+### 🔌 **Technical Documentation**
+- **📋 [Template System Reference](api/TEMPLATES_REFERENCE.md)** - Technical template details
+- **🏗️ [System Architecture](api/ARCHITECTURE.md)** - Architecture overview
+- **🔧 [Project Manager](api/PROJECT_MANAGER.md)** - Project management internals
 
-### 🔄 **Shared & Testing**
-- **🔄 [CLI Architecture](shared/CLI_ARCHITECTURE.md)** - Command-line interface architecture
-- **🛠️ [System Registrator](shared/system/REGISTRATOR.md)** - Windows context menu integration
+### 📊 **Visual Documentation**
+- **📊 [Architecture Diagrams](diagrams/)** - Visual system diagrams
 - **🧪 [Testing Guide](tests/README.md)** - Testing framework and practices
 
 ## 📊 Documentation Categories
