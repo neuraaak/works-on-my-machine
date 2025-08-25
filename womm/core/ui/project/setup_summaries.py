@@ -111,7 +111,7 @@ def _print_python_setup_summary(
     content += f"""
 
 6. Run the project:
-   python src/{project_path.name.replace('-', '_')}/main.py"""
+   python src/{project_path.name.replace("-", "_")}/main.py"""
 
     if setup_dev_tools:
         content += """

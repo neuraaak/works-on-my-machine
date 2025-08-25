@@ -8,7 +8,6 @@ This script automates code quality checks:
 - isort for import organization
 """
 
-
 from pathlib import Path
 
 from ....core.utils.cli_utils import run_command

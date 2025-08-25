@@ -124,10 +124,9 @@ def mock_pathlib():
 @pytest.fixture
 def mock_click():
     """Mock click for testing CLI commands."""
-    with patch("click.echo") as mock_echo:
-        with patch("click.Context") as mock_context:
-            mock_context.return_value = Mock()
-            yield mock_echo
+    with patch("click.echo") as mock_echo, patch("click.Context") as mock_context:
+        mock_context.return_value = Mock()
+        yield mock_echo
 
 
 @pytest.fixture
@@ -155,11 +154,10 @@ def mock_urllib():
 @pytest.fixture
 def mock_json():
     """Mock json for testing JSON operations."""
-    with patch("json.dump") as mock_dump:
-        with patch("json.load") as mock_load:
-            mock_dump.return_value = None
-            mock_load.return_value = {"mock": "data"}
-            yield {"dump": mock_dump, "load": mock_load}
+    with patch("json.dump") as mock_dump, patch("json.load") as mock_load:
+        mock_dump.return_value = None
+        mock_load.return_value = {"mock": "data"}
+        yield {"dump": mock_dump, "load": mock_load}
 
 
 @pytest.fixture

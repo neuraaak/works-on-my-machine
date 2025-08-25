@@ -10,10 +10,7 @@ from typing import Optional
 import click
 
 from ..core.managers.project import ProjectManager
-from ..core.ui.common.console import (
-    print_error,
-    print_header,
-)
+from ..core.ui.common.console import print_error, print_header
 from ..core.ui.project import ProjectWizard
 from ..core.utils.security.security_validator import validate_user_input
 

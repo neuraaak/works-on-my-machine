@@ -22,7 +22,10 @@ class ProjectCreator:
         self.validator = ProjectValidator()
 
     def create_project_structure(
-        self, project_path: Path, project_name: str, **kwargs  # noqa: ARG002
+        self,
+        project_path: Path,
+        project_name: str,
+        **kwargs,  # noqa: ARG002
     ) -> bool:
         """
         Create the basic project structure.

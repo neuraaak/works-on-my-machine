@@ -108,7 +108,7 @@ class DynamicLayeredProgress:
             for stage in self.stages:
                 if stage.get("type") == "main" and "steps" not in stage:
                     stage["steps"] = [
-                        s.get("name", f"Step {i+1}")
+                        s.get("name", f"Step {i + 1}")
                         for i, s in enumerate(self.sub_layers)
                     ]
 
@@ -280,7 +280,8 @@ class DynamicLayeredProgress:
         elif metadata["type"] == "spinner":
             # Handle spinner layer - update status message
             self.progress.update(
-                task_id, status=details  # Use details as status message
+                task_id,
+                status=details,  # Use details as status message
             )
         elif metadata["type"] == "download":
             # Handle download layer - update progress and details
