@@ -270,9 +270,9 @@ class TestSecurityValidator:
 
         with patch("platform.system", return_value="Windows"):
             is_valid, error = validator.validate_registry_operation(key_path, operation)
-            assert (
-                is_valid == expected
-            ), f"Registry validation failed for {key_path}: {error}"
+            assert is_valid == expected, (
+                f"Registry validation failed for {key_path}: {error}"
+            )
 
         # Test non-Windows system
         with patch("platform.system", return_value="Linux"):

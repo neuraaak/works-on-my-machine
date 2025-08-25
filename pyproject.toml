@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "works-on-my-machine"
-version = "2.6.3"
+version = "2.6.4"
 description = "Universal development tools for Python and JavaScript - Automatic installation, cross-platform configuration, global commands"
 readme = "README.md"
 license = { text = "MIT" }
@@ -21,7 +21,7 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
-    "Topic :: Software Development :: Tools",
+    "Topic :: Software Development",
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 keywords = [
@@ -304,6 +304,8 @@ skips = ["B101", "B601"]
 [tool.ruff]
 target-version = "py38"
 line-length = 88
+
+[tool.ruff.lint]
 select = [
     "E",   # pycodestyle errors
     "W",   # pycodestyle warnings
@@ -326,11 +328,17 @@ ignore = [
     "T201", # print statements (pour init.py et scripts)
 ]
 
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 "tests/**/*" = ["S101", "S311", "E501"]
 "init.py" = ["T201", "E501"]
 "*/scripts/*" = ["T201", "E501"]
 "lint.py" = ["T201", "E501"]
 
-[tool.ruff.mccabe]
+[tool.ruff.lint.mccabe]
 max-complexity = 10
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"

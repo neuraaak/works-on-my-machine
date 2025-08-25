@@ -1,22 +1,13 @@
-#!/bin/bash
-# Post-commit hook for WOMM project
-# Automatically creates version tags after commits
+#!/bin/sh
+# Post-commit bash hook for automatic tag creation
+# Project: WOMM (Works On My Machine)
+# Usage: Copy this file to .git/hooks/post-commit (without extension)
 
-set -e  # Exit on any error
-
-# Get project root (parent of .hooks directory)
-PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-cd "$PROJECT_ROOT"
-
-echo "🏷️  Running post-commit tag management..."
-
-# Function to read version from pyproject.toml
+# Function to get version from pyproject.toml
 get_version_from_pyproject() {
-    local pyproject_path="$PROJECT_ROOT/pyproject.toml"
-    if [[ -f "$pyproject_path" ]]; then
-        local version
-        version=$(grep -E '^version\s*=\s*"' "$pyproject_path" | sed -E 's/version\s*=\s*"([^"]+)"/\1/')
-        if [[ -n "$version" ]]; then
+    if [ -f "pyproject.toml" ]; then
+        version=$(grep -E '^version\s*=\s*"' pyproject.toml | sed 's/.*version\s*=\s*"\([^"]*\)".*/\1/')
+        if [ -n "$version" ]; then
             echo "$version"
             return 0
         fi
@@ -24,13 +15,11 @@ get_version_from_pyproject() {
     return 1
 }
 
-# Function to read version from setup.py (fallback)
+# Function to get version from setup.py
 get_version_from_setup() {
-    local setup_path="$PROJECT_ROOT/setup.py"
-    if [[ -f "$setup_path" ]]; then
-        local version
-        version=$(grep -E "version\s*=\s*['\"]" "$setup_path" | sed -E "s/.*version\s*=\s*['\"]([^'\"]+)['\"].*/\1/")
-        if [[ -n "$version" ]]; then
+    if [ -f "setup.py" ]; then
+        version=$(grep -E "version\s*=\s*['\"]" setup.py | sed "s/.*version\s*=\s*['\"]\([^'\"]*\)['\"].*/\1/")
+        if [ -n "$version" ]; then
             echo "$version"
             return 0
         fi
@@ -38,110 +27,64 @@ get_version_from_setup() {
     return 1
 }
 
-# Function to get major version
-get_major_version() {
-    local version="$1"
-    if [[ "$version" =~ ^([0-9]+)\. ]]; then
-        echo "${BASH_REMATCH[1]}"
-        return 0
-    fi
-    return 1
-}
-
-# Function to create or move tag
-set_git_tag() {
-    local tag_name="$1"
-    local commit_hash="$2"
-    
-    # Check if tag exists
-    if git tag -l "$tag_name" >/dev/null 2>&1; then
-        echo "🔄 Moving existing tag '$tag_name' to current commit..."
-        # Delete local tag
-        git tag -d "$tag_name" >/dev/null 2>&1 || true
-        # Delete remote tag if it exists
-        git push origin ":refs/tags/$tag_name" >/dev/null 2>&1 || true
-    fi
-    
-    # Create new tag
-    if git tag "$tag_name" "$commit_hash"; then
-        echo "✅ Created tag '$tag_name' on commit $commit_hash"
-        return 0
-    else
-        echo "❌ Failed to create tag '$tag_name'"
-        return 1
-    fi
-}
-
-# Function to push tag to remote
-push_git_tag() {
+# Function to create or update a tag
+create_or_update_tag() {
     local tag_name="$1"
     
-    echo "📤 Pushing tag '$tag_name' to remote..."
-    if git push origin "$tag_name" >/dev/null 2>&1; then
-        echo "✅ Tag '$tag_name' pushed to remote"
+    # Check if tag already exists
+    if git rev-parse "$tag_name" >/dev/null 2>&1; then
+        # Update existing tag (force update)
+        if git tag -f "$tag_name"; then
+            echo "✓ [AUTO-TAG] Updated: $tag_name"
+        else
+            echo "❌ [AUTO-TAG] Update error: $tag_name"
+            return 1
+        fi
     else
-        echo "⚠️  Failed to push tag '$tag_name' to remote (may not exist)"
+        # Create lightweight tag
+        if git tag "$tag_name"; then
+            echo "✓ [AUTO-TAG] Created: $tag_name"
+        else
+            echo "❌ [AUTO-TAG] Creation error: $tag_name"
+            return 1
+        fi
     fi
+    return 0
 }
 
-# Main execution
-main() {
-    # Get current commit hash
-    local commit_hash
-    commit_hash=$(git rev-parse HEAD)
-    if [[ $? -ne 0 ]]; then
-        echo "❌ Failed to get current commit hash"
-        exit 1
-    fi
-    
-    echo "📝 Current commit: $commit_hash"
-    
-    # Read version from pyproject.toml or setup.py
-    local version
-    version=$(get_version_from_pyproject) || version=$(get_version_from_setup)
-    
-    if [[ -z "$version" ]]; then
-        echo "❌ Could not find version in pyproject.toml or setup.py"
-        exit 1
-    fi
-    
-    echo "📦 Project version: $version"
-    
-    # Get major version
-    local major_version
-    major_version=$(get_major_version "$version")
-    if [[ -z "$major_version" ]]; then
-        echo "❌ Could not extract major version from '$version'"
-        exit 1
-    fi
-    
-    # Create version tag (e.g., v2.6.1)
-    local version_tag="v$version"
-    local version_tag_created=false
-    if set_git_tag "$version_tag" "$commit_hash"; then
-        version_tag_created=true
-    fi
-    
-    # Create major version tag (e.g., v2-latest)
-    local major_tag="v$major_version-latest"
-    local major_tag_created=false
-    if set_git_tag "$major_tag" "$commit_hash"; then
-        major_tag_created=true
-    fi
-    
-    # Push tags to remote if they were created successfully
-    if [[ "$version_tag_created" == "true" ]]; then
-        push_git_tag "$version_tag"
-    fi
-    
-    if [[ "$major_tag_created" == "true" ]]; then
-        push_git_tag "$major_tag"
-    fi
-    
-    echo "🎉 Post-commit tag management completed!"
-    echo "   Version tag: $version_tag"
-    echo "   Major tag: $major_tag"
-}
+# Get version (priority: pyproject.toml then setup.py)
+version=$(get_version_from_pyproject)
+if [ $? -ne 0 ]; then
+    version=$(get_version_from_setup)
+fi
 
-# Run main function
-main "$@"
+if [ -n "$version" ]; then
+    # Classic version tag
+    tag_name="v$version"
+    create_or_update_tag "$tag_name"
+    
+    # Major version "latest" tag
+    major_version=$(echo "$version" | sed 's/^\([0-9]*\)\..*/\1/')
+    latest_tag_name=""
+    if [ -n "$major_version" ]; then
+        latest_tag_name="v$major_version-latest"
+        create_or_update_tag "$latest_tag_name"
+    fi
+    
+    # Automatic tag push (always executed)
+    if git push origin "$tag_name" --force >/dev/null 2>&1; then
+        echo "✓ [AUTO-TAG] Pushed: $tag_name"
+    else
+        echo "⚠️  [AUTO-TAG] Push error: $tag_name"
+    fi
+    
+    if [ -n "$latest_tag_name" ]; then
+        if git push origin "$latest_tag_name" --force >/dev/null 2>&1; then
+            echo "✓ [AUTO-TAG] Pushed: $latest_tag_name"
+        else
+            echo "⚠️  [AUTO-TAG] Push error: $latest_tag_name"
+        fi
+    fi
+else
+    echo "→ [AUTO-TAG] No version found"
+fi

@@ -36,11 +36,14 @@
 ### **Installation**
 
 ```bash
-# Clone the repository
+# Option 1: Install from PyPI (recommended)
+pip install works-on-my-machine
+# OR
+pip install womm
+
+# Option 2: Install from source
 git clone https://github.com/neuraaak/works-on-my-machine.git
 cd works-on-my-machine
-
-# Install WOMM globally
 python womm.py install
 
 # Restart your terminal, then use WOMM anywhere!

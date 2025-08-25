@@ -392,9 +392,9 @@ def verify_uninstallation_complete(target_path: Path) -> Dict:
         else:
             # Command still found, but this might be from another installation
             result["success"] = True  # Don't fail uninstallation for this
-            result[
-                "message"
-            ] = "WOMM command still accessible (may be from another installation)"
+            result["message"] = (
+                "WOMM command still accessible (may be from another installation)"
+            )
 
         return result
 

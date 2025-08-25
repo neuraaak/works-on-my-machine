@@ -43,16 +43,16 @@ class ProjectWizard:
 
         # Step 1: Select project type
         ProjectWizard._console.print("", style="dim")
-        ProjectWizard._console.print("📁 Step 1: Select project type", style="bold blue")
+        ProjectWizard._console.print(
+            "📁 Step 1: Select project type", style="bold blue"
+        )
         project_type = ProjectWizard._select_project_type()
         if not project_type:
             return None
 
         # Step 2: Enter project name
         ProjectWizard._console.print("\n" + (":" * 80) + "\n", style="dim")
-        ProjectWizard._console.print(
-            "🏷️  Step 2: Enter project name", style="bold blue"
-        )
+        ProjectWizard._console.print("🏷️  Step 2: Enter project name", style="bold blue")
         project_name = ProjectWizard._get_project_name()
         if not project_name:
             return None

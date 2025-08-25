@@ -312,27 +312,27 @@ class SystemDetector:
         else:
             installable = self.can_install_package_manager()
             if installable:
-                recommendations[
-                    "package_manager"
-                ] = f"Install {installable} to facilitate installations"
+                recommendations["package_manager"] = (
+                    f"Install {installable} to facilitate installations"
+                )
             else:
-                recommendations[
-                    "package_manager"
-                ] = "No package manager detected - manual installation required"
+                recommendations["package_manager"] = (
+                    "No package manager detected - manual installation required"
+                )
 
         # Recommended editor
         if "code" in self.dev_environments:
-            recommendations[
-                "editor"
-            ] = "VS Code detected - excellent choice for dev-tools"
+            recommendations["editor"] = (
+                "VS Code detected - excellent choice for dev-tools"
+            )
         elif any("vim" in env or "nvim" in env for env in self.dev_environments):
-            recommendations[
-                "editor"
-            ] = "Command line editor detected - dev-tools compatible"
+            recommendations["editor"] = (
+                "Command line editor detected - dev-tools compatible"
+            )
         else:
-            recommendations[
-                "editor"
-            ] = "Install VS Code recommended for better integration"
+            recommendations["editor"] = (
+                "Install VS Code recommended for better integration"
+            )
 
         return recommendations
 

@@ -30,9 +30,9 @@ class ContextMenuWizard:
     _console = Console()
 
     @staticmethod
-    def run_setup() -> (
-        Tuple[Optional[str], Optional[str], Optional[str], Optional[ContextParameters]]
-    ):
+    def run_setup() -> Tuple[
+        Optional[str], Optional[str], Optional[str], Optional[ContextParameters]
+    ]:
         """
         Run the complete interactive setup wizard.
 
