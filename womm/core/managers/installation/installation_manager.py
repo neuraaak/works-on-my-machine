@@ -486,14 +486,14 @@ class InstallationManager:
             InstallationManagerError: If unexpected error occurs
         """
         try:
-            # Create target directory
-            self.target_path.mkdir(parents=True, exist_ok=True)
+            # Create target directory (womm subdirectory)
+            womm_target_path = self.target_path / "womm"
+            womm_target_path.mkdir(parents=True, exist_ok=True)
 
             # Copy files with progress tracking
-
             for i, relative_file in enumerate(files_to_copy):
                 source_file = self.source_path / relative_file
-                target_file = self.target_path / relative_file
+                target_file = womm_target_path / relative_file
 
                 # Update file copy progress
                 file_name = Path(relative_file).name
@@ -669,14 +669,14 @@ class InstallationManager:
             InstallationManagerError: If unexpected error occurs
         """
         try:
-            # Create target directory
-            self.target_path.mkdir(parents=True, exist_ok=True)
+            # Create target directory (womm subdirectory)
+            womm_target_path = self.target_path / "womm"
+            womm_target_path.mkdir(parents=True, exist_ok=True)
 
             # Copy files with layered progress bar
-
             for _i, relative_file in enumerate(files_to_copy):
                 source_file = self.source_path / relative_file
-                target_file = self.target_path / relative_file
+                target_file = womm_target_path / relative_file
 
                 # Update file copy progress bar
                 if progress and file_task_id is not None:
@@ -703,40 +703,20 @@ class InstallationManager:
             return True
 
         except OSError as e:
-            # Stop progress if available
-            if progress and file_task_id is not None:
+            # Stop progress and raise specific exception
+            if progress:
                 progress.emergency_stop("File copy failed")
-
-                # Now safe to print error details after stopping progress
-                from ...ui.common.console import print_error
-
-                print_error(f"File copy failed: {e}")
-            else:
-                # No active progress, safe to print immediately
-                from ...ui.common.console import print_error
-
-                print_error(f"File copy failed: {e}")
 
             raise FileCopyError(
                 source=str(source_file),
                 target=str(target_file),
                 reason=str(e),
-                details=f"Failed during file copy operation: {relative_file}",
+                details=f"Failed at file {_i + 1}/{len(files_to_copy)}: {relative_file}",
             ) from e
         except Exception as e:
-            # Stop progress if available
-            if progress and file_task_id is not None:
+            # Stop progress and raise manager exception
+            if progress:
                 progress.emergency_stop("Unexpected error during file copy")
-
-                # Now safe to print error details after stopping progress
-                from ...ui.common.console import print_error
-
-                print_error(f"Unexpected error during file copy: {e}")
-            else:
-                # No active progress, safe to print immediately
-                from ...ui.common.console import print_error
-
-                print_error(f"Unexpected error during file copy: {e}")
 
             raise InstallationManagerError(
                 message=f"Unexpected error during file copy: {e}",

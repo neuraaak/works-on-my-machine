@@ -11,6 +11,7 @@ All functions here are stateless and can be used independently.
 # Standard library imports
 import platform
 import stat
+import sys
 from pathlib import Path
 from time import sleep
 from typing import Dict, List
@@ -32,40 +33,7 @@ from ..cli_utils import run_silent
 
 # CONSTANTS
 ########################################################
-# Configuration constants
-DEFAULT_EXCLUDE_PATTERNS = [
-    ".git",
-    ".gitignore",
-    ".pytest_cache",
-    "__pycache__",
-    "*.pyc",
-    "*.pyo",
-    "*.pyd",
-    ".DS_Store",
-    "Thumbs.db",
-    "*.tmp",
-    "*.bak",
-    "*.swp",
-    "*.swo",
-    "coverage.xml",
-    "htmlcov",
-    ".coverage",
-    ".tox",
-    ".venv",
-    "venv",
-    "node_modules",
-    "dist",
-    "build",
-    "*.egg-info",
-    ".mypy_cache",
-    ".ruff_cache",
-    "tests",
-    "test_*",
-    "*_test.py",
-    "ignore-install.txt",
-    "womm.bat",  # Generated dynamically, should not be copied
-    "womm-installed.py",  # Avoid copying previous installation artifacts
-]
+# Installation configuration
 
 # FUNCTIONS
 ########################################################
@@ -82,22 +50,36 @@ def get_target_womm_path() -> Path:
 
 
 def get_current_womm_path() -> Path:
-    """Get the current script path.
+    """Get the womm package directory by finding __main__.py.
 
     Returns:
-        Path object pointing to the directory containing this script.
+        Path object pointing to the womm package directory (parent of __main__.py).
     """
-    # Go up from womm/core/utils/installation/installation_utils.py to the project root
-    # womm/core/utils/installation/installation_utils.py -> womm/core/utils/installation/ -> womm/core/utils/ -> womm/core/ -> womm/ -> project_root
-    current_path = Path(__file__).parent.parent.parent.parent.parent.absolute()
+    # Try to find __main__.py in the womm package
+    try:
+        import womm.__main__
 
-    # Verify we're at the project root by checking for key files
-    if not (current_path / "pyproject.toml").exists():
+        __main__path = Path(womm.__main__.__file__)
+        womm_dir = __main__path.parent
+        return womm_dir
+    except ImportError as e:
+        # Fallback: search in sys.path for __main__.py
+        for path in sys.path:
+            if path:
+                potential_main = Path(path) / "womm" / "__main__.py"
+                if potential_main.exists():
+                    return potential_main.parent
+
+        # Last resort: try to find from current file location
+        current_file = Path(__file__)
+        # Navigate up to find womm directory
+        for parent in current_file.parents:
+            if (parent / "__main__.py").exists():
+                return parent
+
         raise RuntimeError(
-            f"Could not find project root. Expected pyproject.toml at {current_path}"
-        )
-
-    return current_path
+            "Could not find womm package directory (__main__.py not found)"
+        ) from e
 
 
 def should_exclude_file(file_path: Path, source_path: Path) -> bool:
@@ -105,36 +87,124 @@ def should_exclude_file(file_path: Path, source_path: Path) -> bool:
 
     Args:
         file_path: Path to the file relative to source
-        source_path: Source directory path
+        source_path: Source directory path (womm package directory)
 
     Returns:
         True if file should be excluded, False otherwise
     """
-    # Load exclude patterns from ignore-install.txt if available
-    exclude_patterns = []
-    ignore_file = source_path / "ignore-install.txt"
+    # Check if we're in dev mode (pyproject.toml exists in parent)
+    project_root = source_path.parent
+    pyproject_file = project_root / "pyproject.toml"
 
-    if ignore_file.exists():
-        try:
-            with open(ignore_file, encoding="utf-8") as f:
-                for line in f:
-                    line = line.strip()
-                    # Skip comments and empty lines
-                    if line and not line.startswith("#"):
-                        exclude_patterns.append(line)
-        except Exception as e:
-            # Fall back to default patterns if file can't be read
-            # Log the error for debugging but continue with defaults
-            print(f"Warning: Could not read ignore-install.txt: {e}")
+    if pyproject_file.exists():
+        # DEV MODE: Read pyproject.toml for patterns
+        return check_pyproject_patterns(file_path, source_path, pyproject_file)
+    else:
+        # PACKAGE MODE: No filtering needed (already done during build)
+        return False  # Include everything
 
-    # Fallback to default patterns if no ignore-install.txt or empty
-    if not exclude_patterns:
-        exclude_patterns = DEFAULT_EXCLUDE_PATTERNS
+
+def check_pyproject_patterns(
+    file_path: Path, source_path: Path, pyproject_file: Path
+) -> bool:
+    """Check exclusion patterns from pyproject.toml.
+
+    Args:
+        file_path: Path to the file relative to source
+        source_path: Source directory path (womm package directory)
+        pyproject_file: Path to pyproject.toml
+
+    Returns:
+        True if file should be excluded, False otherwise
+    """
+    try:
+        import tomllib
+    except ImportError:
+        import tomli as tomllib
+
+    try:
+        with open(pyproject_file, "rb") as f:
+            config = tomllib.load(f)
+
+        # Get exclude patterns from setuptools
+        setuptools_config = config.get("tool", {}).get("setuptools", {})
+        packages_find = setuptools_config.get("packages", {}).get("find", {})
+        exclude_patterns = packages_find.get("exclude", [])
+
+        # Add womm-specific exclusions
+        womm_config = config.get("tool", {}).get("womm", {}).get("installation", {})
+        additional_exclude = womm_config.get("additional-exclude", [])
+        exclude_patterns.extend(additional_exclude)
+
+        # Apply patterns
+        relative_path = file_path.relative_to(source_path)
+
+        for pattern in exclude_patterns:
+            if pattern.endswith("*"):
+                # Handle wildcard patterns
+                base_pattern = pattern[:-1]
+                if str(relative_path).startswith(base_pattern):
+                    return True
+            elif pattern in str(relative_path):
+                return True
+
+        return False
+
+    except Exception as e:
+        # Fallback to default patterns if pyproject.toml can't be read
+        print(f"Warning: Could not read pyproject.toml: {e}")
+        return check_default_patterns(file_path, source_path)
+
+
+def check_default_patterns(file_path: Path, source_path: Path) -> bool:
+    """Fallback to default exclusion patterns.
+
+    Args:
+        file_path: Path to the file relative to source
+        source_path: Source directory path (womm package directory)
+
+    Returns:
+        True if file should be excluded, False otherwise
+    """
+    default_patterns = [
+        ".git",
+        ".gitignore",
+        "__pycache__",
+        "*.pyc",
+        "*.pyo",
+        "*.pyd",
+        ".pytest_cache",
+        ".mypy_cache",
+        ".ruff_cache",
+        ".coverage",
+        "htmlcov",
+        "coverage.xml",
+        ".venv",
+        "venv",
+        "node_modules",
+        "build",
+        "dist",
+        "*.egg-info",
+        "tests",
+        "test_*",
+        "*_test.py",
+        "docs",
+        "pyproject.toml",
+        "setup.py",
+        "*.log",
+        ".DS_Store",
+        "Thumbs.db",
+        ".vscode",
+        ".idea",
+        ".cursor",
+        "ignore-install.txt",
+        "womm.bat",
+    ]
 
     file_name = file_path.name
     relative_path = file_path.relative_to(source_path)
 
-    for pattern in exclude_patterns:
+    for pattern in default_patterns:
         if pattern.startswith("*"):
             if file_name.endswith(pattern[1:]):
                 return True
@@ -154,15 +224,55 @@ def create_womm_executable(target_path: Path) -> Dict:
         Dictionary with success status and details
     """
     try:
+        # Create womm.py wrapper
+        womm_py_path = target_path / "womm.py"
+        womm_py_content = '''#!/usr/bin/env python3
+"""
+Works On My Machine (WOMM) - Wrapper Entry Point.
+This is a wrapper that calls the womm package __main__ module.
+"""
+
+import sys
+from pathlib import Path
+
+
+def main():
+    """Main entry point for the womm wrapper."""
+    try:
+        # Add the current directory to path to import womm package
+        project_root = Path(__file__).parent
+        sys.path.insert(0, str(project_root))
+
+        # Import and run the __main__ module
+        from womm.__main__ import main as womm_main
+        womm_main()
+    except ImportError as e:
+        print("❌ Error: Could not import womm package")
+        print("💡 Make sure you're in the works-on-my-machine directory")
+        print(f"🔧 Error details: {e}")
+        sys.exit(1)
+    except Exception as e:
+        print(f"❌ Error running WOMM: {e}")
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()
+'''
+
+        # Write womm.py
+        with open(womm_py_path, "w", encoding="utf-8") as f:
+            f.write(womm_py_content)
+
         # Create executable script content
         if platform.system() == "Windows":
             # Windows batch file
             executable_path = target_path / "womm.bat"
-            script_content = f'@echo off\npython "{target_path / "womm.py"}" %*\n'
+            script_content = f'@echo off\npython "{womm_py_path}" %*\n'
         else:
             # Unix shell script
             executable_path = target_path / "womm"
-            script_content = f'#!/bin/bash\npython3 "{target_path / "womm.py"}" "$@"\n'
+            script_content = f'#!/bin/bash\npython3 "{womm_py_path}" "$@"\n'
 
         # Write the executable
         with open(executable_path, "w", encoding="utf-8") as f:
@@ -176,6 +286,7 @@ def create_womm_executable(target_path: Path) -> Dict:
         return {
             "success": True,
             "executable_path": str(executable_path),
+            "womm_py_path": str(womm_py_path),
             "platform": platform.system(),
         }
 
@@ -210,8 +321,8 @@ def verify_files_copied(source_path: Path, target_path: Path) -> Dict:
     """Verify that all required files were copied correctly.
 
     Args:
-        source_path: Original source directory
-        target_path: Target installation directory
+        source_path: Original source directory (womm package directory)
+        target_path: Target installation directory (will contain womm/ subdirectory)
 
     Returns:
         Dictionary with verification results
@@ -224,9 +335,12 @@ def verify_files_copied(source_path: Path, target_path: Path) -> Dict:
         missing_files = []
         size_mismatches = []
 
+        # Files are copied to target_path/womm/
+        womm_target_path = target_path / "womm"
+
         for relative_file in files_to_check:
             source_file = source_path / relative_file
-            target_file = target_path / relative_file
+            target_file = womm_target_path / relative_file
 
             if not target_file.exists():
                 missing_files.append(str(relative_file))

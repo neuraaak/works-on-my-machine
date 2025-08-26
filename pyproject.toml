@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "works-on-my-machine"
-version = "2.6.5"
+version = "2.6.6"
 description = "Universal development tools for Python and JavaScript - Automatic installation, cross-platform configuration, global commands"
 readme = "README.md"
 license = { text = "MIT" }
@@ -37,6 +37,7 @@ dependencies = [
     "rich>=13.0.0",
     "questionary>=2.0.0",
     "InquirerPy>=0.3.4",
+    "tomli>=2.0.0",
 ]
 
 [project.optional-dependencies]
@@ -105,34 +106,51 @@ exclude = [
     ".vscode*",
     ".idea*",
     "__pycache__*",
+    "**/__pycache__*",
+    ".git*",
+    "*.pyc",
+    "*.pyo",
+    "*.pyd",
+    ".coverage",
+    "*.log",
+    ".DS_Store",
+    "Thumbs.db",
+    "docs*",
+    "pyproject.toml",
+    "setup.py",
+    "Makefile",
+]
+
+[tool.womm.installation]
+# Additional exclusions for local installation (womm install)
+additional-exclude = [
+    "ignore-install.txt",
+    "MANIFEST.in",
+    "womm.bat",
+    "womm-installed.py",
+    "*.tmp",
+    "*.bak",
+    "*.swp",
+    "*.swo",
+    ".tox",
+    ".pre-commit-config.yaml",
+    ".cspell-dict",
 ]
 
 [tool.setuptools.package-data]
-# Include templates and configuration files
-"shared" = [
-    "*.json",
-    "*.yaml",
-    "*.yml",
-    "*.txt",
-    "*.template",
-    "*.config.*",
-    "templates/*",
+# Inclure les ressources non-Python du package womm (pour la wheel)
+"womm" = [
+    "*.py",
+    "bin/*",
     "configs/*",
-    "vscode/*",
+    "languages/*",
+    "languages/**/*",
+    "core/**/templates/*",
+    "languages/**/templates/*",
+    "languages/**/configs/*",
+    "languages/**/vscode/*",
+    "languages/**/scripts/*",
 ]
-"languages" = [
-    "*.json",
-    "*.yaml",
-    "*.yml",
-    "*.txt",
-    "*.template",
-    "*.config.*",
-    "templates/*",
-    "configs/*",
-    "vscode/*",
-    "scripts/*",
-]
-"womm" = ["*.py"]
 
 # Configuration Black
 [tool.black]

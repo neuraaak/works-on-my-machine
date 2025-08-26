@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """
-Works On My Machine (WOMM) - Main CLI Entry Point.
-This is a root-level entry point for git clone installations.
-For PyPI installations, use 'womm' command directly.
+Works On My Machine (WOMM) - Wrapper Entry Point.
+This is a wrapper that calls the womm package __main__ module.
 """
 
 import sys
@@ -10,17 +9,16 @@ from pathlib import Path
 
 
 def main():
-    """Main entry point for git clone usage."""
-    # Add the current directory to path to import womm package
-    project_root = Path(__file__).parent
-    sys.path.insert(0, str(project_root))
-
+    """Main entry point for the womm wrapper."""
     try:
-        # Import and run the CLI directly with dynamic import to avoid circular imports
-        import importlib
+        # Add the current directory to path to import womm package
+        project_root = Path(__file__).parent
+        sys.path.insert(0, str(project_root))
 
-        cli_module = importlib.import_module("womm.cli")
-        cli_module.womm()
+        # Import and run the __main__ module
+        from womm.__main__ import main as womm_main
+
+        womm_main()
     except ImportError as e:
         print("❌ Error: Could not import womm package")
         print("💡 Make sure you're in the works-on-my-machine directory")

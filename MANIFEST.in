@@ -23,6 +23,7 @@ recursive-include womm templates *
 recursive-include womm configs *
 recursive-include womm vscode *
 recursive-include womm scripts *
+recursive-include womm bin *
 
 # Exclude development files
 global-exclude *.pyc
