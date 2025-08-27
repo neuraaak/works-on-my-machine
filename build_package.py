@@ -15,7 +15,7 @@ def run_command(command, description=""):
         print(f"🔄 {description}...")
 
     try:
-        result = subprocess.run(command, check=True, capture_output=True, text=True)
+        result = subprocess.run(command, check=True, capture_output=True, text=True)  # noqa: S603
         if result.stdout:
             print(result.stdout)
         return True
