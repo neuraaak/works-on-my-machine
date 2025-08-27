@@ -75,20 +75,20 @@ Exemples :
 ### Scénario 1 : Nouvelle Version
 
 ```bash
-# Version actuelle : 2.6.1
+# Version actuelle : 2.6.8
 git commit -m "feat: new feature"
 # Résultat :
-# - Tag v2.6.1 créé sur le commit
+# - Tag v2.6.8 créé sur le commit
 # - Tag v2-latest déplacé sur le commit
 ```
 
 ### Scénario 2 : Fix sans Changement de Version
 
 ```bash
-# Version reste 2.6.1
+# Version reste 2.6.8
 git commit -m "fix: bug correction"
 # Résultat :
-# - Tag v2.6.1 déplacé sur le nouveau commit
+# - Tag v2.6.8 déplacé sur le nouveau commit
 # - Tag v2-latest déplacé sur le nouveau commit
 ```
 

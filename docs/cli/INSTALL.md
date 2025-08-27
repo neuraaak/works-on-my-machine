@@ -55,7 +55,7 @@ pip install works-on-my-machine
 pip install --user works-on-my-machine
 
 # Install specific version
-pip install works-on-my-machine==2.6.0
+pip install works-on-my-machine==2.6.8
 
 # Install without environment refresh (Windows only)
 pip install works-on-my-machine --no-refresh-env

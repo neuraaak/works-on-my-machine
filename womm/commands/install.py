@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """
 Installation commands for WOMM CLI.
-Handles installation, uninstallation, and PATH management.
+
+This module handles installation, uninstallation, and PATH management commands
+for the Works On My Machine CLI interface.
 """
 
 # IMPORTS
@@ -13,16 +15,21 @@ from pathlib import Path
 # Third-party imports
 import click
 
+# Local imports
+from ..core.exceptions.installation import (
+    InstallationUtilityError,
+    UninstallationManagerError,
+    UninstallationUtilityError,
+)
+from ..core.exceptions.system import FileSystemError, RegistryError, UserPathError
 from ..core.managers.installation.installation_manager import InstallationManager
 from ..core.managers.installation.uninstallation_manager import UninstallationManager
 from ..core.managers.system.user_path_manager import PathManager
-
-# Local imports
 from ..core.utils.security.security_validator import security_validator
 
-# COMMAND FUNCTIONS
-########################################################
-# Main CLI command implementations
+# =============================================================================
+# INSTALLATION COMMANDS
+# =============================================================================
 
 
 @click.command()
@@ -60,11 +67,48 @@ def install(force, target, no_refresh_env):
         manager = InstallationManager()
         manager.install(force=force, target=target, refresh_env=not no_refresh_env)
 
+    except InstallationUtilityError as e:
+        from ..core.ui.common.console import print_error
+
+        print_error(f"Installation error: {e.message}")
+        if e.details:
+            print_error(f"Details: {e.details}")
+        sys.exit(1)
+    except RegistryError as e:
+        from ..core.ui.common.console import print_error
+
+        print_error(
+            f"PATH utility error: Registry {e.operation} failed for {e.registry_key}: {e.reason}"
+        )
+        if e.details:
+            print_error(f"Details: {e.details}")
+        sys.exit(1)
+    except FileSystemError as e:
+        from ..core.ui.common.console import print_error
+
+        print_error(
+            f"PATH utility error: File {e.operation} failed for {e.file_path}: {e.reason}"
+        )
+        if e.details:
+            print_error(f"Details: {e.details}")
+        sys.exit(1)
+    except UserPathError as e:
+        from ..core.ui.common.console import print_error
+
+        print_error(f"PATH utility error: {e.message}")
+        if e.details:
+            print_error(f"Details: {e.details}")
+        sys.exit(1)
     except Exception as e:
         from ..core.ui.common.console import print_error
 
-        print_error(f"Installation failed: {e}")
+        print_error(f"Unexpected installation error: {e}")
         sys.exit(1)
+
+
+# =============================================================================
+# UNINSTALLATION COMMANDS
+# =============================================================================
 
 
 @click.command()
@@ -94,11 +138,30 @@ def uninstall(force, target):
         manager = UninstallationManager(target=target)
         manager.uninstall(force=force)
 
+    except UninstallationManagerError as e:
+        from ..core.ui.common.console import print_error
+
+        print_error(f"Uninstallation error: {e.message}")
+        if e.details:
+            print_error(f"Details: {e.details}")
+        sys.exit(1)
+    except UninstallationUtilityError as e:
+        from ..core.ui.common.console import print_error
+
+        print_error(f"Uninstallation utility error: {e.message}")
+        if e.details:
+            print_error(f"Details: {e.details}")
+        sys.exit(1)
     except Exception as e:
         from ..core.ui.common.console import print_error
 
-        print_error(f"Uninstallation failed: {e}")
+        print_error(f"Unexpected uninstallation error: {e}")
         sys.exit(1)
+
+
+# =============================================================================
+# PATH MANAGEMENT COMMANDS
+# =============================================================================
 
 
 @click.command("path")
@@ -153,8 +216,13 @@ def path_cmd(backup_flag, restore_flag, list_flag, target):
     except Exception as e:
         from ..core.ui.common.console import print_error
 
-        print_error(f"PATH command error: {e}")
+        print_error(f"Unexpected PATH command error: {e}")
         sys.exit(1)
+
+
+# =============================================================================
+# ENVIRONMENT MANAGEMENT COMMANDS
+# =============================================================================
 
 
 @click.command("refresh-env")
@@ -194,8 +262,15 @@ def refresh_env(target):
         else:
             click.echo("[WARNING] Environment refresh completed with warnings")
 
+    except InstallationUtilityError as e:
+        from ..core.ui.common.console import print_error
+
+        print_error(f"Environment refresh error: {e.message}")
+        if e.details:
+            print_error(f"Details: {e.details}")
+        sys.exit(1)
     except Exception as e:
         from ..core.ui.common.console import print_error
 
-        print_error(f"Environment refresh failed: {e}")
+        print_error(f"Unexpected environment refresh error: {e}")
         sys.exit(1)

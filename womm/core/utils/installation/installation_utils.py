@@ -11,75 +11,23 @@ All functions here are stateless and can be used independently.
 # Standard library imports
 import platform
 import stat
-import sys
 from pathlib import Path
 from time import sleep
 from typing import Dict, List
 
-from ...exceptions.installation_exceptions import (
+# Local imports
+from ...exceptions.installation import (
     ExecutableVerificationError,
     FileVerificationError,
+    InstallationUtilityError,
+    PathUtilityError,
 )
-from ...exceptions.uninstallation_exceptions import (
-    FileRemovalVerificationError,
-    UninstallationDirectoryAccessError,
-    UninstallationFileListError,
-    UninstallationPermissionError,
-    UninstallationVerificationUtilityError,
-)
-
-# Local imports
 from ..cli_utils import run_silent
+from ..system.user_path_utils import extract_path_from_reg_output
 
-# CONSTANTS
-########################################################
-# Installation configuration
-
-# FUNCTIONS
-########################################################
-# Path management utilities
-
-
-def get_target_womm_path() -> Path:
-    """Get the standard target path for Works On My Machine.
-
-    Returns:
-        Path object pointing to the .womm directory in user's home.
-    """
-    return Path.home() / ".womm"
-
-
-def get_current_womm_path() -> Path:
-    """Get the womm package directory by finding __main__.py.
-
-    Returns:
-        Path object pointing to the womm package directory (parent of __main__.py).
-    """
-    # Try to find __main__.py in the womm package
-    try:
-        import womm.__main__
-
-        __main__path = Path(womm.__main__.__file__)
-        womm_dir = __main__path.parent
-        return womm_dir
-    except ImportError as e:
-        # Fallback: search in sys.path for __main__.py
-        for path in sys.path:
-            if path:
-                potential_main = Path(path) / "womm" / "__main__.py"
-                if potential_main.exists():
-                    return potential_main.parent
-
-        # Last resort: try to find from current file location
-        current_file = Path(__file__)
-        # Navigate up to find womm directory
-        for parent in current_file.parents:
-            if (parent / "__main__.py").exists():
-                return parent
-
-        raise RuntimeError(
-            "Could not find womm package directory (__main__.py not found)"
-        ) from e
+# =============================================================================
+# FILE MANAGEMENT UTILITIES
+# =============================================================================
 
 
 def should_exclude_file(file_path: Path, source_path: Path) -> bool:
@@ -214,6 +162,30 @@ def check_default_patterns(file_path: Path, source_path: Path) -> bool:
     return False
 
 
+def get_files_to_copy(source_path: Path) -> List[str]:
+    """Get list of files to copy during installation.
+
+    Args:
+        source_path: Source directory path
+
+    Returns:
+        List of file paths relative to source
+    """
+    files_to_copy = []
+
+    for file_path in source_path.rglob("*"):
+        if file_path.is_file() and not should_exclude_file(file_path, source_path):
+            relative_path = file_path.relative_to(source_path)
+            files_to_copy.append(str(relative_path))
+
+    return files_to_copy
+
+
+# =============================================================================
+# EXECUTABLE CREATION UTILITIES
+# =============================================================================
+
+
 def create_womm_executable(target_path: Path) -> Dict:
     """Create the womm executable script.
 
@@ -222,6 +194,9 @@ def create_womm_executable(target_path: Path) -> Dict:
 
     Returns:
         Dictionary with success status and details
+
+    Raises:
+        InstallationUtilityError: If executable creation fails
     """
     try:
         # Create womm.py wrapper
@@ -290,31 +265,23 @@ if __name__ == "__main__":
             "platform": platform.system(),
         }
 
+    except OSError as e:
+        # File system errors
+        raise InstallationUtilityError(
+            message=f"Failed to create WOMM executable: {e}",
+            details=f"Target path: {target_path}, Platform: {platform.system()}",
+        ) from e
     except Exception as e:
-        return {
-            "success": False,
-            "error": str(e),
-            "platform": platform.system(),
-        }
+        # Convert unexpected errors to our exception type
+        raise InstallationUtilityError(
+            message=f"Unexpected error during executable creation: {e}",
+            details=f"Target path: {target_path}, Platform: {platform.system()}",
+        ) from e
 
 
-def get_files_to_copy(source_path: Path) -> List[str]:
-    """Get list of files to copy during installation.
-
-    Args:
-        source_path: Source directory path
-
-    Returns:
-        List of file paths relative to source
-    """
-    files_to_copy = []
-
-    for file_path in source_path.rglob("*"):
-        if file_path.is_file() and not should_exclude_file(file_path, source_path):
-            relative_path = file_path.relative_to(source_path)
-            files_to_copy.append(str(relative_path))
-
-    return files_to_copy
+# =============================================================================
+# VERIFICATION UTILITIES
+# =============================================================================
 
 
 def verify_files_copied(source_path: Path, target_path: Path) -> Dict:
@@ -385,6 +352,232 @@ def verify_files_copied(source_path: Path, target_path: Path) -> Dict:
         ) from e
 
 
+def verify_path_configuration(entry_path: str) -> Dict:
+    """Verify that WOMM is correctly configured in PATH.
+
+    Args:
+        entry_path: Path to WOMM installation directory
+
+    Returns:
+        Dictionary with verification results
+
+    Raises:
+        PathUtilityError: If PATH configuration verification fails
+    """
+    try:
+        if platform.system() == "Windows":
+            # Query Windows registry for PATH
+            result = run_silent(
+                ["reg", "query", "HKCU\\Environment", "/v", "PATH"],
+                capture_output=True,
+            )
+
+            if result.returncode != 0:
+                raise PathUtilityError(
+                    operation="path_verification",
+                    path=entry_path,
+                    reason="Failed to query PATH from registry",
+                    details=f"Return code: {result.returncode}",
+                )
+
+            # Handle stdout properly
+            stdout_str = result.stdout
+            if isinstance(stdout_str, bytes):
+                stdout_str = stdout_str.decode()
+
+            current_path = extract_path_from_reg_output(stdout_str)
+            path_entries = [p.strip() for p in current_path.split(";") if p.strip()]
+
+        else:
+            # Check Unix shell configuration files
+            shell_rc_files = [
+                Path.home() / ".bashrc",
+                Path.home() / ".zshrc",
+                Path.home() / ".profile",
+            ]
+
+            path_entries = []
+            for rc_file in shell_rc_files:
+                if rc_file.exists():
+                    with open(rc_file, encoding="utf-8") as f:
+                        content = f.read()
+                        if entry_path in content:
+                            path_entries.append(str(rc_file))
+
+        # Normalize paths for comparison
+        normalized_womm = str(Path(entry_path).resolve())
+        found_in_path = False
+
+        if platform.system() == "Windows":
+            normalized_entries = [str(Path(p).resolve()) for p in path_entries if p]
+            found_in_path = normalized_womm in normalized_entries
+        else:
+            found_in_path = len(path_entries) > 0
+
+        if not found_in_path:
+            raise PathUtilityError(
+                operation="path_verification",
+                path=entry_path,
+                reason="WOMM path not found in system PATH",
+                details=f"Platform: {platform.system()}, Checked locations: {path_entries if platform.system() != 'Windows' else 'Registry'}",
+            )
+
+        return {
+            "success": True,
+            "entry_path": entry_path,
+            "found_in_path": True,
+            "platform": platform.system(),
+            "checked_locations": (
+                path_entries if platform.system() != "Windows" else "Registry"
+            ),
+        }
+
+    except PathUtilityError:
+        # Re-raise our custom exceptions
+        raise
+    except Exception as e:
+        # Convert unexpected errors to our exception type
+        raise PathUtilityError(
+            operation="path_verification",
+            path=entry_path,
+            reason=f"Unexpected error during PATH verification: {e}",
+            details="This is an unexpected error that should be reported",
+        ) from e
+
+
+def verify_commands_accessible(entry_path: str) -> Dict:
+    """Verify that WOMM commands are accessible from PATH.
+
+    Args:
+        entry_path: Path to WOMM installation directory
+
+    Returns:
+        Dictionary with verification results
+
+    Raises:
+        ExecutableVerificationError: If executable is not accessible
+    """
+    try:
+        # First test: Check if executable exists at the specified path
+        if platform.system() == "Windows":
+            local_executable = Path(entry_path) / "womm.bat"
+            global_command = ["womm.bat", "--version"]
+        else:
+            local_executable = Path(entry_path) / "womm"
+            global_command = ["womm", "--version"]
+
+        # Test 1: Local executable exists and works
+        if not local_executable.exists():
+            raise ExecutableVerificationError(
+                executable_name="womm",
+                reason=f"WOMM executable not found at {local_executable}",
+                details=f"Platform: {platform.system()}",
+            )
+
+        # Test local executable
+        local_result = run_silent(
+            [str(local_executable), "--version"], capture_output=True
+        )
+        local_works = local_result.returncode == 0
+
+        # Debug info for local test failure
+        if not local_works:
+            import tempfile
+
+            # Clean stdout/stderr of problematic Unicode characters
+            stdout_clean = (
+                str(local_result.stdout).encode("ascii", "replace").decode("ascii")
+                if local_result.stdout
+                else "None"
+            )
+            stderr_clean = (
+                str(local_result.stderr).encode("ascii", "replace").decode("ascii")
+                if local_result.stderr
+                else "None"
+            )
+
+            debug_file = Path(tempfile.gettempdir()) / "womm_local_test_debug.txt"
+            with open(debug_file, "w", encoding="utf-8") as f:
+                f.write("Local executable test failed:\n")
+                f.write(f"Executable: {local_executable}\n")
+                f.write(f"Exists: {local_executable.exists()}\n")
+                f.write(f"Command: {[str(local_executable), '--version']}\n")
+                f.write(f"Return code: {local_result.returncode}\n")
+                f.write(f"Stdout: {stdout_clean}\n")
+                f.write(f"Stderr: {stderr_clean}\n")
+                if local_executable.exists():
+                    f.write(f"File size: {local_executable.stat().st_size}\n")
+                    try:
+                        with open(local_executable, encoding="utf-8") as exe_file:
+                            f.write(f"Content:\n{exe_file.read()}\n")
+                    except Exception as e:
+                        f.write(f"Could not read executable content: {e}\n")
+
+        # Test 2: Global accessibility via PATH
+        global_result = run_silent(global_command, capture_output=True)
+        global_works = global_result.returncode == 0
+
+        # Logic for handling local vs global test results is handled below in unified way
+        if local_works and global_works:
+            # Handle stdout properly
+            stdout_str = global_result.stdout
+            if isinstance(stdout_str, bytes):
+                stdout_str = stdout_str.decode()
+
+            return {
+                "success": True,
+                "womm_accessible": True,
+                "local_test": True,
+                "global_test": True,
+                "version_output": stdout_str,
+                "executable_path": str(local_executable),
+            }
+        elif local_works and not global_works:
+            # Local works but global doesn't - this is common on Windows after fresh install
+            return {
+                "success": True,  # Consider this a success since local works
+                "womm_accessible": True,
+                "local_test": True,
+                "global_test": False,
+                "warning": "Global command not yet accessible in current session (normal after fresh installation)",
+                "executable_path": str(local_executable),
+                "path_status": "timing_issue",
+            }
+        else:
+            # Both local and global failed - this is a real problem
+            stderr_str = (
+                global_result.stderr if not global_works else local_result.stderr
+            )
+            if isinstance(stderr_str, bytes):
+                stderr_str = stderr_str.decode()
+
+            # Clean stderr of problematic Unicode characters
+            stderr_clean = (
+                stderr_str.encode("ascii", "replace").decode("ascii")
+                if stderr_str
+                else "None"
+            )
+
+            raise ExecutableVerificationError(
+                executable_name="womm",
+                reason="WOMM command not accessible - both local and global tests failed",
+                details=f"Local: {local_works}, Global: {global_works}, stderr: {stderr_clean}",
+            )
+
+    except ExecutableVerificationError:
+        # Re-raise our custom exceptions
+        raise
+    except Exception as e:
+        # Convert unexpected errors to our exception type
+        # Clean the error message of Unicode characters that can't be encoded
+        error_msg = str(e).encode("ascii", "replace").decode("ascii")
+        raise ExecutableVerificationError(
+            executable_name="womm",
+            reason=f"Unexpected error during command verification: {error_msg}",
+            details="This is an unexpected error that should be reported",
+        ) from e
+
+
 def verify_executable_works(target_path: Path) -> Dict:
     """Verify that the WOMM executable works correctly.
 
@@ -446,194 +639,5 @@ def verify_executable_works(target_path: Path) -> Dict:
         raise ExecutableVerificationError(
             executable_name="womm",
             reason=f"Unexpected error during executable verification: {e}",
-            details="This is an unexpected error that should be reported",
-        ) from e
-
-
-# UNINSTALLATION UTILITIES
-########################################################
-# Functions for uninstallation operations
-
-
-def get_files_to_remove(target_path: Path) -> List[str]:
-    """Get list of files and directories to remove for progress tracking.
-
-    Args:
-        target_path: Target installation directory
-
-    Returns:
-        List of relative file and directory paths to remove
-
-    Raises:
-        UninstallationFileListError: If file list generation fails
-        UninstallationDirectoryAccessError: If directory access fails
-        UninstallationPermissionError: If permission issues occur
-    """
-    files_to_remove = []
-
-    if not target_path.exists():
-        return files_to_remove
-
-    try:
-        # Check if we have permission to access the directory
-        if not target_path.is_dir():
-            raise UninstallationDirectoryAccessError(
-                directory_path=str(target_path),
-                operation="list_generation",
-                reason="Target path is not a directory",
-                details=f"Path exists but is not a directory: {target_path}",
-            )
-
-        # Get all files and directories recursively
-        for item_path in target_path.rglob("*"):
-            try:
-                if item_path.is_file():
-                    # Add file with relative path
-                    relative_path = item_path.relative_to(target_path)
-                    files_to_remove.append(str(relative_path))
-                elif item_path.is_dir():
-                    # Add directory with relative path (keep trailing slash for directories)
-                    relative_path = item_path.relative_to(target_path)
-                    files_to_remove.append(f"{relative_path}/")
-            except PermissionError as e:
-                raise UninstallationPermissionError(
-                    target_path=str(item_path),
-                    operation="file_scanning",
-                    reason=f"Permission denied: {e}",
-                    details=f"Cannot access file/directory: {item_path}",
-                ) from e
-
-        # Sort to ensure files are removed before their parent directories
-        # Files first, then directories (reverse alphabetical for nested dirs)
-        files_to_remove.sort(key=lambda x: (x.endswith("/"), x))
-
-        return files_to_remove
-
-    except (UninstallationDirectoryAccessError, UninstallationPermissionError):
-        # Re-raise our custom exceptions
-        raise
-    except Exception as e:
-        # Convert unexpected errors to our exception type
-        raise UninstallationFileListError(
-            target_path=str(target_path),
-            reason=f"Unexpected error during file list generation: {e}",
-            details="This is an unexpected error that should be reported",
-        ) from e
-
-
-def verify_files_removed(target_path: Path) -> Dict:
-    """Verify that WOMM files were removed successfully.
-
-    Args:
-        target_path: Target installation directory
-
-    Returns:
-        Dictionary with success status and details
-
-    Raises:
-        FileRemovalVerificationError: If files were not removed successfully
-        UninstallationDirectoryAccessError: If directory access fails during verification
-    """
-    try:
-        # Check if we can access the directory for verification
-        if target_path.exists():
-            try:
-                # Try to access the directory to see if it's accessible
-                target_path.stat()
-            except PermissionError as e:
-                raise UninstallationDirectoryAccessError(
-                    directory_path=str(target_path),
-                    operation="verification",
-                    reason=f"Permission denied during verification: {e}",
-                    details=f"Cannot access directory for verification: {target_path}",
-                ) from e
-
-            # Directory exists and is accessible
-            raise FileRemovalVerificationError(
-                verification_type="removal_verification",
-                file_path=str(target_path),
-                reason="WOMM directory still exists after removal",
-                details=f"Directory path: {target_path}",
-            )
-        else:
-            return {"success": True, "message": "All WOMM files removed successfully"}
-
-    except (FileRemovalVerificationError, UninstallationDirectoryAccessError):
-        # Re-raise our custom exceptions
-        raise
-    except Exception as e:
-        # Convert unexpected errors to our exception type
-        raise FileRemovalVerificationError(
-            verification_type="removal_verification",
-            file_path=str(target_path),
-            reason=f"File removal verification error: {e}",
-            details="This is an unexpected error that should be reported",
-        ) from e
-
-
-def verify_uninstallation_complete(target_path: Path) -> Dict:
-    """Verify that uninstallation completed successfully.
-
-    Args:
-        target_path: Target installation directory
-
-    Returns:
-        Dictionary with success status and details
-
-    Raises:
-        UninstallationVerificationUtilityError: If uninstallation verification fails
-        UninstallationDirectoryAccessError: If directory access fails during verification
-    """
-    try:
-        # Check that target directory is gone
-        if target_path.exists():
-            try:
-                # Try to access the directory to see if it's accessible
-                target_path.stat()
-            except PermissionError as e:
-                raise UninstallationDirectoryAccessError(
-                    directory_path=str(target_path),
-                    operation="verification",
-                    reason=f"Permission denied during verification: {e}",
-                    details=f"Cannot access directory for verification: {target_path}",
-                ) from e
-
-            # Directory exists and is accessible
-            raise UninstallationVerificationUtilityError(
-                verification_step="directory_removal",
-                reason=f"Installation directory still exists: {target_path}",
-                details="The target directory was not removed during uninstallation",
-            )
-
-        # Simple check that womm command is no longer accessible
-        from ....common.security import run_silent
-
-        try:
-            cmd_result = run_silent("womm --version", timeout=10)
-        except Exception:
-            # If command execution fails, that's actually success (command not found)
-            return {
-                "success": True,
-                "message": "WOMM command no longer accessible (execution failed)",
-            }
-
-        # If command is not found (exit code 9009 on Windows), that's success
-        if cmd_result.returncode == 9009:  # Command not found on Windows
-            return {"success": True, "message": "WOMM command no longer accessible"}
-        else:
-            # Command still found, but this might be from another installation
-            return {
-                "success": True,  # Don't fail uninstallation for this
-                "message": "WOMM command still accessible (may be from another installation)",
-            }
-
-    except (UninstallationVerificationUtilityError, UninstallationDirectoryAccessError):
-        # Re-raise our custom exceptions
-        raise
-    except Exception as e:
-        # Convert unexpected errors to our exception type
-        raise UninstallationVerificationUtilityError(
-            verification_step="unexpected_error",
-            reason=f"Uninstallation verification error: {e}",
             details="This is an unexpected error that should be reported",
         ) from e

@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
 """
 PATH Manager for Works On My Machine.
+
 Handles PATH backup, restoration, and management operations.
+Provides a unified interface for cross-platform PATH management.
 """
 
+# =============================================================================
 # IMPORTS
-########################################################
+# =============================================================================
+
 # Standard library imports
 import json
 import os
@@ -20,6 +24,7 @@ from rich.console import Console
 from rich.table import Table
 
 # Local imports
+from ...exceptions.system import FileSystemError, RegistryError, UserPathError
 from ...ui import (
     InteractiveMenu,
     create_backup_table,
@@ -31,21 +36,25 @@ from ...ui import (
     print_system,
 )
 from ...utils.cli_utils import run_silent
-from ...utils.installation.path_management_utils import (
+from ...utils.system.user_path_utils import (
+    extract_path_from_reg_output,
     remove_from_unix_path,
     remove_from_windows_path,
     setup_unix_path,
     setup_windows_path,
 )
-from ...utils.system.user_path_utils import extract_path_from_reg_output
 
+# =============================================================================
 # MAIN CLASS
-########################################################
-# Core PATH management functionality
+# =============================================================================
 
 
 class PathManager:
-    """Manages PATH operations for Works On My Machine."""
+    """Manages PATH operations for Works On My Machine.
+
+    Provides cross-platform PATH management including backup, restoration,
+    and modification operations with integrated UI feedback.
+    """
 
     def __init__(self, target: Optional[str] = None):
         """Initialize the path manager.
@@ -62,9 +71,9 @@ class PathManager:
         self.latest_backup = self.backup_dir / ".path.json"
         self.platform = platform.system()
 
-    # PUBLIC METHODS
-    ########################################################
-    # Main interface methods for PATH operations
+    # =============================================================================
+    # PUBLIC METHODS - UI INTEGRATED
+    # =============================================================================
 
     def list_backup(self) -> None:
         """List available PATH backups with integrated UI.
@@ -110,12 +119,18 @@ class PathManager:
             # Read PATH from user registry (HKCU), not from current session
             query = run_silent(["reg", "query", "HKCU\\Environment", "/v", "PATH"])
             if not query.success:
-                print_error("Failed to query Windows user PATH from registry")
-                return
+                raise RegistryError(
+                    registry_key="HKCU\\Environment",
+                    operation="query",
+                    reason="Failed to query Windows user PATH from registry",
+                    details=f"Return code: {query.returncode}",
+                )
             current_path = extract_path_from_reg_output(query.stdout)
             if not current_path:
-                print_error("No PATH value found in Windows user registry")
-                return
+                raise UserPathError(
+                    message="No PATH value found in Windows user registry",
+                    details=f"Registry query succeeded but no PATH value was extracted. Output: {str(query.stdout)}",
+                )
         else:
             current_path = os.environ.get("PATH", "")
 
@@ -160,8 +175,10 @@ class PathManager:
         # Check if any backup files exist (JSON only)
         backup_files = list(self.backup_dir.glob(".path_*.json"))
         if not backup_files:
-            print_error("No PATH backup found")
-            return
+            raise UserPathError(
+                message="No PATH backup found",
+                details=f"Target path: {self.target_path}, Backup location: {self.backup_dir}, No backup files matching pattern '.path_*.json' found",
+            )
 
         # Sort by modification time (newest first)
         backup_files.sort(key=lambda x: x.stat().st_mtime, reverse=True)
@@ -210,8 +227,10 @@ class PathManager:
                 continue
 
         if not backup_info_list:
-            print_error("No valid backup files found")
-            return
+            raise UserPathError(
+                message="No valid backup files found",
+                details="All backup files failed to load or parse",
+            )
 
         # Display backup selection table
         console.print(table)
@@ -266,8 +285,12 @@ class PathManager:
                 ]
             )
             if not restore_result.success:
-                print_error("Failed to restore Windows user PATH")
-                return
+                raise RegistryError(
+                    registry_key="HKCU\\Environment",
+                    operation="update",
+                    reason="Failed to restore Windows user PATH",
+                    details=f"Return code: {restore_result.returncode}",
+                )
         else:
             # For Unix, we can only update current session
             os.environ["PATH"] = path_value
@@ -278,9 +301,74 @@ class PathManager:
         print_info(f"Restored {path_entries} PATH entries")
         print_info("You may need to restart your terminal for changes to take effect")
 
-    # PRIVATE METHODS
-    ########################################################
-    # Internal methods for PATH operations
+    # =============================================================================
+    # PUBLIC METHODS - UTILITY OPERATIONS
+    # =============================================================================
+
+    def add_to_path(self) -> Dict:
+        """Add WOMM to PATH environment variable.
+
+        Returns:
+            Dictionary with operation results
+        """
+        try:
+            womm_path = str(self.target_path)
+
+            if self.platform == "Windows":
+                return setup_windows_path(womm_path, "")
+            else:
+                return setup_unix_path(womm_path, "")
+
+        except RegistryError as e:
+            return {
+                "success": False,
+                "error": f"Error adding to PATH: Registry {e.operation} failed for {e.registry_key}: {e.reason}",
+            }
+        except FileSystemError as e:
+            return {
+                "success": False,
+                "error": f"Error adding to PATH: File {e.operation} failed for {e.file_path}: {e.reason}",
+            }
+        except UserPathError as e:
+            return {"success": False, "error": f"Error adding to PATH: {e.message}"}
+        except Exception as e:
+            return {"success": False, "error": f"Unexpected error adding to PATH: {e}"}
+
+    def remove_from_path(self) -> Dict:
+        """Remove WOMM from PATH environment variable.
+
+        Returns:
+            Dictionary with operation results
+        """
+        try:
+            womm_path = str(self.target_path)
+
+            if self.platform == "Windows":
+                return remove_from_windows_path(womm_path)
+            else:
+                return remove_from_unix_path(womm_path)
+
+        except RegistryError as e:
+            return {
+                "success": False,
+                "error": f"Error removing from PATH: Registry {e.operation} failed for {e.registry_key}: {e.reason}",
+            }
+        except FileSystemError as e:
+            return {
+                "success": False,
+                "error": f"Error removing from PATH: File {e.operation} failed for {e.file_path}: {e.reason}",
+            }
+        except UserPathError as e:
+            return {"success": False, "error": f"Error removing from PATH: {e.message}"}
+        except Exception as e:
+            return {
+                "success": False,
+                "error": f"Unexpected error removing from PATH: {e}",
+            }
+
+    # =============================================================================
+    # PRIVATE METHODS - INTERNAL OPERATIONS
+    # =============================================================================
 
     def _backup_path(self) -> Dict:
         """Backup the current user PATH.
@@ -410,37 +498,3 @@ class PathManager:
         except Exception as e:
             result["errors"].append(f"Error listing backups: {e}")
             return result
-
-    def add_to_path(self) -> Dict:
-        """Add WOMM to PATH environment variable.
-
-        Returns:
-            Dictionary with operation results
-        """
-        try:
-            womm_path = str(self.target_path)
-
-            if self.platform == "Windows":
-                return setup_windows_path(womm_path, "")
-            else:
-                return setup_unix_path(womm_path, "")
-
-        except Exception as e:
-            return {"success": False, "error": f"Error adding to PATH: {e}"}
-
-    def remove_from_path(self) -> Dict:
-        """Remove WOMM from PATH environment variable.
-
-        Returns:
-            Dictionary with operation results
-        """
-        try:
-            womm_path = str(self.target_path)
-
-            if self.platform == "Windows":
-                return remove_from_windows_path(womm_path)
-            else:
-                return remove_from_unix_path(womm_path)
-
-        except Exception as e:
-            return {"success": False, "error": f"Error removing from PATH: {e}"}

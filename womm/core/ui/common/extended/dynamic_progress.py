@@ -189,14 +189,10 @@ class DynamicLayeredProgress:
             )
         elif layer_type == "spinner":
             # Handle spinner layer (indeterminate progress)
-            spinner_fields = {
-                **common_fields,
-                "status": "",  # Initialize status field for spinner
-            }
             task_id = self.progress.add_task(
                 f"[{layer_style}]{layer_desc}",
                 total=None,  # Indeterminate
-                **spinner_fields,
+                **common_fields,
             )
         elif layer_type == "download":
             # Handle download layer with speed and size info
@@ -278,10 +274,10 @@ class DynamicLayeredProgress:
             else:
                 self.progress.update(task_id, completed=progress, details=details)
         elif metadata["type"] == "spinner":
-            # Handle spinner layer - update status message
+            # Handle spinner layer - update details message
             self.progress.update(
                 task_id,
-                status=details,  # Use details as status message
+                details=details,  # Use details consistently
             )
         elif metadata["type"] == "download":
             # Handle download layer - update progress and details

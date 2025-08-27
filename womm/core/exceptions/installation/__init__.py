@@ -1,14 +1,13 @@
 #!/usr/bin/env python3
 """
-Custom exceptions for Works On My Machine.
+Installation exceptions package for Works On My Machine.
 
-This package contains all custom exceptions used throughout the WOMM project.
+This package contains all exceptions used by installation and uninstallation modules.
 """
 
-from .installation import (  # Installation exceptions
-    DirectoryAccessError,
+# Installation exceptions
+from .installation_exceptions import (
     ExecutableVerificationError,
-    FileScanError,
     FileVerificationError,
     InstallationFileError,
     InstallationManagerError,
@@ -17,6 +16,12 @@ from .installation import (  # Installation exceptions
     InstallationUtilityError,
     InstallationVerificationError,
     PathUtilityError,
+)
+
+# Uninstallation exceptions
+from .uninstallation_exceptions import (
+    DirectoryAccessError,
+    FileScanError,
     UninstallationFileError,
     UninstallationManagerError,
     UninstallationManagerVerificationError,
@@ -24,7 +29,6 @@ from .installation import (  # Installation exceptions
     UninstallationUtilityError,
     UninstallationVerificationError,
 )
-from .system import FileSystemError, RegistryError, UserPathError  # System exceptions
 
 __all__ = [
     # Installation Utility exceptions
@@ -48,8 +52,4 @@ __all__ = [
     "UninstallationFileError",
     "UninstallationPathError",
     "UninstallationManagerVerificationError",
-    # System exceptions
-    "UserPathError",
-    "RegistryError",
-    "FileSystemError",
 ]

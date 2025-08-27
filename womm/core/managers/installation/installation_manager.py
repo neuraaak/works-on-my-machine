@@ -18,32 +18,32 @@ from pathlib import Path
 from time import sleep
 from typing import Optional
 
-from ...exceptions.installation_exceptions import (
-    EnvironmentRefreshError,
-    ExecutableCreationError,
-    FileCopyError,
-    InstallationFailedError,
-    InstallationManagerError,
-    InstallationRollbackError,
-    InstallationVerificationError,
-)
-
 # Local imports
+from ...exceptions.installation import (
+    ExecutableVerificationError,
+    FileVerificationError,
+    InstallationFileError,
+    InstallationManagerError,
+    InstallationPathError,
+    InstallationSystemError,
+    InstallationUtilityError,
+    InstallationVerificationError,
+    PathUtilityError,
+)
+from ...exceptions.system import FileSystemError, RegistryError, UserPathError
 from ...utils.installation import (
     create_womm_executable,
     get_current_womm_path,
     get_files_to_copy,
     get_target_womm_path,
-    verify_files_copied,
-)
-from ...utils.installation.path_management_utils import (
     verify_commands_accessible,
+    verify_files_copied,
     verify_path_configuration,
 )
 
+# =============================================================================
 # MAIN CLASS
-########################################################
-# Core installation manager class
+# =============================================================================
 
 
 class InstallationManager:
@@ -70,6 +70,10 @@ class InstallationManager:
         self.platform = platform.system()
         # Track backup file for potential rollback after failures
         self._path_backup_file: Optional[str] = None
+
+    # =============================================================================
+    # PUBLIC METHODS
+    # =============================================================================
 
     def install(
         self,
@@ -267,9 +271,7 @@ class InstallationManager:
                 progress.complete_layer("file_copy")
 
                 # Update main installation progress
-                progress.update_layer(
-                    "main_installation", 1, "Files copied successfully"
-                )
+                progress.update_layer("main_installation", 1, "Files copied")
                 sleep(0.3)
 
                 # Stage 3: Create executable
@@ -279,7 +281,7 @@ class InstallationManager:
                     progress.emergency_stop(
                         f"Failed to create executable: {executable_result.get('error')}"
                     )
-                    raise ExecutableCreationError(
+                    raise ExecutableVerificationError(
                         executable_name="womm",
                         reason=executable_result.get("error", "Unknown error"),
                         details="Failed to create WOMM executable",
@@ -301,13 +303,14 @@ class InstallationManager:
                 )
                 if not self._backup_path():
                     progress.emergency_stop("Failed to backup PATH")
-                    raise InstallationFailedError(
-                        stage="backup",
-                        reason="PATH backup failed",
-                        details="Could not create PATH backup before installation",
+                    raise InstallationPathError(
+                        operation="backup",
+                        path=str(self.target_path),
+                        reason="Could not create PATH backup before installation",
+                        details="PATH backup operation failed",
                     )
 
-                progress.update_layer("backup", 0, "PATH backup completed successfully")
+                progress.update_layer("backup", 0, "PATH backup completed")
                 sleep(0.2)
 
                 # Complete backup
@@ -324,15 +327,14 @@ class InstallationManager:
                 if not self._setup_path():
                     progress.emergency_stop("Failed to setup PATH")
                     self._rollback_path()  # Rollback on failure
-                    raise InstallationFailedError(
-                        stage="path_setup",
-                        reason="PATH configuration failed",
-                        details="PATH environment variable configuration failed",
+                    raise InstallationPathError(
+                        operation="setup",
+                        path=str(self.target_path),
+                        reason="PATH environment variable configuration failed",
+                        details="PATH setup operation failed",
                     )
 
-                progress.update_layer(
-                    "path_setup", 0, "PATH configuration completed successfully"
-                )
+                progress.update_layer("path_setup", 0, "PATH configuration completed")
                 sleep(0.2)
 
                 # Complete PATH setup
@@ -354,8 +356,8 @@ class InstallationManager:
                         )
                     except Exception as e:
                         progress.emergency_stop("Environment refresh failed")
-                        raise InstallationFailedError(
-                            stage="refresh_env",
+                        raise InstallationSystemError(
+                            operation="environment_refresh",
                             reason="Environment refresh failed",
                             details=str(e),
                         ) from e
@@ -383,9 +385,7 @@ class InstallationManager:
                 progress.complete_layer("verification")
 
                 # Complete main installation progress
-                progress.update_layer(
-                    "main_installation", 6, "Installation completed successfully!"
-                )
+                progress.update_layer("main_installation", 6, "Installation completed!")
                 sleep(0.3)
 
                 # Final completion for main installation
@@ -395,11 +395,19 @@ class InstallationManager:
                 progress.complete_layer("main_installation")
 
             except (
-                FileCopyError,
+                InstallationUtilityError,
+                InstallationFileError,
+                InstallationPathError,
+                InstallationSystemError,
                 InstallationVerificationError,
-                InstallationManagerError,
-                InstallationFailedError,
-                ExecutableCreationError,
+                # Utility exceptions that might be raised by utility functions
+                FileVerificationError,
+                PathUtilityError,
+                ExecutableVerificationError,
+                # System exceptions that might be raised by user_path_manager
+                UserPathError,
+                RegistryError,
+                FileSystemError,
             ) as e:
                 # Stop progress first, then print error details
                 progress.emergency_stop(f"Installation failed: {type(e).__name__}")
@@ -407,10 +415,8 @@ class InstallationManager:
                 # Now safe to print error details
                 from ...ui.common.console import print_error
 
-                print_error(
-                    f"Installation failed at stage '{getattr(e, 'stage', 'unknown')}': {e}"
-                )
-                if hasattr(e, "details") and e.details:
+                print_error(f"Installation failed: {e.message}")
+                if e.details:
                     print_error(f"Details: {e.details}")
 
                 # Re-raise our custom exceptions
@@ -465,6 +471,10 @@ class InstallationManager:
 
         return True
 
+    # =============================================================================
+    # PRIVATE METHODS - FILE OPERATIONS
+    # =============================================================================
+
     def _copy_files_with_progress(
         self,
         files_to_copy: list[str],
@@ -482,8 +492,8 @@ class InstallationManager:
             True if successful, False otherwise
 
         Raises:
-            FileCopyError: If file copying fails
-            InstallationManagerError: If unexpected error occurs
+            FileVerificationError: If file copying fails
+            InstallationUtilityError: If unexpected error occurs
         """
         try:
             # Create target directory (womm subdirectory)
@@ -516,9 +526,9 @@ class InstallationManager:
             # Stop progress and raise specific exception
             progress.emergency_stop("File copy failed")
 
-            raise FileCopyError(
-                source=str(source_file),
-                target=str(target_file),
+            raise FileVerificationError(
+                verification_type="file_copy",
+                file_path=str(source_file),
                 reason=str(e),
                 details=f"Failed at file {i + 1}/{len(files_to_copy)}: {relative_file}",
             ) from e
@@ -526,123 +536,10 @@ class InstallationManager:
             # Stop progress and raise manager exception
             progress.emergency_stop("Unexpected error during file copy")
 
-            raise InstallationManagerError(
-                message=f"Unexpected error during file copy: {e}",
-                details="This is an unexpected error that should be reported",
-            ) from e
-
-    def _verify_installation_with_progress(self, progress) -> bool:
-        """Verify installation with progress tracking.
-
-        Args:
-            progress: DynamicLayeredProgress instance
-
-        Returns:
-            True if verification passed, False otherwise
-
-        Raises:
-            InstallationVerificationError: If verification fails
-            InstallationManagerError: If unexpected error occurs
-        """
-        try:
-            # Step 1: File integrity check
-            progress.update_layer("verification", 0, "Checking file integrity...")
-
-            try:
-                verify_files_copied(self.source_path, self.target_path)
-                # If we get here, verification passed (no exception raised)
-            except Exception as e:
-                # Stop progress and handle the exception
-                progress.emergency_stop("File verification failed")
-
-                # Re-raise as installation verification error
-                raise InstallationVerificationError(
-                    verification_step="file_integrity",
-                    reason=str(e),
-                    details="Files are missing or corrupted",
-                ) from e
-
-            sleep(0.2)
-
-            # Step 2: Essential files verification
-            progress.update_layer("verification", 1, "Verifying essential files...")
-            essential_files = ["womm.py", "womm.bat"]
-            for essential_file in essential_files:
-                file_path = self.target_path / essential_file
-                if not file_path.exists():
-                    progress.emergency_stop("Essential file missing")
-
-                    raise InstallationVerificationError(
-                        verification_step="essential_files",
-                        reason=f"Essential file missing: {essential_file}",
-                        details=f"Required file not found at {file_path}",
-                    )
-            sleep(0.2)
-
-            # Step 3: Command accessibility test
-            progress.update_layer("verification", 2, "Testing command accessibility...")
-
-            # Environment refresh is now handled in a separate step before verification
-
-            try:
-                result = verify_commands_accessible(str(self.target_path))
-                # Check result details
-                if isinstance(result, dict):
-                    if result.get("warning"):
-                        # Windows case: local works but global doesn't - this is expected
-                        pass
-                    elif result.get("path_status") == "enhanced_success":
-                        # Great! Global test succeeded with PATH enhancement
-                        pass
-                    # If we get here, verification passed
-            except Exception as e:
-                # On Windows, check if it's the expected PATH timing issue
-                if (
-                    self.platform == "Windows"
-                    and "Local executable works but global command failed" in str(e)
-                ):
-                    # Continue with installation since local executable works (don't print during progress)
-                    # Note: Windows PATH timing issue - command will be available in new terminals
-                    sleep(0.2)
-                else:
-                    # Stop progress and handle the exception
-                    progress.emergency_stop("Command verification failed")
-
-                    raise InstallationVerificationError(
-                        verification_step="command_accessibility",
-                        reason=str(e),
-                        details="WOMM commands are not accessible",
-                    ) from e
-            sleep(0.2)
-
-            # Step 4: PATH configuration test
-            progress.update_layer("verification", 3, "Verifying PATH configuration...")
-
-            try:
-                verify_path_configuration(str(self.target_path))
-                # If we get here, verification passed (no exception raised)
-            except Exception as e:
-                # Stop progress and handle the exception
-                progress.emergency_stop("PATH verification failed")
-
-                raise InstallationVerificationError(
-                    verification_step="path_configuration",
-                    reason=str(e),
-                    details="PATH environment variable is not configured correctly",
-                ) from e
-            sleep(0.2)
-
-            return True
-
-        except InstallationVerificationError:
-            # Re-raise our custom exceptions
-            raise
-        except Exception as e:
-            # Stop progress and handle unexpected errors
-            progress.emergency_stop("Unexpected error during verification")
-
-            raise InstallationManagerError(
-                message=f"Unexpected error during verification: {e}",
+            raise InstallationFileError(
+                operation="copy",
+                file_path=str(source_file),
+                reason=f"Unexpected error during file copy: {e}",
                 details="This is an unexpected error that should be reported",
             ) from e
 
@@ -665,8 +562,8 @@ class InstallationManager:
             True if successful, False otherwise
 
         Raises:
-            FileCopyError: If file copying fails
-            InstallationManagerError: If unexpected error occurs
+            FileVerificationError: If file copying fails
+            InstallationUtilityError: If unexpected error occurs
         """
         try:
             # Create target directory (womm subdirectory)
@@ -707,9 +604,9 @@ class InstallationManager:
             if progress:
                 progress.emergency_stop("File copy failed")
 
-            raise FileCopyError(
-                source=str(source_file),
-                target=str(target_file),
+            raise FileVerificationError(
+                verification_type="file_copy",
+                file_path=str(source_file),
                 reason=str(e),
                 details=f"Failed at file {_i + 1}/{len(files_to_copy)}: {relative_file}",
             ) from e
@@ -718,10 +615,16 @@ class InstallationManager:
             if progress:
                 progress.emergency_stop("Unexpected error during file copy")
 
-            raise InstallationManagerError(
-                message=f"Unexpected error during file copy: {e}",
+            raise InstallationFileError(
+                operation="copy",
+                file_path=str(source_file),
+                reason=f"Unexpected error during file copy: {e}",
                 details="This is an unexpected error that should be reported",
             ) from e
+
+    # =============================================================================
+    # PRIVATE METHODS - PATH OPERATIONS
+    # =============================================================================
 
     def _setup_path(self) -> bool:
         """Setup PATH environment variable using PathManager.
@@ -730,7 +633,8 @@ class InstallationManager:
             True if successful, False otherwise
 
         Raises:
-            InstallationManagerError: If PATH setup fails
+            PathUtilityError: If PATH setup fails
+            InstallationUtilityError: If unexpected error occurs
         """
         try:
             from ...managers.system.user_path_manager import PathManager
@@ -748,8 +652,9 @@ class InstallationManager:
                 if "stderr" in result:
                     print_error(f"stderr: {result['stderr']}")
 
-                raise InstallationFailedError(
-                    stage="path_setup",
+                raise PathUtilityError(
+                    operation="path_setup",
+                    path=str(self.target_path),
                     reason="PATH setup failed",
                     details=f"PathManager error: {result.get('error', 'Unknown error')}",
                 )
@@ -757,7 +662,7 @@ class InstallationManager:
             # Note: Environment refresh is now handled as a separate step
             return True
 
-        except InstallationManagerError:
+        except PathUtilityError:
             # Re-raise our custom exceptions
             raise
         except Exception as e:
@@ -766,8 +671,9 @@ class InstallationManager:
 
             print_error(f"Unexpected error setting up PATH: {e}")
 
-            raise InstallationFailedError(
-                stage="path_setup",
+            raise InstallationPathError(
+                operation="setup",
+                path=str(self.target_path),
                 reason=f"Unexpected error setting up PATH: {e}",
                 details="This is an unexpected error that should be reported",
             ) from e
@@ -779,7 +685,7 @@ class InstallationManager:
             True if successful, False otherwise
 
         Raises:
-            EnvironmentRefreshError: If environment refresh fails
+            InstallationUtilityError: If environment refresh fails
         """
         try:
             from ...utils.cli_utils import run_silent
@@ -844,97 +750,10 @@ class InstallationManager:
 
             print_error(f"Error refreshing environment: {e}")
             # Don't fail installation if refresh fails, but raise exception for logging
-            raise EnvironmentRefreshError(
+            raise InstallationSystemError(
+                operation="environment_refresh",
                 reason=f"Environment refresh failed: {e}",
                 details="RefreshEnv.cmd execution failed",
-            ) from e
-
-    def _verify_installation(self) -> bool:
-        """Verify that the installation completed successfully.
-
-        Returns:
-            True if verification passed, False otherwise
-
-        Raises:
-            InstallationVerificationError: If verification fails
-            InstallationManagerError: If unexpected error occurs
-        """
-        try:
-            # Use utils for verification
-
-            # 0. Verify all files were copied correctly
-            try:
-                verify_files_copied(self.source_path, self.target_path)
-                # If we get here, verification passed (no exception raised)
-            except Exception as e:
-                from ...ui.common.console import print_error
-
-                print_error(f"File verification failed: {e}")
-
-                raise InstallationVerificationError(
-                    verification_step="file_integrity",
-                    reason=str(e),
-                    details="Files are missing or corrupted",
-                ) from e
-
-            # 1. Verify essential files exist (basic check during installation)
-            essential_files = ["womm.py", "womm.bat"]
-            for essential_file in essential_files:
-                file_path = self.target_path / essential_file
-                if not file_path.exists():
-                    from ...ui.common.console import print_error
-
-                    print_error(f"Essential file missing: {essential_file}")
-
-                    raise InstallationVerificationError(
-                        verification_step="essential_files",
-                        reason=f"Essential file missing: {essential_file}",
-                        details=f"Required file not found at {file_path}",
-                    )
-
-            # 2. Verify commands are accessible in PATH
-            try:
-                verify_commands_accessible(str(self.target_path))
-                # If we get here, verification passed (no exception raised)
-            except Exception as e:
-                from ...ui.common.console import print_error
-
-                print_error(f"Commands not accessible: {e}")
-
-                raise InstallationVerificationError(
-                    verification_step="command_accessibility",
-                    reason=str(e),
-                    details="WOMM commands are not accessible",
-                ) from e
-
-            # 3. Verify PATH configuration
-            try:
-                verify_path_configuration(str(self.target_path))
-                # If we get here, verification passed (no exception raised)
-            except Exception as e:
-                from ...ui.common.console import print_error
-
-                print_error(f"PATH configuration failed: {e}")
-
-                raise InstallationVerificationError(
-                    verification_step="path_configuration",
-                    reason=str(e),
-                    details="PATH environment variable is not configured correctly",
-                ) from e
-
-            return True
-
-        except InstallationVerificationError:
-            # Re-raise our custom exceptions
-            raise
-        except Exception as e:
-            from ...ui.common.console import print_error
-
-            print_error(f"Unexpected error during verification: {e}")
-
-            raise InstallationManagerError(
-                message=f"Unexpected error during verification: {e}",
-                details="This is an unexpected error that should be reported",
             ) from e
 
     def _backup_path(self) -> bool:
@@ -944,9 +763,14 @@ class InstallationManager:
             True if backup successful, False otherwise
 
         Raises:
-            InstallationManagerError: If PATH backup fails
+            InstallationUtilityError: If PATH backup fails
         """
         try:
+            from ...exceptions.system import (
+                FileSystemError,
+                RegistryError,
+                UserPathError,
+            )
             from ...managers.system.user_path_manager import PathManager
 
             path_manager = PathManager(target=str(self.target_path))
@@ -966,22 +790,45 @@ class InstallationManager:
 
                 print_error(f"PATH backup failed: {backup_result.get('error')}")
 
-                raise InstallationFailedError(
-                    stage="backup",
+                raise InstallationPathError(
+                    operation="backup",
+                    path=str(self.target_path),
                     reason="PATH backup failed",
                     details=f"PathManager backup error: {backup_result.get('error')}",
                 )
 
-        except InstallationManagerError:
-            # Re-raise our custom exceptions
-            raise
+        except UserPathError as e:
+            # Convert UserPathError to installation exception
+            raise InstallationPathError(
+                operation="backup",
+                path=str(self.target_path),
+                reason=f"PATH backup failed: {e.message}",
+                details=f"Original error: {type(e).__name__} - {e.details}",
+            ) from e
+        except RegistryError as e:
+            # Convert RegistryError to installation exception
+            raise InstallationPathError(
+                operation="backup",
+                path=str(self.target_path),
+                reason=f"PATH backup failed: Registry {e.operation} failed for {e.registry_key}: {e.reason}",
+                details=f"Original error: {type(e).__name__} - {e.details}",
+            ) from e
+        except FileSystemError as e:
+            # Convert FileSystemError to installation exception
+            raise InstallationPathError(
+                operation="backup",
+                path=str(self.target_path),
+                reason=f"PATH backup failed: File {e.operation} failed for {e.file_path}: {e.reason}",
+                details=f"Original error: {type(e).__name__} - {e.details}",
+            ) from e
         except Exception as e:
             from ...ui.common.console import print_error
 
             print_error(f"Unexpected error during PATH backup: {e}")
 
-            raise InstallationFailedError(
-                stage="backup",
+            raise InstallationPathError(
+                operation="backup",
+                path=str(self.target_path),
                 reason=f"Unexpected error during PATH backup: {e}",
                 details="This is an unexpected error that should be reported",
             ) from e
@@ -993,7 +840,7 @@ class InstallationManager:
             True if rollback successful, False otherwise
 
         Raises:
-            InstallationRollbackError: If PATH rollback fails
+            InstallationUtilityError: If PATH rollback fails
         """
         try:
             if not self._path_backup_file:
@@ -1001,9 +848,10 @@ class InstallationManager:
 
                 print_error("No backup file available for rollback")
 
-                raise InstallationRollbackError(
-                    stage="path_rollback",
-                    reason="No backup file available",
+                raise InstallationPathError(
+                    operation="rollback",
+                    path=str(self.target_path),
+                    reason="No backup file available for rollback",
                     details="PATH backup file not found for rollback",
                 )
 
@@ -1011,15 +859,22 @@ class InstallationManager:
             import json
             from pathlib import Path
 
+            from ...exceptions.system import (
+                FileSystemError,
+                RegistryError,
+                UserPathError,
+            )
+
             backup_file = Path(self._path_backup_file)
             if not backup_file.exists():
                 from ...ui.common.console import print_error
 
                 print_error(f"Backup file not found: {backup_file}")
 
-                raise InstallationRollbackError(
-                    stage="path_rollback",
-                    reason="Backup file not found",
+                raise InstallationPathError(
+                    operation="rollback",
+                    path=str(backup_file),
+                    reason="Backup file not found for rollback",
                     details=f"Backup file not found at: {backup_file}",
                 )
 
@@ -1033,9 +888,10 @@ class InstallationManager:
 
                 print_error("Invalid backup file: no PATH string found")
 
-                raise InstallationRollbackError(
-                    stage="path_rollback",
-                    reason="Invalid backup file",
+                raise InstallationPathError(
+                    operation="rollback",
+                    path=str(backup_file),
+                    reason="Invalid backup file for rollback",
                     details="Backup file contains no PATH string",
                 )
 
@@ -1072,9 +928,10 @@ class InstallationManager:
 
                     print_error(f"PATH rollback failed: {result.stderr}")
 
-                    raise InstallationRollbackError(
-                        stage="path_rollback",
-                        reason="Registry update failed",
+                    raise InstallationPathError(
+                        operation="rollback",
+                        path=str(self.target_path),
+                        reason="PATH rollback failed: Registry update failed",
                         details=f"Windows registry update failed: {result.stderr}",
                     )
             else:
@@ -1087,7 +944,41 @@ class InstallationManager:
                 print_success("PATH successfully rolled back to previous state")
                 return True
 
-        except InstallationRollbackError:
+        except UserPathError as e:
+            # Convert UserPathError to installation exception
+            raise InstallationPathError(
+                operation="rollback",
+                path=str(self.target_path),
+                reason=f"PATH rollback failed: {e.message}",
+                details=f"Original error: {type(e).__name__} - {e.details}",
+            ) from e
+        except RegistryError as e:
+            # Convert RegistryError to installation exception
+            raise InstallationPathError(
+                operation="rollback",
+                path=str(self.target_path),
+                reason=f"PATH rollback failed: Registry {e.operation} failed for {e.registry_key}: {e.reason}",
+                details=f"Original error: {type(e).__name__} - {e.details}",
+            ) from e
+        except FileSystemError as e:
+            # Convert FileSystemError to installation exception
+            raise InstallationPathError(
+                operation="rollback",
+                path=str(self.target_path),
+                reason=f"PATH rollback failed: File {e.operation} failed for {e.file_path}: {e.reason}",
+                details=f"Original error: {type(e).__name__} - {e.details}",
+            ) from e
+        except (
+            InstallationUtilityError,
+            InstallationFileError,
+            InstallationPathError,
+            InstallationSystemError,
+            InstallationVerificationError,
+            # Utility exceptions that might be raised by utility functions
+            FileVerificationError,
+            PathUtilityError,
+            ExecutableVerificationError,
+        ):
             # Re-raise our custom exceptions
             raise
         except Exception as e:
@@ -1095,8 +986,230 @@ class InstallationManager:
 
             print_error(f"Unexpected error during PATH rollback: {e}")
 
-            raise InstallationRollbackError(
-                stage="path_rollback",
-                reason=f"Unexpected error during rollback: {e}",
+            raise InstallationPathError(
+                operation="rollback",
+                path=str(self.target_path),
+                reason=f"Unexpected error during PATH rollback: {e}",
+                details="This is an unexpected error that should be reported",
+            ) from e
+
+    # =============================================================================
+    # PRIVATE METHODS - VERIFICATION OPERATIONS
+    # =============================================================================
+
+    def _verify_installation_with_progress(self, progress) -> bool:
+        """Verify installation with progress tracking.
+
+        Args:
+            progress: DynamicLayeredProgress instance
+
+        Returns:
+            True if verification passed, False otherwise
+
+        Raises:
+            FileVerificationError: If file verification fails
+            ExecutableVerificationError: If executable verification fails
+            PathUtilityError: If PATH verification fails
+            InstallationUtilityError: If unexpected error occurs
+        """
+        try:
+            # Step 1: File integrity check
+            progress.update_layer("verification", 0, "Checking file integrity...")
+
+            try:
+                verify_files_copied(self.source_path, self.target_path)
+                # If we get here, verification passed (no exception raised)
+            except Exception as e:
+                # Stop progress and handle the exception
+                progress.emergency_stop("File verification failed")
+
+                # Re-raise as file verification error
+                raise FileVerificationError(
+                    verification_type="file_integrity",
+                    file_path=str(self.target_path),
+                    reason=str(e),
+                    details="Files are missing or corrupted",
+                ) from e
+
+            sleep(0.2)
+
+            # Step 2: Essential files verification
+            progress.update_layer("verification", 1, "Verifying essential files...")
+            essential_files = ["womm.py", "womm.bat"]
+            for essential_file in essential_files:
+                file_path = self.target_path / essential_file
+                if not file_path.exists():
+                    progress.emergency_stop("Essential file missing")
+
+                    raise FileVerificationError(
+                        verification_type="essential_files",
+                        file_path=str(file_path),
+                        reason=f"Essential file missing: {essential_file}",
+                        details=f"Required file not found at {file_path}",
+                    )
+            sleep(0.2)
+
+            # Step 3: Command accessibility test
+            progress.update_layer("verification", 2, "Testing command accessibility...")
+
+            # Environment refresh is now handled in a separate step before verification
+
+            try:
+                result = verify_commands_accessible(str(self.target_path))
+                # Check result details
+                if isinstance(result, dict):
+                    if result.get("warning"):
+                        # Windows case: local works but global doesn't - this is expected
+                        pass
+                    elif result.get("path_status") == "enhanced_success":
+                        # Great! Global test succeeded with PATH enhancement
+                        pass
+                    # If we get here, verification passed
+            except Exception as e:
+                # On Windows, check if it's the expected PATH timing issue
+                if (
+                    self.platform == "Windows"
+                    and "Local executable works but global command failed" in str(e)
+                ):
+                    # Continue with installation since local executable works (don't print during progress)
+                    # Note: Windows PATH timing issue - command will be available in new terminals
+                    sleep(0.2)
+                else:
+                    # Stop progress and handle the exception
+                    progress.emergency_stop("Command verification failed")
+
+                    raise ExecutableVerificationError(
+                        executable_name="womm",
+                        reason=str(e),
+                        details="WOMM commands are not accessible",
+                    ) from e
+            sleep(0.2)
+
+            # Step 4: PATH configuration test
+            progress.update_layer("verification", 3, "Verifying PATH configuration...")
+
+            try:
+                verify_path_configuration(str(self.target_path))
+                # If we get here, verification passed (no exception raised)
+            except Exception as e:
+                # Stop progress and handle the exception
+                progress.emergency_stop("PATH verification failed")
+
+                raise PathUtilityError(
+                    operation="path_configuration",
+                    path=str(self.target_path),
+                    reason=str(e),
+                    details="PATH environment variable is not configured correctly",
+                ) from e
+            sleep(0.2)
+
+            return True
+
+        except (FileVerificationError, ExecutableVerificationError, PathUtilityError):
+            # Re-raise our custom exceptions
+            raise
+        except Exception as e:
+            # Stop progress and handle unexpected errors
+            progress.emergency_stop("Unexpected error during verification")
+
+            raise InstallationVerificationError(
+                verification_type="unexpected_error",
+                target=str(self.target_path),
+                reason=f"Unexpected error during verification: {e}",
+                details="This is an unexpected error that should be reported",
+            ) from e
+
+    def _verify_installation(self) -> bool:
+        """Verify that the installation completed successfully.
+
+        Returns:
+            True if verification passed, False otherwise
+
+        Raises:
+            FileVerificationError: If file verification fails
+            ExecutableVerificationError: If executable verification fails
+            PathUtilityError: If PATH verification fails
+            InstallationUtilityError: If unexpected error occurs
+        """
+        try:
+            # Use utils for verification
+
+            # 0. Verify all files were copied correctly
+            try:
+                verify_files_copied(self.source_path, self.target_path)
+                # If we get here, verification passed (no exception raised)
+            except Exception as e:
+                from ...ui.common.console import print_error
+
+                print_error(f"File verification failed: {e}")
+
+                raise FileVerificationError(
+                    verification_type="file_integrity",
+                    file_path=str(self.target_path),
+                    reason=str(e),
+                    details="Files are missing or corrupted",
+                ) from e
+
+            # 1. Verify essential files exist (basic check during installation)
+            essential_files = ["womm.py", "womm.bat"]
+            for essential_file in essential_files:
+                file_path = self.target_path / essential_file
+                if not file_path.exists():
+                    from ...ui.common.console import print_error
+
+                    print_error(f"Essential file missing: {essential_file}")
+
+                    raise FileVerificationError(
+                        verification_type="essential_files",
+                        file_path=str(file_path),
+                        reason=f"Essential file missing: {essential_file}",
+                        details=f"Required file not found at {file_path}",
+                    )
+
+            # 2. Verify commands are accessible in PATH
+            try:
+                verify_commands_accessible(str(self.target_path))
+                # If we get here, verification passed (no exception raised)
+            except Exception as e:
+                from ...ui.common.console import print_error
+
+                print_error(f"Commands not accessible: {e}")
+
+                raise ExecutableVerificationError(
+                    executable_name="womm",
+                    reason=str(e),
+                    details="WOMM commands are not accessible",
+                ) from e
+
+            # 3. Verify PATH configuration
+            try:
+                verify_path_configuration(str(self.target_path))
+                # If we get here, verification passed (no exception raised)
+            except Exception as e:
+                from ...ui.common.console import print_error
+
+                print_error(f"PATH configuration failed: {e}")
+
+                raise PathUtilityError(
+                    operation="path_configuration",
+                    path=str(self.target_path),
+                    reason=str(e),
+                    details="PATH environment variable is not configured correctly",
+                ) from e
+
+            return True
+
+        except (FileVerificationError, ExecutableVerificationError, PathUtilityError):
+            # Re-raise our custom exceptions
+            raise
+        except Exception as e:
+            from ...ui.common.console import print_error
+
+            print_error(f"Unexpected error during verification: {e}")
+
+            raise InstallationVerificationError(
+                verification_type="unexpected_error",
+                target=str(self.target_path),
+                reason=f"Unexpected error during verification: {e}",
                 details="This is an unexpected error that should be reported",
             ) from e

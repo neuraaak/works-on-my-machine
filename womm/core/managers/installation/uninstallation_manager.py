@@ -13,14 +13,15 @@ from time import sleep
 from typing import Optional
 
 # Local imports
-from ...exceptions.uninstallation_exceptions import (
-    DirectoryRemovalError,
-    FileRemovalError,
-    InstallationNotFoundError,
-    PathCleanupError,
-    UninstallationFailedError,
+from ...exceptions.installation import (  # Utility exceptions
+    DirectoryAccessError,
+    FileScanError,
+    InstallationManagerError,
+    UninstallationFileError,
     UninstallationManagerError,
-    UninstallationProgressError,
+    UninstallationManagerVerificationError,
+    UninstallationPathError,
+    UninstallationUtilityError,
     UninstallationVerificationError,
 )
 from ...utils.installation import (
@@ -28,11 +29,16 @@ from ...utils.installation import (
     get_target_womm_path,
     verify_uninstallation_complete,
 )
-from ...utils.installation.path_management_utils import remove_from_path
+from ...utils.system.user_path_utils import (
+    FileSystemError,
+    RegistryError,
+    UserPathError,
+    remove_from_path,
+)
 
+# =============================================================================
 # MAIN CLASS
-########################################################
-# Core uninstallation manager class
+# =============================================================================
 
 
 class UninstallationManager:
@@ -50,52 +56,16 @@ class UninstallationManager:
             else:
                 self.target_path = get_target_womm_path()
         except Exception as e:
-            raise InstallationNotFoundError(
-                reason=f"Failed to initialize uninstallation manager: {e}",
+            raise InstallationManagerError(
+                message=f"Failed to initialize uninstallation manager: {e}",
                 details="This is an unexpected error that should be reported",
             ) from e
 
         self.platform = platform.system()
 
-    def _cleanup_path(self) -> bool:
-        """Cleanup PATH environment variable using path management utils.
-
-        Returns:
-            True if successful, False otherwise
-
-        Raises:
-            PathCleanupError: If PATH cleanup fails
-        """
-        try:
-            result = remove_from_path(self.target_path)
-            sleep(0.5)
-
-            if not result:
-                from ...ui.common.console import print_error
-
-                print_error("PATH cleanup failed: remove_from_path returned False")
-
-                raise PathCleanupError(
-                    target_path=str(self.target_path),
-                    reason="PATH cleanup failed",
-                    details="remove_from_path utility returned False",
-                )
-
-            return True
-
-        except PathCleanupError:
-            # Re-raise our custom exceptions
-            raise
-        except Exception as e:
-            from ...ui.common.console import print_error
-
-            print_error(f"Unexpected error during PATH cleanup: {e}")
-
-            raise PathCleanupError(
-                target_path=str(self.target_path),
-                reason=f"Unexpected error during PATH cleanup: {e}",
-                details="This is an unexpected error that should be reported",
-            ) from e
+    # =============================================================================
+    # PUBLIC METHODS - MAIN OPERATIONS
+    # =============================================================================
 
     def uninstall(
         self,
@@ -272,8 +242,9 @@ class UninstallationManager:
                 progress.update_layer("path_cleanup", 0, "Removing WOMM from PATH...")
                 if not self._cleanup_path():
                     progress.emergency_stop("Failed to remove from PATH")
-                    raise UninstallationFailedError(
-                        stage="path_cleanup",
+                    raise UninstallationPathError(
+                        operation="cleanup",
+                        path=str(self.target_path),
                         reason="Failed to remove from PATH",
                         details="remove_from_path utility returned False",
                     )
@@ -297,9 +268,7 @@ class UninstallationManager:
                 progress.complete_layer("file_removal")
 
                 # Update main uninstallation progress
-                progress.update_layer(
-                    "main_uninstallation", 2, "Files removed successfully"
-                )
+                progress.update_layer("main_uninstallation", 2, "Files removed")
                 sleep(0.3)
 
                 # Stage 4: Verification
@@ -310,7 +279,7 @@ class UninstallationManager:
 
                 # Complete main uninstallation progress
                 progress.update_layer(
-                    "main_uninstallation", 3, "Uninstallation completed successfully!"
+                    "main_uninstallation", 3, "Uninstallation completed!"
                 )
                 sleep(0.3)
 
@@ -318,13 +287,20 @@ class UninstallationManager:
                 progress.complete_layer("main_uninstallation")
 
             except (
-                InstallationNotFoundError,
-                PathCleanupError,
-                FileRemovalError,
-                DirectoryRemovalError,
+                InstallationManagerError,
+                UninstallationFileError,
+                UninstallationPathError,
+                UninstallationManagerVerificationError,
+                UninstallationManagerError,
+                # Utility exceptions that might be raised by utility functions
+                UninstallationUtilityError,
+                FileScanError,
+                DirectoryAccessError,
                 UninstallationVerificationError,
-                UninstallationProgressError,
-                UninstallationFailedError,
+                # System exceptions that might be raised by user_path_manager
+                UserPathError,
+                RegistryError,
+                FileSystemError,
             ) as e:
                 # Stop progress first, then print error details
                 progress.emergency_stop(f"Uninstallation failed: {type(e).__name__}")
@@ -378,6 +354,61 @@ class UninstallationManager:
         console.print(completion_panel)
 
         return True
+
+    # =============================================================================
+    # PRIVATE METHODS - PATH OPERATIONS
+    # =============================================================================
+
+    def _cleanup_path(self) -> bool:
+        """Cleanup PATH environment variable using path management utils.
+
+        Returns:
+            True if successful, False otherwise
+
+        Raises:
+            PathCleanupError: If PATH cleanup fails
+        """
+        try:
+            result = remove_from_path(self.target_path)
+            sleep(0.5)
+
+            if not result:
+                from ...ui.common.console import print_error
+
+                print_error("PATH cleanup failed: remove_from_path returned False")
+
+                raise UninstallationPathError(
+                    operation="cleanup",
+                    path=str(self.target_path),
+                    reason="PATH cleanup failed",
+                    details="remove_from_path utility returned False",
+                )
+
+            return True
+
+        except (UserPathError, RegistryError) as e:
+            # Convert user_path_utils exceptions to manager exceptions
+            raise UninstallationPathError(
+                operation="cleanup",
+                path=str(self.target_path),
+                reason=f"PATH cleanup failed: {e.message}",
+                details=f"Original error: {type(e).__name__} - {e.details}",
+            ) from e
+        except Exception as e:
+            from ...ui.common.console import print_error
+
+            print_error(f"Unexpected error during PATH cleanup: {e}")
+
+            raise UninstallationPathError(
+                operation="cleanup",
+                path=str(self.target_path),
+                reason=f"Unexpected error during PATH cleanup: {e}",
+                details="This is an unexpected error that should be reported",
+            ) from e
+
+    # =============================================================================
+    # PRIVATE METHODS - FILE OPERATIONS
+    # =============================================================================
 
     def _remove_files_with_progress(
         self, files_to_remove: list[str], progress, verbose: bool = False
@@ -436,27 +467,31 @@ class UninstallationManager:
                             print_system(f"🗑️ Removed directory: {item_path}")
                 except PermissionError as e:
                     if target_item.is_file():
-                        raise FileRemovalError(
+                        raise UninstallationFileError(
+                            operation="remove_file",
                             file_path=str(target_item),
                             reason=f"Permission denied: {e}",
                             details=f"Cannot remove file due to permissions: {item_path}",
                         ) from e
                     else:
-                        raise DirectoryRemovalError(
-                            directory_path=str(target_item),
+                        raise UninstallationFileError(
+                            operation="remove_directory",
+                            file_path=str(target_item),
                             reason=f"Permission denied: {e}",
                             details=f"Cannot remove directory due to permissions: {item_path}",
                         ) from e
                 except OSError as e:
                     if target_item.is_file():
-                        raise FileRemovalError(
+                        raise UninstallationFileError(
+                            operation="remove_file",
                             file_path=str(target_item),
                             reason=f"OS error: {e}",
                             details=f"Failed to remove file: {item_path}",
                         ) from e
                     else:
-                        raise DirectoryRemovalError(
-                            directory_path=str(target_item),
+                        raise UninstallationFileError(
+                            operation="remove_directory",
+                            file_path=str(target_item),
                             reason=f"OS error: {e}",
                             details=f"Failed to remove directory: {item_path}",
                         ) from e
@@ -479,30 +514,37 @@ class UninstallationManager:
                             f"🗑️ Removed installation directory: {self.target_path}"
                         )
                 except PermissionError as e:
-                    raise DirectoryRemovalError(
-                        directory_path=str(self.target_path),
+                    raise UninstallationFileError(
+                        operation="remove_directory",
+                        file_path=str(self.target_path),
                         reason=f"Permission denied: {e}",
                         details="Cannot remove installation directory due to permissions",
                     ) from e
                 except OSError as e:
-                    raise DirectoryRemovalError(
-                        directory_path=str(self.target_path),
+                    raise UninstallationFileError(
+                        operation="remove_directory",
+                        file_path=str(self.target_path),
                         reason=f"OS error: {e}",
                         details="Failed to remove installation directory",
                     ) from e
 
             return True
 
-        except (FileRemovalError, DirectoryRemovalError, UninstallationProgressError):
+        except (UninstallationFileError, UninstallationManagerError):
             # Re-raise our custom exceptions
             raise
         except Exception as e:
             # Convert unexpected errors to our exception type
-            raise UninstallationProgressError(
-                stage="file_removal",
+            raise UninstallationFileError(
+                operation="file_removal",
+                file_path=str(self.target_path),
                 reason=f"Unexpected error during file removal: {e}",
                 details="This is an unexpected error that should be reported",
             ) from e
+
+    # =============================================================================
+    # PRIVATE METHODS - VERIFICATION OPERATIONS
+    # =============================================================================
 
     def _verify_uninstallation_with_progress(self, progress) -> bool:
         """Verify uninstallation with progress tracking.
@@ -521,8 +563,9 @@ class UninstallationManager:
             # Step 1: File removal check
             progress.update_layer("verification", 0, "Checking file removal...")
             if self.target_path.exists():
-                raise UninstallationVerificationError(
-                    verification_step="file_removal_check",
+                raise UninstallationManagerVerificationError(
+                    verification_type="file_removal_check",
+                    target=str(self.target_path),
                     reason=f"Installation directory still exists: {self.target_path}",
                     details="The target directory was not removed during uninstallation",
                 )
@@ -533,15 +576,17 @@ class UninstallationManager:
             try:
                 verification_result = verify_uninstallation_complete(self.target_path)
             except Exception as e:
-                raise UninstallationVerificationError(
-                    verification_step="command_accessibility_test",
+                raise UninstallationManagerVerificationError(
+                    verification_type="command_accessibility_test",
+                    target=str(self.target_path),
                     reason=f"Verification utility failed: {e}",
                     details="The verification utility function raised an exception",
                 ) from e
 
             if not verification_result["success"]:
-                raise UninstallationVerificationError(
-                    verification_step="command_accessibility_test",
+                raise UninstallationManagerVerificationError(
+                    verification_type="command_accessibility_test",
+                    target=str(self.target_path),
                     reason=f"Verification failed: {verification_result.get('message', 'Unknown error')}",
                     details="The verification utility returned a failure status",
                 )
@@ -549,13 +594,14 @@ class UninstallationManager:
 
             return True
 
-        except (UninstallationVerificationError, UninstallationProgressError):
+        except (UninstallationManagerVerificationError, UninstallationManagerError):
             # Re-raise our custom exceptions
             raise
         except Exception as e:
             # Convert unexpected errors to our exception type
-            raise UninstallationProgressError(
-                stage="verification",
+            raise UninstallationManagerVerificationError(
+                verification_type="unexpected_error",
+                target=str(self.target_path),
                 reason=f"Unexpected error during verification: {e}",
                 details="This is an unexpected error that should be reported",
             ) from e
