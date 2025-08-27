@@ -52,6 +52,21 @@ create_or_update_tag() {
     return 0
 }
 
+# Function to check if a tag already points to HEAD
+tag_points_to_head() {
+    local tag_name="$1"
+    if git rev-parse "$tag_name" >/dev/null 2>&1; then
+        local tag_sha
+        local head_sha
+        tag_sha="$(git rev-parse "$tag_name")"
+        head_sha="$(git rev-parse HEAD)"
+        if [ "$tag_sha" = "$head_sha" ]; then
+            return 0
+        fi
+    fi
+    return 1
+}
+
 # Get version (priority: pyproject.toml then setup.py)
 version=$(get_version_from_pyproject)
 if [ $? -ne 0 ]; then
@@ -71,18 +86,33 @@ if [ -n "$version" ]; then
         create_or_update_tag "$latest_tag_name"
     fi
     
-    # Automatic tag push (always executed)
-    if git push origin "$tag_name" --force >/dev/null 2>&1; then
-        echo "✓ [AUTO-TAG] Pushed: $tag_name"
+    # Build and publish artifacts BEFORE pushing tags
+    echo "🔨 [AUTO-TAG] Building and publishing artifacts..."
+    if ! python build_package.py upload >/dev/null 2>&1; then
+        echo "❌ [AUTO-TAG] build_package.py upload failed; skipping tag push"
+        exit 1
+    fi
+
+    # Automatic tag push (after successful builds)
+    if tag_points_to_head "$tag_name"; then
+        echo "→ [AUTO-TAG] $tag_name already at HEAD, skipping push"
     else
-        echo "⚠️  [AUTO-TAG] Push error: $tag_name"
+        if git push origin "$tag_name" --force >/dev/null 2>&1; then
+            echo "✓ [AUTO-TAG] Pushed: $tag_name"
+        else
+            echo "⚠️  [AUTO-TAG] Push error: $tag_name"
+        fi
     fi
     
     if [ -n "$latest_tag_name" ]; then
-        if git push origin "$latest_tag_name" --force >/dev/null 2>&1; then
-            echo "✓ [AUTO-TAG] Pushed: $latest_tag_name"
+        if tag_points_to_head "$latest_tag_name"; then
+            echo "→ [AUTO-TAG] $latest_tag_name already at HEAD, skipping push"
         else
-            echo "⚠️  [AUTO-TAG] Push error: $latest_tag_name"
+            if git push origin "$latest_tag_name" --force >/dev/null 2>&1; then
+                echo "✓ [AUTO-TAG] Pushed: $latest_tag_name"
+            else
+                echo "⚠️  [AUTO-TAG] Push error: $latest_tag_name"
+            fi
         fi
     fi
 else
