@@ -270,5 +270,5 @@ result = run_secure(["python", "user_script.py"], "User script execution")
 **🔧 This unified architecture provides a clean, secure, and maintainable foundation for all CLI operations in Works On My Machine.**
 
 **🔄 Last updated**: [Current Date]  
-**📋 Version**: 2.0  
+**📋 Version**: <version>  
 **👥 Maintained by**: CLI Team

@@ -142,7 +142,7 @@ Each template includes a `template.json` file with comprehensive metadata.
     "generalized_variables": 15
   },
   "compatibility": {
-    "womm_version": "2.6.8",
+    "womm_version": "<version>",
     "python_version": ">=3.8",
     "platforms": ["windows", "linux", "macos"]
   }
@@ -544,7 +544,7 @@ def _extract_template_variables(self, template_dir: Path) -> Dict[str, str]:
 ```json
 {
   "compatibility": {
-    "womm_version": "2.6.8",
+    "womm_version": "<version>",
     "python_version": ">=3.8",
     "platforms": ["windows", "linux", "macos"],
     "dependencies": ["rich", "click", "inquirerpy"]

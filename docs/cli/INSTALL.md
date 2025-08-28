@@ -55,7 +55,7 @@ pip install works-on-my-machine
 pip install --user works-on-my-machine
 
 # Install specific version
-pip install works-on-my-machine==2.6.8
+pip install works-on-my-machine==<version>
 
 # Install without environment refresh (Windows only)
 pip install works-on-my-machine --no-refresh-env
@@ -482,6 +482,69 @@ cat ~/.womm/logs/errors.log
 # View configuration logs
 cat ~/.womm/logs/config.log
 ```
+
+## 🚨 Error Handling
+
+### **Enhanced Exception System**
+WOMM introduces a comprehensive exception handling system with 20+ specific exception types for precise error diagnosis and recovery.
+
+#### **Installation Errors**
+- `InstallationFileError` - File operation failures during installation
+- `InstallationPathError` - PATH configuration issues during installation
+- `InstallationSystemError` - System-level problems during installation
+- `InstallationVerificationError` - Installation verification failures
+- `InstallationManagerError` - General installation manager errors
+
+#### **Uninstallation Errors**
+- `UninstallationFileError` - File removal operation failures
+- `UninstallationPathError` - PATH cleanup issues during uninstallation
+- `UninstallationManagerVerificationError` - Verification failures during uninstallation
+- `UninstallationManagerError` - General uninstallation manager errors
+
+#### **System Errors**
+- `UserPathError` - User PATH manipulation issues
+- `RegistryError` - Windows registry operation problems
+- `FileSystemError` - File system access and permission issues
+
+### **Error Recovery Strategies**
+
+#### **Installation Failures**
+```bash
+# Check specific error type
+womm install --verbose
+
+# Common recovery steps:
+# 1. Check file permissions
+# 2. Verify disk space
+# 3. Run as administrator (Windows)
+# 4. Check antivirus exclusions
+```
+
+#### **Uninstallation Failures**
+```bash
+# Force uninstallation
+womm uninstall --force
+
+# Manual cleanup if needed
+# 1. Remove from PATH manually
+# 2. Delete installation directory
+# 3. Clean registry entries (Windows)
+```
+
+#### **PATH Configuration Issues**
+```bash
+# Refresh environment
+womm refresh-env
+
+# Manual PATH verification
+echo $PATH | grep womm
+
+# Windows registry check
+reg query "HKCU\Environment" /v PATH
+```
+
+### **Progress Display Integration**
+Errors are seamlessly integrated with the progress display system, providing real-time feedback during installation and uninstallation operations.
 
 ---
 

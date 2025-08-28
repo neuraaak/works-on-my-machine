@@ -299,11 +299,39 @@ Validation → Template Loading → Variable Substitution → File Creation
 UI Feedback → Progress Tracking → Path Processing → Project Setup
 ```
 
-### **Error Handling Flow**
+### **Enhanced Error Handling Flow**
 ```
-Exception → Error Capture → Error Classification → User Feedback
-     ↓              ↓              ↓              ↓
-Logging → Error Context → Recovery Options → UI Display
+Exception → Specific Exception Type → Context-Aware Handling → User Feedback
+     ↓              ↓                        ↓                    ↓
+Logging → Detailed Error Context → Recovery Options → Progress Display
+```
+
+### **Exception Hierarchy**
+The system uses a modular exception architecture with 20+ specific exception types:
+
+#### **Installation Exceptions** (9 total)
+- **Utility Level**: `FileVerificationError`, `PathUtilityError`, `ExecutableVerificationError`, `InstallationUtilityError`
+- **Manager Level**: `InstallationFileError`, `InstallationPathError`, `InstallationSystemError`, `InstallationVerificationError`, `InstallationManagerError`
+
+#### **Uninstallation Exceptions** (8 total)
+- **Utility Level**: `FileScanError`, `DirectoryAccessError`, `UninstallationVerificationError`, `UninstallationUtilityError`
+- **Manager Level**: `UninstallationFileError`, `UninstallationPathError`, `UninstallationManagerVerificationError`, `UninstallationManagerError`
+
+#### **System Exceptions** (3 total)
+- `UserPathError`, `RegistryError`, `FileSystemError`
+
+### **Context-Aware Error Information**
+All exceptions include detailed context for precise error handling:
+
+```python
+class InstallationFileError(Exception):
+    def __init__(self, operation: str, file_path: str, reason: str, details: str):
+        self.operation = operation    # e.g., "copy", "verify"
+        self.file_path = file_path   # Path to the problematic file
+        self.reason = reason         # Human-readable reason
+        self.details = details       # Technical details for debugging
+        self.message = f"{operation} failed for {file_path}: {reason}"
+        super().__init__(self.message)
 ```
 
 ## 🔧 Extension Guide

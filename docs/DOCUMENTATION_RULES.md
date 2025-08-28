@@ -346,5 +346,5 @@ project-root/
 **📚 These rules ensure consistent, maintainable, and user-friendly documentation across the entire project.**
 
 **🔄 Last updated**: [Current Date]  
-**📋 Version**: 2.0  
+**📋 Version**: <version>  
 **👥 Maintained by**: Documentation Team 

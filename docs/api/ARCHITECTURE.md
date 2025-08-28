@@ -20,6 +20,7 @@
 - [Architecture Design](#architecture-design)
 - [Dependency Categories](#dependency-categories)
 - [Manager Classes](#manager-classes)
+- [Exception Handling Architecture](#exception-handling-architecture)
 - [Usage Examples](#usage-examples)
 - [Migration Guide](#migration-guide)
 - [API Reference](#api-reference)
@@ -228,6 +229,134 @@ status = get_installation_status(
 
 print(f"Python installed: {status['runtimes']['python']['installed']}")
 print(f"Black available: {status['dev_tools']['python']['formatting']['black']['installed']}")
+```
+
+## 🚨 Exception Handling Architecture
+
+### **Modular Exception System**
+The exception handling system has been completely refactored to provide granular, context-specific error handling with a modular hierarchy:
+
+```
+exceptions/
+├── installation/
+│   ├── installation_exceptions.py    # 9 installation exceptions
+│   └── uninstallation_exceptions.py  # 8 uninstallation exceptions
+└── system/
+    └── user_path_exceptions.py       # 3 system-specific exceptions
+```
+
+### **Exception Categories**
+
+#### **Installation Exceptions** (9 total)
+- **4 Utility Exceptions** - For low-level operations
+  - `FileVerificationError` - File verification failures
+  - `PathUtilityError` - PATH utility operation failures
+  - `ExecutableVerificationError` - Executable verification issues
+  - `InstallationUtilityError` - General installation utility errors
+
+- **5 Manager Exceptions** - For high-level business logic
+  - `InstallationFileError` - File operation failures during installation
+  - `InstallationPathError` - PATH configuration issues during installation
+  - `InstallationSystemError` - System-level problems during installation
+  - `InstallationVerificationError` - Installation verification failures
+  - `InstallationManagerError` - General installation manager errors
+
+#### **Uninstallation Exceptions** (8 total)
+- **4 Utility Exceptions** - For low-level operations
+  - `FileScanError` - File scanning and analysis errors
+  - `DirectoryAccessError` - Directory access and permission issues
+  - `UninstallationVerificationError` - Uninstallation verification failures
+  - `UninstallationUtilityError` - General uninstallation utility errors
+
+- **4 Manager Exceptions** - For high-level business logic
+  - `UninstallationFileError` - File removal operation failures
+  - `UninstallationPathError` - PATH cleanup issues
+  - `UninstallationManagerVerificationError` - Manager-level verification failures
+  - `UninstallationManagerError` - General uninstallation manager errors
+
+#### **System Exceptions** (3 total)
+- `UserPathError` - User PATH manipulation issues
+- `RegistryError` - Windows registry operation problems
+- `FileSystemError` - File system access and permission issues
+
+### **Exception Design Principles**
+
+#### **1. Granular Error Handling**
+Each exception type represents a specific failure scenario, enabling precise error handling and recovery:
+
+```python
+try:
+    # Installation operation
+    installation_manager.install()
+except InstallationFileError as e:
+    # Handle file-specific installation errors
+    print(f"File error: {e.message}")
+except InstallationPathError as e:
+    # Handle PATH-specific installation errors
+    print(f"PATH error: {e.message}")
+except InstallationSystemError as e:
+    # Handle system-level installation errors
+    print(f"System error: {e.message}")
+```
+
+#### **2. Context-Aware Error Information**
+All exceptions include detailed context information:
+
+```python
+class InstallationFileError(Exception):
+    def __init__(self, operation: str, file_path: str, reason: str, details: str):
+        self.operation = operation    # e.g., "copy", "verify"
+        self.file_path = file_path   # Path to the problematic file
+        self.reason = reason         # Human-readable reason
+        self.details = details       # Technical details for debugging
+        self.message = f"{operation} failed for {file_path}: {reason}"
+        super().__init__(self.message)
+```
+
+#### **3. Exception Hierarchy**
+Exceptions follow a logical hierarchy that mirrors the system architecture:
+
+```
+BaseException
+└── Exception
+    ├── InstallationUtilityError (Utility level)
+    ├── InstallationManagerError (Manager level)
+    │   ├── InstallationFileError
+    │   ├── InstallationPathError
+    │   ├── InstallationSystemError
+    │   └── InstallationVerificationError
+    ├── UninstallationUtilityError (Utility level)
+    ├── UninstallationManagerError (Manager level)
+    │   ├── UninstallationFileError
+    │   ├── UninstallationPathError
+    │   └── UninstallationManagerVerificationError
+    └── System Exceptions
+        ├── UserPathError
+        ├── RegistryError
+        └── FileSystemError
+```
+
+### **Error Handling Flow**
+```
+Exception → Specific Exception Type → Context-Aware Handling → User Feedback
+     ↓              ↓                        ↓                    ↓
+Logging → Detailed Error Context → Recovery Options → Progress Display
+```
+
+### **Integration with Progress System**
+Exceptions are seamlessly integrated with the progress display system:
+
+```python
+try:
+    # Installation operation with progress
+    with create_dynamic_layered_progress(stages) as progress:
+        installation_manager.install(progress)
+except (InstallationFileError, InstallationPathError, InstallationSystemError) as e:
+    # Stop progress and display error
+    progress.emergency_stop(f"Installation failed: {type(e).__name__}")
+    print_error(f"Installation failed: {e.message}")
+    if e.details:
+        print_error(f"Details: {e.details}")
 ```
 
 ## 🔄 Migration Guide
