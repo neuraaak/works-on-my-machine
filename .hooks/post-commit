@@ -93,25 +93,17 @@ if [ -n "$version" ]; then
     fi
 
     # Automatic tag push (after successful builds)
-    if tag_points_to_head "$tag_name"; then
-        echo "→ [AUTO-TAG] $tag_name already at HEAD, skipping push"
+    if git push origin "$tag_name" -f >/dev/null 2>&1; then
+        echo "✓ [AUTO-TAG] Pushed: $tag_name"
     else
-        if git push origin "$tag_name" --force >/dev/null 2>&1; then
-            echo "✓ [AUTO-TAG] Pushed: $tag_name"
-        else
-            echo "⚠️  [AUTO-TAG] Push error: $tag_name"
-        fi
+        echo "⚠️  [AUTO-TAG] Push error: $tag_name"
     fi
     
     if [ -n "$latest_tag_name" ]; then
-        if tag_points_to_head "$latest_tag_name"; then
-            echo "→ [AUTO-TAG] $latest_tag_name already at HEAD, skipping push"
+        if git push origin "$latest_tag_name" -f >/dev/null 2>&1; then
+            echo "✓ [AUTO-TAG] Pushed: $latest_tag_name"
         else
-            if git push origin "$latest_tag_name" --force >/dev/null 2>&1; then
-                echo "✓ [AUTO-TAG] Pushed: $latest_tag_name"
-            else
-                echo "⚠️  [AUTO-TAG] Push error: $latest_tag_name"
-            fi
+            echo "⚠️  [AUTO-TAG] Push error: $latest_tag_name"
         fi
     fi
 else

@@ -7,7 +7,7 @@ from setuptools import setup
 
 setup(
     name="works-on-my-machine",
-    version="2.6.10",
+    version="2.6.11",
     description="Universal development tools for Python and JavaScript",
     author="Neuraaak",
     url="https://github.com/neuraaak/works-on-my-machine",

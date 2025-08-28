@@ -150,7 +150,7 @@ def main():
             print("Test failed")
             sys.exit(1)
 
-        print("\n🎉 Build completed!")
+        print("\nBuild completed!")
         print(f"Installer: {Path('dist') / 'womm-installer.exe'}")
     else:
         print("Usage: python build_exe.py build")
