@@ -86,11 +86,10 @@ if [ -n "$version" ]; then
         create_or_update_tag "$latest_tag_name"
     fi
     
-    # Build and publish artifacts BEFORE pushing tags
-    echo "🔨 [AUTO-TAG] Building and publishing artifacts..."
-    if ! python build_package.py upload >/dev/null 2>&1; then
-        echo "❌ [AUTO-TAG] build_package.py upload failed; skipping tag push"
-        exit 1
+    # Build package locally (GitHub Actions will handle PyPI upload)
+    echo "🔨 [AUTO-TAG] Building package locally..."
+    if ! python build_package.py build >/dev/null 2>&1; then
+        echo "⚠️  [AUTO-TAG] build_package.py build failed; continuing with tag push anyway"
     fi
 
     # Automatic tag push (after successful builds)

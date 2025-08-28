@@ -123,13 +123,13 @@ def test_executable():
         subprocess.run(  # noqa: S603
             [str(exe_path)], capture_output=True, text=True, timeout=10
         )
-        print("✅ Executable runs!")
+        print("Executable runs!")
         return True
     except subprocess.TimeoutExpired:
-        print("✅ Executable started (timeout expected)")
+        print("Executable started (timeout expected)")
         return True
     except Exception as e:
-        print(f"❌ Test failed: {e}")
+        print(f"Test failed: {e}")
         return False
 
 
