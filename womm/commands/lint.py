@@ -1,25 +1,46 @@
 #!/usr/bin/env python3
+# ///////////////////////////////////////////////////////////////
+# LINT - Linting Commands
+# Project: works-on-my-machine
+# ///////////////////////////////////////////////////////////////
+
 """
 Linting commands for WOMM CLI.
-Handles code quality and linting tools.
-Refactored to use new modular architecture.
+
+This module handles code quality and linting tools for Python projects.
+Provides commands for running various linting tools like ruff, black, isort, and bandit.
 """
 
+# ///////////////////////////////////////////////////////////////
+# IMPORTS
+# ///////////////////////////////////////////////////////////////
+# Standard library imports
 import sys
 from pathlib import Path
 
+# Third-party imports
 import click
 
+# Local imports
 # Lazy imports - modules will be imported when needed
+
+# ///////////////////////////////////////////////////////////////
+# COMMAND GROUPS
+# ///////////////////////////////////////////////////////////////
 
 
 @click.group(invoke_without_command=True)
 @click.help_option("-h", "--help")
 @click.pass_context
-def lint_group(ctx):
+def lint_group(ctx: click.Context) -> None:
     """🎨 Code quality and linting tools."""
     if ctx.invoked_subcommand is None:
         click.echo(ctx.get_help())
+
+
+# ///////////////////////////////////////////////////////////////
+# PYTHON LINTING COMMANDS
+# ///////////////////////////////////////////////////////////////
 
 
 @lint_group.command("python")
@@ -36,7 +57,21 @@ def lint_group(ctx):
     "--tools",
     help="Comma-separated list of tools to run (ruff,black,isort,bandit)",
 )
-def lint_python(path, fix, tools):
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    help="Show what would be done without making changes",
+)
+@click.option(
+    "-o",
+    "--output",
+    "output_dir",
+    type=click.Path(file_okay=False, dir_okay=True),
+    help="Output directory for detailed reports (one file per tool)",
+)
+def lint_python(
+    path: str, fix: bool, tools: str | None, dry_run: bool, output_dir: str | None
+) -> None:
     """🐍 Lint Python code with ruff, black, isort, and bandit."""
     # Lazy imports
     from ..core.managers.lint.lint_manager import LintManager
@@ -65,17 +100,28 @@ def lint_python(path, fix, tools):
     # Run linting
     if fix:
         summary = lint_manager.fix_python_code(
-            target_paths=target_paths, tools=tool_list
+            target_paths=target_paths,
+            tools=tool_list,
+            dry_run=dry_run,
+            output_dir=output_dir,
         )
         display_lint_summary(summary, mode="fix")
     else:
         summary = lint_manager.check_python_code(
-            target_paths=target_paths, tools=tool_list
+            target_paths=target_paths,
+            tools=tool_list,
+            dry_run=dry_run,
+            output_dir=output_dir,
         )
         display_lint_summary(summary, mode="check")
 
     # Exit with appropriate code
     sys.exit(0 if summary.success else 1)
+
+
+# ///////////////////////////////////////////////////////////////
+# GENERAL LINTING COMMANDS
+# ///////////////////////////////////////////////////////////////
 
 
 @lint_group.command("all")
@@ -92,7 +138,7 @@ def lint_python(path, fix, tools):
     "--tools",
     help="Comma-separated list of tools to run",
 )
-def lint_all(path, fix, tools):
+def lint_all(path: str, fix: bool, tools: str | None) -> None:
     """🔍 Lint all supported code in project (alias for python)."""
     # Lazy imports
     from ..core.managers.lint.lint_manager import LintManager
@@ -137,9 +183,14 @@ def lint_all(path, fix, tools):
     sys.exit(0 if summary.success else 1)
 
 
+# ///////////////////////////////////////////////////////////////
+# STATUS AND UTILITY COMMANDS
+# ///////////////////////////////////////////////////////////////
+
+
 @lint_group.command("status")
 @click.help_option("-h", "--help")
-def lint_status():
+def lint_status() -> None:
     """🔧 Show status of available linting tools."""
     # Lazy imports
     from ..core.managers.lint.lint_manager import LintManager

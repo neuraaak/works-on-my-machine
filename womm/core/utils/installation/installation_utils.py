@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+# ///////////////////////////////////////////////////////////////
+# INSTALLATION UTILS - Installation Utilities
+# Project: works-on-my-machine
+# ///////////////////////////////////////////////////////////////
+
 """
 Installation utilities for Works On My Machine.
 
@@ -6,14 +11,15 @@ This module provides pure utility functions for WOMM installation operations.
 All functions here are stateless and can be used independently.
 """
 
+# ///////////////////////////////////////////////////////////////
 # IMPORTS
-########################################################
+# ///////////////////////////////////////////////////////////////
 # Standard library imports
+import logging
 import platform
 import stat
 from pathlib import Path
 from time import sleep
-from typing import Dict, List
 
 # Local imports
 from ...exceptions.installation import (
@@ -25,37 +31,66 @@ from ...exceptions.installation import (
 from ..cli_utils import run_silent
 from ..system.user_path_utils import extract_path_from_reg_output
 
-# =============================================================================
+# ///////////////////////////////////////////////////////////////
+# LOGGER SETUP
+# ///////////////////////////////////////////////////////////////
+
+logger = logging.getLogger(__name__)
+
+# ///////////////////////////////////////////////////////////////
 # FILE MANAGEMENT UTILITIES
-# =============================================================================
+# ///////////////////////////////////////////////////////////////
 
 
 def should_exclude_file(file_path: Path, source_path: Path) -> bool:
-    """Check if a file should be excluded from installation.
+    """
+    Check if a file should be excluded from installation.
 
     Args:
         file_path: Path to the file relative to source
         source_path: Source directory path (womm package directory)
 
     Returns:
-        True if file should be excluded, False otherwise
-    """
-    # Check if we're in dev mode (pyproject.toml exists in parent)
-    project_root = source_path.parent
-    pyproject_file = project_root / "pyproject.toml"
+        bool: True if file should be excluded, False otherwise
 
-    if pyproject_file.exists():
-        # DEV MODE: Read pyproject.toml for patterns
-        return check_pyproject_patterns(file_path, source_path, pyproject_file)
-    else:
-        # PACKAGE MODE: No filtering needed (already done during build)
-        return False  # Include everything
+    Raises:
+        InstallationUtilityError: If file exclusion check fails
+    """
+    try:
+        # Input validation
+        if not file_path or not source_path:
+            raise InstallationUtilityError(
+                message="File path and source path cannot be empty",
+                details="Invalid parameters provided for file exclusion check",
+            )
+
+        # Check if we're in dev mode (pyproject.toml exists in parent)
+        project_root = source_path.parent
+        pyproject_file = project_root / "pyproject.toml"
+
+        if pyproject_file.exists():
+            # DEV MODE: Read pyproject.toml for patterns
+            return check_pyproject_patterns(file_path, source_path, pyproject_file)
+        else:
+            # PACKAGE MODE: No filtering needed (already done during build)
+            return False  # Include everything
+
+    except InstallationUtilityError:
+        # Re-raise specialized exceptions as-is
+        raise
+    except Exception as e:
+        # Wrap unexpected external exceptions
+        raise InstallationUtilityError(
+            message=f"Failed to check file exclusion: {e}",
+            details=f"Exception type: {type(e).__name__}, File: {file_path}, Source: {source_path}",
+        ) from e
 
 
 def check_pyproject_patterns(
     file_path: Path, source_path: Path, pyproject_file: Path
 ) -> bool:
-    """Check exclusion patterns from pyproject.toml.
+    """
+    Check exclusion patterns from pyproject.toml.
 
     Args:
         file_path: Path to the file relative to source
@@ -63,35 +98,125 @@ def check_pyproject_patterns(
         pyproject_file: Path to pyproject.toml
 
     Returns:
-        True if file should be excluded, False otherwise
+        bool: True if file should be excluded, False otherwise
+
+    Raises:
+        InstallationUtilityError: If pyproject.toml parsing fails
     """
     try:
-        import tomllib
-    except ImportError:
-        import tomli as tomllib
+        # Input validation
+        if not pyproject_file.exists():
+            logger.warning(f"pyproject.toml not found at {pyproject_file}")
+            return check_default_patterns(file_path, source_path)
 
+        try:
+            import tomllib
+        except ImportError:
+            import tomli as tomllib
+
+        try:
+            with open(pyproject_file, "rb") as f:
+                config = tomllib.load(f)
+
+            # Get exclude patterns from setuptools
+            setuptools_config = config.get("tool", {}).get("setuptools", {})
+            packages_find = setuptools_config.get("packages", {}).get("find", {})
+            exclude_patterns = packages_find.get("exclude", [])
+
+            # Add womm-specific exclusions
+            womm_config = config.get("tool", {}).get("womm", {}).get("installation", {})
+            additional_exclude = womm_config.get("additional-exclude", [])
+            exclude_patterns.extend(additional_exclude)
+
+            # Apply patterns
+            relative_path = file_path.relative_to(source_path)
+
+            for pattern in exclude_patterns:
+                if pattern.endswith("*"):
+                    # Handle wildcard patterns
+                    base_pattern = pattern[:-1]
+                    if str(relative_path).startswith(base_pattern):
+                        return True
+                elif pattern in str(relative_path):
+                    return True
+
+            return False
+
+        except (PermissionError, OSError) as e:
+            logger.warning(f"Failed to read pyproject.toml: {e}")
+            return check_default_patterns(file_path, source_path)
+        except (ValueError, KeyError) as e:
+            logger.warning(f"Failed to parse pyproject.toml: {e}")
+            return check_default_patterns(file_path, source_path)
+
+    except Exception as e:
+        # Wrap unexpected external exceptions
+        raise InstallationUtilityError(
+            message=f"Failed to check pyproject patterns: {e}",
+            details=f"Exception type: {type(e).__name__}, File: {file_path}, Pyproject: {pyproject_file}",
+        ) from e
+
+
+def check_default_patterns(file_path: Path, source_path: Path) -> bool:
+    """
+    Fallback to default exclusion patterns.
+
+    Args:
+        file_path: Path to the file relative to source
+        source_path: Source directory path (womm package directory)
+
+    Returns:
+        bool: True if file should be excluded, False otherwise
+
+    Raises:
+        InstallationUtilityError: If default pattern check fails
+    """
     try:
-        with open(pyproject_file, "rb") as f:
-            config = tomllib.load(f)
+        default_patterns = [
+            ".git",
+            ".gitignore",
+            "__pycache__",
+            "*.pyc",
+            "*.pyo",
+            "*.pyd",
+            ".pytest_cache",
+            ".mypy_cache",
+            ".ruff_cache",
+            ".coverage",
+            "htmlcov",
+            "coverage.xml",
+            ".venv",
+            "venv",
+            "node_modules",
+            "build",
+            "dist",
+            "*.egg-info",
+            "tests",
+            "test_*",
+            "*_test.py",
+            "docs",
+            "pyproject.toml",
+            "setup.py",  # Only exclude root setup.py, not subdirectory setup.py files
+            "*.log",
+            ".DS_Store",
+            "Thumbs.db",
+            ".vscode",
+            ".idea",
+            ".cursor",
+            "ignore-install.txt",
+            "womm.bat",
+        ]
 
-        # Get exclude patterns from setuptools
-        setuptools_config = config.get("tool", {}).get("setuptools", {})
-        packages_find = setuptools_config.get("packages", {}).get("find", {})
-        exclude_patterns = packages_find.get("exclude", [])
-
-        # Add womm-specific exclusions
-        womm_config = config.get("tool", {}).get("womm", {}).get("installation", {})
-        additional_exclude = womm_config.get("additional-exclude", [])
-        exclude_patterns.extend(additional_exclude)
-
-        # Apply patterns
+        file_name = file_path.name
         relative_path = file_path.relative_to(source_path)
 
-        for pattern in exclude_patterns:
-            if pattern.endswith("*"):
-                # Handle wildcard patterns
-                base_pattern = pattern[:-1]
-                if str(relative_path).startswith(base_pattern):
+        for pattern in default_patterns:
+            if pattern.startswith("*"):
+                if file_name.endswith(pattern[1:]):
+                    return True
+            elif pattern == "setup.py":
+                # Only exclude root setup.py, not subdirectory setup.py files
+                if str(relative_path) == "setup.py":
                     return True
             elif pattern in str(relative_path):
                 return True
@@ -99,106 +224,86 @@ def check_pyproject_patterns(
         return False
 
     except Exception as e:
-        # Fallback to default patterns if pyproject.toml can't be read
-        print(f"Warning: Could not read pyproject.toml: {e}")
-        return check_default_patterns(file_path, source_path)
+        # Wrap unexpected external exceptions
+        raise InstallationUtilityError(
+            message=f"Failed to check default patterns: {e}",
+            details=f"Exception type: {type(e).__name__}, File: {file_path}",
+        ) from e
 
 
-def check_default_patterns(file_path: Path, source_path: Path) -> bool:
-    """Fallback to default exclusion patterns.
-
-    Args:
-        file_path: Path to the file relative to source
-        source_path: Source directory path (womm package directory)
-
-    Returns:
-        True if file should be excluded, False otherwise
+def get_files_to_copy(source_path: Path) -> list[str]:
     """
-    default_patterns = [
-        ".git",
-        ".gitignore",
-        "__pycache__",
-        "*.pyc",
-        "*.pyo",
-        "*.pyd",
-        ".pytest_cache",
-        ".mypy_cache",
-        ".ruff_cache",
-        ".coverage",
-        "htmlcov",
-        "coverage.xml",
-        ".venv",
-        "venv",
-        "node_modules",
-        "build",
-        "dist",
-        "*.egg-info",
-        "tests",
-        "test_*",
-        "*_test.py",
-        "docs",
-        "pyproject.toml",
-        "setup.py",
-        "*.log",
-        ".DS_Store",
-        "Thumbs.db",
-        ".vscode",
-        ".idea",
-        ".cursor",
-        "ignore-install.txt",
-        "womm.bat",
-    ]
-
-    file_name = file_path.name
-    relative_path = file_path.relative_to(source_path)
-
-    for pattern in default_patterns:
-        if pattern.startswith("*"):
-            if file_name.endswith(pattern[1:]):
-                return True
-        elif pattern in str(relative_path):
-            return True
-
-    return False
-
-
-def get_files_to_copy(source_path: Path) -> List[str]:
-    """Get list of files to copy during installation.
+    Get list of files to copy during installation.
 
     Args:
         source_path: Source directory path
 
     Returns:
-        List of file paths relative to source
+        List[str]: List of file paths relative to source
+
+    Raises:
+        InstallationUtilityError: If file enumeration fails
     """
-    files_to_copy = []
+    try:
+        # Input validation
+        if not source_path or not source_path.exists():
+            raise InstallationUtilityError(
+                message="Source path does not exist",
+                details=f"Source path: {source_path}",
+            )
 
-    for file_path in source_path.rglob("*"):
-        if file_path.is_file() and not should_exclude_file(file_path, source_path):
-            relative_path = file_path.relative_to(source_path)
-            files_to_copy.append(str(relative_path))
+        files_to_copy = []
 
-    return files_to_copy
+        for file_path in source_path.rglob("*"):
+            try:
+                if file_path.is_file() and not should_exclude_file(
+                    file_path, source_path
+                ):
+                    relative_path = file_path.relative_to(source_path)
+                    files_to_copy.append(str(relative_path))
+            except Exception as e:
+                logger.warning(f"Failed to process file {file_path}: {e}")
+                continue
+
+        return files_to_copy
+
+    except InstallationUtilityError:
+        # Re-raise specialized exceptions as-is
+        raise
+    except Exception as e:
+        # Wrap unexpected external exceptions
+        raise InstallationUtilityError(
+            message=f"Failed to enumerate files to copy: {e}",
+            details=f"Exception type: {type(e).__name__}, Source: {source_path}",
+        ) from e
 
 
-# =============================================================================
+# ///////////////////////////////////////////////////////////////
 # EXECUTABLE CREATION UTILITIES
-# =============================================================================
+# ///////////////////////////////////////////////////////////////
 
 
-def create_womm_executable(target_path: Path) -> Dict:
-    """Create the womm executable script.
+def create_womm_executable(target_path: Path) -> dict[str, str | bool]:
+    """
+    Create the womm executable script.
 
     Args:
         target_path: Path where WOMM is installed
 
     Returns:
-        Dictionary with success status and details
+        Dict: Dictionary with success status and details
 
     Raises:
         InstallationUtilityError: If executable creation fails
     """
     try:
+        # Input validation
+        if not target_path:
+            raise InstallationUtilityError(
+                message="Target path cannot be empty",
+                details="Invalid target path provided for executable creation",
+            )
+
         # Create womm.py wrapper
         womm_py_path = target_path / "womm.py"
         womm_py_content = '''#!/usr/bin/env python3
@@ -236,8 +341,14 @@ if __name__ == "__main__":
 '''
 
         # Write womm.py
-        with open(womm_py_path, "w", encoding="utf-8") as f:
-            f.write(womm_py_content)
+        try:
+            with open(womm_py_path, "w", encoding="utf-8") as f:
+                f.write(womm_py_content)
+        except (PermissionError, OSError) as e:
+            raise InstallationUtilityError(
+                message=f"Failed to create womm.py wrapper: {e}",
+                details=f"Target path: {target_path}, File: {womm_py_path}",
+            ) from e
 
         # Create executable script content
         if platform.system() == "Windows":
@@ -250,13 +361,23 @@ if __name__ == "__main__":
             script_content = f'#!/bin/bash\npython3 "{womm_py_path}" "$@"\n'
 
         # Write the executable
-        with open(executable_path, "w", encoding="utf-8") as f:
-            f.write(script_content)
-            sleep(0.5)
+        try:
+            with open(executable_path, "w", encoding="utf-8") as f:
+                f.write(script_content)
+                sleep(0.5)
 
-        # Make executable on Unix systems
-        if platform.system() != "Windows":
-            executable_path.chmod(executable_path.stat().st_mode | stat.S_IEXEC)
+            # Make executable on Unix systems
+            if platform.system() != "Windows":
+                try:
+                    executable_path.chmod(executable_path.stat().st_mode | stat.S_IEXEC)
+                except (PermissionError, OSError) as e:
+                    logger.warning(f"Failed to make executable: {e}")
+
+        except (PermissionError, OSError) as e:
+            raise InstallationUtilityError(
+                message=f"Failed to create executable script: {e}",
+                details=f"Target path: {target_path}, Executable: {executable_path}",
+            ) from e
 
         return {
             "success": True,
@@ -265,39 +386,56 @@ if __name__ == "__main__":
             "platform": platform.system(),
         }
 
-    except OSError as e:
-        # File system errors
-        raise InstallationUtilityError(
-            message=f"Failed to create WOMM executable: {e}",
-            details=f"Target path: {target_path}, Platform: {platform.system()}",
-        ) from e
+    except InstallationUtilityError:
+        # Re-raise specialized exceptions as-is
+        raise
     except Exception as e:
-        # Convert unexpected errors to our exception type
+        # Wrap unexpected external exceptions
         raise InstallationUtilityError(
             message=f"Unexpected error during executable creation: {e}",
-            details=f"Target path: {target_path}, Platform: {platform.system()}",
+            details=f"Exception type: {type(e).__name__}, Target path: {target_path}, Platform: {platform.system()}",
         ) from e
 
 
-# =============================================================================
+# ///////////////////////////////////////////////////////////////
 # VERIFICATION UTILITIES
-# =============================================================================
+# ///////////////////////////////////////////////////////////////
 
 
-def verify_files_copied(source_path: Path, target_path: Path) -> Dict:
-    """Verify that all required files were copied correctly.
+def verify_files_copied(
+    source_path: Path, target_path: Path
+) -> dict[str, str | bool | int]:
+    """
+    Verify that all required files were copied correctly.
 
     Args:
         source_path: Original source directory (womm package directory)
         target_path: Target installation directory (will contain womm/ subdirectory)
 
     Returns:
-        Dictionary with verification results
+        Dict: Dictionary with verification results
 
     Raises:
         FileVerificationError: If files are missing or corrupted
     """
     try:
+        # Input validation
+        if not source_path or not source_path.exists():
+            raise FileVerificationError(
+                verification_type="copy_verification",
+                file_path=str(source_path),
+                reason="Source path does not exist",
+                details="Invalid source path provided for verification",
+            )
+
+        if not target_path or not target_path.exists():
+            raise FileVerificationError(
+                verification_type="copy_verification",
+                file_path=str(target_path),
+                reason="Target path does not exist",
+                details="Invalid target path provided for verification",
+            )
+
         files_to_check = get_files_to_copy(source_path)
         missing_files = []
         size_mismatches = []
@@ -306,13 +444,17 @@ def verify_files_copied(source_path: Path, target_path: Path) -> Dict:
         womm_target_path = target_path / "womm"
 
         for relative_file in files_to_check:
-            source_file = source_path / relative_file
-            target_file = womm_target_path / relative_file
+            try:
+                source_file = source_path / relative_file
+                target_file = womm_target_path / relative_file
 
-            if not target_file.exists():
+                if not target_file.exists():
+                    missing_files.append(str(relative_file))
+                elif source_file.stat().st_size != target_file.stat().st_size:
+                    size_mismatches.append(str(relative_file))
+            except Exception as e:
+                logger.warning(f"Failed to verify file {relative_file}: {e}")
                 missing_files.append(str(relative_file))
-            elif source_file.stat().st_size != target_file.stat().st_size:
-                size_mismatches.append(str(relative_file))
 
         # If there are issues, raise appropriate exceptions
         if missing_files:
@@ -339,54 +481,73 @@ def verify_files_copied(source_path: Path, target_path: Path) -> Dict:
             "size_mismatches": [],
         }
 
-    except FileVerificationError:
+    except (FileVerificationError, InstallationUtilityError):
         # Re-raise our custom exceptions
         raise
     except Exception as e:
-        # Convert unexpected errors to our exception type
+        # Wrap unexpected external exceptions
         raise FileVerificationError(
             verification_type="copy_verification",
             file_path=str(target_path),
             reason=f"Unexpected error during file verification: {e}",
-            details="This is an unexpected error that should be reported",
+            details=f"Exception type: {type(e).__name__}",
         ) from e
 
 
-def verify_path_configuration(entry_path: str) -> Dict:
-    """Verify that WOMM is correctly configured in PATH.
+def verify_path_configuration(entry_path: str) -> dict[str, str | bool]:
+    """
+    Verify that WOMM is correctly configured in PATH.
 
     Args:
         entry_path: Path to WOMM installation directory
 
     Returns:
-        Dictionary with verification results
+        Dict: Dictionary with verification results
 
     Raises:
         PathUtilityError: If PATH configuration verification fails
     """
     try:
-        if platform.system() == "Windows":
-            # Query Windows registry for PATH
-            result = run_silent(
-                ["reg", "query", "HKCU\\Environment", "/v", "PATH"],
-                capture_output=True,
+        # Input validation
+        if not entry_path:
+            raise PathUtilityError(
+                operation="path_verification",
+                path="",
+                reason="Entry path cannot be empty",
+                details="Invalid entry path provided for PATH verification",
             )
 
-            if result.returncode != 0:
+        if platform.system() == "Windows":
+            # Query Windows registry for PATH
+            try:
+                result = run_silent(
+                    ["reg", "query", "HKCU\\Environment", "/v", "PATH"],
+                    capture_output=True,
+                )
+
+                if result.returncode != 0:
+                    raise PathUtilityError(
+                        operation="path_verification",
+                        path=entry_path,
+                        reason="Failed to query PATH from registry",
+                        details=f"Return code: {result.returncode}",
+                    )
+
+                # Handle stdout properly
+                stdout_str = result.stdout
+                if isinstance(stdout_str, bytes):
+                    stdout_str = stdout_str.decode()
+
+                current_path = extract_path_from_reg_output(stdout_str)
+                path_entries = [p.strip() for p in current_path.split(";") if p.strip()]
+
+            except Exception as e:
                 raise PathUtilityError(
                     operation="path_verification",
                     path=entry_path,
-                    reason="Failed to query PATH from registry",
-                    details=f"Return code: {result.returncode}",
-                )
-
-            # Handle stdout properly
-            stdout_str = result.stdout
-            if isinstance(stdout_str, bytes):
-                stdout_str = stdout_str.decode()
-
-            current_path = extract_path_from_reg_output(stdout_str)
-            path_entries = [p.strip() for p in current_path.split(";") if p.strip()]
+                    reason="Failed to query Windows registry",
+                    details=f"Error: {e}",
+                ) from e
 
         else:
             # Check Unix shell configuration files
@@ -398,19 +559,32 @@ def verify_path_configuration(entry_path: str) -> Dict:
 
             path_entries = []
             for rc_file in shell_rc_files:
-                if rc_file.exists():
-                    with open(rc_file, encoding="utf-8") as f:
-                        content = f.read()
-                        if entry_path in content:
-                            path_entries.append(str(rc_file))
+                try:
+                    if rc_file.exists():
+                        with open(rc_file, encoding="utf-8") as f:
+                            content = f.read()
+                            if entry_path in content:
+                                path_entries.append(str(rc_file))
+                except Exception as e:
+                    logger.warning(f"Failed to check shell config {rc_file}: {e}")
+                    continue
 
         # Normalize paths for comparison
-        normalized_womm = str(Path(entry_path).resolve())
+        try:
+            normalized_womm = str(Path(entry_path).resolve())
+        except Exception as e:
+            logger.warning(f"Failed to resolve entry path {entry_path}: {e}")
+            normalized_womm = entry_path
+
         found_in_path = False
 
         if platform.system() == "Windows":
-            normalized_entries = [str(Path(p).resolve()) for p in path_entries if p]
-            found_in_path = normalized_womm in normalized_entries
+            try:
+                normalized_entries = [str(Path(p).resolve()) for p in path_entries if p]
+                found_in_path = normalized_womm in normalized_entries
+            except Exception as e:
+                logger.warning(f"Failed to normalize Windows PATH entries: {e}")
+                found_in_path = entry_path in path_entries
         else:
             found_in_path = len(path_entries) > 0
 
@@ -436,28 +610,37 @@ def verify_path_configuration(entry_path: str) -> Dict:
         # Re-raise our custom exceptions
         raise
     except Exception as e:
-        # Convert unexpected errors to our exception type
+        # Wrap unexpected external exceptions
         raise PathUtilityError(
             operation="path_verification",
             path=entry_path,
             reason=f"Unexpected error during PATH verification: {e}",
-            details="This is an unexpected error that should be reported",
+            details=f"Exception type: {type(e).__name__}",
         ) from e
 
 
-def verify_commands_accessible(entry_path: str) -> Dict:
-    """Verify that WOMM commands are accessible from PATH.
+def verify_commands_accessible(entry_path: str) -> dict[str, str | bool | list]:
+    """
+    Verify that WOMM commands are accessible from PATH.
 
     Args:
         entry_path: Path to WOMM installation directory
 
     Returns:
-        Dictionary with verification results
+        Dict: Dictionary with verification results
 
     Raises:
         ExecutableVerificationError: If executable is not accessible
     """
     try:
+        # Input validation
+        if not entry_path:
+            raise ExecutableVerificationError(
+                executable_name="womm",
+                reason="Entry path cannot be empty",
+                details="Invalid entry path provided for command verification",
+            )
+
         # First test: Check if executable exists at the specified path
         if platform.system() == "Windows":
             local_executable = Path(entry_path) / "womm.bat"
@@ -475,47 +658,58 @@ def verify_commands_accessible(entry_path: str) -> Dict:
             )
 
         # Test local executable
-        local_result = run_silent(
-            [str(local_executable), "--version"], capture_output=True
-        )
-        local_works = local_result.returncode == 0
+        try:
+            local_result = run_silent(
+                [str(local_executable), "--version"], capture_output=True
+            )
+            local_works = local_result.returncode == 0
+        except Exception as e:
+            logger.warning(f"Failed to test local executable: {e}")
+            local_works = False
 
         # Debug info for local test failure
         if not local_works:
             import tempfile
 
-            # Clean stdout/stderr of problematic Unicode characters
-            stdout_clean = (
-                str(local_result.stdout).encode("ascii", "replace").decode("ascii")
-                if local_result.stdout
-                else "None"
-            )
-            stderr_clean = (
-                str(local_result.stderr).encode("ascii", "replace").decode("ascii")
-                if local_result.stderr
-                else "None"
-            )
+            try:
+                # Clean stdout/stderr of problematic Unicode characters
+                stdout_clean = (
+                    str(local_result.stdout).encode("ascii", "replace").decode("ascii")
+                    if local_result.stdout
+                    else "None"
+                )
+                stderr_clean = (
+                    str(local_result.stderr).encode("ascii", "replace").decode("ascii")
+                    if local_result.stderr
+                    else "None"
+                )
 
-            debug_file = Path(tempfile.gettempdir()) / "womm_local_test_debug.txt"
-            with open(debug_file, "w", encoding="utf-8") as f:
-                f.write("Local executable test failed:\n")
-                f.write(f"Executable: {local_executable}\n")
-                f.write(f"Exists: {local_executable.exists()}\n")
-                f.write(f"Command: {[str(local_executable), '--version']}\n")
-                f.write(f"Return code: {local_result.returncode}\n")
-                f.write(f"Stdout: {stdout_clean}\n")
-                f.write(f"Stderr: {stderr_clean}\n")
-                if local_executable.exists():
-                    f.write(f"File size: {local_executable.stat().st_size}\n")
-                    try:
-                        with open(local_executable, encoding="utf-8") as exe_file:
-                            f.write(f"Content:\n{exe_file.read()}\n")
-                    except Exception as e:
-                        f.write(f"Could not read executable content: {e}\n")
+                debug_file = Path(tempfile.gettempdir()) / "womm_local_test_debug.txt"
+                with open(debug_file, "w", encoding="utf-8") as f:
+                    f.write("Local executable test failed:\n")
+                    f.write(f"Executable: {local_executable}\n")
+                    f.write(f"Exists: {local_executable.exists()}\n")
+                    f.write(f"Command: {[str(local_executable), '--version']}\n")
+                    f.write(f"Return code: {local_result.returncode}\n")
+                    f.write(f"Stdout: {stdout_clean}\n")
+                    f.write(f"Stderr: {stderr_clean}\n")
+                    if local_executable.exists():
+                        f.write(f"File size: {local_executable.stat().st_size}\n")
+                        try:
+                            with open(local_executable, encoding="utf-8") as exe_file:
+                                f.write(f"Content:\n{exe_file.read()}\n")
+                        except Exception as e:
+                            f.write(f"Could not read executable content: {e}\n")
+            except Exception as e:
+                logger.warning(f"Failed to create debug file: {e}")
 
         # Test 2: Global accessibility via PATH
-        global_result = run_silent(global_command, capture_output=True)
-        global_works = global_result.returncode == 0
+        try:
+            global_result = run_silent(global_command, capture_output=True)
+            global_works = global_result.returncode == 0
+        except Exception as e:
+            logger.warning(f"Failed to test global command: {e}")
+            global_works = False
 
         # Logic for handling local vs global test results is handled below in unified way
         if local_works and global_works:
@@ -568,29 +762,38 @@ def verify_commands_accessible(entry_path: str) -> Dict:
         # Re-raise our custom exceptions
         raise
     except Exception as e:
-        # Convert unexpected errors to our exception type
+        # Wrap unexpected external exceptions
         # Clean the error message of Unicode characters that can't be encoded
         error_msg = str(e).encode("ascii", "replace").decode("ascii")
         raise ExecutableVerificationError(
             executable_name="womm",
             reason=f"Unexpected error during command verification: {error_msg}",
-            details="This is an unexpected error that should be reported",
+            details=f"Exception type: {type(e).__name__}",
         ) from e
 
 
-def verify_executable_works(target_path: Path) -> Dict:
-    """Verify that the WOMM executable works correctly.
+def verify_executable_works(target_path: Path) -> dict[str, str | bool]:
+    """
+    Verify that the WOMM executable works correctly.
 
     Args:
         target_path: Target installation directory
 
     Returns:
-        Dictionary with verification results
+        Dict: Dictionary with verification results
 
     Raises:
         ExecutableVerificationError: If executable is missing or fails to work
     """
     try:
+        # Input validation
+        if not target_path or not target_path.exists():
+            raise ExecutableVerificationError(
+                executable_name="womm",
+                reason="Target path does not exist",
+                details=f"Target path: {target_path}",
+            )
+
         if platform.system() == "Windows":
             executable_path = target_path / "womm.bat"
             test_command = [str(executable_path), "--version"]
@@ -606,7 +809,14 @@ def verify_executable_works(target_path: Path) -> Dict:
             )
 
         # Test the executable
-        result = run_silent(test_command, capture_output=True)
+        try:
+            result = run_silent(test_command, capture_output=True)
+        except Exception as e:
+            raise ExecutableVerificationError(
+                executable_name="womm",
+                reason=f"Failed to execute test command: {e}",
+                details=f"Command: {test_command}",
+            ) from e
 
         if result.returncode == 0:
             # Handle stdout properly
@@ -635,9 +845,9 @@ def verify_executable_works(target_path: Path) -> Dict:
         # Re-raise our custom exceptions
         raise
     except Exception as e:
-        # Convert unexpected errors to our exception type
+        # Wrap unexpected external exceptions
         raise ExecutableVerificationError(
             executable_name="womm",
             reason=f"Unexpected error during executable verification: {e}",
-            details="This is an unexpected error that should be reported",
+            details=f"Exception type: {type(e).__name__}, Target path: {target_path}",
         ) from e

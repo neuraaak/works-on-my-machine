@@ -1,14 +1,38 @@
 #!/usr/bin/env python3
+# ///////////////////////////////////////////////////////////////
+# CLI UTILS - Unified CLI Manager
+# Project: works-on-my-machine
+# ///////////////////////////////////////////////////////////////
+
 """
 Unified CLI Manager for Works On My Machine.
+
 Handles command execution with optional security validation.
+Provides a unified interface for running commands with proper error handling,
+timeout management, and security validation.
 """
 
+# ///////////////////////////////////////////////////////////////
+# IMPORTS
+# ///////////////////////////////////////////////////////////////
+# Standard library imports
 import logging
 import subprocess
 import time
 from pathlib import Path
-from typing import List, Optional, Union
+
+# Local imports
+# Import specialized exceptions
+from ..exceptions.cli import (
+    CLIUtilityError,
+    CommandExecutionError,
+    CommandValidationError,
+    TimeoutError,
+)
+
+# ///////////////////////////////////////////////////////////////
+# COMMAND RESULT CLASS
+# ///////////////////////////////////////////////////////////////
 
 
 class CommandResult:
@@ -19,11 +43,22 @@ class CommandResult:
         returncode: int,
         stdout: str = "",
         stderr: str = "",
-        command: List[str] = None,
-        cwd: Optional[Path] = None,
+        command: list[str] | None = None,
+        cwd: Path | None = None,
         security_validated: bool = False,
         execution_time: float = 0.0,
-    ):
+    ) -> None:
+        """Initialize command result.
+
+        Args:
+            returncode: Return code from command execution
+            stdout: Standard output
+            stderr: Standard error output
+            command: Command that was executed
+            cwd: Working directory
+            security_validated: Whether command was security validated
+            execution_time: Execution time in seconds
+        """
         self.returncode = returncode
         self.stdout = stdout
         self.stderr = stderr
@@ -34,6 +69,7 @@ class CommandResult:
 
     @property
     def success(self) -> bool:
+        """Check if command execution was successful."""
         return self.returncode == 0
 
     def __bool__(self):
@@ -45,242 +81,438 @@ class CommandResult:
         return f"CommandResult(success={self.success}, validated={self.security_validated}, time={self.execution_time:.2f}s)"
 
 
+# ///////////////////////////////////////////////////////////////
+# CLI UTILS CLASS
+# ///////////////////////////////////////////////////////////////
+
+
 class CLIUtils:
     """Unified CLI manager with optional security validation."""
 
     def __init__(
         self,
-        default_cwd: Optional[Union[str, Path]] = None,
+        default_cwd: str | Path | None = None,
         timeout: int = 30,
         max_retries: int = 3,
         retry_delay: float = 1.0,
-    ):
-        """
-        Initialize CLI manager.
+    ) -> None:
+        """Initialize CLI manager.
 
         Args:
             default_cwd: Default working directory
             timeout: Command timeout in seconds
             max_retries: Maximum number of retries for failed commands
             retry_delay: Delay between retries in seconds
+
+        Raises:
+            CLIUtilityError: If initialization parameters are invalid
         """
-        self.default_cwd = Path(default_cwd) if default_cwd else Path.cwd()
-        self.timeout = timeout
-        self.max_retries = max_retries
-        self.retry_delay = retry_delay
+        try:
+            # Validate initialization parameters
+            self._validate_init_parameters(timeout, max_retries, retry_delay)
 
-        # Setup logging
-        self.logger = self._setup_logging()
+            self.default_cwd = Path(default_cwd) if default_cwd else Path.cwd()
+            self.timeout = timeout
+            self.max_retries = max_retries
+            self.retry_delay = retry_delay
+            self.logger = logging.getLogger(__name__)
 
-    def _setup_logging(self) -> logging.Logger:
-        """Setup logging for CLI operations."""
-        logger = logging.getLogger("cli_manager")
-        logger.setLevel(
-            logging.CRITICAL
-        )  # Only show critical errors, suppress all others
-
-        if not logger.handlers:
-            handler = logging.StreamHandler()
-            formatter = logging.Formatter(
-                "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-            )
-            handler.setFormatter(formatter)
-            logger.addHandler(handler)
-
-        return logger
+        except (
+            CLIUtilityError,
+            CommandExecutionError,
+            CommandValidationError,
+            TimeoutError,
+        ):
+            # Re-raise specialized exceptions as-is
+            raise
+        except Exception as e:
+            # Wrap unexpected external exceptions
+            raise CLIUtilityError(
+                message=f"Unexpected error during CLI manager initialization: {e}",
+                details=f"Exception type: {type(e).__name__}",
+            ) from e
 
     def run(
         self,
-        command: Union[str, List[str]],
-        description: Optional[str] = None,
-        cwd: Optional[Union[str, Path]] = None,
+        command: str | list[str],
+        description: str = "",
+        cwd: str | Path | None = None,
         validate_security: bool = False,
-        **kwargs,
+        **kwargs: dict,
     ) -> CommandResult:
-        """
-        Execute a command with optional security validation.
+        """Execute a command with optional security validation.
 
         Args:
-            command: Command to execute (string or list)
+            command: Command to execute
             description: Description for logging
             cwd: Working directory
             validate_security: Whether to validate command security
-            **kwargs: Additional arguments for subprocess
+            **kwargs: Additional subprocess arguments
 
         Returns:
-            CommandResult: Execution result with security information
+            CommandResult: Result of command execution
+
+        Raises:
+            CLIUtilityError: If command validation fails
+            CommandValidationError: If security validation fails
+            TimeoutError: If command times out
+            CommandExecutionError: If command execution fails
         """
-        start_time = time.time()
+        try:
+            # Input validation
+            self._validate_command_input(command)
 
-        # Normalize command
-        cmd = command.split() if isinstance(command, str) else list(command)
-
-        # Description prefix for logging
-        log_prefix = f"[{description}] " if description else ""
-
-        # Security validation
-        security_validated = False
-        if validate_security:
-            from .security.security_validator import security_validator
-
-            is_valid, error = security_validator.validate_command(cmd)
-            if not is_valid:
-                self.logger.warning(f"{log_prefix}Command validation failed: {error}")
-                return CommandResult(
-                    returncode=-1,
-                    stderr=f"Security validation failed: {error}",
-                    command=cmd,
-                    cwd=cwd,
-                    security_validated=False,
-                    execution_time=time.time() - start_time,
-                )
-            security_validated = True
-
-        # Parameters
-        run_cwd = Path(cwd) if cwd else self.default_cwd
-
-        # Retry logic
-        last_error = None
-        for attempt in range(self.max_retries):
-            try:
-                result = self._execute_command(cmd, run_cwd, **kwargs)
-
-                # Create result
-                command_result = CommandResult(
-                    returncode=result.returncode,
-                    stdout=getattr(result, "stdout", "") or "",
-                    stderr=getattr(result, "stderr", "") or "",
-                    command=cmd,
-                    cwd=run_cwd,
-                    security_validated=security_validated,
-                    execution_time=time.time() - start_time,
+            # Convert string command to list
+            if isinstance(command, str):
+                command = [command]
+            elif not isinstance(command, list):
+                raise CLIUtilityError(
+                    message=f"Command must be a string or list of strings, got: {type(command)}",
+                    details=f"Invalid command type: {type(command).__name__}",
                 )
 
-                return command_result
+            # Set working directory
+            working_dir = Path(cwd) if cwd else self.default_cwd
 
-            except subprocess.TimeoutExpired as e:
-                last_error = e
-                self.logger.warning(
-                    f"{log_prefix}Timeout after {self.timeout}s (attempt {attempt + 1}/{self.max_retries})"
-                )
-                if attempt < self.max_retries - 1:
-                    time.sleep(self.retry_delay)
+            # Security validation if requested
+            if validate_security:
+                self._validate_command_security(command)
 
-            except Exception as e:
-                last_error = e
-                self.logger.error(
-                    f"{log_prefix}Error during execution (attempt {attempt + 1}/{self.max_retries}): {e}"
-                )
-                if attempt < self.max_retries - 1:
-                    time.sleep(self.retry_delay)
+            # Log command execution if description provided
+            if description:
+                self.logger.info(f"Executing command: {description}")
 
-        # All retries failed
-        error_msg = f"{log_prefix}All {self.max_retries} attempts failed. Last error: {last_error}"
-        self.logger.error(error_msg)
+            # Execute command with retries
+            start_time = time.time()
+            last_error = None
 
-        return CommandResult(
-            returncode=-1,
-            stderr=error_msg,
-            command=cmd,
-            cwd=run_cwd,
-            security_validated=security_validated,
-            execution_time=time.time() - start_time,
-        )
+            for attempt in range(self.max_retries + 1):
+                try:
+                    result = self._execute_command(command, working_dir, **kwargs)
+                    execution_time = time.time() - start_time
+
+                    return CommandResult(
+                        returncode=result.returncode,
+                        stdout=result.stdout,
+                        stderr=result.stderr,
+                        command=command,
+                        cwd=working_dir,
+                        security_validated=validate_security,
+                        execution_time=execution_time,
+                    )
+
+                except subprocess.TimeoutExpired as e:
+                    last_error = TimeoutError(
+                        command=str(command),
+                        timeout_seconds=self.timeout,
+                        details=f"Attempt {attempt + 1}/{self.max_retries + 1}",
+                    )
+                    if attempt < self.max_retries:
+                        time.sleep(self.retry_delay)
+                        continue
+                    else:
+                        raise last_error from e
+
+                except subprocess.SubprocessError as e:
+                    last_error = CommandExecutionError(
+                        command=str(command),
+                        return_code=getattr(e, "returncode", -1),
+                        stderr=str(e),
+                        details=f"Attempt {attempt + 1}/{self.max_retries + 1}: {e}",
+                    )
+                    if attempt < self.max_retries:
+                        time.sleep(self.retry_delay)
+                        continue
+                    else:
+                        raise last_error from e
+
+                except Exception as e:
+                    last_error = CommandExecutionError(
+                        command=str(command),
+                        return_code=-1,
+                        stderr=str(e),
+                        details=f"Unexpected error on attempt {attempt + 1}/{self.max_retries + 1}: {e}",
+                    )
+                    if attempt < self.max_retries:
+                        time.sleep(self.retry_delay)
+                        continue
+                    else:
+                        raise last_error from e
+
+            # This should never be reached, but just in case
+            raise last_error
+
+        except (
+            CLIUtilityError,
+            CommandValidationError,
+            TimeoutError,
+            CommandExecutionError,
+        ):
+            # Re-raise specialized exceptions as-is
+            raise
+        except Exception as e:
+            # Wrap unexpected external exceptions
+            raise CLIUtilityError(
+                message=f"Unexpected error during command execution: {e}",
+                details=f"Exception type: {type(e).__name__}, Command: {command}",
+            ) from e
 
     def _execute_command(
         self,
-        cmd: List[str],
+        cmd: list[str],
         cwd: Path,
-        **kwargs,
-    ) -> subprocess.CompletedProcess:
-        """Execute a single command attempt."""
-        # Validate command is a list of strings
-        if not isinstance(cmd, list) or not all(isinstance(arg, str) for arg in cmd):
-            raise ValueError("Command must be a list of strings")
+        **kwargs: dict,
+    ) -> subprocess.CompletedProcess[str]:
+        """Execute a single command attempt.
 
-        if not cmd:
-            raise ValueError("Command cannot be empty")
+        Args:
+            cmd: Command to execute as list of strings
+            cwd: Working directory
+            **kwargs: Additional subprocess arguments
 
-        # Prepare subprocess arguments with explicit security settings
-        subprocess_args = {
-            "cwd": cwd,
-            "timeout": self.timeout,
-            "text": True,
-            "encoding": "utf-8",
-            "errors": "replace",
-            "capture_output": True,
-            "shell": False,  # Explicitly disable shell for security
-        }
+        Returns:
+            subprocess.CompletedProcess: Result of command execution
 
-        # Add valid kwargs for subprocess
-        valid_subprocess_args = {
-            "input",
-            "env",
-            "check",
-            "stdin",
-            "stdout",
-            "stderr",
-            "preexec_fn",
-            "close_fds",
-            "pass_fds",
-            "restore_signals",
-            "start_new_session",
-            "group",
-            "extra_groups",
-            "user",
-            "umask",
-            "startupinfo",
-            "creationflags",
-        }
+        Raises:
+            CLIUtilityError: If command validation fails
+            subprocess.TimeoutExpired: If command times out
+            subprocess.SubprocessError: If command execution fails
+        """
+        try:
+            # Validate command format
+            if not isinstance(cmd, list) or not all(
+                isinstance(arg, str) for arg in cmd
+            ):
+                raise CLIUtilityError(
+                    message=f"Command must be a list of strings, got: {type(cmd)}",
+                    details=f"Invalid command format: {type(cmd).__name__}",
+                )
 
-        for key, value in kwargs.items():
-            if key in valid_subprocess_args:
-                subprocess_args[key] = value
+            if not cmd:
+                raise CLIUtilityError(
+                    message="Command cannot be empty",
+                    details="Empty command list provided",
+                )
 
-        # Execute command with explicit security validation
-        # The command has already been validated by the calling method
-        return subprocess.run(cmd, **subprocess_args)  # noqa: S603
+            # Prepare subprocess arguments with explicit security settings
+            subprocess_args = {
+                "cwd": cwd,
+                "timeout": self.timeout,
+                "text": True,
+                "encoding": "utf-8",
+                "errors": "replace",
+                "capture_output": True,
+                "shell": False,  # Explicitly disable shell for security
+            }
 
-    def run_silent(self, command: Union[str, List[str]], **kwargs) -> CommandResult:
-        """Execute a command in silent mode."""
+            # Add valid kwargs for subprocess
+            valid_subprocess_args = {
+                "input",
+                "env",
+                "check",
+                "stdin",
+                "stdout",
+                "stderr",
+                "preexec_fn",
+                "close_fds",
+                "pass_fds",
+                "restore_signals",
+                "start_new_session",
+                "group",
+                "extra_groups",
+                "user",
+                "umask",
+                "startupinfo",
+                "creationflags",
+            }
+
+            for key, value in kwargs.items():
+                if key in valid_subprocess_args:
+                    subprocess_args[key] = value
+
+            # Execute command with explicit security validation
+            # The command has already been validated by the calling method
+            return subprocess.run(cmd, **subprocess_args)  # noqa: S603
+
+        except (CLIUtilityError, subprocess.TimeoutExpired, subprocess.SubprocessError):
+            # Re-raise specialized exceptions as-is
+            raise
+        except Exception as e:
+            # Wrap unexpected external exceptions
+            raise CLIUtilityError(
+                message=f"Unexpected error during command execution: {e}",
+                details=f"Exception type: {type(e).__name__}, Command: {cmd}",
+            ) from e
+
+    def run_silent(self, command: str | list[str], **kwargs: dict) -> CommandResult:
+        """Execute a command in silent mode.
+
+        Args:
+            command: Command to execute
+            **kwargs: Additional arguments for run method
+
+        Returns:
+            CommandResult: Result of command execution
+        """
         return self.run(command, **kwargs)
 
     def run_secure(
-        self, command: Union[str, List[str]], description: str = "", **kwargs
+        self, command: str | list[str], description: str = "", **kwargs: dict
     ) -> CommandResult:
-        """Execute a command with security validation."""
+        """Execute a command with security validation.
+
+        Args:
+            command: Command to execute
+            description: Description for logging
+            **kwargs: Additional arguments for run method
+
+        Returns:
+            CommandResult: Result of command execution
+        """
         return self.run(command, description, validate_security=True, **kwargs)
 
     def check_command_available(self, command: str) -> bool:
-        """Check if a command is available and optionally validate security."""
-        import shutil
+        """Check if a command is available and optionally validate security.
 
-        if not shutil.which(command):
+        Args:
+            command: Command to check
+
+        Returns:
+            bool: True if command is available
+        """
+        try:
+            if not command:
+                return False
+
+            import shutil
+
+            if not shutil.which(command):
+                return False
+
+            # Additional security check
+            try:
+                from .security.security_validator import SecurityValidator
+
+                validator = SecurityValidator()
+                validator.validate_command([command])  # Lève exception si invalide
+                return True
+            except ImportError:
+                # If security validator is not available, just check availability
+                return True
+            except Exception:
+                # If security validation fails, command is not available
+                return False
+
+        except Exception as e:
+            # Log but don't raise - this is a helper method
+            self.logger.warning(
+                f"Error checking command availability: {command}, Error: {e}"
+            )
             return False
-
-        # Additional security check
-        from .security.security_validator import security_validator
-
-        is_valid, _ = security_validator.validate_command([command])
-        return is_valid
 
     def get_command_version(
         self, command: str, version_flag: str = "--version"
-    ) -> Optional[str]:
-        """Get version of a command."""
-        if not self.check_command_available(command):
+    ) -> str | None:
+        """Get version of a command.
+
+        Args:
+            command: Command to get version for
+            version_flag: Flag to use for version check
+
+        Returns:
+            Optional[str]: Version string or None if not available
+        """
+        try:
+            if not command:
+                return None
+
+            if not self.check_command_available(command):
+                return None
+
+            result = self.run_silent([command, version_flag])
+            if result.success and result.stdout.strip():
+                # Extract version from output
+                output = result.stdout.strip()
+                if output:
+                    # Take first line which probably contains version
+                    first_line = output.split("\n")[0]
+                    return first_line
+
             return None
 
-        result = self.run_silent([command, version_flag])
-        if result.success and result.stdout.strip():
-            # Extract version from output
-            output = result.stdout.strip()
-            if output:
-                # Take first line which probably contains version
-                first_line = output.split("\n")[0]
-                return first_line
+        except Exception as e:
+            # Log but don't raise - this is a helper method
+            self.logger.warning(f"Error getting command version: {command}, Error: {e}")
+            return None
 
-        return None
+    def _validate_init_parameters(
+        self, timeout: int, max_retries: int, retry_delay: float
+    ) -> None:
+        """Validate initialization parameters.
+
+        Args:
+            timeout: Command timeout in seconds
+            max_retries: Maximum number of retries
+            retry_delay: Delay between retries
+
+        Raises:
+            CLIUtilityError: If parameters are invalid
+        """
+        if timeout <= 0:
+            raise CLIUtilityError(
+                message=f"Timeout must be positive, got: {timeout}",
+                details="Invalid timeout parameter for CLI manager initialization",
+            )
+
+        if max_retries < 0:
+            raise CLIUtilityError(
+                message=f"Max retries must be non-negative, got: {max_retries}",
+                details="Invalid max_retries parameter for CLI manager initialization",
+            )
+
+        if retry_delay < 0:
+            raise CLIUtilityError(
+                message=f"Retry delay must be non-negative, got: {retry_delay}",
+                details="Invalid retry_delay parameter for CLI manager initialization",
+            )
+
+    def _validate_command_input(self, command: str | list[str]) -> None:
+        """Validate command input.
+
+        Args:
+            command: Command to validate
+
+        Raises:
+            CLIUtilityError: If command is invalid
+        """
+        if not command:
+            raise CLIUtilityError(
+                message="Command cannot be empty",
+                details="Empty command provided for execution",
+            )
+
+    def _validate_command_security(self, command: list[str]) -> None:
+        """Validate command security using SecurityValidator.
+
+        Args:
+            command: Command to validate
+
+        Raises:
+            CommandValidationError: If security validation fails
+        """
+        try:
+            from .security.security_validator import SecurityValidator
+
+            validator = SecurityValidator()
+            validator.validate_command(command)  # Lève exception si invalide
+        except ImportError:
+            self.logger.warning("Security validator not available, skipping validation")
+        except Exception as e:
+            raise CommandValidationError(
+                command=str(command),
+                reason=f"Security validation failed: {e}",
+                details="Command contains potentially dangerous patterns",
+            ) from e
 
 
 # Global instance
@@ -288,44 +520,42 @@ cli = CLIUtils()
 
 
 def run_command(
-    command: Union[str, List[str]],
-    description: Optional[str] = None,
-    cwd: Optional[Union[str, Path]] = None,
-    **kwargs,
+    command: str | list[str], description: str = "", **kwargs: dict
 ) -> CommandResult:
-    """Simple function to run a command."""
-    return cli.run(command, description, cwd, **kwargs)
+    """Convenience function to run a command.
+
+    Args:
+        command: Command to execute
+        description: Description for logging
+        **kwargs: Additional arguments for CLIUtils.run
+
+    Returns:
+        CommandResult: Result of command execution
+    """
+    return cli.run(command, description, **kwargs)
 
 
-def run_silent(
-    command: Union[str, List[str]], cwd: Optional[Union[str, Path]] = None, **kwargs
-) -> CommandResult:
-    """Simple function to run a command silently."""
-    return cli.run_silent(command, cwd=cwd, **kwargs)
+def run_silent(command: str | list[str], **kwargs: dict) -> CommandResult:
+    """Convenience function to run a command silently.
+
+    Args:
+        command: Command to execute
+        **kwargs: Additional arguments for CLIUtils.run
+
+    Returns:
+        CommandResult: Result of command execution
+    """
+    return cli.run_silent(command, **kwargs)
 
 
-def run_secure(
-    command: Union[str, List[str]],
-    description: str = "",
-    cwd: Optional[Union[str, Path]] = None,
-    **kwargs,
-) -> CommandResult:
-    """Simple function to run a command with security validation."""
-    return cli.run_secure(command, description, cwd=cwd, **kwargs)
+def get_tool_version(tool: str, version_flag: str = "--version") -> str | None:
+    """Get version of a tool.
 
+    Args:
+        tool: Tool name
+        version_flag: Version flag to use
 
-def run_interactive(
-    command: Union[str, List[str]], cwd: Optional[Union[str, Path]] = None, **kwargs
-) -> CommandResult:
-    """Simple function to run a command interactively."""
-    return cli.run(command, cwd=cwd, **kwargs)
-
-
-def check_tool_available(tool: str) -> bool:
-    """Check if a tool is available."""
-    return cli.check_command_available(tool)
-
-
-def get_tool_version(tool: str, version_flag: str = "--version") -> Optional[str]:
-    """Get version of a tool."""
+    Returns:
+        Optional[str]: Version string or None
+    """
     return cli.get_command_version(tool, version_flag)

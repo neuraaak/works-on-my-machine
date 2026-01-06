@@ -5,6 +5,7 @@ Ce dossier contient les hooks Git pour le projet WOMM.
 ## Hooks Disponibles
 
 ### `pre-commit`
+
 - **Objectif** : Vérifications de qualité de code avant commit
 - **Actions** :
   - Exécute `lint.py --check-only`
@@ -12,6 +13,7 @@ Ce dossier contient les hooks Git pour le projet WOMM.
   - Suggère d'exécuter `python lint.py --fix` pour corriger automatiquement
 
 ### `post-commit`
+
 - **Objectif** : Actions après commit réussi
 - **Actions** :
   - Affiche les informations du commit

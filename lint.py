@@ -1,6 +1,12 @@
 #!/usr/bin/env python3
+# ///////////////////////////////////////////////////////////////
+# LINT - Code Quality Checker
+# Project: works-on-my-machine
+# ///////////////////////////////////////////////////////////////
+
 """
 Code quality check script for WOMM project.
+
 Runs Black, isort, and Ruff on the codebase.
 
 Usage:
@@ -13,25 +19,50 @@ Options:
     --help         Show this help
 """
 
+# ///////////////////////////////////////////////////////////////
+# IMPORTS
+# ///////////////////////////////////////////////////////////////
+# Standard library imports
 import argparse
 import subprocess
 import sys
 from pathlib import Path
 from typing import List
 
+# ///////////////////////////////////////////////////////////////
+# CLASSES
+# ///////////////////////////////////////////////////////////////
+
 
 class CodeQualityChecker:
     """Code quality checker for WOMM project."""
 
-    def __init__(self, check_only: bool = False, verbose: bool = False):
-        """Initialize the code quality checker."""
+    # ///////////////////////////////////////////////////////////////
+    # INIT
+    # ///////////////////////////////////////////////////////////////
+
+    def __init__(self, check_only: bool = False, verbose: bool = False) -> None:
+        """Initialize the code quality checker.
+
+        Args:
+            check_only: If True, only check without fixing
+            verbose: If True, show verbose output
+        """
         self.check_only = check_only
         self.verbose = verbose
         self.project_root = Path(__file__).parent
         self.python_files = self._find_python_files()
 
+    # ///////////////////////////////////////////////////////////////
+    # PRIVATE METHODS
+    # ///////////////////////////////////////////////////////////////
+
     def _find_python_files(self) -> List[Path]:
-        """Find all Python files in the project."""
+        """Find all Python files in the project.
+
+        Returns:
+            List[Path]: List of Python file paths
+        """
         python_files = []
 
         # Directories to scan
@@ -72,7 +103,15 @@ class CodeQualityChecker:
         return python_files
 
     def _run_command(self, command: List[str], description: str) -> bool:
-        """Run a command and return success status."""
+        """Run a command and return success status.
+
+        Args:
+            command: Command to execute as list of strings
+            description: Description of the command
+
+        Returns:
+            bool: True if command succeeded, False otherwise
+        """
         if self.verbose:
             print(f"Running {description}...")
             print(f"   Command: {' '.join(command)}")
@@ -100,8 +139,16 @@ class CodeQualityChecker:
                 print(f"STDERR: {e.stderr}")
             return False
 
+    # ///////////////////////////////////////////////////////////////
+    # PUBLIC METHODS
+    # ///////////////////////////////////////////////////////////////
+
     def run_black(self) -> bool:
-        """Run Black code formatter."""
+        """Run Black code formatter.
+
+        Returns:
+            bool: True if formatting succeeded, False otherwise
+        """
         mode = "--check" if self.check_only else ""
         command = [
             sys.executable,
@@ -119,7 +166,11 @@ class CodeQualityChecker:
         return self._run_command(command, "Black code formatting")
 
     def run_isort(self) -> bool:
-        """Run isort import organizer."""
+        """Run isort import organizer.
+
+        Returns:
+            bool: True if organization succeeded, False otherwise
+        """
         mode = "--check-only" if self.check_only else ""
         command = [sys.executable, "-m", "isort", "--profile=black", "--line-length=88"]
 
@@ -131,7 +182,11 @@ class CodeQualityChecker:
         return self._run_command(command, "isort import organization")
 
     def run_ruff(self) -> bool:
-        """Run Ruff linter."""
+        """Run Ruff linter.
+
+        Returns:
+            bool: True if linting succeeded, False otherwise
+        """
         if self.check_only:
             command = [sys.executable, "-m", "ruff", "check", "--line-length=88"]
         else:
@@ -149,7 +204,11 @@ class CodeQualityChecker:
         return self._run_command(command, "Ruff linting")
 
     def run_ruff_format(self) -> bool:
-        """Run Ruff formatter."""
+        """Run Ruff formatter.
+
+        Returns:
+            bool: True if formatting succeeded, False otherwise
+        """
         mode = "--check" if self.check_only else ""
         command = [sys.executable, "-m", "ruff", "format", "--line-length=88"]
 
@@ -161,7 +220,11 @@ class CodeQualityChecker:
         return self._run_command(command, "Ruff formatting")
 
     def run_all_checks(self) -> bool:
-        """Run all code quality checks."""
+        """Run all code quality checks.
+
+        Returns:
+            bool: True if all checks passed, False otherwise
+        """
         print("Starting code quality checks...")
         print(f"Found {len(self.python_files)} Python files to check")
         print()
@@ -193,7 +256,12 @@ class CodeQualityChecker:
         return all_passed
 
 
-def main():
+# ///////////////////////////////////////////////////////////////
+# MAIN
+# ///////////////////////////////////////////////////////////////
+
+
+def main() -> None:
     """Main function."""
     parser = argparse.ArgumentParser(
         description="Code quality checker for WOMM project",

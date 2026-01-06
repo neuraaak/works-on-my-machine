@@ -2,7 +2,7 @@
 
 [![Python](https://img.shields.io/badge/Python-3.8+-blue.svg?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
 [![License](https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-2.6.8-orange.svg?style=for-the-badge)](https://github.com/neuraaak/works-on-my-machine)
+[![Version](https://img.shields.io/badge/Version-2.7.0-orange.svg?style=for-the-badge)](https://github.com/neuraaak/works-on-my-machine)
 [![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg?style=for-the-badge)](https://github.com/neuraaak/works-on-my-machine)
 [![Status](https://img.shields.io/badge/Status-Beta-yellow.svg?style=for-the-badge)](https://github.com/neuraaak/works-on-my-machine)
 
@@ -56,10 +56,10 @@ python womm.py install
 womm new python my-awesome-app
 
 # Create a JavaScript/React project
-womm new javascript my-react-app
+womm new javascript my-react-app --type react
 
-# Let WOMM detect and setup automatically
-womm new detect my-project
+# Let WOMM detect and setup automatically (interactive mode)
+womm new --interactive
 ```
 
 ### **Setup Existing Projects**
@@ -84,8 +84,9 @@ womm setup detect
 ```bash
 womm new python <name>     # Create Python project with virtual env, Black, pytest
 womm new javascript <name> # Create JavaScript project with ESLint, Prettier
-womm new detect <name>     # Auto-detect project type and create
-womm new --interactive     # Guided project creation
+womm new javascript <name> --type react # Create React project
+womm new javascript <name> --type vue # Create Vue project
+womm new --interactive    # Interactive project creation with auto-detection
 ```
 
 ### **⚙️ Project Setup**
@@ -93,8 +94,7 @@ womm new --interactive     # Guided project creation
 ```bash
 womm setup python          # Setup Python project (dependencies, tools, config)
 womm setup javascript      # Setup JavaScript project (npm, ESLint, etc.)
-womm setup detect          # Auto-detect and setup project
-womm setup --interactive   # Guided setup process
+womm setup --interactive   # Interactive setup with auto-detection
 ```
 
 ### **🔍 Code Quality**

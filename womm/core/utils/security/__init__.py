@@ -1,17 +1,26 @@
+#!/usr/bin/env python3
+# ///////////////////////////////////////////////////////////////
+# UTILS SECURITY - Security Modules
+# Project: works-on-my-machine
+# ///////////////////////////////////////////////////////////////
+
 """
 Security modules for Works On My Machine.
 
 This package contains security validation and secure CLI functionality.
 """
 
-from .security_validator import (
-    SecurityValidator,
-    security_validator,
-    validate_user_input,
-)
+# ///////////////////////////////////////////////////////////////
+# IMPORTS
+# ///////////////////////////////////////////////////////////////
+# Local imports
+from .security_validator import SecurityValidator, security_validator
+
+# ///////////////////////////////////////////////////////////////
+# PUBLIC API
+# ///////////////////////////////////////////////////////////////
 
 __all__ = [
     "SecurityValidator",
-    "validate_user_input",
     "security_validator",
 ]

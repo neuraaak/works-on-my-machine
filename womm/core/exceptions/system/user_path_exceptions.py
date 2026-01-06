@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+# ///////////////////////////////////////////////////////////////
+# USER PATH EXCEPTIONS - User PATH Exceptions
+# Project: works-on-my-machine
+# ///////////////////////////////////////////////////////////////
+
 """
 User PATH exceptions for Works On My Machine.
 
@@ -12,11 +17,13 @@ Following a pragmatic approach with only 3 main exception types:
 3. FileSystemError - File system errors (Unix RC files)
 """
 
-from typing import Optional
+# ///////////////////////////////////////////////////////////////
+# IMPORTS
+# ///////////////////////////////////////////////////////////////
 
-# =============================================================================
+# ///////////////////////////////////////////////////////////////
 # BASE EXCEPTION
-# =============================================================================
+# ///////////////////////////////////////////////////////////////
 
 
 class UserPathError(Exception):
@@ -26,7 +33,7 @@ class UserPathError(Exception):
     Used for general errors like invalid arguments, unexpected failures, etc.
     """
 
-    def __init__(self, message: str, details: Optional[str] = None):
+    def __init__(self, message: str, details: str | None = None) -> None:
         """Initialize the exception with a message and optional details.
 
         Args:
@@ -38,9 +45,9 @@ class UserPathError(Exception):
         super().__init__(self.message)
 
 
-# =============================================================================
+# ///////////////////////////////////////////////////////////////
 # REGISTRY EXCEPTIONS (Windows only)
-# =============================================================================
+# ///////////////////////////////////////////////////////////////
 
 
 class RegistryError(UserPathError):
@@ -55,8 +62,8 @@ class RegistryError(UserPathError):
         registry_key: str,
         operation: str,
         reason: str,
-        details: Optional[str] = None,
-    ):
+        details: str | None = None,
+    ) -> None:
         """Initialize registry error with specific context.
 
         Args:
@@ -72,9 +79,9 @@ class RegistryError(UserPathError):
         super().__init__(message, details)
 
 
-# =============================================================================
+# ///////////////////////////////////////////////////////////////
 # FILE SYSTEM EXCEPTIONS (Unix only)
-# =============================================================================
+# ///////////////////////////////////////////////////////////////
 
 
 class FileSystemError(UserPathError):
@@ -89,8 +96,8 @@ class FileSystemError(UserPathError):
         file_path: str,
         operation: str,
         reason: str,
-        details: Optional[str] = None,
-    ):
+        details: str | None = None,
+    ) -> None:
         """Initialize file system error with specific context.
 
         Args:

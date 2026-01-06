@@ -54,7 +54,7 @@ python womm.py --help
 ## 📁 Command Categories
 
 ### **🏗️ Project Management**
-- **[NEW](NEW.md)** - Create new projects (Python, JavaScript, React, Vue)
+- **[NEW](NEW.md)** - Create new projects (Python, JavaScript with React/Vue support)
 - **[SETUP](SETUP.md)** - Configure existing projects
 - **[TEMPLATES](TEMPLATES.md)** - Manage project templates
 
@@ -78,10 +78,16 @@ womm new python my-project
 womm new javascript my-app
 
 # Create React project
-womm new react my-react-app
+womm new javascript my-react-app --type react
+
+# Create Vue project
+womm new javascript my-vue-app --type vue
 
 # Interactive mode
 womm new --interactive
+
+# Preview creation (dry-run)
+womm new python my-project --dry-run
 ```
 
 ### **Template Management**
@@ -108,8 +114,11 @@ womm setup
 womm setup python
 womm setup javascript
 
-# Interactive setup
+# Interactive setup with auto-detection
 womm setup --interactive
+
+# Preview setup (dry-run)
+womm setup python --dry-run
 ```
 
 ## 📚 Detailed Guides

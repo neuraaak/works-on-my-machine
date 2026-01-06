@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+# ///////////////////////////////////////////////////////////////
+# DYNAMIC PROGRESS - Dynamic Layered Progress Bar
+# Project: works-on-my-machine
+# ///////////////////////////////////////////////////////////////
+
 """
 Dynamic Layered Progress Bar implementation.
 
@@ -6,11 +11,12 @@ This module provides a dynamic progress bar system with layers that can
 appear, progress, and disappear based on the current state of operations.
 """
 
+# ///////////////////////////////////////////////////////////////
 # IMPORTS
-########################################################
+# ///////////////////////////////////////////////////////////////
 # Standard library imports
+from collections.abc import Generator
 from contextlib import contextmanager
-from typing import Dict, Generator, List, Optional
 
 # Third-party imports
 from rich.progress import (
@@ -56,8 +62,9 @@ class ConditionalDetailsColumn(TextColumn):
         return Text("")
 
 
+# ///////////////////////////////////////////////////////////////
 # MAIN CLASS
-########################################################
+# ///////////////////////////////////////////////////////////////
 # Core dynamic progress bar class
 
 
@@ -68,7 +75,7 @@ class DynamicLayeredProgress:
     progress, and disappear based on the current state of operations.
     """
 
-    def __init__(self, stages: List[Dict], show_time: bool = True):
+    def __init__(self, stages: list[dict[str, str | int]], show_time: bool = True):
         """Initialize the dynamic layered progress bar.
 
         Args:
@@ -145,7 +152,7 @@ class DynamicLayeredProgress:
 
         return Progress(*columns, console=console)
 
-    def _create_layer(self, layer_config: Dict) -> int:
+    def _create_layer(self, layer_config: dict[str, str | int]) -> int:
         """Create a new layer in the progress bar.
 
         Args:
@@ -540,7 +547,7 @@ class DynamicLayeredProgress:
         """
         return getattr(self, "_emergency_stopped", False)
 
-    def get_emergency_message(self) -> Optional[str]:
+    def get_emergency_message(self) -> str | None:
         """Get the emergency stop message.
 
         Returns:
@@ -548,7 +555,7 @@ class DynamicLayeredProgress:
         """
         return getattr(self, "_emergency_message", None)
 
-    def _get_task_id_by_name(self, layer_name: str) -> Optional[int]:
+    def _get_task_id_by_name(self, layer_name: str) -> int | None:
         """Get task ID by layer name.
 
         Args:
@@ -637,16 +644,17 @@ class DynamicLayeredProgress:
         self.progress.stop()
 
 
+# ///////////////////////////////////////////////////////////////
 # CONTEXT MANAGER
-########################################################
+# ///////////////////////////////////////////////////////////////
 # Context manager for easy usage
 
 
 @contextmanager
 def create_dynamic_layered_progress(
-    stages: List[Dict],
+    stages: list[dict[str, str | int]],
     show_time: bool = True,
-) -> Generator[DynamicLayeredProgress, None, None]:
+) -> Generator["DynamicLayeredProgress", None, None]:
     """Create a dynamic layered progress bar context manager.
 
     Args:

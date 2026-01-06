@@ -4,14 +4,29 @@ JavaScript project manager for WOMM CLI.
 Handles JavaScript/Node.js-specific project creation and setup.
 """
 
+import logging
 import shutil
 from pathlib import Path
 
-from ....ui.common.console import print_error
+from ....exceptions.project import (
+    ProjectManagerError,
+    ProjectValidationError,
+    TemplateError,
+)
 from ....ui.common.extended.dynamic_progress import create_dynamic_layered_progress
 from ....ui.project import print_new_project_summary, print_setup_completion_summary
 from ....utils.cli_utils import run_command
 from .project_creator import ProjectCreator
+
+# =============================================================================
+# LOGGER SETUP
+# =============================================================================
+
+logger = logging.getLogger(__name__)
+
+# =============================================================================
+# CONFIGURATION
+# =============================================================================
 
 # Configuration for DynamicLayeredProgress
 JAVASCRIPT_PROJECT_CREATION_STAGES = [
@@ -106,39 +121,73 @@ def get_javascript_setup_stages(
     setup_dev_tools: bool = False,
     setup_git_hooks: bool = False,
 ) -> list:
-    """Generate setup stages based on selected options."""
-    stages = [JAVASCRIPT_PROJECT_SETUP_STAGES_BASE[0]]  # Always include main
+    """
+    Generate setup stages based on selected options.
 
-    # Filter steps in main stage
-    main_steps = []
-    if install_deps:
-        main_steps.append("Installing dependencies")
-        stages.append(JAVASCRIPT_PROJECT_SETUP_STAGES_BASE[1])  # deps
-    if setup_dev_tools:
-        main_steps.append("Configuring development tools")
-        stages.append(JAVASCRIPT_PROJECT_SETUP_STAGES_BASE[2])  # tools
-    if setup_git_hooks:
-        main_steps.append("Setting up Git hooks")
-        stages.append(JAVASCRIPT_PROJECT_SETUP_STAGES_BASE[3])  # git
+    Args:
+        install_deps: Whether to include dependency installation
+        setup_dev_tools: Whether to include development tools setup
+        setup_git_hooks: Whether to include Git hooks setup
 
-    # Update main stage steps
-    stages[0]["steps"] = main_steps
+    Returns:
+        List of setup stages for DynamicLayeredProgress
+    """
+    try:
+        stages = [JAVASCRIPT_PROJECT_SETUP_STAGES_BASE[0]]  # Always include main
 
-    return stages
+        # Filter steps in main stage
+        main_steps = []
+        if install_deps:
+            main_steps.append("Installing dependencies")
+            stages.append(JAVASCRIPT_PROJECT_SETUP_STAGES_BASE[1])  # deps
+        if setup_dev_tools:
+            main_steps.append("Configuring development tools")
+            stages.append(JAVASCRIPT_PROJECT_SETUP_STAGES_BASE[2])  # tools
+        if setup_git_hooks:
+            main_steps.append("Setting up Git hooks")
+            stages.append(JAVASCRIPT_PROJECT_SETUP_STAGES_BASE[3])  # git
+
+        # Update main stage steps
+        stages[0]["steps"] = main_steps
+
+        return stages
+
+    except Exception as e:
+        logger.error(f"Failed to generate JavaScript setup stages: {e}")
+        # Return basic stages as fallback
+        return [JAVASCRIPT_PROJECT_SETUP_STAGES_BASE[0]]
+
+
+# =============================================================================
+# MAIN CLASS
+# =============================================================================
 
 
 class JavaScriptProjectManager(ProjectCreator):
     """JavaScript/Node.js-specific project manager."""
 
     def __init__(self):
-        """Initialize the JavaScript project manager."""
-        super().__init__()
-        self.template_dir = (
-            Path(__file__).parent.parent.parent.parent.parent
-            / "languages"
-            / "javascript"
-            / "templates"
-        )
+        """
+        Initialize the JavaScript project manager.
+
+        Raises:
+            ProjectManagerError: If JavaScript project manager initialization fails
+        """
+        try:
+            super().__init__()
+            self.template_dir = (
+                Path(__file__).parent.parent.parent.parent.parent
+                / "languages"
+                / "javascript"
+                / "templates"
+            )
+
+        except Exception as e:
+            logger.error(f"Failed to initialize JavaScriptProjectManager: {e}")
+            raise ProjectManagerError(
+                message=f"Failed to initialize JavaScript project manager: {e}",
+                details=f"Exception type: {type(e).__name__}",
+            ) from e
 
     def create_project(
         self,
@@ -158,8 +207,37 @@ class JavaScriptProjectManager(ProjectCreator):
 
         Returns:
             True if project creation was successful, False otherwise
+
+        Raises:
+            ProjectManagerError: If project creation fails
+            ProjectValidationError: If validation fails
         """
         try:
+            # Input validation
+            if not project_path:
+                raise ProjectValidationError(
+                    validation_type="project_path",
+                    value="None",
+                    reason="Project path must not be None",
+                    details="Project path parameter must be a valid Path object",
+                )
+
+            if not project_name:
+                raise ProjectValidationError(
+                    validation_type="project_name",
+                    value="None",
+                    reason="Project name must not be empty",
+                    details="Project name parameter must be a non-empty string",
+                )
+
+            if not project_type:
+                raise ProjectValidationError(
+                    validation_type="project_type",
+                    value="None",
+                    reason="Project type must not be empty",
+                    details="Project type parameter must be a non-empty string",
+                )
+
             with create_dynamic_layered_progress(
                 JAVASCRIPT_PROJECT_CREATION_STAGES
             ) as progress:
@@ -167,99 +245,275 @@ class JavaScriptProjectManager(ProjectCreator):
                 progress.update_layer(
                     "validation", 0, "Validating project configuration..."
                 )
-                if not self.validate_project_config(
-                    project_name, project_path, "javascript"
-                ):
-                    progress.handle_error("validation", "Invalid project configuration")
+                try:
+                    if not self.validate_project_config(
+                        project_name, project_path, "javascript"
+                    ):
+                        progress.handle_error(
+                            "validation", "Invalid project configuration"
+                        )
+                        return False
+                except Exception as e:
+                    logger.error(f"Failed to validate project configuration: {e}")
+                    progress.handle_error("validation", f"Validation failed: {e}")
                     return False
                 progress.complete_layer("validation")
 
                 # Step 2: Create project structure
                 progress.update_layer("structure", 0, "Creating project structure...")
-                if not self.create_project_structure(project_path, project_name):
+                try:
+                    if not self.create_project_structure(project_path, project_name):
+                        progress.handle_error(
+                            "structure", "Failed to create project structure"
+                        )
+                        return False
+                except Exception as e:
+                    logger.error(f"Failed to create project structure: {e}")
                     progress.handle_error(
-                        "structure", "Failed to create project structure"
+                        "structure", f"Structure creation failed: {e}"
                     )
                     return False
 
                 # Step 2.5: Create JavaScript-specific files (part of structure)
                 progress.update_layer("structure", 50, "Creating JavaScript files...")
-                if not self._create_javascript_files(
-                    project_path, project_name, project_type, **kwargs
-                ):
+                try:
+                    if not self._create_javascript_files(
+                        project_path, project_name, project_type, **kwargs
+                    ):
+                        progress.handle_error(
+                            "structure", "Failed to create JavaScript files"
+                        )
+                        return False
+                except Exception as e:
+                    logger.error(f"Failed to create JavaScript files: {e}")
                     progress.handle_error(
-                        "structure", "Failed to create JavaScript files"
+                        "structure", f"JavaScript files creation failed: {e}"
                     )
                     return False
                 progress.complete_layer("structure")
 
                 # Step 3: Initialize npm project
                 progress.update_layer("npm", 0, "Initializing npm project...")
-                if not self._initialize_npm_project(
-                    project_path, project_name, **kwargs
-                ):
-                    progress.handle_error("npm", "Failed to initialize npm project")
+                try:
+                    if not self._initialize_npm_project(
+                        project_path, project_name, **kwargs
+                    ):
+                        progress.handle_error("npm", "Failed to initialize npm project")
+                        return False
+                except Exception as e:
+                    logger.error(f"Failed to initialize npm project: {e}")
+                    progress.handle_error("npm", f"npm initialization failed: {e}")
                     return False
                 progress.complete_layer("npm")
 
                 # Step 4: Install dependencies
                 progress.update_layer("deps", 0, "Installing dependencies...")
-                if not self._install_dependencies(project_path, project_type):
-                    progress.handle_error("deps", "Failed to install dependencies")
+                try:
+                    if not self._install_dependencies(project_path, project_type):
+                        progress.handle_error("deps", "Failed to install dependencies")
+                        return False
+                except Exception as e:
+                    logger.error(f"Failed to install dependencies: {e}")
+                    progress.handle_error(
+                        "deps", f"Dependency installation failed: {e}"
+                    )
                     return False
                 progress.complete_layer("deps")
 
                 # Step 5: Set up development tools
                 progress.update_layer("tools", 0, "Configuring development tools...")
-                if not self._setup_dev_tools(project_path, project_type):
-                    progress.handle_error("tools", "Failed to set up development tools")
+                try:
+                    if not self._setup_dev_tools(project_path, project_type):
+                        progress.handle_error(
+                            "tools", "Failed to set up development tools"
+                        )
+                        return False
+                except Exception as e:
+                    logger.error(f"Failed to set up development tools: {e}")
+                    progress.handle_error(
+                        "tools", f"Development tools setup failed: {e}"
+                    )
                     return False
                 progress.complete_layer("tools")
 
                 # Step 6: Set up Git repository
                 progress.update_layer("git", 0, "Setting up Git repository...")
-                self._setup_git_hooks(project_path)
-                self.setup_git_repository(project_path)
+                try:
+                    self._setup_git_hooks(project_path)
+                    self.setup_git_repository(project_path)
+                except Exception as e:
+                    logger.warning(f"Failed to set up Git repository: {e}")
+                    # Git setup failure is not critical
                 progress.complete_layer("git")
 
-            print_new_project_summary(project_path, project_name, project_type)
+            try:
+                print_new_project_summary(project_path, project_name, project_type)
+            except Exception as e:
+                logger.warning(f"Failed to print project summary: {e}")
+                # Summary printing failure is not critical
+
             return True
 
+        except (ProjectManagerError, ProjectValidationError):
+            # Re-raise our custom exceptions
+            raise
         except Exception as e:
-            print_error(f"Error creating JavaScript project: {e}")
-            return False
+            # Wrap unexpected external exceptions
+            logger.error(f"Unexpected error in create_project: {e}")
+            raise ProjectManagerError(
+                message=f"Failed to create JavaScript project: {e}",
+                details=f"Exception type: {type(e).__name__}",
+            ) from e
 
     def _create_javascript_files(
         self, project_path: Path, project_name: str, project_type: str, **kwargs
     ) -> bool:
-        """Create JavaScript-specific project files."""
+        """
+        Create JavaScript-specific project files.
+
+        Args:
+            project_path: Path to the project
+            project_name: Name of the project
+            project_type: Type of JavaScript project (node, react, vue)
+            **kwargs: Additional configuration options
+
+        Returns:
+            True if file creation was successful, False otherwise
+
+        Raises:
+            ProjectManagerError: If JavaScript file creation fails
+        """
         try:
+            # Input validation
+            if not project_path:
+                raise ProjectValidationError(
+                    validation_type="project_path",
+                    value="None",
+                    reason="Project path must not be None",
+                    details="Project path parameter must be a valid Path object",
+                )
+
+            if not project_name:
+                raise ProjectValidationError(
+                    validation_type="project_name",
+                    value="None",
+                    reason="Project name must not be empty",
+                    details="Project name parameter must be a non-empty string",
+                )
+
+            if not project_type:
+                raise ProjectValidationError(
+                    validation_type="project_type",
+                    value="None",
+                    reason="Project type must not be empty",
+                    details="Project type parameter must be a non-empty string",
+                )
+
             # Create package.json
-            if not self._create_package_json(
-                project_path, project_name, project_type, **kwargs
-            ):
-                return False
+            try:
+                if not self._create_package_json(
+                    project_path, project_name, project_type, **kwargs
+                ):
+                    return False
+            except Exception as e:
+                logger.error(f"Failed to create package.json: {e}")
+                raise ProjectManagerError(
+                    message=f"Failed to create package.json: {e}",
+                    details=f"Exception type: {type(e).__name__}",
+                ) from e
 
             # Create main JavaScript file
-            if not self._create_main_js_file(project_path, project_name, project_type):
-                return False
+            try:
+                if not self._create_main_js_file(
+                    project_path, project_name, project_type
+                ):
+                    return False
+            except Exception as e:
+                logger.error(f"Failed to create main JavaScript file: {e}")
+                raise ProjectManagerError(
+                    message=f"Failed to create main JavaScript file: {e}",
+                    details=f"Exception type: {type(e).__name__}",
+                ) from e
 
             # Create configuration files
-            if not self._create_config_files(project_path, project_type):
-                return False
+            try:
+                if not self._create_config_files(project_path, project_type):
+                    return False
+            except Exception as e:
+                logger.error(f"Failed to create config files: {e}")
+                raise ProjectManagerError(
+                    message=f"Failed to create config files: {e}",
+                    details=f"Exception type: {type(e).__name__}",
+                ) from e
 
             # Create source files based on project type
-            return self._create_source_files(project_path, project_name, project_type)
+            try:
+                return self._create_source_files(
+                    project_path, project_name, project_type
+                )
+            except Exception as e:
+                logger.error(f"Failed to create source files: {e}")
+                raise ProjectManagerError(
+                    message=f"Failed to create source files: {e}",
+                    details=f"Exception type: {type(e).__name__}",
+                ) from e
 
+        except (ProjectManagerError, ProjectValidationError):
+            # Re-raise our custom exceptions
+            raise
         except Exception as e:
-            print_error(f"Error creating JavaScript files: {e}")
-            return False
+            # Wrap unexpected external exceptions
+            logger.error(f"Unexpected error in _create_javascript_files: {e}")
+            raise ProjectManagerError(
+                message=f"Failed to create JavaScript files: {e}",
+                details=f"Exception type: {type(e).__name__}",
+            ) from e
 
     def _create_package_json(
         self, project_path: Path, project_name: str, project_type: str, **kwargs
     ) -> bool:
-        """Create package.json configuration file."""
+        """
+        Create package.json configuration file.
+
+        Args:
+            project_path: Path to the project
+            project_name: Name of the project
+            project_type: Type of JavaScript project (node, react, vue)
+            **kwargs: Additional configuration options
+
+        Returns:
+            True if file creation was successful, False otherwise
+
+        Raises:
+            ProjectManagerError: If package.json creation fails
+            TemplateError: If template processing fails
+        """
         try:
+            # Input validation
+            if not project_path:
+                raise ProjectValidationError(
+                    validation_type="project_path",
+                    value="None",
+                    reason="Project path must not be None",
+                    details="Project path parameter must be a valid Path object",
+                )
+
+            if not project_name:
+                raise ProjectValidationError(
+                    validation_type="project_name",
+                    value="None",
+                    reason="Project name must not be empty",
+                    details="Project name parameter must be a non-empty string",
+                )
+
+            if not project_type:
+                raise ProjectValidationError(
+                    validation_type="project_type",
+                    value="None",
+                    reason="Project type must not be empty",
+                    details="Project type parameter must be a non-empty string",
+                )
+
             template_path = self.template_dir / "package.template.json"
             output_path = project_path / "package.json"
 
@@ -342,71 +596,154 @@ class JavaScriptProjectManager(ProjectCreator):
                 )
 
             # Generate the package.json content
-            content = self.generate_template_file(
-                template_path, output_path, template_vars
-            )
+            try:
+                content = self.generate_template_file(
+                    template_path, output_path, template_vars
+                )
+            except TemplateError:
+                # Re-raise our custom exceptions
+                raise
+            except Exception as e:
+                logger.error(f"Failed to generate package.json template: {e}")
+                raise ProjectManagerError(
+                    message=f"Failed to generate package.json: {e}",
+                    details=f"Exception type: {type(e).__name__}",
+                ) from e
 
             # Fix JSON formatting issues
             if content:
-                # Read the generated content
-                with open(output_path, encoding="utf-8") as f:
-                    json_content = f.read()
+                try:
+                    # Read the generated content
+                    with open(output_path, encoding="utf-8") as f:
+                        json_content = f.read()
 
-                # Fix empty dependencies sections and trailing commas
-                import re
+                    # Fix empty dependencies sections and trailing commas
+                    import re
 
-                # Remove trailing commas in devDependencies
-                json_content = re.sub(r",\s*\n\s*},", "\n  },", json_content)
+                    # Remove trailing commas in devDependencies
+                    json_content = re.sub(r",\s*\n\s*},", "\n  },", json_content)
 
-                # Fix empty dependencies sections
-                json_content = json_content.replace(
-                    '"dependencies": {\n    \n  },', '"dependencies": {},'
-                )
-                json_content = json_content.replace(
-                    '"devDependencies": {\n    \n  },', '"devDependencies": {},'
-                )
+                    # Fix empty dependencies sections
+                    json_content = json_content.replace(
+                        '"dependencies": {\n    \n  },', '"dependencies": {},'
+                    )
+                    json_content = json_content.replace(
+                        '"devDependencies": {\n    \n  },', '"devDependencies": {},'
+                    )
 
-                # Remove empty DEV_DEPENDENCIES placeholder
-                json_content = json_content.replace(
-                    '"typescript": "^5.0.0"', '"typescript": "^5.0.0"'
-                )
-                json_content = re.sub(r",\s*{{DEV_DEPENDENCIES}}", "", json_content)
+                    # Remove empty DEV_DEPENDENCIES placeholder
+                    json_content = json_content.replace(
+                        '"typescript": "^5.0.0"', '"typescript": "^5.0.0"'
+                    )
+                    json_content = re.sub(r",\s*{{DEV_DEPENDENCIES}}", "", json_content)
 
-                # Write the fixed content back
-                with open(output_path, "w", encoding="utf-8") as f:
-                    f.write(json_content)
+                    # Write the fixed content back
+                    with open(output_path, "w", encoding="utf-8") as f:
+                        f.write(json_content)
 
-                return True
+                    return True
+                except Exception as e:
+                    logger.error(f"Failed to fix JSON formatting: {e}")
+                    raise ProjectManagerError(
+                        message=f"Failed to fix JSON formatting: {e}",
+                        details=f"Exception type: {type(e).__name__}",
+                    ) from e
             else:
                 return False
 
+        except (ProjectManagerError, TemplateError, ProjectValidationError):
+            # Re-raise our custom exceptions
+            raise
         except Exception as e:
-            print_error(f"Error creating package.json: {e}")
-            return False
+            # Wrap unexpected external exceptions
+            logger.error(f"Unexpected error in _create_package_json: {e}")
+            raise ProjectManagerError(
+                message=f"Failed to create package.json: {e}",
+                details=f"Exception type: {type(e).__name__}",
+            ) from e
 
     def _create_main_js_file(
         self, project_path: Path, project_name: str, project_type: str
     ) -> bool:
-        """Create the main JavaScript file."""
-        try:
-            src_dir = project_path / "src"
-            src_dir.mkdir(exist_ok=True)
+        """
+        Create the main JavaScript file.
 
-            if project_type == "react":
-                # Create React app structure
-                self._create_react_structure(project_path, project_name)
-            elif project_type == "vue":
-                # Create Vue app structure
-                self._create_vue_structure(project_path, project_name)
-            else:
-                # Create Node.js app structure
-                self._create_node_structure(project_path, project_name)
+        Args:
+            project_path: Path to the project
+            project_name: Name of the project
+            project_type: Type of JavaScript project (node, react, vue)
+
+        Returns:
+            True if file creation was successful, False otherwise
+
+        Raises:
+            ProjectManagerError: If main JavaScript file creation fails
+        """
+        try:
+            # Input validation
+            if not project_path:
+                raise ProjectValidationError(
+                    validation_type="project_path",
+                    value="None",
+                    reason="Project path must not be None",
+                    details="Project path parameter must be a valid Path object",
+                )
+
+            if not project_name:
+                raise ProjectValidationError(
+                    validation_type="project_name",
+                    value="None",
+                    reason="Project name must not be empty",
+                    details="Project name parameter must be a non-empty string",
+                )
+
+            if not project_type:
+                raise ProjectValidationError(
+                    validation_type="project_type",
+                    value="None",
+                    reason="Project type must not be empty",
+                    details="Project type parameter must be a non-empty string",
+                )
+
+            try:
+                src_dir = project_path / "src"
+                src_dir.mkdir(exist_ok=True)
+            except Exception as e:
+                logger.error(f"Failed to create src directory: {e}")
+                raise ProjectManagerError(
+                    message=f"Failed to create src directory: {e}",
+                    details=f"Exception type: {type(e).__name__}",
+                ) from e
+
+            try:
+                if project_type == "react":
+                    # Create React app structure
+                    self._create_react_structure(project_path, project_name)
+                elif project_type == "vue":
+                    # Create Vue app structure
+                    self._create_vue_structure(project_path, project_name)
+                else:
+                    # Create Node.js app structure
+                    self._create_node_structure(project_path, project_name)
+            except Exception as e:
+                logger.error(f"Failed to create project structure: {e}")
+                raise ProjectManagerError(
+                    message=f"Failed to create project structure: {e}",
+                    details=f"Exception type: {type(e).__name__}",
+                ) from e
 
             return True
 
+        except (ProjectManagerError, ProjectValidationError):
+            # Re-raise our custom exceptions
+            raise
         except Exception as e:
-            print_error(f"Error creating main JavaScript file: {e}")
-            return False
+            # Wrap unexpected external exceptions
+            logger.error(f"Unexpected error in _create_main_js_file: {e}")
+            raise ProjectManagerError(
+                message=f"Failed to create main JavaScript file: {e}",
+                details=f"Exception type: {type(e).__name__}",
+            ) from e
 
     def _create_node_structure(self, project_path: Path, project_name: str) -> None:
         """Create Node.js project structure."""
@@ -653,10 +990,32 @@ createApp(App).mount('#app')
         project_path: Path,
         project_type: str,  # noqa: ARG002
     ) -> bool:
-        """Create configuration files."""
+        """
+        Create configuration files.
+
+        Args:
+            project_path: Path to the project
+            project_type: Type of JavaScript project (node, react, vue)
+
+        Returns:
+            True if file creation was successful, False otherwise
+
+        Raises:
+            ProjectManagerError: If config files creation fails
+        """
         try:
-            # Create .eslintrc.js
-            eslint_config = """module.exports = {
+            # Input validation
+            if not project_path:
+                raise ProjectValidationError(
+                    validation_type="project_path",
+                    value="None",
+                    reason="Project path must not be None",
+                    details="Project path parameter must be a valid Path object",
+                )
+
+            try:
+                # Create .eslintrc.js
+                eslint_config = """module.exports = {
   env: {
     browser: true,
     es2021: true,
@@ -677,11 +1036,18 @@ createApp(App).mount('#app')
   },
 };
 """
-            eslint_file = project_path / ".eslintrc.js"
-            eslint_file.write_text(eslint_config, encoding="utf-8")
+                eslint_file = project_path / ".eslintrc.js"
+                eslint_file.write_text(eslint_config, encoding="utf-8")
+            except Exception as e:
+                logger.error(f"Failed to create .eslintrc.js: {e}")
+                raise ProjectManagerError(
+                    message=f"Failed to create .eslintrc.js: {e}",
+                    details=f"Exception type: {type(e).__name__}",
+                ) from e
 
-            # Create .prettierrc
-            prettier_config = """{
+            try:
+                # Create .prettierrc
+                prettier_config = """{
   "semi": true,
   "trailingComma": "es5",
   "singleQuote": true,
@@ -689,11 +1055,18 @@ createApp(App).mount('#app')
   "tabWidth": 2
 }
 """
-            prettier_file = project_path / ".prettierrc"
-            prettier_file.write_text(prettier_config, encoding="utf-8")
+                prettier_file = project_path / ".prettierrc"
+                prettier_file.write_text(prettier_config, encoding="utf-8")
+            except Exception as e:
+                logger.error(f"Failed to create .prettierrc: {e}")
+                raise ProjectManagerError(
+                    message=f"Failed to create .prettierrc: {e}",
+                    details=f"Exception type: {type(e).__name__}",
+                ) from e
 
-            # Create jest.config.js for testing
-            jest_config = """module.exports = {
+            try:
+                # Create jest.config.js for testing
+                jest_config = """module.exports = {
   testEnvironment: 'node',
   testMatch: ['**/__tests__/**/*.js', '**/?(*.)+(spec|test).js'],
   collectCoverageFrom: [
@@ -704,31 +1077,75 @@ createApp(App).mount('#app')
   coverageReporters: ['text', 'lcov', 'html'],
 };
 """
-            jest_file = project_path / "jest.config.js"
-            jest_file.write_text(jest_config, encoding="utf-8")
+                jest_file = project_path / "jest.config.js"
+                jest_file.write_text(jest_config, encoding="utf-8")
+            except Exception as e:
+                logger.error(f"Failed to create jest.config.js: {e}")
+                raise ProjectManagerError(
+                    message=f"Failed to create jest.config.js: {e}",
+                    details=f"Exception type: {type(e).__name__}",
+                ) from e
 
             return True
 
+        except (ProjectManagerError, ProjectValidationError):
+            # Re-raise our custom exceptions
+            raise
         except Exception as e:
-            print_error(f"Error creating config files: {e}")
-            return False
+            # Wrap unexpected external exceptions
+            logger.error(f"Unexpected error in _create_config_files: {e}")
+            raise ProjectManagerError(
+                message=f"Failed to create config files: {e}",
+                details=f"Exception type: {type(e).__name__}",
+            ) from e
 
     def _create_source_files(
         self,
         project_path: Path,
-        project_name: str,
+        project_name: str,  # noqa: ARG002
         project_type: str,  # noqa: ARG002
     ) -> bool:
-        """Create source files based on project type."""
-        try:
-            if project_type == "react":
-                # Create components directory
-                components_dir = project_path / "src" / "components"
-                components_dir.mkdir(exist_ok=True)
+        """
+        Create source files based on project type.
 
-                # Create a sample component
-                sample_component = components_dir / "SampleComponent.jsx"
-                component_content = """import React from 'react';
+        Args:
+            project_path: Path to the project
+            project_name: Name of the project
+            project_type: Type of JavaScript project (node, react, vue)
+
+        Returns:
+            True if file creation was successful, False otherwise
+
+        Raises:
+            ProjectManagerError: If source files creation fails
+        """
+        try:
+            # Input validation
+            if not project_path:
+                raise ProjectValidationError(
+                    validation_type="project_path",
+                    value="None",
+                    reason="Project path must not be None",
+                    details="Project path parameter must be a valid Path object",
+                )
+
+            if not project_type:
+                raise ProjectValidationError(
+                    validation_type="project_type",
+                    value="None",
+                    reason="Project type must not be empty",
+                    details="Project type parameter must be a non-empty string",
+                )
+
+            try:
+                if project_type == "react":
+                    # Create components directory
+                    components_dir = project_path / "src" / "components"
+                    components_dir.mkdir(exist_ok=True)
+
+                    # Create a sample component
+                    sample_component = components_dir / "SampleComponent.jsx"
+                    component_content = """import React from 'react';
 
 function SampleComponent() {
   return (
@@ -741,16 +1158,16 @@ function SampleComponent() {
 
 export default SampleComponent;
 """
-                sample_component.write_text(component_content, encoding="utf-8")
+                    sample_component.write_text(component_content, encoding="utf-8")
 
-            elif project_type == "vue":
-                # Create components directory
-                components_dir = project_path / "src" / "components"
-                components_dir.mkdir(exist_ok=True)
+                elif project_type == "vue":
+                    # Create components directory
+                    components_dir = project_path / "src" / "components"
+                    components_dir.mkdir(exist_ok=True)
 
-                # Create a sample component
-                sample_component = components_dir / "SampleComponent.vue"
-                component_content = """<template>
+                    # Create a sample component
+                    sample_component = components_dir / "SampleComponent.vue"
+                    component_content = """<template>
   <div>
     <h2>Sample Component</h2>
     <p>This is a sample Vue component.</p>
@@ -769,16 +1186,16 @@ h2 {
 }
 </style>
 """
-                sample_component.write_text(component_content, encoding="utf-8")
+                    sample_component.write_text(component_content, encoding="utf-8")
 
-            else:  # node
-                # Create utils directory
-                utils_dir = project_path / "src" / "utils"
-                utils_dir.mkdir(exist_ok=True)
+                else:  # node
+                    # Create utils directory
+                    utils_dir = project_path / "src" / "utils"
+                    utils_dir.mkdir(exist_ok=True)
 
-                # Create a sample utility
-                sample_util = utils_dir / "helpers.js"
-                util_content = """/**
+                    # Create a sample utility
+                    sample_util = utils_dir / "helpers.js"
+                    util_content = """/**
  * Utility functions for the application.
  */
 
@@ -806,153 +1223,349 @@ module.exports = {
   isValidString,
 };
 """
-                sample_util.write_text(util_content, encoding="utf-8")
+                    sample_util.write_text(util_content, encoding="utf-8")
 
-            return True
+                return True
 
+            except Exception as e:
+                logger.error(f"Failed to create source files for {project_type}: {e}")
+                raise ProjectManagerError(
+                    message=f"Failed to create source files for {project_type}: {e}",
+                    details=f"Exception type: {type(e).__name__}",
+                ) from e
+
+        except (ProjectManagerError, ProjectValidationError):
+            # Re-raise our custom exceptions
+            raise
         except Exception as e:
-            print_error(f"Error creating source files: {e}")
-            return False
+            # Wrap unexpected external exceptions
+            logger.error(f"Unexpected error in _create_source_files: {e}")
+            raise ProjectManagerError(
+                message=f"Failed to create source files: {e}",
+                details=f"Exception type: {type(e).__name__}",
+            ) from e
 
     def _initialize_npm_project(
         self,
-        project_path: Path,
-        project_name: str,
+        project_path: Path,  # noqa: ARG002
+        project_name: str,  # noqa: ARG002
         **kwargs,  # noqa: ARG002
     ) -> bool:
-        """Initialize npm project."""
+        """
+        Initialize npm project.
+
+        Args:
+            project_path: Path to the project
+            project_name: Name of the project
+            **kwargs: Additional configuration options
+
+        Returns:
+            True if initialization was successful, False otherwise
+
+        Raises:
+            ProjectManagerError: If npm project initialization fails
+        """
         try:
-            # Check if npm is available
-            if not shutil.which("npm"):
-                print_error("npm is not installed or not in PATH")
-                return False
+            # Input validation
+            if not project_path:
+                raise ProjectValidationError(
+                    validation_type="project_path",
+                    value="None",
+                    reason="Project path must not be None",
+                    details="Project path parameter must be a valid Path object",
+                )
 
-            # Initialize npm project (package.json already created)
-            return True
+            try:
+                # Check if npm is available
+                if not shutil.which("npm"):
+                    logger.error("npm is not installed or not in PATH")
+                    raise ProjectManagerError(
+                        message="npm is not installed or not in PATH",
+                        details="npm command not found in PATH",
+                    )
 
+                # Initialize npm project (package.json already created)
+                return True
+
+            except Exception as e:
+                logger.error(f"Failed to check npm availability: {e}")
+                raise ProjectManagerError(
+                    message=f"Failed to check npm availability: {e}",
+                    details=f"Exception type: {type(e).__name__}",
+                ) from e
+
+        except (ProjectManagerError, ProjectValidationError):
+            # Re-raise our custom exceptions
+            raise
         except Exception as e:
-            print_error(f"Error initializing npm project: {e}")
-            return False
+            # Wrap unexpected external exceptions
+            logger.error(f"Unexpected error in _initialize_npm_project: {e}")
+            raise ProjectManagerError(
+                message=f"Failed to initialize npm project: {e}",
+                details=f"Exception type: {type(e).__name__}",
+            ) from e
 
     def _install_dependencies(self, project_path: Path, project_type: str) -> bool:
-        """Install project dependencies."""
+        """
+        Install project dependencies.
+
+        Args:
+            project_path: Path to the project
+            project_type: Type of JavaScript project (node, react, vue)
+
+        Returns:
+            True if installation was successful, False otherwise
+
+        Raises:
+            ProjectManagerError: If dependency installation fails
+        """
         try:
-            # Use run_silent to bypass security validation
-            from ....utils.cli_utils import run_silent
-
-            # Use full path to npm to avoid PATH issues
-            npm_path = r"C:\Program Files\nodejs\npm.cmd"
-
-            # Install dependencies based on project type
-            if project_type == "react":
-                # For React projects, dependencies are already in package.json
-                result = run_silent(
-                    [npm_path, "install"],
-                    cwd=project_path,
-                    timeout=600,
+            # Input validation
+            if not project_path:
+                raise ProjectValidationError(
+                    validation_type="project_path",
+                    value="None",
+                    reason="Project path must not be None",
+                    details="Project path parameter must be a valid Path object",
                 )
-            elif project_type == "vue":
-                # For Vue projects, dependencies are already in package.json
-                result = run_silent(
-                    [npm_path, "install"],
-                    cwd=project_path,
-                    timeout=600,
+
+            if not project_type:
+                raise ProjectValidationError(
+                    validation_type="project_type",
+                    value="None",
+                    reason="Project type must not be empty",
+                    details="Project type parameter must be a non-empty string",
                 )
-            else:
-                # For Node.js projects, install basic dependencies
+
+            try:
+                # Use run_silent to bypass security validation
+                from ....utils.cli_utils import run_silent
+
+                # Use full path to npm to avoid PATH issues
+                npm_path = r"C:\Program Files\nodejs\npm.cmd"
+
+                # Install dependencies based on project type
+                if project_type == "react":
+                    # For React projects, dependencies are already in package.json
+                    result = run_silent(
+                        [npm_path, "install"],
+                        cwd=project_path,
+                        timeout=600,
+                    )
+                elif project_type == "vue":
+                    # For Vue projects, dependencies are already in package.json
+                    result = run_silent(
+                        [npm_path, "install"],
+                        cwd=project_path,
+                        timeout=600,
+                    )
+                else:
+                    # For Node.js projects, install basic dependencies
+                    result = run_silent(
+                        [npm_path, "install"],
+                        cwd=project_path,
+                        timeout=600,
+                    )
+
+                if not result.success:
+                    logger.error(f"Failed to install dependencies: {result.stderr}")
+                    raise ProjectManagerError(
+                        message=f"Failed to install dependencies: {result.stderr}",
+                        details="npm install command failed",
+                    )
+
+                return True
+
+            except Exception as e:
+                logger.error(f"Failed to execute npm install: {e}")
+                raise ProjectManagerError(
+                    message=f"Failed to execute npm install: {e}",
+                    details=f"Exception type: {type(e).__name__}",
+                ) from e
+
+        except (ProjectManagerError, ProjectValidationError):
+            # Re-raise our custom exceptions
+            raise
+        except Exception as e:
+            # Wrap unexpected external exceptions
+            logger.error(f"Unexpected error in _install_dependencies: {e}")
+            raise ProjectManagerError(
+                message=f"Failed to install dependencies: {e}",
+                details=f"Exception type: {type(e).__name__}",
+            ) from e
+
+    def _setup_dev_tools(self, project_path: Path, project_type: str) -> bool:
+        """
+        Set up development tools.
+
+        Args:
+            project_path: Path to the project
+            project_type: Type of JavaScript project (node, react, vue)
+
+        Returns:
+            True if setup was successful, False otherwise
+
+        Raises:
+            ProjectManagerError: If development tools setup fails
+        """
+        try:
+            # Input validation
+            if not project_path:
+                raise ProjectValidationError(
+                    validation_type="project_path",
+                    value="None",
+                    reason="Project path must not be None",
+                    details="Project path parameter must be a valid Path object",
+                )
+
+            if not project_type:
+                raise ProjectValidationError(
+                    validation_type="project_type",
+                    value="None",
+                    reason="Project type must not be empty",
+                    details="Project type parameter must be a non-empty string",
+                )
+
+            try:
+                # Use run_silent to bypass security validation
+                from ....utils.cli_utils import run_silent
+
+                # Use full path to npm to avoid PATH issues
+                npm_path = r"C:\Program Files\nodejs\npm.cmd"
+
+                # Install development dependencies
+                dev_dependencies = [
+                    "eslint",
+                    "prettier",
+                    "husky",
+                    "lint-staged",
+                    "@types/node",
+                ]
+
+                # Add type-specific dev dependencies
+                if project_type == "react":
+                    dev_dependencies.extend(
+                        [
+                            "@types/react",
+                            "@types/react-dom",
+                            "@testing-library/react",
+                            "@testing-library/jest-dom",
+                        ]
+                    )
+                elif project_type == "vue":
+                    dev_dependencies.extend(
+                        [
+                            "@vue/cli-service",
+                            "@vue/compiler-sfc",
+                        ]
+                    )
+
+                # Install dev dependencies
                 result = run_silent(
-                    [npm_path, "install"],
+                    [npm_path, "install", "--save-dev"] + dev_dependencies,
                     cwd=project_path,
                     timeout=600,
                 )
 
                 if not result.success:
-                    print_error(f"Failed to install dependencies: {result.stderr}")
-                    return False
+                    logger.error(
+                        f"Failed to install development tools: {result.stderr}"
+                    )
+                    raise ProjectManagerError(
+                        message=f"Failed to install development tools: {result.stderr}",
+                        details="npm install dev tools command failed",
+                    )
 
                 return True
 
+            except Exception as e:
+                logger.error(f"Failed to execute npm install for dev tools: {e}")
+                raise ProjectManagerError(
+                    message=f"Failed to execute npm install for dev tools: {e}",
+                    details=f"Exception type: {type(e).__name__}",
+                ) from e
+
+        except (ProjectManagerError, ProjectValidationError):
+            # Re-raise our custom exceptions
+            raise
         except Exception as e:
-            print_error(f"Error installing dependencies: {e}")
-            return False
-
-    def _setup_dev_tools(self, project_path: Path, project_type: str) -> bool:
-        """Set up development tools."""
-        try:
-            # Use run_silent to bypass security validation
-            from ....utils.cli_utils import run_silent
-
-            # Use full path to npm to avoid PATH issues
-            npm_path = r"C:\Program Files\nodejs\npm.cmd"
-
-            # Install development dependencies
-            dev_dependencies = [
-                "eslint",
-                "prettier",
-                "husky",
-                "lint-staged",
-                "@types/node",
-            ]
-
-            # Add type-specific dev dependencies
-            if project_type == "react":
-                dev_dependencies.extend(
-                    [
-                        "@types/react",
-                        "@types/react-dom",
-                        "@testing-library/react",
-                        "@testing-library/jest-dom",
-                    ]
-                )
-            elif project_type == "vue":
-                dev_dependencies.extend(
-                    [
-                        "@vue/cli-service",
-                        "@vue/compiler-sfc",
-                    ]
-                )
-
-            # Install dev dependencies
-            result = run_silent(
-                [npm_path, "install", "--save-dev"] + dev_dependencies,
-                cwd=project_path,
-                timeout=600,
-            )
-
-            if not result.success:
-                print_error(f"Failed to install development tools: {result.stderr}")
-                return False
-
-            return True
-
-        except Exception as e:
-            print_error(f"Error setting up development tools: {e}")
-            return False
+            # Wrap unexpected external exceptions
+            logger.error(f"Unexpected error in _setup_dev_tools: {e}")
+            raise ProjectManagerError(
+                message=f"Failed to set up development tools: {e}",
+                details=f"Exception type: {type(e).__name__}",
+            ) from e
 
     def _setup_git_hooks(self, project_path: Path) -> bool:
-        """Set up Git hooks with Husky."""
-        try:
-            # Initialize husky
-            result = run_command(
-                ["npx", "husky", "install"],
-                "Setting up Git hooks",
-                cwd=project_path,
-            )
+        """
+        Set up Git hooks with Husky.
 
-            if result.success:
-                # Add pre-commit hook
-                run_command(
-                    ["npx", "husky", "add", ".husky/pre-commit", "npm run lint-staged"],
-                    "Adding pre-commit hook",
+        Args:
+            project_path: Path to the project
+
+        Returns:
+            True if setup was successful, False otherwise
+
+        Raises:
+            ProjectManagerError: If Git hooks setup fails
+        """
+        try:
+            # Input validation
+            if not project_path:
+                raise ProjectValidationError(
+                    validation_type="project_path",
+                    value="None",
+                    reason="Project path must not be None",
+                    details="Project path parameter must be a valid Path object",
+                )
+
+            try:
+                # Initialize husky
+                result = run_command(
+                    ["npx", "husky", "install"],
+                    "Setting up Git hooks",
                     cwd=project_path,
                 )
-                return True
-            else:
-                return True
 
+                if result.success:
+                    try:
+                        # Add pre-commit hook
+                        run_command(
+                            [
+                                "npx",
+                                "husky",
+                                "add",
+                                ".husky/pre-commit",
+                                "npm run lint-staged",
+                            ],
+                            "Adding pre-commit hook",
+                            cwd=project_path,
+                        )
+                    except Exception as e:
+                        logger.warning(f"Failed to add pre-commit hook: {e}")
+                        # Pre-commit hook failure is not critical
+                    return True
+                else:
+                    logger.warning("Failed to initialize husky, but continuing")
+                    return True
+
+            except Exception as e:
+                logger.error(f"Failed to execute husky commands: {e}")
+                raise ProjectManagerError(
+                    message=f"Failed to execute husky commands: {e}",
+                    details=f"Exception type: {type(e).__name__}",
+                ) from e
+
+        except (ProjectManagerError, ProjectValidationError):
+            # Re-raise our custom exceptions
+            raise
         except Exception as e:
-            print_error(f"Error setting up Git hooks: {e}")
-            return False
+            # Wrap unexpected external exceptions
+            logger.error(f"Unexpected error in _setup_git_hooks: {e}")
+            raise ProjectManagerError(
+                message=f"Failed to set up Git hooks: {e}",
+                details=f"Exception type: {type(e).__name__}",
+            ) from e
 
     def setup_environment(self, project_path: Path) -> bool:
         """
@@ -963,22 +1576,49 @@ module.exports = {
 
         Returns:
             True if setup was successful, False otherwise
+
+        Raises:
+            ProjectManagerError: If environment setup fails
         """
         try:
-            # Install dependencies
-            if not self._install_dependencies(project_path, "node"):
-                return False
+            # Input validation
+            if not project_path:
+                raise ProjectValidationError(
+                    validation_type="project_path",
+                    value="None",
+                    reason="Project path must not be None",
+                    details="Project path parameter must be a valid Path object",
+                )
 
-            # Set up development tools
-            if not self._setup_dev_tools(project_path, "node"):
-                return False
+            try:
+                # Install dependencies
+                if not self._install_dependencies(project_path, "node"):
+                    return False
 
-            # Set up Git hooks
-            return self._setup_git_hooks(project_path)
+                # Set up development tools
+                if not self._setup_dev_tools(project_path, "node"):
+                    return False
 
+                # Set up Git hooks
+                return self._setup_git_hooks(project_path)
+
+            except Exception as e:
+                logger.error(f"Failed to execute environment setup steps: {e}")
+                raise ProjectManagerError(
+                    message=f"Failed to execute environment setup steps: {e}",
+                    details=f"Exception type: {type(e).__name__}",
+                ) from e
+
+        except (ProjectManagerError, ProjectValidationError):
+            # Re-raise our custom exceptions
+            raise
         except Exception as e:
-            print_error(f"Error setting up JavaScript environment: {e}")
-            return False
+            # Wrap unexpected external exceptions
+            logger.error(f"Unexpected error in setup_environment: {e}")
+            raise ProjectManagerError(
+                message=f"Failed to set up JavaScript environment: {e}",
+                details=f"Exception type: {type(e).__name__}",
+            ) from e
 
     def setup_existing_project(
         self,
@@ -986,6 +1626,7 @@ module.exports = {
         install_deps: bool = False,
         setup_dev_tools: bool = False,
         setup_git_hooks: bool = False,
+        dry_run: bool = False,
         **kwargs,  # noqa: ARG002
     ) -> bool:
         """
@@ -996,88 +1637,220 @@ module.exports = {
             install_deps: Whether to install dependencies
             setup_dev_tools: Whether to set up development tools
             setup_git_hooks: Whether to set up Git hooks
+            dry_run: Show what would be done without making changes
             **kwargs: Additional options
 
         Returns:
             True if setup was successful, False otherwise
+
+        Raises:
+            ProjectManagerError: If project setup fails
         """
         try:
-            # Detect project type
-            project_type = self._detect_project_type(project_path)
+            # Input validation
+            if not project_path:
+                raise ProjectValidationError(
+                    validation_type="project_path",
+                    value="None",
+                    reason="Project path must not be None",
+                    details="Project path parameter must be a valid Path object",
+                )
 
-            # Generate stages based on selected options
-            setup_stages = get_javascript_setup_stages(
-                install_deps=install_deps,
-                setup_dev_tools=setup_dev_tools,
-                setup_git_hooks=setup_git_hooks,
-            )
+            if dry_run:
+                from ....ui.common.console import (
+                    print_dry_run_message,
+                    print_dry_run_success,
+                    print_dry_run_warning,
+                    print_header,
+                )
 
-            with create_dynamic_layered_progress(setup_stages) as progress:
-                # Step 1: Install dependencies if requested
+                print_dry_run_warning()
+                print_header("🔧 JavaScript Project Setup (DRY RUN)")
+
+                # Simulate setup process
+                print_dry_run_message(
+                    "validate project", f"check project at {project_path}"
+                )
+                print_dry_run_message(
+                    "detect project type",
+                    "identify JavaScript/Node.js project structure",
+                )
+
                 if install_deps:
-                    progress.update_layer("deps", 0, "Installing dependencies...")
-                    if not self._install_dependencies(project_path, project_type):
-                        progress.handle_error("deps", "Failed to install dependencies")
-                        return False
-                    progress.complete_layer("deps")
-
-                # Step 2: Set up development tools if requested
-                if setup_dev_tools:
-                    progress.update_layer(
-                        "tools", 0, "Configuring development tools..."
+                    print_dry_run_message(
+                        "install dependencies",
+                        "install project dependencies from package.json",
                     )
-                    if not self._setup_dev_tools(project_path, project_type):
-                        progress.handle_error(
-                            "tools", "Failed to set up development tools"
-                        )
-                        return False
-                    progress.complete_layer("tools")
 
-                # Step 3: Set up Git hooks if requested
+                if setup_dev_tools:
+                    print_dry_run_message(
+                        "configure development tools",
+                        "setup linting, formatting, and testing tools",
+                    )
+
                 if setup_git_hooks:
-                    progress.update_layer("git", 0, "Setting up Git hooks...")
-                    if not self._setup_git_hooks(project_path):
-                        progress.handle_error("git", "Failed to set up Git hooks")
-                        return False
-                    progress.complete_layer("git")
+                    print_dry_run_message(
+                        "setup git hooks", "configure pre-commit hooks"
+                    )
 
-            # Generate setup completion summary
-            print_setup_completion_summary(
-                project_path,
-                project_type,
-                install_deps=install_deps,
-                setup_dev_tools=setup_dev_tools,
-                setup_git_hooks=setup_git_hooks,
-            )
+                print_dry_run_success()
+                return True
 
-            return True
+            try:
+                # Detect project type
+                project_type = self._detect_project_type(project_path)
 
+                # Generate stages based on selected options
+                setup_stages = get_javascript_setup_stages(
+                    install_deps=install_deps,
+                    setup_dev_tools=setup_dev_tools,
+                    setup_git_hooks=setup_git_hooks,
+                )
+
+                with create_dynamic_layered_progress(setup_stages) as progress:
+                    # Step 1: Install dependencies if requested
+                    if install_deps:
+                        progress.update_layer("deps", 0, "Installing dependencies...")
+                        try:
+                            if not self._install_dependencies(
+                                project_path, project_type
+                            ):
+                                progress.handle_error(
+                                    "deps", "Failed to install dependencies"
+                                )
+                                return False
+                        except Exception as e:
+                            logger.error(f"Failed to install dependencies: {e}")
+                            progress.handle_error(
+                                "deps", f"Dependency installation failed: {e}"
+                            )
+                            return False
+                        progress.complete_layer("deps")
+
+                    # Step 2: Set up development tools if requested
+                    if setup_dev_tools:
+                        progress.update_layer(
+                            "tools", 0, "Configuring development tools..."
+                        )
+                        try:
+                            if not self._setup_dev_tools(project_path, project_type):
+                                progress.handle_error(
+                                    "tools", "Failed to set up development tools"
+                                )
+                                return False
+                        except Exception as e:
+                            logger.error(f"Failed to set up development tools: {e}")
+                            progress.handle_error(
+                                "tools", f"Development tools setup failed: {e}"
+                            )
+                            return False
+                        progress.complete_layer("tools")
+
+                    # Step 3: Set up Git hooks if requested
+                    if setup_git_hooks:
+                        progress.update_layer("git", 0, "Setting up Git hooks...")
+                        try:
+                            if not self._setup_git_hooks(project_path):
+                                progress.handle_error(
+                                    "git", "Failed to set up Git hooks"
+                                )
+                                return False
+                        except Exception as e:
+                            logger.error(f"Failed to set up Git hooks: {e}")
+                            progress.handle_error("git", f"Git hooks setup failed: {e}")
+                            return False
+                        progress.complete_layer("git")
+
+                # Generate setup completion summary
+                try:
+                    print_setup_completion_summary(
+                        project_path,
+                        project_type,
+                        install_deps=install_deps,
+                        setup_dev_tools=setup_dev_tools,
+                        setup_git_hooks=setup_git_hooks,
+                    )
+                except Exception as e:
+                    logger.warning(f"Failed to print setup completion summary: {e}")
+                    # Summary printing failure is not critical
+
+                return True
+
+            except Exception as e:
+                logger.error(f"Failed to execute project setup steps: {e}")
+                raise ProjectManagerError(
+                    message=f"Failed to execute project setup steps: {e}",
+                    details=f"Exception type: {type(e).__name__}",
+                ) from e
+
+        except (ProjectManagerError, ProjectValidationError):
+            # Re-raise our custom exceptions
+            raise
         except Exception as e:
-            print_error(f"Error setting up JavaScript project: {e}")
-            return False
+            # Wrap unexpected external exceptions
+            logger.error(f"Unexpected error in setup_existing_project: {e}")
+            raise ProjectManagerError(
+                message=f"Failed to set up JavaScript project: {e}",
+                details=f"Exception type: {type(e).__name__}",
+            ) from e
 
     def _detect_project_type(self, project_path: Path) -> str:
-        """Detect the type of JavaScript project."""
+        """
+        Detect the type of JavaScript project.
+
+        Args:
+            project_path: Path to the project
+
+        Returns:
+            Project type as string (node, react, vue)
+
+        Raises:
+            ProjectManagerError: If project type detection fails
+        """
         try:
-            package_json_path = project_path / "package.json"
-            if not package_json_path.exists():
+            # Input validation
+            if not project_path:
+                raise ProjectValidationError(
+                    validation_type="project_path",
+                    value="None",
+                    reason="Project path must not be None",
+                    details="Project path parameter must be a valid Path object",
+                )
+
+            try:
+                package_json_path = project_path / "package.json"
+                if not package_json_path.exists():
+                    return "node"
+
+                # Read package.json to detect project type
+                import json
+
+                try:
+                    with open(package_json_path, encoding="utf-8") as f:
+                        package_data = json.load(f)
+                except Exception as e:
+                    logger.warning(f"Failed to read package.json: {e}")
+                    return "node"
+
+                dependencies = package_data.get("dependencies", {})
+                dev_dependencies = package_data.get("devDependencies", {})
+
+                if "react" in dependencies or "react" in dev_dependencies:
+                    return "react"
+                elif "vue" in dependencies or "vue" in dev_dependencies:
+                    return "vue"
+                else:
+                    return "node"
+
+            except Exception as e:
+                logger.warning(f"Failed to detect project type: {e}")
                 return "node"
 
-            # Read package.json to detect project type
-            import json
-
-            with open(package_json_path, encoding="utf-8") as f:
-                package_data = json.load(f)
-
-            dependencies = package_data.get("dependencies", {})
-            dev_dependencies = package_data.get("devDependencies", {})
-
-            if "react" in dependencies or "react" in dev_dependencies:
-                return "react"
-            elif "vue" in dependencies or "vue" in dev_dependencies:
-                return "vue"
-            else:
-                return "node"
-
-        except Exception:
+        except (ProjectManagerError, ProjectValidationError):
+            # Re-raise our custom exceptions
+            raise
+        except Exception as e:
+            # Wrap unexpected external exceptions
+            logger.error(f"Unexpected error in _detect_project_type: {e}")
+            # Return default type instead of raising exception for this helper method
             return "node"

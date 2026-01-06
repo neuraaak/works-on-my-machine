@@ -1,12 +1,29 @@
 #!/usr/bin/env python3
+# ///////////////////////////////////////////////////////////////
+# COMMON - Common Utilities
+# Project: works-on-my-machine
+# ///////////////////////////////////////////////////////////////
+
 """
-WOMM Utilities Package.
-Contains utility modules for CLI operations.
+Common utilities for Works On My Machine.
+
+This package contains common utility modules and shared functionality
+used across different parts of the WOMM system.
 """
 
-# Import utility modules
-from . import path_resolver
+# ///////////////////////////////////////////////////////////////
+# IMPORTS
+# ///////////////////////////////////////////////////////////////
+# Local imports
+from . import imports, path_resolver, results, security
+
+# ///////////////////////////////////////////////////////////////
+# PUBLIC API
+# ///////////////////////////////////////////////////////////////
 
 __all__ = [
     "path_resolver",
+    "imports",
+    "results",
+    "security",
 ]

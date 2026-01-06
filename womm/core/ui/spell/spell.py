@@ -1,17 +1,32 @@
 #!/usr/bin/env python3
+# ///////////////////////////////////////////////////////////////
+# SPELL UI - Spell Checking UI Components
+# Project: works-on-my-machine
+# ///////////////////////////////////////////////////////////////
+
 """
 Spell UI - Rich UI components for spell checking operations.
 Separation of UI concerns from business logic following the Manager-Tools-UI pattern.
 """
 
-from typing import Dict, List
+# ///////////////////////////////////////////////////////////////
+# IMPORTS
+# ///////////////////////////////////////////////////////////////
+# Standard library imports
+from typing import Any
 
+# Third-party imports
 from rich.table import Table
 
+# Local imports
 from ..common.console import console
 
+# ///////////////////////////////////////////////////////////////
+# PUBLIC API
+# ///////////////////////////////////////////////////////////////
 
-def display_spell_issues_table(issues: List[Dict]) -> None:
+
+def display_spell_issues_table(issues: list[dict[str, str | int]]) -> None:
     """
     Display spell check issues in a Rich table format.
 
@@ -21,7 +36,7 @@ def display_spell_issues_table(issues: List[Dict]) -> None:
     if not issues:
         return
 
-    # Créer un tableau pour un affichage plus clair
+    # Create a table for clearer display
     table = Table(
         title="Spelling Issues Summary",
         show_header=True,
@@ -33,7 +48,7 @@ def display_spell_issues_table(issues: List[Dict]) -> None:
     table.add_column("Issues", style="yellow", justify="center", width=10)
     table.add_column("Sample Issues", style="white", width=50)
 
-    # Grouper par fichier
+    # Group by file
     files_issues = {}
     for issue in issues:
         file_path = issue["file"]
@@ -41,11 +56,11 @@ def display_spell_issues_table(issues: List[Dict]) -> None:
             files_issues[file_path] = []
         files_issues[file_path].append(issue)
 
-    # Ajouter les lignes au tableau
+    # Add rows to table
     for file_path, file_issues_list in files_issues.items():
-        # Créer un aperçu des erreurs
+        # Create an overview of errors
         sample_issues = []
-        for issue in file_issues_list[:3]:  # Limiter à 3 exemples
+        for issue in file_issues_list[:3]:  # Limit to 3 examples
             word = issue.get("word", "")
             line = issue.get("line", 0)
             if word and line > 0:
@@ -62,7 +77,9 @@ def display_spell_issues_table(issues: List[Dict]) -> None:
     console.print(table)
 
 
-def display_spell_summary(summary: Dict, issues: List[Dict]) -> None:
+def display_spell_summary(
+    summary: dict[str, Any], issues: list[dict[str, Any]]
+) -> None:
     """
     Display spell check summary information.
 
@@ -74,13 +91,13 @@ def display_spell_summary(summary: Dict, issues: List[Dict]) -> None:
 
     if issues:
         print_warn(
-            f"⚠️  Spell check completed with {summary['issues_found']} issues found in {summary['files_checked']} files"
+            f"Spell check completed with {summary['issues_found']} issues found in {summary['files_checked']} files"
         )
     else:
-        print_success("✅ Spell check completed successfully - No issues found")
+        print_success("Spell check completed successfully - No issues found")
 
 
-def display_spell_status_table(status: Dict[str, str]) -> None:
+def display_spell_status_table(status: dict[str, str]) -> None:
     """
     Display CSpell project status in table format.
 
@@ -91,7 +108,7 @@ def display_spell_status_table(status: Dict[str, str]) -> None:
     # Pour l'instant, on garde l'affichage simple dans spell_manager
 
 
-def create_spell_progress_table(files: List[str]) -> None:
+def create_spell_progress_table(files: list[str]) -> None:
     """
     Create a progress table for spell checking multiple files.
 

@@ -1,12 +1,18 @@
 #!/usr/bin/env python3
+# ///////////////////////////////////////////////////////////////
+# PANELS - Panel Utilities
+# Project: works-on-my-machine
+# ///////////////////////////////////////////////////////////////
+
 """
 Panel utilities using Rich for beautiful panel output.
 """
 
+# ///////////////////////////////////////////////////////////////
 # IMPORTS
-########################################################
+# ///////////////////////////////////////////////////////////////
 # Standard library imports
-from typing import Any, Optional
+from typing import Any
 
 # Third-party imports
 from rich.align import Align
@@ -18,21 +24,23 @@ from rich.text import Text
 # (None for this file)
 
 
+# ///////////////////////////////////////////////////////////////
 # CONFIGURATION
-########################################################
+# ///////////////////////////////////////////////////////////////
 # Global variables and settings
 
 console = Console()
 
 
+# ///////////////////////////////////////////////////////////////
 # MAIN FUNCTIONS
-########################################################
+# ///////////////////////////////////////////////////////////////
 # Core panel creation functionality
 
 
 def create_panel(
     content: Any,
-    title: Optional[str] = None,
+    title: str | None = None,
     border_style: str = "blue",
     width=80,
     **kwargs,
@@ -41,8 +49,9 @@ def create_panel(
     return Panel(content, title=title, border_style=border_style, width=width, **kwargs)
 
 
+# ///////////////////////////////////////////////////////////////
 # UTILITY FUNCTIONS
-########################################################
+# ///////////////////////////////////////////////////////////////
 # Helper functions for specific panel types
 
 

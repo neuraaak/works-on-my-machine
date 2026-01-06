@@ -1,11 +1,19 @@
 #!/usr/bin/env python3
+# ///////////////////////////////////////////////////////////////
+# EXCEPTIONS INSTALLATION - Installation Exceptions Package
+# Project: works-on-my-machine
+# ///////////////////////////////////////////////////////////////
+
 """
 Installation exceptions package for Works On My Machine.
 
 This package contains all exceptions used by installation and uninstallation modules.
 """
 
-# Installation exceptions
+# ///////////////////////////////////////////////////////////////
+# IMPORTS
+# ///////////////////////////////////////////////////////////////
+# Local imports
 from .installation_exceptions import (
     ExecutableVerificationError,
     FileVerificationError,
@@ -17,8 +25,6 @@ from .installation_exceptions import (
     InstallationVerificationError,
     PathUtilityError,
 )
-
-# Uninstallation exceptions
 from .uninstallation_exceptions import (
     DirectoryAccessError,
     FileScanError,
@@ -29,6 +35,10 @@ from .uninstallation_exceptions import (
     UninstallationUtilityError,
     UninstallationVerificationError,
 )
+
+# ///////////////////////////////////////////////////////////////
+# PUBLIC API
+# ///////////////////////////////////////////////////////////////
 
 __all__ = [
     # Installation Utility exceptions

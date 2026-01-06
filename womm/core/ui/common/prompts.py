@@ -1,12 +1,17 @@
 #!/usr/bin/env python3
+# ///////////////////////////////////////////////////////////////
+# PROMPTS - Prompt Utilities
+# Project: works-on-my-machine
+# ///////////////////////////////////////////////////////////////
+
 """
 Prompt utilities using Rich for beautiful user prompts.
 """
 
+# ///////////////////////////////////////////////////////////////
 # IMPORTS
-########################################################
+# ///////////////////////////////////////////////////////////////
 # Standard library imports
-from typing import List, Optional
 
 # Third-party imports
 from rich.console import Console
@@ -18,15 +23,17 @@ from rich.text import Text
 # (None for this file)
 
 
+# ///////////////////////////////////////////////////////////////
 # CONFIGURATION
-########################################################
+# ///////////////////////////////////////////////////////////////
 # Global variables and settings
 
 console = Console()
 
 
+# ///////////////////////////////////////////////////////////////
 # MAIN FUNCTIONS
-########################################################
+# ///////////////////////////////////////////////////////////////
 # Core prompt functionality
 
 
@@ -35,9 +42,7 @@ def confirm(message: str, default: bool = False, show_default: bool = True) -> b
     return Confirm.ask(message, default=default, show_default=show_default)
 
 
-def prompt_choice(
-    message: str, choices: List[str], default: Optional[str] = None
-) -> str:
+def prompt_choice(message: str, choices: list[str], default: str | None = None) -> str:
     """Show a choice prompt with options."""
     console.print(f"\n{message}")
 
@@ -60,19 +65,20 @@ def prompt_choice(
 
 
 def prompt_text(
-    message: str, default: Optional[str] = None, password: bool = False
+    message: str, default: str | None = None, password: bool = False
 ) -> str:
     """Show a text input prompt."""
     return Prompt.ask(message, default=default, password=password)
 
 
-def prompt_path(message: str, default: Optional[str] = None) -> str:
+def prompt_path(message: str, default: str | None = None) -> str:
     """Show a path input prompt."""
     return Prompt.ask(message, default=default)
 
 
+# ///////////////////////////////////////////////////////////////
 # UTILITY FUNCTIONS
-########################################################
+# ///////////////////////////////////////////////////////////////
 # Helper functions for panel-based prompts
 
 
@@ -107,7 +113,7 @@ def show_error_panel(title: str, content: str, width: int = 80) -> None:
 
 
 def print_prompt(
-    message: str, required: bool = False, default: Optional[str] = None
+    message: str, required: bool = False, default: str | None = None
 ) -> str:
     """Show a prompt and return user input."""
     while True:

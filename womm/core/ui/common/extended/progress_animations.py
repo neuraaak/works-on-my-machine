@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+# ///////////////////////////////////////////////////////////////
+# PROGRESS ANIMATIONS - Progress Animations and Transitions
+# Project: works-on-my-machine
+# ///////////////////////////////////////////////////////////////
+
 """
 Progress Animations and Transitions.
 
@@ -6,19 +11,21 @@ This module provides animation utilities for smooth transitions
 in dynamic progress bar systems.
 """
 
+# ///////////////////////////////////////////////////////////////
 # IMPORTS
-########################################################
+# ///////////////////////////////////////////////////////////////
 # Standard library imports
 import math
 import time
+from collections.abc import Callable
 from enum import Enum
-from typing import Callable, Dict, List
 
 # Third-party imports
 from rich.progress import Progress
 
+# ///////////////////////////////////////////////////////////////
 # ENUMS
-########################################################
+# ///////////////////////////////////////////////////////////////
 # Animation types and states
 
 
@@ -42,8 +49,9 @@ class AnimationState(Enum):
     ERROR = "error"
 
 
+# ///////////////////////////////////////////////////////////////
 # ANIMATION CLASSES
-########################################################
+# ///////////////////////////////////////////////////////////////
 # Core animation classes
 
 
@@ -91,8 +99,8 @@ class ProgressAnimations:
             progress: Rich Progress instance to animate
         """
         self.progress = progress
-        self.active_animations: Dict[int, Animation] = {}
-        self.animation_callbacks: Dict[AnimationType, Callable] = {
+        self.active_animations: dict[int, Animation] = {}
+        self.animation_callbacks: dict[AnimationType, Callable] = {
             AnimationType.FADE_OUT: self._fade_out_animation,
             AnimationType.SUCCESS_FLASH: self._success_flash_animation,
             AnimationType.ERROR_PULSE: self._error_pulse_animation,
@@ -258,8 +266,9 @@ class ProgressAnimations:
         self.active_animations.clear()
 
 
+# ///////////////////////////////////////////////////////////////
 # UTILITY FUNCTIONS
-########################################################
+# ///////////////////////////////////////////////////////////////
 # Animation utility functions
 
 
@@ -297,7 +306,7 @@ def smooth_transition(
 def create_loading_animation(
     progress: Progress,
     task_id: int,
-    messages: List[str],
+    messages: list[str],
     duration: float = 2.0,
 ):
     """Create a loading animation with cycling messages.
@@ -344,8 +353,9 @@ def create_progress_wave(
         time.sleep(frame_time)
 
 
+# ///////////////////////////////////////////////////////////////
 # CONTEXT MANAGER
-########################################################
+# ///////////////////////////////////////////////////////////////
 # Animation context manager
 
 

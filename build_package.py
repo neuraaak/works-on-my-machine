@@ -1,21 +1,45 @@
 #!/usr/bin/env python3
+# ///////////////////////////////////////////////////////////////
+# BUILD_PACKAGE - PyPI Package Builder
+# Project: works-on-my-machine
+# ///////////////////////////////////////////////////////////////
+
 """
 Build script for WOMM PyPI package.
+
 This script builds the package and optionally uploads it to PyPI.
 """
 
+# ///////////////////////////////////////////////////////////////
+# IMPORTS
+# ///////////////////////////////////////////////////////////////
+# Standard library imports
 import os
 import subprocess
 import sys
 
+# ///////////////////////////////////////////////////////////////
+# FUNCTIONS
+# ///////////////////////////////////////////////////////////////
 
-def run_command(command, description=""):
-    """Run a command and return success status."""
+
+def run_command(command: list[str], description: str = "") -> bool:
+    """Run a command and return success status.
+
+    Args:
+        command: Command to execute as list of strings
+        description: Optional description for the command
+
+    Returns:
+        bool: True if command succeeded, False otherwise
+    """
     if description:
         print(f"🔄 {description}...")
 
     try:
-        result = subprocess.run(command, check=True, capture_output=True, text=True)  # noqa: S603
+        result = subprocess.run(  # noqa: S603
+            command, check=True, capture_output=True, text=True
+        )
         if result.stdout:
             print(result.stdout)
         return True
@@ -26,7 +50,7 @@ def run_command(command, description=""):
         return False
 
 
-def clean_build():
+def clean_build() -> None:
     """Clean previous build artifacts."""
     print("🧹 Cleaning previous build artifacts...")
 
@@ -43,8 +67,12 @@ def clean_build():
     print("✅ Build artifacts cleaned")
 
 
-def build_package():
-    """Build the package."""
+def build_package() -> bool:
+    """Build the package.
+
+    Returns:
+        bool: True if build succeeded, False otherwise
+    """
     print("🔨 Building WOMM package...")
 
     # Clean previous builds
@@ -64,8 +92,12 @@ def build_package():
     return True
 
 
-def check_package():
-    """Check the built package."""
+def check_package() -> bool:
+    """Check the built package.
+
+    Returns:
+        bool: True if check passed, False otherwise
+    """
     print("🔍 Checking package...")
 
     commands = [
@@ -80,8 +112,12 @@ def check_package():
     return True
 
 
-def upload_to_test_pypi():
-    """Upload to Test PyPI."""
+def upload_to_test_pypi() -> bool:
+    """Upload to Test PyPI.
+
+    Returns:
+        bool: True if upload succeeded, False otherwise
+    """
     print("🚀 Uploading to Test PyPI...")
 
     commands = [
@@ -97,8 +133,12 @@ def upload_to_test_pypi():
     return True
 
 
-def upload_to_pypi():
-    """Upload to PyPI."""
+def upload_to_pypi() -> bool:
+    """Upload to PyPI.
+
+    Returns:
+        bool: True if upload succeeded, False otherwise
+    """
     print("🚀 Uploading to PyPI...")
 
     commands = [
@@ -114,7 +154,12 @@ def upload_to_pypi():
     return True
 
 
-def main():
+# ///////////////////////////////////////////////////////////////
+# MAIN
+# ///////////////////////////////////////////////////////////////
+
+
+def main() -> None:
     """Main function."""
     if len(sys.argv) < 2:
         print("Usage: python build_package.py [build|check|test-upload|upload]")

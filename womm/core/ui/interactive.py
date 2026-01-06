@@ -1,27 +1,30 @@
 #!/usr/bin/env python3
+# ///////////////////////////////////////////////////////////////
+# INTERACTIVE - Interactive UI Components
+# Project: works-on-my-machine
+# ///////////////////////////////////////////////////////////////
+
 """
 Interactive UI components for Works On My Machine.
 Provides interactive menus and dialogs using InquirerPy.
 """
 
+# ///////////////////////////////////////////////////////////////
 # IMPORTS
-########################################################
+# ///////////////////////////////////////////////////////////////
 # Standard library imports
+from collections.abc import Callable
 from datetime import datetime
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any
 
 # Third-party imports
 from InquirerPy import inquirer
 from InquirerPy.base.control import Choice
 from prompt_toolkit.styles import Style
 
-# Local imports
-# (None for this file)
-
-
+# ///////////////////////////////////////////////////////////////
 # MAIN CLASS
-########################################################
-# Core interactive menu functionality
+# ///////////////////////////////////////////////////////////////
 
 
 class InteractiveMenu:
@@ -32,8 +35,8 @@ class InteractiveMenu:
         title: str = "Menu",
         border_style: str = "cyan",
         pointer: str = "→",
-        instruction: Optional[str] = None,
-        style: Optional[Style] = None,
+        instruction: str | None = None,
+        style: Style | None = None,
     ):
         """Initialize the interactive menu.
 
@@ -50,17 +53,18 @@ class InteractiveMenu:
         self.instruction = instruction
         self.style = style
 
+    # ///////////////////////////////////////////////////////////////
     # PUBLIC METHODS
-    ########################################################
+    # ///////////////////////////////////////////////////////////////
     # Main interface methods for interactive menus
 
     def select_from_list(
         self,
-        items: List[Dict[str, Any]],
-        display_func: Optional[Callable[[Dict[str, Any]], str]] = None,
+        items: list[dict[str, Any]],
+        display_func: Callable[[dict[str, Any]], str] | None = None,
         default_index: int = 0,  # noqa: ARG002
         width: int = 80,  # noqa: ARG002
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """Display an interactive menu and return the selected item.
 
         Args:
@@ -107,11 +111,11 @@ class InteractiveMenu:
 
     def select_multiple_from_list(
         self,
-        items: List[Dict[str, Any]],
-        display_func: Optional[Callable[[Dict[str, Any]], str]] = None,
-        checked_items: Optional[List[str]] = None,  # noqa: ARG002 (kept for API parity)
-        disabled_items: Optional[List[str]] = None,
-    ) -> Optional[List[Dict[str, Any]]]:
+        items: list[dict[str, Any]],
+        display_func: Callable[[dict[str, Any]], str] | None = None,
+        checked_items: list[str] | None = None,  # noqa: ARG002 (kept for API parity)
+        disabled_items: list[str] | None = None,
+    ) -> list[dict[str, Any]] | None:
         """Display an interactive multiple selection menu and return selected items.
 
         Args:
@@ -187,16 +191,18 @@ class InteractiveMenu:
         except KeyboardInterrupt:
             return False
 
+    # ///////////////////////////////////////////////////////////////
     # PRIVATE METHODS
-    ########################################################
+    # ///////////////////////////////////////////////////////////////
 
 
+# ///////////////////////////////////////////////////////////////
 # UTILITY FUNCTIONS
-########################################################
+# ///////////////////////////////////////////////////////////////
 # Helper functions for formatting and display
 
 
-def format_backup_item(backup_info: Dict[str, Any]) -> str:
+def format_backup_item(backup_info: dict[str, Any]) -> str:
     """Format a backup item for display in the menu.
 
     Args:

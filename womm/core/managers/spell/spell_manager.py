@@ -4,10 +4,18 @@ Spell Manager - Centralized spell checking logic for WOMM projects.
 Handles CSpell installation, configuration, and spell checking operations.
 """
 
+import logging
 from pathlib import Path
 from typing import List, Optional
 
 from ....common.results import SpellResult
+from ...exceptions.spell import (
+    CSpellError,
+    DictionaryError,
+    SpellManagerError,
+    SpellUtilityError,
+    SpellValidationError,
+)
 
 # UI imports for integrated display
 from ...ui.common.console import (
@@ -21,70 +29,170 @@ from ...ui.common.console import (
 )
 from ...ui.common.progress import create_spinner_with_status
 
+# =============================================================================
+# LOGGER SETUP
+# =============================================================================
+
+logger = logging.getLogger(__name__)
+
+# =============================================================================
+# MAIN CLASS
+# =============================================================================
+
 
 class SpellManager:
     """Manages spell checking operations with CSpell."""
 
     def __init__(self):
-        self._cspell_available = None  # Cached availability check
-        self._cache_timestamp = None  # Cache invalidation timestamp
-        self._cache_timeout = 30  # Cache timeout in seconds
+        """
+        Initialize spell manager.
+
+        Raises:
+            SpellManagerError: If spell manager initialization fails
+        """
+        try:
+            self._cspell_available = None  # Cached availability check
+            self._cache_timestamp = None  # Cache invalidation timestamp
+            self._cache_timeout = 30  # Cache timeout in seconds
+
+        except Exception as e:
+            # Wrap unexpected external exceptions
+            logger.error(f"Failed to initialize SpellManager: {e}")
+            raise SpellManagerError(
+                message=f"Spell manager initialization failed: {e}",
+                details=f"Exception type: {type(e).__name__}",
+            ) from e
 
     @property
     def cspell_available(self) -> bool:
-        """Check if CSpell is available (cached with timeout)."""
-        import time
+        """
+        Check if CSpell is available (cached with timeout).
 
-        from ...utils.spell.cspell_utils import check_cspell_installed
+        Returns:
+            bool: True if CSpell is available, False otherwise
 
-        current_time = time.time()
+        Raises:
+            SpellManagerError: If CSpell availability check fails
+        """
+        try:
+            import time
 
-        # Check if cache is valid (exists and not expired)
-        if (
-            self._cspell_available is not None
-            and self._cache_timestamp is not None
-            and (current_time - self._cache_timestamp) < self._cache_timeout
-        ):
+            from ...utils.spell.cspell_utils import check_cspell_installed
+
+            current_time = time.time()
+
+            # Check if cache is valid (exists and not expired)
+            if (
+                self._cspell_available is not None
+                and self._cache_timestamp is not None
+                and (current_time - self._cache_timestamp) < self._cache_timeout
+            ):
+                return self._cspell_available
+
+            # Cache miss or expired - refresh
+            try:
+                self._cspell_available = check_cspell_installed()
+            except (SpellUtilityError, CSpellError):
+                # Re-raise our custom exceptions
+                raise
+            except Exception as e:
+                # Wrap unexpected external exceptions
+                raise SpellManagerError(
+                    message=f"Failed to check CSpell availability: {e}",
+                    details=f"Exception type: {type(e).__name__}",
+                ) from e
+
+            self._cache_timestamp = current_time
             return self._cspell_available
 
-        # Cache miss or expired - refresh
-        self._cspell_available = check_cspell_installed()
-        self._cache_timestamp = current_time
-        return self._cspell_available
+        except (SpellManagerError, SpellUtilityError, CSpellError):
+            # Re-raise our custom exceptions
+            raise
+        except Exception as e:
+            # Wrap unexpected external exceptions
+            logger.error(f"Unexpected error in cspell_available: {e}")
+            raise SpellManagerError(
+                message=f"CSpell availability check failed: {e}",
+                details=f"Exception type: {type(e).__name__}",
+            ) from e
 
     @cspell_available.setter
     def cspell_available(self, value: bool):
-        """Allow manual override of cspell availability and update cache."""
-        import time
+        """
+        Allow manual override of cspell availability and update cache.
 
-        self._cspell_available = value
-        self._cache_timestamp = time.time()
+        Args:
+            value: Boolean value to set for CSpell availability
+        """
+        try:
+            import time
+
+            self._cspell_available = value
+            self._cache_timestamp = time.time()
+
+        except Exception as e:
+            logger.warning(f"Failed to set CSpell availability: {e}")
 
     def invalidate_cspell_cache(self):
         """Invalidate the CSpell availability cache."""
-        self._cspell_available = None
-        self._cache_timestamp = None
+        try:
+            self._cspell_available = None
+            self._cache_timestamp = None
+
+        except Exception as e:
+            logger.warning(f"Failed to invalidate CSpell cache: {e}")
 
     def _ensure_cspell_available(
         self, operation_name: str = "operation"
-    ) -> SpellResult:
-        """Check CSpell availability with user-friendly display and return result if not available."""
-        if self.cspell_available:
-            return None  # None means continue with operation
-        else:
-            print_error("❌ CSpell is not available")
-            print_info('💡 Install CSpell using: "womm spell install"')
-            return SpellResult(
-                success=False,
-                message=f'CSpell is not available for {operation_name}. Run "womm spell install" first.',
-                error="cspell_not_available",
-            )
+    ) -> Optional[SpellResult]:
+        """
+        Check CSpell availability with user-friendly display and return result if not available.
+
+        Args:
+            operation_name: Name of the operation for error messages
+
+        Returns:
+            Optional[SpellResult]: None if available, SpellResult with error if not available
+
+        Raises:
+            SpellManagerError: If CSpell availability check fails
+        """
+        try:
+            if self.cspell_available:
+                return None  # None means continue with operation
+            else:
+                print_error("❌ CSpell is not available")
+                print_info('💡 Install CSpell using: "womm spell install"')
+                return SpellResult(
+                    success=False,
+                    message=f'CSpell is not available for {operation_name}. Run "womm spell install" first.',
+                    error="cspell_not_available",
+                )
+
+        except (SpellManagerError, SpellUtilityError, CSpellError):
+            # Re-raise our custom exceptions
+            raise
+        except Exception as e:
+            # Wrap unexpected external exceptions
+            logger.error(f"Unexpected error in _ensure_cspell_available: {e}")
+            raise SpellManagerError(
+                message=f"CSpell availability check failed: {e}",
+                details=f"Exception type: {type(e).__name__}",
+            ) from e
 
     def install_cspell(self) -> SpellResult:
-        """Install CSpell and dictionaries globally with integrated UI."""
-        print_header("📦 CSpell Installation")
+        """
+        Install CSpell and dictionaries globally with integrated UI.
 
+        Returns:
+            SpellResult: Result of the installation operation
+
+        Raises:
+            SpellManagerError: If CSpell installation fails
+        """
         try:
+            print_header("📦 CSpell Installation")
+
             # Check if CSpell is already available
             if self.cspell_available:
                 print_success("✅ CSpell is already available")
@@ -93,28 +201,45 @@ class SpellManager:
 
                 # Install CSpell via DevToolsManager (ensures Node via runtime_manager)
                 print_info("📦 Installing CSpell...")
-                from ..dependencies.dev_tools_manager import dev_tools_manager
+                try:
+                    from ..dependencies.dev_tools_manager import dev_tools_manager
 
-                tool_result = dev_tools_manager.install_dev_tool(
-                    language="universal", tool_type="spell_checking", tool="cspell"
-                )
+                    tool_result = dev_tools_manager.install_dev_tool(
+                        language="universal", tool_type="spell_checking", tool="cspell"
+                    )
 
-                if not tool_result.success:
-                    print_error(
-                        f"❌ CSpell installation failed: {tool_result.error or 'Unknown error'}"
-                    )
-                    return SpellResult(
-                        success=False,
-                        message=tool_result.error
-                        or "Failed to install CSpell via dev tools manager",
-                        error="cspell_install_failed",
-                    )
+                    if not tool_result.success:
+                        print_error(
+                            f"❌ CSpell installation failed: {tool_result.error or 'Unknown error'}"
+                        )
+                        return SpellResult(
+                            success=False,
+                            message=tool_result.error
+                            or "Failed to install CSpell via dev tools manager",
+                            error="cspell_install_failed",
+                        )
+
+                except Exception as e:
+                    raise SpellManagerError(
+                        message=f"Failed to install CSpell via dev tools manager: {e}",
+                        details=f"Exception type: {type(e).__name__}",
+                    ) from e
 
                 # Invalidate cache and refresh cspell availability check after installation
                 self.invalidate_cspell_cache()
-                from ...utils.spell.cspell_utils import check_cspell_installed
+                try:
+                    from ...utils.spell.cspell_utils import check_cspell_installed
 
-                self.cspell_available = check_cspell_installed()
+                    self.cspell_available = check_cspell_installed()
+                except (SpellUtilityError, CSpellError):
+                    # Re-raise our custom exceptions
+                    raise
+                except Exception as e:
+                    # Wrap unexpected external exceptions
+                    raise SpellManagerError(
+                        message=f"Failed to verify CSpell installation: {e}",
+                        details=f"Exception type: {type(e).__name__}",
+                    ) from e
 
                 if self.cspell_available:
                     print_success("✅ CSpell installed successfully")
@@ -128,7 +253,17 @@ class SpellManager:
 
             # Install essential dictionaries
             print_info("🔧 Starting dictionary setup...")
-            dict_result = self.setup_dictionaries()
+            try:
+                dict_result = self.setup_dictionaries()
+            except (SpellManagerError, SpellUtilityError, DictionaryError):
+                # Re-raise our custom exceptions
+                raise
+            except Exception as e:
+                # Wrap unexpected external exceptions
+                raise SpellManagerError(
+                    message=f"Failed to setup dictionaries: {e}",
+                    details=f"Exception type: {type(e).__name__}",
+                ) from e
 
             if not dict_result.success:
                 return dict_result
@@ -144,16 +279,29 @@ class SpellManager:
                 },
             )
 
+        except (SpellManagerError, SpellUtilityError, CSpellError, DictionaryError):
+            # Re-raise our custom exceptions
+            raise
         except Exception as e:
-            print_error(f"❌ Installation error: {e}")
-            return SpellResult(
-                success=False,
-                message=f"Installation error: {e}",
-                error="installation_error",
-            )
+            # Wrap unexpected external exceptions
+            logger.error(f"Unexpected error in install_cspell: {e}")
+            raise SpellManagerError(
+                message=f"CSpell installation failed: {e}",
+                details=f"Exception type: {type(e).__name__}",
+            ) from e
 
     def setup_dictionaries(self) -> SpellResult:
-        """Install essential CSpell dictionaries globally with integrated UI."""
+        """
+        Install essential CSpell dictionaries globally with integrated UI.
+
+        Returns:
+            SpellResult: Result of the dictionary setup operation
+
+        Raises:
+            SpellManagerError: If dictionary setup fails
+            SpellUtilityError: If utility operations fail
+            DictionaryError: If dictionary operations fail
+        """
         try:
             with create_spinner_with_status("Setting up dictionaries...") as (
                 progress,
@@ -206,7 +354,10 @@ class SpellManager:
                             installed_count += 1
                         else:
                             failed_dictionaries.append(dictionary)
-                    except Exception:
+                    except Exception as e:
+                        logger.warning(
+                            f"Failed to install dictionary {dictionary}: {e}"
+                        )
                         failed_dictionaries.append(dictionary)
 
                 # Return results based on success rate
@@ -245,26 +396,44 @@ class SpellManager:
                         data={"installed": installed_count},
                     )
 
+        except (SpellManagerError, SpellUtilityError, DictionaryError):
+            # Re-raise our custom exceptions
+            raise
         except Exception as e:
-            print_error(f"❌ Dictionary setup error: {e}")
-            return SpellResult(
-                success=False,
-                message=f"Dictionary setup error: {e}",
-                error="dictionary_setup_error",
-            )
+            # Wrap unexpected external exceptions
+            logger.error(f"Unexpected error in setup_dictionaries: {e}")
+            raise SpellManagerError(
+                message=f"Dictionary setup failed: {e}",
+                details=f"Exception type: {type(e).__name__}",
+            ) from e
 
     def perform_setup_project(
         self, project_name: str, project_type: Optional[str] = None
     ) -> SpellResult:
-        """Set up CSpell configuration for a project with integrated UI."""
-        print_header("CSpell Project Setup")
+        """
+        Set up CSpell configuration for a project with integrated UI.
 
-        # Check CSpell availability - early return if not available
-        cspell_check = self._ensure_cspell_available("project setup")
-        if cspell_check is not None:  # Error occurred
-            return cspell_check
+        Args:
+            project_name: Name of the project
+            project_type: Type of the project (optional)
 
+        Returns:
+            SpellResult: Result of the project setup operation
+
+        Raises:
+            SpellManagerError: If project setup fails
+            SpellUtilityError: If utility operations fail
+            CSpellError: If CSpell operations fail
+            SpellValidationError: If validation fails
+        """
         try:
+            print_header("CSpell Project Setup")
+
+            # Check CSpell availability - early return if not available
+            cspell_check = self._ensure_cspell_available("project setup")
+            if cspell_check is not None:  # Error occurred
+                return cspell_check
+
             with create_spinner_with_status("Setting up CSpell configuration...") as (
                 progress,
                 task,
@@ -278,16 +447,38 @@ class SpellManager:
                 # Detect project type if not provided
                 progress.update(task, status="Detecting project type...")
                 if not project_type:
-                    from ...utils.spell.cspell_utils import detect_project_type
+                    try:
+                        from ...utils.spell.cspell_utils import detect_project_type
 
-                    detected_type = detect_project_type(project_path)
-                    project_type = detected_type if detected_type else "generic"
+                        detected_type = detect_project_type(project_path)
+                        project_type = detected_type if detected_type else "generic"
+                    except (SpellUtilityError, CSpellError):
+                        # Re-raise our custom exceptions
+                        raise
+                    except Exception as e:
+                        # Wrap unexpected external exceptions
+                        raise SpellManagerError(
+                            message=f"Failed to detect project type: {e}",
+                            details=f"Exception type: {type(e).__name__}",
+                        ) from e
 
                 # Use cspell_utils for sophisticated template-based setup
                 progress.update(task, status="Creating CSpell configuration...")
-                from ...utils.spell.cspell_utils import setup_project_cspell
+                try:
+                    from ...utils.spell.cspell_utils import setup_project_cspell
 
-                success = setup_project_cspell(project_path, project_type, project_name)
+                    success = setup_project_cspell(
+                        project_path, project_type, project_name
+                    )
+                except (SpellUtilityError, CSpellError, SpellValidationError):
+                    # Re-raise our custom exceptions
+                    raise
+                except Exception as e:
+                    # Wrap unexpected external exceptions
+                    raise SpellManagerError(
+                        message=f"Failed to setup project CSpell configuration: {e}",
+                        details=f"Exception type: {type(e).__name__}",
+                    ) from e
 
                 if success:
                     progress.update(task, status="Configuration created successfully!")
@@ -311,49 +502,84 @@ class SpellManager:
                         error="setup_failed",
                     )
 
+        except (
+            SpellManagerError,
+            SpellUtilityError,
+            CSpellError,
+            SpellValidationError,
+        ):
+            # Re-raise our custom exceptions
+            raise
         except Exception as e:
-            print_error(f"❌ Setup error: {e}")
-            print_error(f"❌ CSpell setup failed: {e}")
-            return SpellResult(
-                success=False,
-                message=f"Failed to setup CSpell: {e}",
-                error="setup_failed",
-            )
+            # Wrap unexpected external exceptions
+            logger.error(f"Unexpected error in perform_setup_project: {e}")
+            raise SpellManagerError(
+                message=f"Project setup failed: {e}",
+                details=f"Exception type: {type(e).__name__}",
+            ) from e
 
     def display_project_status(
         self, project_path: Optional[Path] = None
     ) -> SpellResult:
-        """Get and display CSpell configuration status for a project with integrated UI."""
-        if project_path is None:
-            project_path = Path.cwd()
+        """
+        Get and display CSpell configuration status for a project with integrated UI.
 
-        print_header("📊 CSpell Project Status")
+        Args:
+            project_path: Path to the project (defaults to current directory)
 
-        # Check and display CSpell availability (non-blocking for status command)
-        if not self.cspell_available:
-            print_error("❌ CSpell is not installed")
-            print_info('💡 Install using: "womm spell install"')
+        Returns:
+            SpellResult: Result of the status check operation
 
+        Raises:
+            SpellManagerError: If status check fails
+            SpellUtilityError: If utility operations fail
+            CSpellError: If CSpell operations fail
+        """
         try:
+            if project_path is None:
+                project_path = Path.cwd()
+
+            print_header("📊 CSpell Project Status")
+
+            # Check and display CSpell availability (non-blocking for status command)
+            if not self.cspell_available:
+                print_error("❌ CSpell is not installed")
+                print_info('💡 Install using: "womm spell install"')
+
             with create_spinner_with_status("Analyzing project...") as (progress, task):
                 progress.update(task, status="Gathering project information...")
 
                 # Use cspell_utils for the actual status gathering
-                from ...utils.spell.cspell_utils import get_project_status
+                try:
+                    from ...utils.spell.cspell_utils import get_project_status
 
-                status = get_project_status(project_path)
+                    status = get_project_status(project_path)
+                except (SpellUtilityError, CSpellError):
+                    # Re-raise our custom exceptions
+                    raise
+                except Exception as e:
+                    # Wrap unexpected external exceptions
+                    raise SpellManagerError(
+                        message=f"Failed to get project status: {e}",
+                        details=f"Exception type: {type(e).__name__}",
+                    ) from e
 
                 progress.update(task, status="Analyzing configuration...")
 
                 # Add some additional WOMM-specific checks
-                dict_dir = project_path / ".cspell-dict"
-                if dict_dir.exists():
-                    dict_files = list(dict_dir.glob("*.txt"))
-                    status["dict_files"] = [f.name for f in dict_files]
-                    status["total_words"] = sum(
-                        len(f.read_text().splitlines()) for f in dict_files
-                    )
-                else:
+                try:
+                    dict_dir = project_path / ".cspell-dict"
+                    if dict_dir.exists():
+                        dict_files = list(dict_dir.glob("*.txt"))
+                        status["dict_files"] = [f.name for f in dict_files]
+                        status["total_words"] = sum(
+                            len(f.read_text().splitlines()) for f in dict_files
+                        )
+                    else:
+                        status["dict_files"] = []
+                        status["total_words"] = 0
+                except Exception as e:
+                    logger.warning(f"Failed to analyze dictionary directory: {e}")
                     status["dict_files"] = []
                     status["total_words"] = 0
 
@@ -385,24 +611,42 @@ class SpellManager:
                 data=status,
             )
 
+        except (SpellManagerError, SpellUtilityError, CSpellError):
+            # Re-raise our custom exceptions
+            raise
         except Exception as e:
-            print_error(f"❌ Error getting project status: {e}")
-            return SpellResult(
-                success=False,
-                message=f"Failed to get status: {e}",
-                error="status_failed",
-            )
+            # Wrap unexpected external exceptions
+            logger.error(f"Unexpected error in display_project_status: {e}")
+            raise SpellManagerError(
+                message=f"Project status check failed: {e}",
+                details=f"Exception type: {type(e).__name__}",
+            ) from e
 
     def add_words(
         self, words: List[str], project_path: Optional[Path] = None
     ) -> SpellResult:
-        """Add words to CSpell configuration with integrated UI."""
-        if project_path is None:
-            project_path = Path.cwd()
+        """
+        Add words to CSpell configuration with integrated UI.
 
-        print_system(f"Adding {len(words)} words to CSpell configuration...")
+        Args:
+            words: List of words to add
+            project_path: Path to the project (defaults to current directory)
 
+        Returns:
+            SpellResult: Result of the word addition operation
+
+        Raises:
+            SpellManagerError: If word addition fails
+            SpellUtilityError: If utility operations fail
+            CSpellError: If CSpell operations fail
+            DictionaryError: If dictionary operations fail
+        """
         try:
+            if project_path is None:
+                project_path = Path.cwd()
+
+            print_system(f"Adding {len(words)} words to CSpell configuration...")
+
             with create_spinner_with_status("Adding words to configuration...") as (
                 progress,
                 task,
@@ -410,10 +654,20 @@ class SpellManager:
                 progress.update(task, status="Validating configuration...")
 
                 # Use cspell_utils for the actual operation
-                from ...utils.spell.cspell_utils import add_words_to_config
+                try:
+                    from ...utils.spell.cspell_utils import add_words_to_config
 
-                progress.update(task, status="Adding words...")
-                success = add_words_to_config(project_path, words)
+                    progress.update(task, status="Adding words...")
+                    success = add_words_to_config(project_path, words)
+                except (SpellUtilityError, CSpellError, DictionaryError):
+                    # Re-raise our custom exceptions
+                    raise
+                except Exception as e:
+                    # Wrap unexpected external exceptions
+                    raise SpellManagerError(
+                        message=f"Failed to add words to configuration: {e}",
+                        details=f"Exception type: {type(e).__name__}",
+                    ) from e
 
                 if success:
                     progress.update(task, status="Words added successfully!")
@@ -431,13 +685,16 @@ class SpellManager:
                         error="add_words_failed",
                     )
 
+        except (SpellManagerError, SpellUtilityError, CSpellError, DictionaryError):
+            # Re-raise our custom exceptions
+            raise
         except Exception as e:
-            print_error(f"❌ Error adding words: {e}")
-            return SpellResult(
-                success=False,
-                message=f"Failed to add words: {e}",
-                error="add_words_failed",
-            )
+            # Wrap unexpected external exceptions
+            logger.error(f"Unexpected error in add_words: {e}")
+            raise SpellManagerError(
+                message=f"Word addition failed: {e}",
+                details=f"Exception type: {type(e).__name__}",
+            ) from e
 
     def perform_add_words(
         self,
@@ -445,19 +702,76 @@ class SpellManager:
         file_path: Optional[Path] = None,
         interactive: bool = False,
         project_path: Optional[Path] = None,
+        dry_run: bool = False,
     ) -> SpellResult:
-        """Add words to CSpell configuration with integrated UI and option handling."""
-        if project_path is None:
-            project_path = Path.cwd()
+        """
+        Add words to CSpell configuration with integrated UI and option handling.
 
-        print_header("➕ Add Words to CSpell Configuration")
+        Args:
+            words: List of words to add
+            file_path: Path to file containing words
+            interactive: Whether to run in interactive mode
+            project_path: Path to the project (defaults to current directory)
+            dry_run: Show what would be done without making changes
 
-        # Check CSpell availability - early return if not available
-        cspell_check = self._ensure_cspell_available("add words")
-        if cspell_check is not None:  # Error occurred
-            return cspell_check
+        Returns:
+            SpellResult: Result of the word addition operation
 
+        Raises:
+            SpellManagerError: If word addition fails
+            SpellUtilityError: If utility operations fail
+            CSpellError: If CSpell operations fail
+            DictionaryError: If dictionary operations fail
+        """
         try:
+            if project_path is None:
+                project_path = Path.cwd()
+
+            if dry_run:
+                from ...ui.common.console import (
+                    print_dry_run_message,
+                    print_dry_run_success,
+                    print_dry_run_warning,
+                )
+
+                print_dry_run_warning()
+                print_header("➕ Add Words to CSpell Configuration (DRY RUN)")
+
+                # Simulate word addition process
+                if interactive:
+                    print_dry_run_message(
+                        "run interactive mode", "prompt user for word input"
+                    )
+                elif file_path:
+                    print_dry_run_message("read words from file", f"file: {file_path}")
+                elif words:
+                    print_dry_run_message("add words", f"words: {', '.join(words)}")
+                else:
+                    print_dry_run_message(
+                        "process input", "handle word addition request"
+                    )
+
+                print_dry_run_message(
+                    "update CSpell configuration", f"project: {project_path}"
+                )
+                print_dry_run_success()
+
+                return SpellResult(
+                    success=True,
+                    message="Dry run completed - no words were actually added",
+                    data={
+                        "words_added": words or [],
+                        "project_path": str(project_path),
+                    },
+                )
+
+            print_header("➕ Add Words to CSpell Configuration")
+
+            # Check CSpell availability - early return if not available
+            cspell_check = self._ensure_cspell_available("add words")
+            if cspell_check is not None:  # Error occurred
+                return cspell_check
+
             # Handle interactive mode
             if interactive:
                 print_info("📝 Interactive mode: Enter word to add")
@@ -500,12 +814,10 @@ class SpellManager:
                     return self.add_words(words, project_path)
 
                 except Exception as e:
-                    print_error(f"❌ Failed to read file: {e}")
-                    return SpellResult(
-                        success=False,
-                        message=f"Failed to add words from file: {e}",
-                        error="file_read_failed",
-                    )
+                    raise SpellManagerError(
+                        message=f"Failed to read words from file: {e}",
+                        details=f"Exception type: {type(e).__name__}",
+                    ) from e
 
             # Handle command line words
             elif words:
@@ -522,33 +834,60 @@ class SpellManager:
                     error="no_input_provided",
                 )
 
+        except (SpellManagerError, SpellUtilityError, CSpellError, DictionaryError):
+            # Re-raise our custom exceptions
+            raise
         except Exception as e:
-            print_error(f"❌ Error during word addition: {e}")
-            return SpellResult(
-                success=False,
-                message=f"Failed to add words: {e}",
-                error="add_words_failed",
-            )
+            # Wrap unexpected external exceptions
+            logger.error(f"Unexpected error in perform_add_words: {e}")
+            raise SpellManagerError(
+                message=f"Word addition failed: {e}",
+                details=f"Exception type: {type(e).__name__}",
+            ) from e
 
     def perform_add_all_dictionaries(
         self, force: bool = False, project_path: Optional[Path] = None
     ) -> SpellResult:
-        """Add all dictionaries from .cspell-dict/ to CSpell configuration with integrated UI."""
-        if project_path is None:
-            project_path = Path.cwd()
+        """
+        Add all dictionaries from .cspell-dict/ to CSpell configuration with integrated UI.
 
-        print_header("📚 Add All Dictionaries")
+        Args:
+            force: Whether to force the operation without confirmation
+            project_path: Path to the project (defaults to current directory)
 
-        # Check CSpell availability - early return if not available
-        cspell_check = self._ensure_cspell_available("add dictionaries")
-        if cspell_check is not None:  # Error occurred
-            return cspell_check
+        Returns:
+            SpellResult: Result of the dictionary addition operation
 
+        Raises:
+            SpellManagerError: If dictionary addition fails
+            SpellUtilityError: If utility operations fail
+            DictionaryError: If dictionary operations fail
+        """
         try:
-            # Get dictionary information
-            from ...utils.spell.dictionary_utils import get_dictionary_info
+            if project_path is None:
+                project_path = Path.cwd()
 
-            dict_info = get_dictionary_info()
+            print_header("📚 Add All Dictionaries")
+
+            # Check CSpell availability - early return if not available
+            cspell_check = self._ensure_cspell_available("add dictionaries")
+            if cspell_check is not None:  # Error occurred
+                return cspell_check
+
+            # Get dictionary information
+            try:
+                from ...utils.spell.dictionary_utils import get_dictionary_info
+
+                dict_info = get_dictionary_info()
+            except (SpellUtilityError, DictionaryError):
+                # Re-raise our custom exceptions
+                raise
+            except Exception as e:
+                # Wrap unexpected external exceptions
+                raise SpellManagerError(
+                    message=f"Failed to get dictionary information: {e}",
+                    details=f"Exception type: {type(e).__name__}",
+                ) from e
 
             # Check if directory exists
             if not dict_info["directory_exists"]:
@@ -619,6 +958,9 @@ class SpellManager:
                         print_system(f"  ❌ {file_path} (no words found)")
 
                 except Exception as e:
+                    logger.warning(
+                        f"Failed to process dictionary file {file_path}: {e}"
+                    )
                     error_count += 1
                     print_system(f"  ❌ {file_path} (error: {e})")
 
@@ -645,27 +987,53 @@ class SpellManager:
                     error="all_dictionaries_failed",
                 )
 
+        except (SpellManagerError, SpellUtilityError, DictionaryError):
+            # Re-raise our custom exceptions
+            raise
         except Exception as e:
-            print_error(f"❌ Error processing dictionaries: {e}")
-            return SpellResult(
-                success=False,
-                message=f"Failed to add dictionaries: {e}",
-                error="add_all_failed",
-            )
+            # Wrap unexpected external exceptions
+            logger.error(f"Unexpected error in perform_add_all_dictionaries: {e}")
+            raise SpellManagerError(
+                message=f"Dictionary addition failed: {e}",
+                details=f"Exception type: {type(e).__name__}",
+            ) from e
 
     def perform_list_dictionaries(
         self, project_path: Optional[Path] = None
     ) -> SpellResult:
-        """List available dictionaries in .cspell-dict/ with integrated UI."""
-        if project_path is None:
-            project_path = Path.cwd()
+        """
+        List available dictionaries in .cspell-dict/ with integrated UI.
 
-        print_header("📚 Available Dictionaries")
+        Args:
+            project_path: Path to the project (defaults to current directory)
 
+        Returns:
+            SpellResult: Result of the dictionary listing operation
+
+        Raises:
+            SpellManagerError: If dictionary listing fails
+            SpellUtilityError: If utility operations fail
+            DictionaryError: If dictionary operations fail
+        """
         try:
-            from ...utils.spell.dictionary_utils import get_dictionary_info
+            if project_path is None:
+                project_path = Path.cwd()
 
-            dict_info = get_dictionary_info()
+            print_header("📚 Available Dictionaries")
+
+            try:
+                from ...utils.spell.dictionary_utils import get_dictionary_info
+
+                dict_info = get_dictionary_info()
+            except (SpellUtilityError, DictionaryError):
+                # Re-raise our custom exceptions
+                raise
+            except Exception as e:
+                # Wrap unexpected external exceptions
+                raise SpellManagerError(
+                    message=f"Failed to get dictionary information: {e}",
+                    details=f"Exception type: {type(e).__name__}",
+                ) from e
 
             # Display dictionary information
             status_text = "✅" if dict_info["directory_exists"] else "❌"
@@ -685,36 +1053,53 @@ class SpellManager:
                 data=dict_info,
             )
 
+        except (SpellManagerError, SpellUtilityError, DictionaryError):
+            # Re-raise our custom exceptions
+            raise
         except Exception as e:
-            print_error(f"❌ Error listing dictionaries: {e}")
-            return SpellResult(
-                success=False,
-                message=f"Failed to list dictionaries: {e}",
-                error="list_failed",
-            )
+            # Wrap unexpected external exceptions
+            logger.error(f"Unexpected error in perform_list_dictionaries: {e}")
+            raise SpellManagerError(
+                message=f"Dictionary listing failed: {e}",
+                details=f"Exception type: {type(e).__name__}",
+            ) from e
 
     def perform_spell_check(
         self,
         path: Optional[Path] = None,
         json_output: Optional[Path] = None,
     ) -> SpellResult:
-        """Perform complete spell check with integrated UI and availability checks."""
-        if path is None:
-            path = Path.cwd()
+        """
+        Perform complete spell check with integrated UI and availability checks.
 
-        # Show header first
-        print_header("🔍 CSpell Spell Check")
+        Args:
+            path: Path to check (defaults to current directory)
+            json_output: Path to export JSON results
 
-        # Show start message
-        print_info(f"🔍 Starting spell check for: {path}")
-        print_debug(f"Debug: path={path}")
+        Returns:
+            SpellResult: Result of the spell check operation
 
-        # Check CSpell availability - early return if not available
-        cspell_check = self._ensure_cspell_available("spell check")
-        if cspell_check is not None:  # Error occurred
-            return cspell_check
-
+        Raises:
+            SpellManagerError: If spell check fails
+            SpellUtilityError: If utility operations fail
+            CSpellError: If CSpell operations fail
+        """
         try:
+            if path is None:
+                path = Path.cwd()
+
+            # Show header first
+            print_header("🔍 CSpell Spell Check")
+
+            # Show start message
+            print_info(f"🔍 Starting spell check for: {path}")
+            print_debug(f"Debug: path={path}")
+
+            # Check CSpell availability - early return if not available
+            cspell_check = self._ensure_cspell_available("spell check")
+            if cspell_check is not None:  # Error occurred
+                return cspell_check
+
             with create_spinner_with_status("Running spell check...") as (
                 progress,
                 task,
@@ -722,11 +1107,21 @@ class SpellManager:
                 progress.update(task, status="Initializing spell check...")
 
                 # Use cspell_utils for the actual operation
-                from ...utils.spell.cspell_utils import run_spellcheck
+                try:
+                    from ...utils.spell.cspell_utils import run_spellcheck
 
-                progress.update(task, status=f"Processing {path}...")
+                    progress.update(task, status=f"Processing {path}...")
 
-                spell_results = run_spellcheck(path)
+                    spell_results = run_spellcheck(path)
+                except (SpellUtilityError, CSpellError):
+                    # Re-raise our custom exceptions
+                    raise
+                except Exception as e:
+                    # Wrap unexpected external exceptions
+                    raise SpellManagerError(
+                        message=f"Failed to run spell check: {e}",
+                        details=f"Exception type: {type(e).__name__}",
+                    ) from e
 
                 if spell_results["success"]:
                     progress.update(task, status="Spell check completed!")
@@ -754,16 +1149,24 @@ class SpellManager:
                         print("")
 
                         # Utiliser la fonction UI dédiée pour afficher le tableau
-                        from ...ui.spell.spell import display_spell_issues_table
+                        try:
+                            from ...ui.spell.spell import display_spell_issues_table
 
-                        display_spell_issues_table(issues)
-                        print("")
+                            display_spell_issues_table(issues)
+                            print("")
+                        except Exception as e:
+                            logger.warning(f"Failed to display spell issues table: {e}")
 
                     # Export JSON si demandé
                     if json_output is not None:
-                        self._export_spell_results_to_json(
-                            path, summary, issues, json_output
-                        )
+                        try:
+                            self._export_spell_results_to_json(
+                                path, summary, issues, json_output
+                            )
+                        except Exception as e:
+                            logger.warning(
+                                f"Failed to export spell results to JSON: {e}"
+                            )
 
                     return SpellResult(
                         success=True,
@@ -789,13 +1192,16 @@ class SpellManager:
                         data={"path": str(path)},
                     )
 
+        except (SpellManagerError, SpellUtilityError, CSpellError):
+            # Re-raise our custom exceptions
+            raise
         except Exception as e:
-            print_error(f"❌ Error during spell check: {e}")
-            return SpellResult(
-                success=False,
-                message=f"Spell check error: {e}",
-                error="spellcheck_failed",
-            )
+            # Wrap unexpected external exceptions
+            logger.error(f"Unexpected error in perform_spell_check: {e}")
+            raise SpellManagerError(
+                message=f"Spell check failed: {e}",
+                details=f"Exception type: {type(e).__name__}",
+            ) from e
 
     def _export_spell_results_to_json(
         self,
@@ -804,7 +1210,18 @@ class SpellManager:
         issues: list,
         export_path: Path,
     ) -> None:
-        """Export spell check results to JSON file."""
+        """
+        Export spell check results to JSON file.
+
+        Args:
+            path: Path that was checked
+            summary: Summary of the spell check
+            issues: List of spelling issues
+            export_path: Path to export the JSON file
+
+        Raises:
+            SpellManagerError: If export fails
+        """
         try:
             # Le chemin d'export est déjà déterminé dans spell_check
             export_dir = export_path
@@ -859,10 +1276,14 @@ class SpellManager:
             )
 
         except Exception as e:
-            print_error(f"❌ Failed to export results: {e}")
+            raise SpellManagerError(
+                message=f"Failed to export spell results to JSON: {e}",
+                details=f"Exception type: {type(e).__name__}",
+            ) from e
 
 
+# =============================================================================
 # GLOBAL INSTANCE
-########################################################
+# =============================================================================
 
 spell_manager = SpellManager()

@@ -1,15 +1,28 @@
 #!/usr/bin/env python3
+# ///////////////////////////////////////////////////////////////
+# TEMPLATE - Template Commands
+# Project: works-on-my-machine
+# ///////////////////////////////////////////////////////////////
+
 """
 Template commands for WOMM CLI.
-Handles template generation from existing projects and template management.
+
+This module handles template generation from existing projects and template management.
+Provides commands for creating, listing, using, and deleting project templates.
 """
 
+# ///////////////////////////////////////////////////////////////
+# IMPORTS
+# ///////////////////////////////////////////////////////////////
+# Standard library imports
+import re
 import sys
 from pathlib import Path
-from typing import Optional
 
+# Third-party imports
 import click
 
+# Local imports
 from ..core.managers.project import ProjectManager
 from ..core.ui.common.console import print_error, print_header, print_info
 from ..core.ui.project import (
@@ -19,21 +32,29 @@ from ..core.ui.project import (
     print_template_info,
     print_template_list,
 )
-from ..core.utils.security.security_validator import validate_user_input
+
+# ///////////////////////////////////////////////////////////////
+# COMMAND GROUPS
+# ///////////////////////////////////////////////////////////////
 
 
 @click.group(invoke_without_command=True)
 @click.help_option("-h", "--help")
 @click.pass_context
-def template_group(ctx):
+def template_group(ctx: click.Context) -> None:
     """📋 Generate and manage project templates from existing projects."""
     if ctx.invoked_subcommand is None:
         click.echo(ctx.get_help())
 
 
+# ///////////////////////////////////////////////////////////////
+# TEMPLATE LISTING COMMANDS
+# ///////////////////////////////////////////////////////////////
+
+
 @template_group.command("list")
 @click.help_option("-h", "--help")
-def template_list():
+def template_list() -> None:
     """📋 List available project templates."""
 
     # Initialize project manager
@@ -46,6 +67,11 @@ def template_list():
     except Exception as e:
         print_error(f"Error listing templates: {e}")
         sys.exit(1)
+
+
+# ///////////////////////////////////////////////////////////////
+# TEMPLATE CREATION COMMANDS
+# ///////////////////////////////////////////////////////////////
 
 
 @template_group.command("create")
@@ -67,12 +93,18 @@ def template_list():
     is_flag=True,
     help="Use interactive mode to create template",
 )
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    help="Show what would be done without making changes",
+)
 def template_create(
-    template_name: Optional[str],
-    source_project_path: Optional[Path],
-    description: Optional[str],
+    template_name: str | None,
+    source_project_path: Path | None,
+    description: str | None,
     interactive: bool,
-):
+    dry_run: bool,
+) -> None:
     """🚀 Create a new template from an existing project.
 
     If TEMPLATE_NAME is not provided, it will be automatically generated
@@ -86,17 +118,47 @@ def template_create(
 
     try:
         if interactive:
-            print_header("🚀 Interactive Template Creation")
-            return _create_template_interactive(project_manager)
+            if dry_run:
+                print_header("🚀 Interactive Template Creation (DRY RUN)")
+                from ..core.ui.common.console import (
+                    print_dry_run_message,
+                    print_dry_run_success,
+                    print_dry_run_warning,
+                )
+
+                print_dry_run_warning()
+                print_dry_run_message(
+                    "run interactive mode", "prompt user for template details"
+                )
+                print_dry_run_message(
+                    "validate inputs", "check template name and source project"
+                )
+                print_dry_run_message(
+                    "create template", "generate template from project"
+                )
+                print_dry_run_success()
+                return 0
+            else:
+                print_header("🚀 Interactive Template Creation")
+                return _create_template_interactive(project_manager)
         else:
             print_header("🚀 Template Creation")
             return _create_template_direct(
-                project_manager, template_name, source_project_path, description
+                project_manager,
+                template_name,
+                source_project_path,
+                description,
+                dry_run,
             )
 
     except Exception as e:
         print_error(f"Error creating template: {e}")
         sys.exit(1)
+
+
+# ///////////////////////////////////////////////////////////////
+# TEMPLATE USAGE COMMANDS
+# ///////////////////////////////////////////////////////////////
 
 
 @template_group.command("use")
@@ -133,12 +195,12 @@ def template_create(
 def template_use(
     template_name: str,
     target_path: Path,
-    project_name: Optional[str],
-    author_name: Optional[str],
-    author_email: Optional[str],
-    project_url: Optional[str],
-    project_repository: Optional[str],
-):
+    project_name: str | None,
+    author_name: str | None,
+    author_email: str | None,
+    project_url: str | None,
+    project_repository: str | None,
+) -> None:
     """🎯 Use a template to create a new project."""
 
     # Initialize project manager
@@ -175,6 +237,11 @@ def template_use(
         sys.exit(1)
 
 
+# ///////////////////////////////////////////////////////////////
+# TEMPLATE MANAGEMENT COMMANDS
+# ///////////////////////////////////////////////////////////////
+
+
 @template_group.command("delete")
 @click.help_option("-h", "--help")
 @click.argument("template_name", required=False)
@@ -184,7 +251,7 @@ def template_use(
     is_flag=True,
     help="Use interactive mode to delete templates",
 )
-def template_delete(template_name: Optional[str], interactive: bool):
+def template_delete(template_name: str | None, interactive: bool) -> None:
     """🗑️ Delete a template.
 
     Use --interactive for guided template deletion with multiple selection.
@@ -211,7 +278,7 @@ def template_delete(template_name: Optional[str], interactive: bool):
 @template_group.command("info")
 @click.help_option("-h", "--help")
 @click.argument("template_name")
-def template_info(template_name: str):
+def template_info(template_name: str) -> None:
     """ℹ️ Show information about a template."""
 
     # Initialize project manager
@@ -226,7 +293,11 @@ def template_info(template_name: str):
         sys.exit(1)
 
 
-# Helper functions
+# ///////////////////////////////////////////////////////////////
+# HELPER FUNCTIONS - TEMPLATE UTILITIES
+# ///////////////////////////////////////////////////////////////
+
+
 def _generate_template_name(
     source_project_path: Path, project_manager: ProjectManager
 ) -> str:
@@ -244,8 +315,6 @@ def _generate_template_name(
     project_name = source_project_path.name.lower()
 
     # Clean project name (remove special characters, replace spaces with hyphens)
-    import re
-
     clean_name = re.sub(r"[^a-zA-Z0-9_-]", "-", project_name)
     clean_name = re.sub(r"-+", "-", clean_name)  # Replace multiple hyphens with single
     clean_name = clean_name.strip("-")  # Remove leading/trailing hyphens
@@ -274,6 +343,11 @@ def _generate_template_name(
         counter += 1
 
     return template_name
+
+
+# ///////////////////////////////////////////////////////////////
+# HELPER FUNCTIONS - TEMPLATE OPERATIONS
+# ///////////////////////////////////////////////////////////////
 
 
 def _list_templates(project_manager: ProjectManager) -> int:
@@ -306,9 +380,8 @@ def _create_template_interactive(project_manager: ProjectManager) -> int:
         return 0
 
     # Validate template name
-    is_valid, error = validate_user_input(answers["template_name"], "template_name")
-    if not is_valid:
-        print_error(f"Invalid template name: {error}")
+    if not answers["template_name"] or not answers["template_name"].strip():
+        print_error("Template name cannot be empty")
         return 1
 
     # Create template from project
@@ -326,9 +399,10 @@ def _create_template_interactive(project_manager: ProjectManager) -> int:
 
 def _create_template_direct(
     project_manager: ProjectManager,
-    template_name: Optional[str],
-    source_project_path: Optional[Path],
-    description: Optional[str],
+    template_name: str | None,
+    source_project_path: Path | None,
+    description: str | None,
+    dry_run: bool = False,
 ) -> int:
     """Create template using direct parameters."""
     if not source_project_path:
@@ -341,9 +415,8 @@ def _create_template_direct(
         print_info(f"Generated template name: {template_name}")
 
     # Validate template name
-    is_valid, error = validate_user_input(template_name, "template_name")
-    if not is_valid:
-        print_error(f"Invalid template name: {error}")
+    if not template_name or not template_name.strip():
+        print_error("Template name cannot be empty")
         return 1
 
     # Create template from project
@@ -351,6 +424,7 @@ def _create_template_direct(
         source_project_path=source_project_path,
         template_name=template_name,
         description=description,
+        dry_run=dry_run,
     )
 
     if success:

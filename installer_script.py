@@ -1,47 +1,39 @@
 #!/usr/bin/env python3
+# ///////////////////////////////////////////////////////////////
+# INSTALLER_SCRIPT - Standalone Installer
+# Project: works-on-my-machine
+# ///////////////////////////////////////////////////////////////
+
+"""
+Standalone installer script for WOMM.
+
+Extracts embedded WOMM files and runs the installation process.
+"""
+
+# ///////////////////////////////////////////////////////////////
+# IMPORTS
+# ///////////////////////////////////////////////////////////////
+# Standard library imports
 import os
 import shutil
 import sys
 import tempfile
 from pathlib import Path
 
-
-def main():
-    print("WOMM Installer")
-    print("=" * 30)
-
-    try:
-        if install_womm():
-            print("Installation successful!")
-        else:
-            print("Installation failed!")
-            sys.exit(1)
-    except Exception as e:
-        print(f"Error: {e}")
-        sys.exit(1)
+# ///////////////////////////////////////////////////////////////
+# FUNCTIONS
+# ///////////////////////////////////////////////////////////////
 
 
-def install_womm():
-    print("Installing WOMM...")
-    try:
-        # Extract embedded WOMM files
-        with tempfile.TemporaryDirectory() as temp_dir:
-            temp_path = Path(temp_dir)
+def extract_womm_files(temp_path: Path) -> bool:
+    """Extract embedded WOMM files to temp directory.
 
-            # Extract womm directory
-            if not extract_womm_files(temp_path):
-                return False
+    Args:
+        temp_path: Path to temporary directory
 
-            # Run womm install using the package
-            return run_womm_install(temp_path)
-
-    except Exception as e:
-        print(f"Installation error: {e}")
-        return False
-
-
-def extract_womm_files(temp_path):
-    """Extract embedded WOMM files to temp directory."""
+    Returns:
+        bool: True if extraction succeeded, False otherwise
+    """
     print("Extracting WOMM files...")
 
     # Get the path to the executable
@@ -58,7 +50,7 @@ def extract_womm_files(temp_path):
 
     if womm_source.exists():
         shutil.copytree(womm_source, womm_target)
-        print(f"Extracted womm/ directory")
+        print("Extracted womm/ directory")
     else:
         print(f"womm/ directory not found at {womm_source}")
         return False
@@ -66,8 +58,15 @@ def extract_womm_files(temp_path):
     return True
 
 
-def run_womm_install(temp_path):
-    """Run womm install using the package."""
+def run_womm_install(temp_path: Path) -> bool:
+    """Run womm install using the package.
+
+    Args:
+        temp_path: Path to temporary directory containing womm package
+
+    Returns:
+        bool: True if installation succeeded, False otherwise
+    """
     print("Running WOMM installation...")
 
     try:
@@ -96,6 +95,51 @@ def run_womm_install(temp_path):
     except Exception as e:
         print(f"Error running womm install: {e}")
         return False
+
+
+def install_womm() -> bool:
+    """Install WOMM using embedded files.
+
+    Returns:
+        bool: True if installation succeeded, False otherwise
+    """
+    print("Installing WOMM...")
+    try:
+        # Extract embedded WOMM files
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_path = Path(temp_dir)
+
+            # Extract womm directory
+            if not extract_womm_files(temp_path):
+                return False
+
+            # Run womm install using the package
+            return run_womm_install(temp_path)
+
+    except Exception as e:
+        print(f"Installation error: {e}")
+        return False
+
+
+# ///////////////////////////////////////////////////////////////
+# MAIN
+# ///////////////////////////////////////////////////////////////
+
+
+def main() -> None:
+    """Main function."""
+    print("WOMM Installer")
+    print("=" * 30)
+
+    try:
+        if install_womm():
+            print("Installation successful!")
+        else:
+            print("Installation failed!")
+            sys.exit(1)
+    except Exception as e:
+        print(f"Error: {e}")
+        sys.exit(1)
 
 
 if __name__ == "__main__":

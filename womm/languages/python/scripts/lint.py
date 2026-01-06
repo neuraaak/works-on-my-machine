@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+# ///////////////////////////////////////////////////////////////
+# PYTHON LINT - Python Project Linting Script
+# Project: works-on-my-machine
+# ///////////////////////////////////////////////////////////////
+
 """
 Python project linting script.
 
@@ -8,15 +13,23 @@ This script automates code quality checks:
 - isort for import organization
 """
 
+# ///////////////////////////////////////////////////////////////
+# IMPORTS
+# ///////////////////////////////////////////////////////////////
+# Standard library imports
+import fnmatch
 from pathlib import Path
 
-from ....core.utils.cli_utils import run_command
+# Local imports
+from ....core.utils.cli_utils import run_command, run_silent
+
+# ///////////////////////////////////////////////////////////////
+# SECURITY UTILITIES
+# ///////////////////////////////////////////////////////////////
 
 
 def is_security_excluded(path: Path) -> bool:
     """Check if a file or directory is excluded for security reasons."""
-    import fnmatch
-
     security_patterns = [
         ".env*",
         ".secret*",
@@ -36,6 +49,11 @@ def is_security_excluded(path: Path) -> bool:
         if fnmatch.fnmatch(name, pattern) or pattern in path_str:
             return True
     return False
+
+
+# ///////////////////////////////////////////////////////////////
+# PROJECT DETECTION
+# ///////////////////////////////////////////////////////////////
 
 
 def detect_project_dirs(base_path: Path | None = None) -> list[str]:
@@ -89,12 +107,15 @@ def detect_project_dirs(base_path: Path | None = None) -> list[str]:
 
     return target_dirs
 
-    return target_dirs
+
+# ///////////////////////////////////////////////////////////////
+# MAIN LINTING FUNCTIONS
+# ///////////////////////////////////////////////////////////////
 
 
-def main(target_path=None):
-    """Fonction principale du script de linting."""
-    print("🚀 Script de linting démarré!")
+def main(target_path: str | None = None) -> int:
+    """Main linting script function."""
+    print("🚀 Linting script started!")
     target_dir = Path(target_path) if target_path else Path.cwd()
 
     print("🎨 Python Project - Linting Script")
@@ -104,8 +125,6 @@ def main(target_path=None):
     # Check that tools are installed
     tools = ["ruff", "black", "isort"]
     missing_tools = []
-
-    from ....core.utils.cli_utils import run_silent
 
     for tool in tools:
         try:
@@ -173,7 +192,12 @@ def main(target_path=None):
         return 1
 
 
-def fix_whitespace_issues(target_path=None):
+# ///////////////////////////////////////////////////////////////
+# CODE FIXING FUNCTIONS
+# ///////////////////////////////////////////////////////////////
+
+
+def fix_whitespace_issues(target_path: str | None = None) -> int:
     """Fix whitespace issues (W293, W291, W292)."""
     target_dir = Path(target_path) if target_path else Path.cwd()
     fixed_files = 0
@@ -222,7 +246,7 @@ def fix_whitespace_issues(target_path=None):
     return fixed_files
 
 
-def fix_code(target_path=None):
+def fix_code(target_path: str | None = None) -> int:
     """Automatically fix code."""
     target_dir = Path(target_path) if target_path else Path.cwd()
 

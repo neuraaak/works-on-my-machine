@@ -1,20 +1,34 @@
 #!/usr/bin/env python3
+# ///////////////////////////////////////////////////////////////
+# WOMM CLI - Main CLI Entry Point
+# Project: works-on-my-machine
+# ///////////////////////////////////////////////////////////////
+
 """
 Works On My Machine (WOMM) - Main CLI Entry Point.
+
 Modular CLI interface for universal development tools.
+Provides the main Click-based command-line interface for WOMM.
 """
 
+# ///////////////////////////////////////////////////////////////
 # IMPORTS
-########################################################
-# External modules and dependencies
-
+# ///////////////////////////////////////////////////////////////
+# Standard library imports
 import os
 import sys
 
+# Third-party imports
 import click
 
+# Local imports
+# Import version and core commands only to avoid circular imports
+from . import __version__
+from .commands import install, path_cmd, uninstall
+
+# ///////////////////////////////////////////////////////////////
 # CONSTANTS
-########################################################
+# ///////////////////////////////////////////////////////////////
 # Platform-specific configuration
 
 # Force UTF-8 encoding on Windows
@@ -22,17 +36,9 @@ if sys.platform == "win32":
     # Set environment variables for UTF-8
     os.environ["PYTHONIOENCODING"] = "utf-8"
 
-# IMPORTS
-########################################################
-# Internal modules and command imports
-
-# Import version and core commands only to avoid circular imports
-from . import __version__
-from .commands import install, path_cmd, refresh_env, uninstall
-
-# MAIN FUNCTIONS
-########################################################
-# Core CLI functionality and command groups
+# ///////////////////////////////////////////////////////////////
+# MAIN CLI FUNCTION
+# ///////////////////////////////////////////////////////////////
 
 
 @click.group(invoke_without_command=True)
@@ -56,9 +62,20 @@ from .commands import install, path_cmd, refresh_env, uninstall
     default=False,
     help="Use JSON lines format for file logs",
 )
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    help="Show what would be done without making changes (global mode)",
+)
 @click.version_option(version=__version__)
 @click.pass_context
-def womm(ctx, log_level, log_file, log_json):
+def womm(
+    ctx: click.Context,
+    log_level: str | None,
+    log_file: str | None,
+    log_json: bool,
+    dry_run: bool,
+) -> None:
     """🛠️ Works On My Machine - Universal development tools.
 
     Automatic installation, cross-platform configuration, global commands
@@ -81,6 +98,13 @@ def womm(ctx, log_level, log_file, log_json):
             configure_logging(level=level_to_set, file=log_file, json_format=log_json)
     except Exception as e:  # noqa: BLE001
         print_warn(f"Failed to configure logging: {e}")
+
+    # Set global dry-run mode if specified
+    if dry_run:
+        os.environ["WOMM_DRY_RUN"] = "1"
+        from .core.ui.common.console import print_system
+
+        print_system("🔍 GLOBAL DRY-RUN MODE ENABLED - No changes will be made")
 
     # Show welcome message only when no subcommand is provided
     if ctx.invoked_subcommand is None:
@@ -124,6 +148,7 @@ Features:
 • Install globally for easy access
 • Run security checks before using tools
 • Explore all available commands with --help or -h
+• Use --dry-run to preview changes without making them
 """
 
             from .core.ui.common.panels import create_panel
@@ -142,15 +167,15 @@ Features:
             raise
 
 
+# ///////////////////////////////////////////////////////////////
 # COMMAND REGISTRATION
-########################################################
+# ///////////////////////////////////////////////////////////////
 # Register all command groups and subcommands
 
-# Register command groups
+# Register core command groups
 womm.add_command(install)
 womm.add_command(uninstall)
 womm.add_command(path_cmd)
-womm.add_command(refresh_env)
 
 # Dynamic imports to avoid circular dependencies
 try:
@@ -202,15 +227,20 @@ try:
 except ImportError:
     pass
 
+# ///////////////////////////////////////////////////////////////
 # UTILITY FUNCTIONS
-########################################################
+# ///////////////////////////////////////////////////////////////
 # Entry point and execution helpers
 
 
-def main():
+def main() -> None:
     """Main entry point for PyPI installation."""
     womm()
 
+
+# ///////////////////////////////////////////////////////////////
+# EXECUTION ENTRY POINT
+# ///////////////////////////////////////////////////////////////
 
 if __name__ == "__main__":
     womm()

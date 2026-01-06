@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+# ///////////////////////////////////////////////////////////////
+# PROJECT CONFIGURATOR - Project Configuration UI Components
+# Project: works-on-my-machine
+# ///////////////////////////////////////////////////////////////
+
 """
 Project configuration UI components.
 
@@ -6,7 +11,10 @@ This module provides UI components for project configuration and setup,
 following the established patterns in the WOMM codebase.
 """
 
-from typing import Dict
+# ///////////////////////////////////////////////////////////////
+# IMPORTS
+# ///////////////////////////////////////////////////////////////
+# Standard library imports
 
 try:
     from InquirerPy import inquirer
@@ -19,7 +27,7 @@ except ImportError:
 from ...common.console import print_info
 
 
-def configure_project_options(project_type: str) -> Dict:
+def configure_project_options(project_type: str) -> dict[str, str | bool | int]:
     """
     Configure project-specific options through interactive UI.
 
@@ -46,7 +54,7 @@ def configure_project_options(project_type: str) -> Dict:
     return options
 
 
-def _configure_common_options() -> Dict:
+def _configure_common_options() -> dict[str, str]:
     """Configure common options for all project types."""
     options = {}
 
@@ -178,7 +186,7 @@ def _configure_common_options() -> Dict:
     return options
 
 
-def _configure_python_options() -> Dict:
+def _configure_python_options() -> dict[str, str | bool]:
     """Configure Python-specific options."""
     options = {}
 
@@ -275,7 +283,7 @@ def _configure_python_options() -> Dict:
     return options
 
 
-def _configure_javascript_options(project_type: str) -> Dict:
+def _configure_javascript_options(project_type: str) -> dict[str, str | bool]:
     """Configure JavaScript-specific options."""
     options = {}
 

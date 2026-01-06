@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+# ///////////////////////////////////////////////////////////////
+# UI EXTENDED - Extended UI Components
+# Project: works-on-my-machine
+# ///////////////////////////////////////////////////////////////
+
 """
 Extended UI components for advanced progress tracking.
 
@@ -6,8 +11,9 @@ This module provides advanced progress bar implementations with dynamic
 layers, animations, and enhanced user experience features.
 """
 
+# ///////////////////////////////////////////////////////////////
 # IMPORTS
-########################################################
+# ///////////////////////////////////////////////////////////////
 # Local imports
 from .dynamic_progress import DynamicLayeredProgress, create_dynamic_layered_progress
 from .layer_controller import LayerController, LayerState, LayerType
@@ -21,8 +27,10 @@ from .progress_animations import (
     smooth_transition,
 )
 
-# EXPORTS
-########################################################
+# ///////////////////////////////////////////////////////////////
+# PUBLIC API
+# ///////////////////////////////////////////////////////////////
+
 __all__ = [
     "DynamicLayeredProgress",
     "create_dynamic_layered_progress",

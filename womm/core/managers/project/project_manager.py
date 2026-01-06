@@ -4,10 +4,14 @@ Main project manager for WOMM CLI.
 Orchestrates project creation and management operations.
 """
 
+import logging
 from pathlib import Path
 from typing import Optional
 
-from ...ui.common.console import print_error, print_info
+from ...exceptions.project.project_exceptions import (
+    ProjectManagerError,
+    ProjectValidationError,
+)
 from ...ui.common.progress import create_spinner_with_status
 from ...utils.project.project_detector import ProjectDetector
 from ...utils.project.vscode_config import generate_vscode_config
@@ -22,18 +26,30 @@ class ProjectManager:
     """Main project manager for WOMM CLI."""
 
     def __init__(self):
-        """Initialize the project manager."""
-        self.project_creator = ProjectCreator()
-        self.python_manager = PythonProjectManager()
-        self.javascript_manager = JavaScriptProjectManager()
-        self.template_manager = TemplateManager()
-        self.detector = ProjectDetector()
+        """Initialize the project manager.
+
+        Raises:
+            ProjectManagerError: If initialization fails
+        """
+        try:
+            self.project_creator = ProjectCreator()
+            self.python_manager = PythonProjectManager()
+            self.javascript_manager = JavaScriptProjectManager()
+            self.template_manager = TemplateManager()
+            self.detector = ProjectDetector()
+            self.logger = logging.getLogger(__name__)
+        except Exception as e:
+            raise ProjectManagerError(
+                f"Failed to initialize project manager: {e}",
+                details="Error creating component managers",
+            ) from e
 
     def create_project(
         self,
         project_type: str,
         project_name: Optional[str] = None,
         current_dir: bool = False,
+        dry_run: bool = False,
         **kwargs,
     ) -> bool:
         """
@@ -46,9 +62,21 @@ class ProjectManager:
             **kwargs: Additional project-specific options including 'target'
 
         Returns:
-            True if project creation was successful, False otherwise
+            True if project creation was successful
+
+        Raises:
+            ProjectValidationError: If project parameters are invalid
+            ProjectManagerError: If project creation fails
         """
         try:
+            # Input validation
+            if not project_type or not isinstance(project_type, str):
+                raise ProjectValidationError(
+                    "project_creation",
+                    "project_type",
+                    "Project type is required and must be a string",
+                )
+
             # Determine project path
             target = kwargs.get("target")
 
@@ -61,21 +89,48 @@ class ProjectManager:
                 if project_name:
                     project_path = target_path / project_name
                 else:
-                    print_error("Project name is required when using target directory")
-                    return False
+                    raise ProjectValidationError(
+                        "project_creation",
+                        "project_name",
+                        "Project name is required when using target directory",
+                    )
             elif project_name:
                 project_path = Path.cwd() / project_name
             else:
-                print_error("Project name is required when not using current directory")
-                return False
+                raise ProjectValidationError(
+                    "project_creation",
+                    "project_name",
+                    "Project name is required when not using current directory",
+                )
 
             # Validate project type
-            if not self._validate_project_type(project_type):
-                return False
+            self._validate_project_type(project_type)
 
             # Check dependencies
-            if not self._check_dependencies(project_type):
-                return False
+            self._check_dependencies(project_type)
+
+            # Handle dry-run mode
+            if dry_run:
+                from ...ui.common.console import (
+                    print_dry_run_message,
+                    print_dry_run_success,
+                )
+
+                print_dry_run_message(
+                    "create project", f"{project_type} project '{project_name}'"
+                )
+                print_dry_run_message("create project structure", f"at {project_path}")
+                print_dry_run_message(
+                    "setup development environment", f"for {project_type}"
+                )
+                print_dry_run_message(
+                    "install development tools", f"for {project_type}"
+                )
+                print_dry_run_message(
+                    "configure VSCode settings", f"for {project_type}"
+                )
+                print_dry_run_success()
+                return True
 
             # Create project based on type
             if project_type == "python":
@@ -92,12 +147,20 @@ class ProjectManager:
                     project_path, project_name, js_type, **kwargs
                 )
             else:
-                print_error(f"Unsupported project type: {project_type}")
-                return False
+                raise ProjectValidationError(
+                    "project_creation",
+                    "project_type",
+                    f"Unsupported project type: {project_type}",
+                )
 
+        except (ProjectValidationError, ProjectManagerError):
+            # Re-raise our custom exceptions as-is
+            raise
         except Exception as e:
-            print_error(f"Error creating project: {e}")
-            return False
+            raise ProjectManagerError(
+                f"Unexpected error creating project: {e}",
+                details=f"Project type: {project_type}, Project name: {project_name}",
+            ) from e
 
     def detect_project_type(
         self, project_path: Optional[Path] = None
@@ -138,22 +201,26 @@ class ProjectManager:
                 elif project_type in ["javascript", "react", "vue"]:
                     return self.javascript_manager.setup_environment(project_path)
                 else:
-                    print_error(
-                        f"Unsupported project type for environment setup: {project_type}"
+                    raise ProjectManagerError(
+                        f"Unsupported project type for environment setup: {project_type}",
+                        details="Environment setup failed",
                     )
-                    return False
 
         except Exception as e:
-            print_error(f"Error setting up development environment: {e}")
-            return False
+            raise ProjectManagerError(
+                f"Error setting up development environment: {e}",
+                details=f"Project path: {project_path}, Project type: {project_type}",
+            ) from e
 
     def _validate_project_type(self, project_type: str) -> bool:
         """Validate that the project type is supported."""
         supported_types = ["python", "javascript", "react", "vue"]
         if project_type not in supported_types:
-            print_error(f"Unsupported project type: {project_type}")
-            print_info(f"Supported types: {', '.join(supported_types)}")
-            return False
+            raise ProjectValidationError(
+                "project_creation",
+                "project_type",
+                f"Unsupported project type: {project_type}",
+            )
         return True
 
     def _check_dependencies(self, project_type: str) -> bool:
@@ -162,26 +229,26 @@ class ProjectManager:
             if project_type == "python":
                 result = runtime_manager.check_runtime("python")
                 if not result.success:
-                    print_info("Python runtime not found, attempting to install...")
-                    install_result = runtime_manager.install_runtime("python")
-                    if not install_result.success:
-                        print_error("Failed to install Python runtime")
-                        return False
+                    raise ProjectManagerError(
+                        "Python runtime not found, attempting to install...",
+                        details="Python runtime not found",
+                    )
 
             elif project_type in ["javascript", "react", "vue"]:
                 result = runtime_manager.check_runtime("node")
                 if not result.success:
-                    print_info("Node.js runtime not found, attempting to install...")
-                    install_result = runtime_manager.install_runtime("node")
-                    if not install_result.success:
-                        print_error("Failed to install Node.js runtime")
-                        return False
+                    raise ProjectManagerError(
+                        "Node.js runtime not found, attempting to install...",
+                        details="Node.js runtime not found",
+                    )
 
             return True
 
         except Exception as e:
-            print_error(f"Error checking dependencies: {e}")
-            return False
+            raise ProjectManagerError(
+                f"Error checking dependencies: {e}",
+                details=f"Project type: {project_type}",
+            ) from e
 
     def get_available_project_types(self) -> list[tuple[str, str]]:
         """Get list of available project types with descriptions."""
@@ -223,12 +290,10 @@ class ProjectManager:
         """
         try:
             # Validate project type
-            if not self._validate_project_type(project_type):
-                return False
+            self._validate_project_type(project_type)
 
             # Check dependencies
-            if not self._check_dependencies(project_type):
-                return False
+            self._check_dependencies(project_type)
 
             # Set up project based on type
             if project_type == "python":
@@ -249,9 +314,14 @@ class ProjectManager:
                     **kwargs,
                 )
             else:
-                print_error(f"Unsupported project type for setup: {project_type}")
-                return False
+                raise ProjectValidationError(
+                    "project_setup",
+                    "project_type",
+                    f"Unsupported project type for setup: {project_type}",
+                )
 
         except Exception as e:
-            print_error(f"Error setting up project: {e}")
-            return False
+            raise ProjectManagerError(
+                f"Error setting up project: {e}",
+                details=f"Project path: {project_path}, Project type: {project_type}",
+            ) from e

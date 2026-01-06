@@ -4,9 +4,11 @@ Uninstaller for Works On My Machine.
 Removes WOMM from the system and cleans up PATH entries.
 """
 
+# =============================================================================
 # IMPORTS
-########################################################
+# =============================================================================
 # Standard library imports
+import logging
 import platform
 from pathlib import Path
 from time import sleep
@@ -37,6 +39,12 @@ from ...utils.system.user_path_utils import (
 )
 
 # =============================================================================
+# LOGGER SETUP
+# =============================================================================
+
+logger = logging.getLogger(__name__)
+
+# =============================================================================
 # MAIN CLASS
 # =============================================================================
 
@@ -45,23 +53,47 @@ class UninstallationManager:
     """Manages the uninstallation process for Works On My Machine."""
 
     def __init__(self, target: Optional[str] = None):
-        """Initialize the uninstallation manager.
+        """
+        Initialize the uninstallation manager.
 
         Args:
             target: Custom target directory (default: ~/.womm)
+
+        Raises:
+            UninstallationManagerError: If uninstallation manager initialization fails
         """
         try:
             if target:
                 self.target_path = Path(target).expanduser().resolve()
             else:
-                self.target_path = get_target_womm_path()
-        except Exception as e:
-            raise InstallationManagerError(
-                message=f"Failed to initialize uninstallation manager: {e}",
-                details="This is an unexpected error that should be reported",
-            ) from e
+                try:
+                    self.target_path = get_target_womm_path()
+                except (UninstallationUtilityError, InstallationManagerError):
+                    # Re-raise our custom exceptions
+                    raise
+                except Exception as e:
+                    # Wrap unexpected external exceptions
+                    raise UninstallationManagerError(
+                        message=f"Failed to get target path: {e}",
+                        details=f"Exception type: {type(e).__name__}",
+                    ) from e
 
-        self.platform = platform.system()
+            self.platform = platform.system()
+
+        except (
+            UninstallationManagerError,
+            UninstallationUtilityError,
+            InstallationManagerError,
+        ):
+            # Re-raise our custom exceptions
+            raise
+        except Exception as e:
+            # Wrap unexpected external exceptions
+            logger.error(f"Failed to initialize UninstallationManager: {e}")
+            raise UninstallationManagerError(
+                message=f"Failed to initialize uninstallation manager: {e}",
+                details=f"Exception type: {type(e).__name__}",
+            ) from e
 
     # =============================================================================
     # PUBLIC METHODS - MAIN OPERATIONS
@@ -73,7 +105,8 @@ class UninstallationManager:
         dry_run: bool = False,
         verbose: bool = False,
     ) -> bool:
-        """Uninstall Works On My Machine from the user's system.
+        """
+        Uninstall Works On My Machine from the user's system.
 
         Args:
             force: Force uninstallation without confirmation
@@ -82,294 +115,446 @@ class UninstallationManager:
 
         Returns:
             True if uninstallation successful, False otherwise
+
+        Raises:
+            UninstallationManagerError: If uninstallation fails
+            UninstallationUtilityError: If utility operations fail
+            UninstallationFileError: If file operations fail
+            UninstallationPathError: If PATH operations fail
+            UninstallationManagerVerificationError: If verification fails
         """
-        # Import UI modules
-        from ...ui.common.console import (
-            console,
-            print_error,
-            print_header,
-            print_install,
-            print_success,
-            print_system,
-        )
-        from ...ui.common.extended.dynamic_progress import (
-            create_dynamic_layered_progress,
-        )
-        from ...ui.common.panels import create_panel
-        from ...ui.common.progress import create_spinner_with_status
-        from ...ui.common.prompts import confirm, show_warning_panel
+        try:
+            # Import UI modules
+            from ...ui.common.console import (
+                console,
+                print_error,
+                print_header,
+                print_success,
+                print_system,
+            )
+            from ...ui.common.extended.dynamic_progress import (
+                create_dynamic_layered_progress,
+            )
+            from ...ui.common.panels import create_panel
+            from ...ui.common.progress import create_spinner_with_status
+            from ...ui.common.prompts import confirm, show_warning_panel
 
-        print_header("W.O.M.M Uninstallation")
+            print_header("W.O.M.M Uninstallation")
 
-        # Check target directory existence
-        with create_spinner_with_status("Checking target directory...") as (
-            progress,
-            task,
-        ):
-            progress.update(task, status="Analyzing uninstallation requirements...")
+            # Check target directory existence
+            if dry_run:
+                print_system("🔍 Checking target directory...")
 
-            # Check if WOMM is installed
-            if not self.target_path.exists():
-                progress.stop()
-                show_warning_panel(
-                    "WOMM not found",
-                    f"No installation found at: {self.target_path}\n"
-                    "WOMM may not be installed or may be in a different location",
-                )
-                return False
+                # Check if WOMM is installed
+                if not self.target_path.exists():
+                    from ...ui.common.console import print_dry_run_warning
+
+                    print_dry_run_warning()
+                    print_system(f"⚠️  No installation found at: {self.target_path}")
+                    print_system(
+                        "   WOMM may not be installed or may be in a different location"
+                    )
+                    return True
+                else:
+                    print_system(f"🔍 Found installation at: {self.target_path}")
+                    from ...ui.common.console import print_dry_run_warning
+
+                    print_dry_run_warning()
             else:
-                progress.update(
-                    task, status=f"Found installation at: {self.target_path}"
-                )
-
-        # Check if force is required
-        if not force and not dry_run:
-            # Show warning panel for uninstallation
-            console.print("")
-            show_warning_panel(
-                "Uninstallation Confirmation",
-                f"This will completely remove WOMM from {self.target_path}.\n\n"
-                "This action cannot be undone.",
-            )
-
-            # Ask for confirmation
-            if not confirm(
-                "Do you want to continue and remove WOMM completely?",
-                default=False,
-            ):
-                console.print("❌ Uninstallation cancelled", style="red")
-                return False
-
-            console.print("")
-            print_system("Proceeding with uninstallation...")
-
-        if dry_run:
-            print_system("DRY RUN MODE - No changes will be made")
-
-        # Get list of files to remove
-        print("")
-        with create_spinner_with_status("Analyzing installed files...") as (
-            progress,
-            task,
-        ):
-            progress.update(task, status="Scanning installation directory...")
-            files_to_remove = get_files_to_remove(self.target_path)
-            progress.update(
-                task, status=f"Found {len(files_to_remove)} files to remove"
-            )
-
-        if dry_run:
-            print_install("Would remove from PATH configuration")
-            print_install(f"Would remove {len(files_to_remove)} files")
-            print_install(f"Would remove directory: {self.target_path}")
-            if verbose:
-                print_system("🔍 Dry run mode - detailed logging enabled")
-                for file_path in files_to_remove[:5]:  # Show first 5 files as sample
-                    print_system(f"  📄 Would remove: {file_path}")
-                if len(files_to_remove) > 5:
-                    print_system(f"  ... and {len(files_to_remove) - 5} more files")
-            return True
-
-        # Define uninstallation stages with DynamicLayeredProgress
-        # Color palette: unified cyan for all steps, semantic colors for states
-        stages = [
-            {
-                "name": "main_uninstallation",
-                "type": "main",
-                "steps": [
-                    "Preparation",
-                    "PATH Cleanup",
-                    "File Removal",
-                    "Verification",
-                ],
-                "description": "WOMM Uninstallation Progress",
-                "style": "bold bright_white",
-            },
-            {
-                "name": "preparation",
-                "type": "spinner",
-                "description": "Preparing uninstallation environment...",
-                "style": "bright_blue",
-            },
-            {
-                "name": "path_cleanup",
-                "type": "spinner",
-                "description": "Removing from PATH...",
-                "style": "bright_blue",
-            },
-            {
-                "name": "file_removal",
-                "type": "progress",
-                "total": len(files_to_remove),
-                "description": "Removing installation files...",
-                "style": "bright_blue",
-            },
-            {
-                "name": "verification",
-                "type": "steps",
-                "steps": [
-                    "File removal check",
-                    "Command accessibility test",
-                ],
-                "description": "Verifying uninstallation...",
-                "style": "bright_blue",
-            },
-        ]
-
-        print("")
-        with create_dynamic_layered_progress(stages) as progress:
-            try:
-                # Stage 1: Preparation
-                prep_messages = [
-                    "Analyzing uninstallation requirements...",
-                    "Checking installation integrity...",
-                    "Validating removal permissions...",
-                    "Preparing cleanup operations...",
-                ]
-
-                for msg in prep_messages:
-                    progress.update_layer("preparation", 0, msg)
-                    sleep(0.2)
-
-                # Complete preparation
-                progress.complete_layer("preparation")
-
-                # Update main uninstallation progress
-                progress.update_layer("main_uninstallation", 0, "Preparation completed")
-                sleep(0.3)
-
-                # Stage 2: PATH Cleanup
-                progress.update_layer("path_cleanup", 0, "Removing WOMM from PATH...")
-                if not self._cleanup_path():
-                    progress.emergency_stop("Failed to remove from PATH")
-                    raise UninstallationPathError(
-                        operation="cleanup",
-                        path=str(self.target_path),
-                        reason="Failed to remove from PATH",
-                        details="remove_from_path utility returned False",
+                with create_spinner_with_status("Checking target directory...") as (
+                    progress,
+                    task,
+                ):
+                    progress.update(
+                        task, status="Analyzing uninstallation requirements..."
                     )
 
-                progress.update_layer("path_cleanup", 0, "PATH cleanup completed")
-                sleep(0.2)
+                    # Check if WOMM is installed
+                    if not self.target_path.exists():
+                        progress.stop()
+                        show_warning_panel(
+                            "WOMM not found",
+                            f"No installation found at: {self.target_path}\n"
+                            "WOMM may not be installed or may be in a different location",
+                        )
+                        return False
+                    else:
+                        progress.update(
+                            task, status=f"Found installation at: {self.target_path}"
+                        )
 
-                # Complete PATH cleanup
-                progress.complete_layer("path_cleanup")
-
-                # Update main uninstallation progress
-                progress.update_layer(
-                    "main_uninstallation", 1, "PATH cleanup completed"
+            # Check if force is required
+            if not force and not dry_run:
+                # Show warning panel for uninstallation
+                console.print("")
+                show_warning_panel(
+                    "Uninstallation Confirmation",
+                    f"This will completely remove WOMM from {self.target_path}.\n\n"
+                    "This action cannot be undone.",
                 )
-                sleep(0.3)
 
-                # Stage 3: File Removal
-                self._remove_files_with_progress(files_to_remove, progress, verbose)
+                # Ask for confirmation
+                if not confirm(
+                    "Do you want to continue and remove WOMM completely?",
+                    default=False,
+                ):
+                    console.print("❌ Uninstallation cancelled", style="red")
+                    return False
 
-                # Complete file removal
-                progress.complete_layer("file_removal")
+                console.print("")
+                print_system("Proceeding with uninstallation...")
 
-                # Update main uninstallation progress
-                progress.update_layer("main_uninstallation", 2, "Files removed")
-                sleep(0.3)
+            # Dry run message is already handled in the directory check section
 
-                # Stage 4: Verification
-                self._verify_uninstallation_with_progress(progress)
+            # Get list of files to remove
+            print("")
 
-                # Complete verification
-                progress.complete_layer("verification")
+            if dry_run:
+                print_system("🔍 Analyzing installed files...")
+                try:
+                    files_to_remove = get_files_to_remove(self.target_path)
+                except (
+                    UninstallationUtilityError,
+                    FileScanError,
+                    DirectoryAccessError,
+                ):
+                    # Re-raise our custom exceptions
+                    raise
+                except Exception as e:
+                    # Wrap unexpected external exceptions
+                    raise UninstallationManagerError(
+                        message=f"Failed to get files to remove: {e}",
+                        details=f"Exception type: {type(e).__name__}",
+                    ) from e
 
-                # Complete main uninstallation progress
-                progress.update_layer(
-                    "main_uninstallation", 3, "Uninstallation completed!"
+                print_system(f"🔍 Found {len(files_to_remove)} files to remove")
+            else:
+                with create_spinner_with_status("Analyzing installed files...") as (
+                    progress,
+                    task,
+                ):
+                    progress.update(task, status="Scanning installation directory...")
+                    try:
+                        files_to_remove = get_files_to_remove(self.target_path)
+                    except (
+                        UninstallationUtilityError,
+                        FileScanError,
+                        DirectoryAccessError,
+                    ):
+                        # Re-raise our custom exceptions
+                        raise
+                    except Exception as e:
+                        # Wrap unexpected external exceptions
+                        raise UninstallationManagerError(
+                            message=f"Failed to get files to remove: {e}",
+                            details=f"Exception type: {type(e).__name__}",
+                        ) from e
+
+                    progress.update(
+                        task, status=f"Found {len(files_to_remove)} files to remove"
+                    )
+
+            if dry_run:
+                from ...ui.common.console import (
+                    print_dry_run_message,
+                    print_dry_run_success,
                 )
-                sleep(0.3)
 
-                # Complete and remove main uninstallation layer
-                progress.complete_layer("main_uninstallation")
-
-            except (
-                InstallationManagerError,
-                UninstallationFileError,
-                UninstallationPathError,
-                UninstallationManagerVerificationError,
-                UninstallationManagerError,
-                # Utility exceptions that might be raised by utility functions
-                UninstallationUtilityError,
-                FileScanError,
-                DirectoryAccessError,
-                UninstallationVerificationError,
-                # System exceptions that might be raised by user_path_manager
-                UserPathError,
-                RegistryError,
-                FileSystemError,
-            ) as e:
-                # Stop progress first, then print error details
-                progress.emergency_stop(f"Uninstallation failed: {type(e).__name__}")
-
-                # Now safe to print error details
-                from ...ui.common.console import print_error
-
-                print_error(
-                    f"Uninstallation failed at stage '{getattr(e, 'stage', 'unknown')}': {e}"
+                print_dry_run_message(
+                    "remove from PATH configuration", "clean up WOMM from system PATH"
                 )
-                if hasattr(e, "details") and e.details:
-                    print_error(f"Details: {e.details}")
+                print_dry_run_message(
+                    "remove files", f"{len(files_to_remove)} files from installation"
+                )
+                print_dry_run_message(
+                    "remove directory", f"complete removal of {self.target_path}"
+                )
 
-                # Re-raise our custom exceptions
-                raise
-            except Exception as e:
-                # Handle any other unexpected errors
-                progress.emergency_stop("Unexpected error during uninstallation")
+                if verbose:
+                    print_system("🔍 Dry run mode - detailed logging enabled")
+                    for file_path in files_to_remove[
+                        :5
+                    ]:  # Show first 5 files as sample
+                        print_system(f"  📄 Would remove: {file_path}")
+                    if len(files_to_remove) > 5:
+                        print_system(f"  ... and {len(files_to_remove) - 5} more files")
 
-                # Print unexpected error details
-                from ...ui.common.console import print_error
+                print_dry_run_success()
+                return True
 
-                print_error(f"Unexpected error during uninstallation: {e}")
+            # Define uninstallation stages with DynamicLayeredProgress
+            # Color palette: unified cyan for all steps, semantic colors for states
+            stages = [
+                {
+                    "name": "main_uninstallation",
+                    "type": "main",
+                    "steps": [
+                        "Preparation",
+                        "PATH Cleanup",
+                        "File Removal",
+                        "Verification",
+                    ],
+                    "description": "WOMM Uninstallation Progress",
+                    "style": "bold bright_white",
+                },
+                {
+                    "name": "preparation",
+                    "type": "spinner",
+                    "description": "Preparing uninstallation environment...",
+                    "style": "bright_blue",
+                },
+                {
+                    "name": "path_cleanup",
+                    "type": "spinner",
+                    "description": "Removing from PATH...",
+                    "style": "bright_blue",
+                },
+                {
+                    "name": "file_removal",
+                    "type": "progress",
+                    "total": len(files_to_remove),
+                    "description": "Removing installation files...",
+                    "style": "bright_blue",
+                },
+                {
+                    "name": "verification",
+                    "type": "steps",
+                    "steps": [
+                        "File removal check",
+                        "Command accessibility test",
+                    ],
+                    "description": "Verifying uninstallation...",
+                    "style": "bright_blue",
+                },
+            ]
 
-                raise UninstallationManagerError(
-                    message=f"Unexpected error during uninstallation: {e}",
-                    details="This is an unexpected error that should be reported",
-                ) from e
+            print("")
+            with create_dynamic_layered_progress(stages) as progress:
+                try:
+                    # Stage 1: Preparation
+                    prep_messages = [
+                        "Analyzing uninstallation requirements...",
+                        "Checking installation integrity...",
+                        "Validating removal permissions...",
+                        "Preparing cleanup operations...",
+                    ]
 
-        print("")
-        print_success("✅ W.O.M.M uninstallation completed successfully!")
-        print_system(f"📁 Removed from: {self.target_path}")
+                    for msg in prep_messages:
+                        progress.update_layer("preparation", 0, msg)
+                        sleep(0.2)
 
-        # Show completion panel
-        completion_content = (
-            "WOMM has been successfully removed from your system.\n\n"
-            "To complete the cleanup:\n"
-            "• Restart your terminal for PATH changes to take effect\n"
-            "• Remove any remaining WOMM references from your shell config files\n\n"
-            "Thank you for using Works On My Machine!"
-        )
+                    # Complete preparation
+                    progress.complete_layer("preparation")
 
-        completion_panel = create_panel(
-            completion_content,
-            title="✅ Uninstallation Complete",
-            style="bright_green",
-            border_style="bright_green",
-            padding=(1, 1),
-        )
-        print("")
-        console.print(completion_panel)
+                    # Update main uninstallation progress
+                    progress.update_layer(
+                        "main_uninstallation", 0, "Preparation completed"
+                    )
+                    sleep(0.3)
 
-        return True
+                    # Stage 2: PATH Cleanup
+                    progress.update_layer(
+                        "path_cleanup", 0, "Removing WOMM from PATH..."
+                    )
+                    try:
+                        if not self._cleanup_path():
+                            progress.emergency_stop("Failed to remove from PATH")
+                            raise UninstallationPathError(
+                                operation="cleanup",
+                                path=str(self.target_path),
+                                reason="Failed to remove from PATH",
+                                details="remove_from_path utility returned False",
+                            )
+                    except (UninstallationPathError, UninstallationUtilityError):
+                        # Re-raise our custom exceptions
+                        raise
+                    except Exception as e:
+                        # Wrap unexpected external exceptions
+                        raise UninstallationManagerError(
+                            message=f"Failed to cleanup PATH: {e}",
+                            details=f"Exception type: {type(e).__name__}",
+                        ) from e
+
+                    progress.update_layer("path_cleanup", 0, "PATH cleanup completed")
+                    sleep(0.2)
+
+                    # Complete PATH cleanup
+                    progress.complete_layer("path_cleanup")
+
+                    # Update main uninstallation progress
+                    progress.update_layer(
+                        "main_uninstallation", 1, "PATH cleanup completed"
+                    )
+                    sleep(0.3)
+
+                    # Stage 3: File Removal
+                    try:
+                        self._remove_files_with_progress(
+                            files_to_remove, progress, verbose
+                        )
+                    except (UninstallationFileError, UninstallationUtilityError):
+                        # Re-raise our custom exceptions
+                        raise
+                    except Exception as e:
+                        # Wrap unexpected external exceptions
+                        raise UninstallationManagerError(
+                            message=f"Failed to remove files: {e}",
+                            details=f"Exception type: {type(e).__name__}",
+                        ) from e
+
+                    # Complete file removal
+                    progress.complete_layer("file_removal")
+
+                    # Update main uninstallation progress
+                    progress.update_layer("main_uninstallation", 2, "Files removed")
+                    sleep(0.3)
+
+                    # Stage 4: Verification
+                    try:
+                        self._verify_uninstallation_with_progress(progress)
+                    except (
+                        UninstallationManagerVerificationError,
+                        UninstallationUtilityError,
+                    ):
+                        # Re-raise our custom exceptions
+                        raise
+                    except Exception as e:
+                        # Wrap unexpected external exceptions
+                        raise UninstallationManagerError(
+                            message=f"Failed to verify uninstallation: {e}",
+                            details=f"Exception type: {type(e).__name__}",
+                        ) from e
+
+                    # Complete verification
+                    progress.complete_layer("verification")
+
+                    # Complete main uninstallation progress
+                    progress.update_layer(
+                        "main_uninstallation", 3, "Uninstallation completed!"
+                    )
+                    sleep(0.3)
+
+                    # Complete and remove main uninstallation layer
+                    progress.complete_layer("main_uninstallation")
+
+                except (
+                    InstallationManagerError,
+                    UninstallationFileError,
+                    UninstallationPathError,
+                    UninstallationManagerVerificationError,
+                    UninstallationManagerError,
+                    # Utility exceptions that might be raised by utility functions
+                    UninstallationUtilityError,
+                    FileScanError,
+                    DirectoryAccessError,
+                    UninstallationVerificationError,
+                    # System exceptions that might be raised by user_path_manager
+                    UserPathError,
+                    RegistryError,
+                    FileSystemError,
+                ) as e:
+                    # Stop progress first, then print error details
+                    progress.emergency_stop(
+                        f"Uninstallation failed: {type(e).__name__}"
+                    )
+
+                    # Now safe to print error details
+                    from ...ui.common.console import print_error
+
+                    print_error(
+                        f"Uninstallation failed at stage '{getattr(e, 'stage', 'unknown')}': {e}"
+                    )
+                    if hasattr(e, "details") and e.details:
+                        print_error(f"Details: {e.details}")
+
+                    # Re-raise our custom exceptions
+                    raise
+                except Exception as e:
+                    # Handle any other unexpected errors
+                    progress.emergency_stop("Unexpected error during uninstallation")
+
+                    # Print unexpected error details
+                    from ...ui.common.console import print_error
+
+                    print_error(f"Unexpected error during uninstallation: {e}")
+
+                    raise UninstallationManagerError(
+                        message=f"Unexpected error during uninstallation: {e}",
+                        details="This is an unexpected error that should be reported",
+                    ) from e
+
+            print("")
+            print_success("✅ W.O.M.M uninstallation completed successfully!")
+            print_system(f"📁 Removed from: {self.target_path}")
+
+            # Show completion panel
+            completion_content = (
+                "WOMM has been successfully removed from your system.\n\n"
+                "To complete the cleanup:\n"
+                "• Restart your terminal for PATH changes to take effect\n"
+                "• Remove any remaining WOMM references from your shell config files\n\n"
+                "Thank you for using Works On My Machine!"
+            )
+
+            completion_panel = create_panel(
+                completion_content,
+                title="✅ Uninstallation Complete",
+                style="bright_green",
+                border_style="bright_green",
+                padding=(1, 1),
+            )
+            print("")
+            console.print(completion_panel)
+
+            return True
+
+        except (
+            UninstallationManagerError,
+            UninstallationUtilityError,
+            UninstallationFileError,
+            UninstallationPathError,
+            UninstallationManagerVerificationError,
+        ):
+            # Re-raise our custom exceptions
+            raise
+        except Exception as e:
+            # Wrap unexpected external exceptions
+            logger.error(f"Unexpected error in uninstall: {e}")
+            raise UninstallationManagerError(
+                message=f"Uninstallation failed: {e}",
+                details=f"Exception type: {type(e).__name__}",
+            ) from e
 
     # =============================================================================
     # PRIVATE METHODS - PATH OPERATIONS
     # =============================================================================
 
     def _cleanup_path(self) -> bool:
-        """Cleanup PATH environment variable using path management utils.
+        """
+        Cleanup PATH environment variable using path management utils.
 
         Returns:
             True if successful, False otherwise
 
         Raises:
-            PathCleanupError: If PATH cleanup fails
+            UninstallationPathError: If PATH cleanup fails
+            UninstallationUtilityError: If utility operations fail
         """
         try:
-            result = remove_from_path(self.target_path)
+            try:
+                result = remove_from_path(self.target_path)
+            except (UserPathError, RegistryError, FileSystemError):
+                # Re-raise our custom exceptions
+                raise
+            except Exception as e:
+                # Wrap unexpected external exceptions
+                raise UninstallationPathError(
+                    operation="cleanup",
+                    path=str(self.target_path),
+                    reason=f"remove_from_path utility failed: {e}",
+                    details=f"Exception type: {type(e).__name__}",
+                ) from e
+
             sleep(0.5)
 
             if not result:
@@ -386,14 +571,9 @@ class UninstallationManager:
 
             return True
 
-        except (UserPathError, RegistryError) as e:
-            # Convert user_path_utils exceptions to manager exceptions
-            raise UninstallationPathError(
-                operation="cleanup",
-                path=str(self.target_path),
-                reason=f"PATH cleanup failed: {e.message}",
-                details=f"Original error: {type(e).__name__} - {e.details}",
-            ) from e
+        except (UserPathError, RegistryError, FileSystemError):
+            # Re-raise our custom exceptions
+            raise
         except Exception as e:
             from ...ui.common.console import print_error
 
@@ -413,7 +593,8 @@ class UninstallationManager:
     def _remove_files_with_progress(
         self, files_to_remove: list[str], progress, verbose: bool = False
     ) -> bool:
-        """Remove WOMM installation files with progress tracking.
+        """
+        Remove WOMM installation files with progress tracking.
 
         Args:
             files_to_remove: List of files and directories to remove for progress tracking
@@ -424,9 +605,8 @@ class UninstallationManager:
             True if successful
 
         Raises:
-            FileRemovalError: If file removal operations fail
-            DirectoryRemovalError: If directory removal operations fail
-            UninstallationProgressError: If progress tracking fails
+            UninstallationFileError: If file removal operations fail
+            UninstallationUtilityError: If utility operations fail
         """
         try:
             import shutil
@@ -530,7 +710,7 @@ class UninstallationManager:
 
             return True
 
-        except (UninstallationFileError, UninstallationManagerError):
+        except (UninstallationFileError, UninstallationUtilityError):
             # Re-raise our custom exceptions
             raise
         except Exception as e:
@@ -547,7 +727,8 @@ class UninstallationManager:
     # =============================================================================
 
     def _verify_uninstallation_with_progress(self, progress) -> bool:
-        """Verify uninstallation with progress tracking.
+        """
+        Verify uninstallation with progress tracking.
 
         Args:
             progress: DynamicLayeredProgress instance
@@ -556,8 +737,8 @@ class UninstallationManager:
             True if verification passed
 
         Raises:
-            UninstallationVerificationError: If verification operations fail
-            UninstallationProgressError: If progress tracking fails
+            UninstallationManagerVerificationError: If verification operations fail
+            UninstallationUtilityError: If utility operations fail
         """
         try:
             # Step 1: File removal check
@@ -575,6 +756,9 @@ class UninstallationManager:
             progress.update_layer("verification", 1, "Testing command accessibility...")
             try:
                 verification_result = verify_uninstallation_complete(self.target_path)
+            except (UninstallationVerificationError, UninstallationUtilityError):
+                # Re-raise our custom exceptions
+                raise
             except Exception as e:
                 raise UninstallationManagerVerificationError(
                     verification_type="command_accessibility_test",
@@ -594,7 +778,7 @@ class UninstallationManager:
 
             return True
 
-        except (UninstallationManagerVerificationError, UninstallationManagerError):
+        except (UninstallationManagerVerificationError, UninstallationUtilityError):
             # Re-raise our custom exceptions
             raise
         except Exception as e:

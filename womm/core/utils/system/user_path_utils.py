@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+# ///////////////////////////////////////////////////////////////
+# USER PATH UTILS - User PATH Utilities
+# Project: works-on-my-machine
+# ///////////////////////////////////////////////////////////////
+
 """
 Utilities for PATH and registry operations (shared helpers).
 
@@ -6,35 +11,110 @@ Provides cross-platform utilities for managing PATH environment variables,
 including Windows registry operations and Unix shell configuration files.
 """
 
-# =============================================================================
+# ///////////////////////////////////////////////////////////////
 # IMPORTS
-# =============================================================================
-
+# ///////////////////////////////////////////////////////////////
+# Standard library imports
+import logging
 import os
 import platform
 from pathlib import Path
-from typing import Dict, Union
 
 from ...exceptions.system import FileSystemError, RegistryError, UserPathError
 from ..cli_utils import run_silent
 
-# =============================================================================
+# ///////////////////////////////////////////////////////////////
+# LOGGER SETUP
+# ///////////////////////////////////////////////////////////////
+
+logger = logging.getLogger(__name__)
+
+# ///////////////////////////////////////////////////////////////
 # UTILITY FUNCTIONS - PATH EXTRACTION
-# =============================================================================
+# ///////////////////////////////////////////////////////////////
 
 
-def extract_path_from_reg_output(output: Union[str, bytes]) -> str:
-    """Extract PATH value from `reg query` output, supporting REG_SZ and REG_EXPAND_SZ.
+def get_current_system_path() -> str:
+    """
+    Get current system PATH value.
+
+    Returns:
+        str: Current PATH string from system
+
+    Raises:
+        UserPathError: If PATH retrieval fails
+        RegistryError: If registry operations fail
+    """
+    try:
+        if platform.system() == "Windows":
+            # Read PATH from user registry (HKCU), not from current session
+            try:
+                query = run_silent(["reg", "query", "HKCU\\Environment", "/v", "PATH"])
+            except Exception as e:
+                raise RegistryError(
+                    registry_key="HKCU\\Environment",
+                    operation="query",
+                    reason=f"Failed to execute registry query: {e}",
+                    details=f"Exception type: {type(e).__name__}",
+                ) from e
+
+            if not query.success:
+                raise RegistryError(
+                    registry_key="HKCU\\Environment",
+                    operation="query",
+                    reason="Failed to query Windows user PATH from registry",
+                    details=f"Return code: {query.returncode}",
+                )
+
+            try:
+                current_path = extract_path_from_reg_output(query.stdout)
+            except Exception as e:
+                raise UserPathError(
+                    message=f"Failed to extract PATH from registry output: {e}",
+                    details=f"Registry query succeeded but PATH extraction failed. Output: {str(query.stdout)}",
+                ) from e
+
+            if not current_path:
+                raise UserPathError(
+                    message="No PATH value found in Windows user registry",
+                    details=f"Registry query succeeded but no PATH value was extracted. Output: {str(query.stdout)}",
+                )
+
+            return current_path
+        else:
+            return os.environ.get("PATH", "")
+
+    except (UserPathError, RegistryError):
+        # Re-raise our custom exceptions
+        raise
+    except Exception as e:
+        # Wrap unexpected external exceptions
+        raise UserPathError(
+            message=f"Failed to get current system PATH: {e}",
+            details=f"Exception type: {type(e).__name__}",
+        ) from e
+
+
+def extract_path_from_reg_output(output: str | bytes) -> str:
+    """
+    Extract PATH value from `reg query` output, supporting REG_SZ and REG_EXPAND_SZ.
 
     Args:
         output: Raw stdout from `reg query` command
 
     Returns:
-        Extracted PATH value or empty string if not found
+        str: Extracted PATH value or empty string if not found
+
+    Raises:
+        UserPathError: If registry output parsing fails
     """
     try:
+        if not output:
+            return ""
+
         if isinstance(output, (bytes, bytearray)):
             output = output.decode("utf-8", errors="ignore")
+
         for line in str(output).splitlines():
             if "PATH" in line and ("REG_SZ" in line or "REG_EXPAND_SZ" in line):
                 if "REG_EXPAND_SZ" in line:
@@ -43,16 +123,20 @@ def extract_path_from_reg_output(output: Union[str, bytes]) -> str:
                     parts = line.split("REG_SZ")
                 if len(parts) > 1:
                     return parts[1].strip()
+
+        return ""
+
     except Exception as e:
+        # Wrap unexpected external exceptions
         raise UserPathError(
             message="Failed to parse registry output",
-            details=f"Exception: {e}, Output: {str(output)}",
+            details=f"Exception type: {type(e).__name__}, Output: {str(output)}",
         ) from e
-    return ""
 
 
 def deduplicate_path_entries(path_value: str) -> str:
-    """Deduplicate PATH entries preserving first occurrence and order.
+    """
+    Deduplicate PATH entries preserving first occurrence and order.
 
     Comparison is done case-insensitively on expanded values with trailing
     slashes/backslashes trimmed. The original first textual form is kept.
@@ -61,41 +145,77 @@ def deduplicate_path_entries(path_value: str) -> str:
         path_value: Raw PATH string with semicolon-separated entries
 
     Returns:
-        Deduplicated PATH string
+        str: Deduplicated PATH string
+
+    Raises:
+        UserPathError: If PATH deduplication fails
     """
-    if not path_value:
-        return path_value
+    try:
+        if not path_value:
+            return path_value
 
-    seen: set[str] = set()
-    result_parts: list[str] = []
-    for raw_part in path_value.split(";"):
-        part = raw_part.strip()
-        if not part:
-            continue
-        key = os.path.expandvars(part).rstrip("/\\").lower()
-        if key in seen:
-            continue
-        seen.add(key)
-        result_parts.append(part)
-    return ";".join(result_parts)
+        seen: set[str] = set()
+        result_parts: list[str] = []
+
+        for raw_part in path_value.split(";"):
+            part = raw_part.strip()
+            if not part:
+                continue
+            try:
+                key = os.path.expandvars(part).rstrip("/\\").lower()
+                if key in seen:
+                    continue
+                seen.add(key)
+                result_parts.append(part)
+            except Exception as e:
+                # Log but continue processing other entries
+                logger.warning(f"Failed to process PATH entry '{part}': {e}")
+                continue
+
+        return ";".join(result_parts)
+
+    except Exception as e:
+        # Wrap unexpected external exceptions
+        raise UserPathError(
+            message="Failed to deduplicate PATH entries",
+            details=f"Exception type: {type(e).__name__}, Path value: {path_value}",
+        ) from e
 
 
-# =============================================================================
+# ///////////////////////////////////////////////////////////////
 # WINDOWS PATH OPERATIONS
-# =============================================================================
+# ///////////////////////////////////////////////////////////////
 
 
-def setup_windows_path(entry_path: str, original_path: str) -> Dict:
-    """Setup WOMM in Windows PATH environment variable.
+def setup_windows_path(entry_path: str, original_path: str) -> dict[str, str | bool]:
+    """
+    Setup WOMM in Windows PATH environment variable.
 
     Args:
         entry_path: Path to WOMM installation directory
         original_path: Original PATH value for backup
 
     Returns:
-        Dictionary with operation results
+        Dict: Dictionary with operation results
+
+    Raises:
+        UserPathError: If PATH setup fails
+        RegistryError: If registry operations fail
     """
     try:
+        # Input validation
+        if not entry_path:
+            raise UserPathError(
+                message="Entry path cannot be empty",
+                details="Empty entry path provided for Windows PATH setup",
+            )
+
+        if not original_path:
+            raise UserPathError(
+                message="Original path cannot be empty",
+                details="Empty original path provided for Windows PATH setup",
+            )
+
         # Query current user PATH from registry
         result = run_silent(
             [
@@ -131,8 +251,14 @@ def setup_windows_path(entry_path: str, original_path: str) -> Dict:
         # Normalize path separators and deduplicate
         def _normalize_list(path_str: str) -> list[str]:
             """Split PATH string and normalize separators."""
-            entries = [p.strip() for p in path_str.split(";") if p.strip()]
-            return [str(Path(p)) for p in entries]
+            try:
+                entries = [p.strip() for p in path_str.split(";") if p.strip()]
+                return [str(Path(p)) for p in entries]
+            except Exception as e:
+                raise UserPathError(
+                    message="Failed to normalize PATH entries",
+                    details=f"Exception type: {type(e).__name__}, Path string: {path_str}",
+                ) from e
 
         # Parse current PATH entries
         current_entries = _normalize_list(current_path)
@@ -192,23 +318,39 @@ def setup_windows_path(entry_path: str, original_path: str) -> Dict:
                 "current_path": current_path,
             }
 
+    except (UserPathError, RegistryError):
+        # Re-raise specialized exceptions as-is
+        raise
     except Exception as e:
+        # Wrap unexpected external exceptions
         raise UserPathError(
             message=f"Unexpected error during Windows PATH setup: {e}",
-            details=f"Entry path: {entry_path}, Original PATH: {original_path}",
+            details=f"Exception type: {type(e).__name__}, Entry path: {entry_path}, Original PATH: {original_path}",
         ) from e
 
 
-def remove_from_windows_path(entry_path: str) -> Dict:
-    """Remove WOMM from Windows PATH environment variable.
+def remove_from_windows_path(entry_path: str) -> dict[str, str | bool]:
+    """
+    Remove WOMM from Windows PATH environment variable.
 
     Args:
         entry_path: Path to WOMM installation directory
 
     Returns:
-        Dictionary with operation results
+        Dict: Dictionary with operation results
+
+    Raises:
+        UserPathError: If PATH removal fails
+        RegistryError: If registry operations fail
     """
     try:
+        # Input validation
+        if not entry_path:
+            raise UserPathError(
+                message="Entry path cannot be empty",
+                details="Empty entry path provided for Windows PATH removal",
+            )
+
         # Query current user PATH from registry
         result = run_silent(
             [
@@ -238,7 +380,12 @@ def remove_from_windows_path(entry_path: str) -> Dict:
 
         def _norm(p: str) -> str:
             """Normalize path for comparison."""
-            return str(Path(p).resolve()) if p else ""
+            try:
+                return str(Path(p).resolve()) if p else ""
+            except Exception as e:
+                # Log but continue with original path
+                logger.warning(f"Failed to resolve path '{p}': {e}")
+                return p
 
         path_entries = [p.strip() for p in current_path.split(";") if p.strip()]
         normalized_womm = _norm(entry_path)
@@ -295,29 +442,51 @@ def remove_from_windows_path(entry_path: str) -> Dict:
                 "current_path": current_path,
             }
 
+    except (UserPathError, RegistryError):
+        # Re-raise specialized exceptions as-is
+        raise
     except Exception as e:
+        # Wrap unexpected external exceptions
         raise UserPathError(
             message=f"Unexpected error during Windows PATH removal: {e}",
-            details=f"Entry path: {entry_path}, Failed to remove WOMM from Windows PATH",
+            details=f"Exception type: {type(e).__name__}, Entry path: {entry_path}",
         ) from e
 
 
-# =============================================================================
+# ///////////////////////////////////////////////////////////////
 # UNIX PATH OPERATIONS
-# =============================================================================
+# ///////////////////////////////////////////////////////////////
 
 
-def setup_unix_path(entry_path: str, original_path: str) -> Dict:
-    """Setup WOMM in Unix PATH environment variable.
+def setup_unix_path(entry_path: str, original_path: str) -> dict[str, str | bool]:
+    """
+    Setup WOMM in Unix PATH environment variable.
 
     Args:
         entry_path: Path to WOMM installation directory
         original_path: Original PATH value for backup
 
     Returns:
-        Dictionary with operation results
+        Dict: Dictionary with operation results
+
+    Raises:
+        UserPathError: If PATH setup fails
+        FileSystemError: If file system operations fail
     """
     try:
+        # Input validation
+        if not entry_path:
+            raise UserPathError(
+                message="Entry path cannot be empty",
+                details="Empty entry path provided for Unix PATH setup",
+            )
+
+        if not original_path:
+            raise UserPathError(
+                message="Original path cannot be empty",
+                details="Empty original path provided for Unix PATH setup",
+            )
+
         shell_rc_files = [
             Path.home() / ".bashrc",
             Path.home() / ".zshrc",
@@ -340,19 +509,35 @@ def setup_unix_path(entry_path: str, original_path: str) -> Dict:
         womm_path_comment = "# Added by Works On My Machine installer"
 
         if target_rc.exists():
-            with open(target_rc, encoding="utf-8") as f:
-                content = f.read()
-                if entry_path in content:
-                    return {
-                        "success": True,
-                        "action": "already_present",
-                        "rc_file": str(target_rc),
-                        "entry_path": entry_path,
-                    }
+            try:
+                with open(target_rc, encoding="utf-8") as f:
+                    content = f.read()
+                    if entry_path in content:
+                        return {
+                            "success": True,
+                            "action": "already_present",
+                            "rc_file": str(target_rc),
+                            "entry_path": entry_path,
+                        }
+            except (PermissionError, OSError) as e:
+                raise FileSystemError(
+                    file_path=str(target_rc),
+                    operation="read",
+                    reason="Cannot read shell configuration file",
+                    details=f"Error: {e}",
+                ) from e
 
         # Add WOMM to PATH
-        with open(target_rc, "a", encoding="utf-8") as f:
-            f.write(f"\n{womm_path_comment}\n{womm_export_line}\n")
+        try:
+            with open(target_rc, "a", encoding="utf-8") as f:
+                f.write(f"\n{womm_path_comment}\n{womm_export_line}\n")
+        except (PermissionError, OSError) as e:
+            raise FileSystemError(
+                file_path=str(target_rc),
+                operation="write",
+                reason="Cannot write to shell configuration file",
+                details=f"Error: {e}",
+            ) from e
 
         return {
             "success": True,
@@ -362,25 +547,39 @@ def setup_unix_path(entry_path: str, original_path: str) -> Dict:
             "original_path": original_path,
         }
 
+    except (UserPathError, FileSystemError):
+        # Re-raise specialized exceptions as-is
+        raise
     except Exception as e:
-        raise FileSystemError(
-            file_path=str(target_rc),
-            operation="setup",
-            reason=f"Unexpected error during Unix PATH setup: {e}",
-            details=f"Entry path: {entry_path}, Original PATH: {original_path}",
+        # Wrap unexpected external exceptions
+        raise UserPathError(
+            message=f"Unexpected error during Unix PATH setup: {e}",
+            details=f"Exception type: {type(e).__name__}, Entry path: {entry_path}, Original PATH: {original_path}",
         ) from e
 
 
-def remove_from_unix_path(entry_path: str) -> Dict:
-    """Remove WOMM from Unix PATH environment variable.
+def remove_from_unix_path(entry_path: str) -> dict[str, str | bool]:
+    """
+    Remove WOMM from Unix PATH environment variable.
 
     Args:
         entry_path: Path to WOMM installation directory
 
     Returns:
-        Dictionary with operation results
+        Dict: Dictionary with operation results
+
+    Raises:
+        UserPathError: If PATH removal fails
+        FileSystemError: If file system operations fail
     """
     try:
+        # Input validation
+        if not entry_path:
+            raise UserPathError(
+                message="Entry path cannot be empty",
+                details="Empty entry path provided for Unix PATH removal",
+            )
+
         shell_rc_files = [
             Path.home() / ".bashrc",
             Path.home() / ".zshrc",
@@ -393,8 +592,16 @@ def remove_from_unix_path(entry_path: str) -> Dict:
             if not rc_file.exists():
                 continue
 
-            with open(rc_file, encoding="utf-8") as f:
-                lines = f.readlines()
+            try:
+                with open(rc_file, encoding="utf-8") as f:
+                    lines = f.readlines()
+            except (PermissionError, OSError) as e:
+                raise FileSystemError(
+                    file_path=str(rc_file),
+                    operation="read",
+                    reason="Cannot read shell configuration file",
+                    details=f"Error: {e}",
+                ) from e
 
             # Filter out WOMM-related lines
             updated_lines = []
@@ -427,8 +634,16 @@ def remove_from_unix_path(entry_path: str) -> Dict:
 
             # Write back if changes were made
             if removed_lines:
-                with open(rc_file, "w", encoding="utf-8") as f:
-                    f.writelines(updated_lines)
+                try:
+                    with open(rc_file, "w", encoding="utf-8") as f:
+                        f.writelines(updated_lines)
+                except (PermissionError, OSError) as e:
+                    raise FileSystemError(
+                        file_path=str(rc_file),
+                        operation="write",
+                        reason="Cannot write to shell configuration file",
+                        details=f"Error: {e}",
+                    ) from e
 
                 removed_from_files.append(
                     {
@@ -450,42 +665,56 @@ def remove_from_unix_path(entry_path: str) -> Dict:
                 "checked_files": [str(f) for f in shell_rc_files if f.exists()],
             }
 
+    except (UserPathError, FileSystemError):
+        # Re-raise specialized exceptions as-is
+        raise
     except Exception as e:
+        # Wrap unexpected external exceptions
         raise UserPathError(
             message=f"Unexpected error during Unix PATH removal: {e}",
-            details=f"Entry path: {entry_path}, Failed to remove WOMM from Unix shell configuration files",
+            details=f"Exception type: {type(e).__name__}, Entry path: {entry_path}",
         ) from e
 
 
-# =============================================================================
+# ///////////////////////////////////////////////////////////////
 # CROSS-PLATFORM OPERATIONS
-# =============================================================================
+# ///////////////////////////////////////////////////////////////
 
 
-def remove_from_path(entry_path: str) -> Dict:
-    """Remove WOMM from PATH environment variable (cross-platform).
+def remove_from_path(entry_path: str) -> dict[str, str | bool]:
+    """
+    Remove WOMM from PATH environment variable (cross-platform).
 
     Args:
         entry_path: Path to WOMM installation directory
 
     Returns:
-        Dict with operation result and details
+        Dict: Dictionary with operation result and details
 
     Raises:
         UserPathError: If PATH removal fails
         RegistryError: If Windows registry operations fail
+        FileSystemError: If Unix file system operations fail
     """
     try:
+        # Input validation
+        if not entry_path:
+            raise UserPathError(
+                message="Entry path cannot be empty",
+                details="Empty entry path provided for PATH removal",
+            )
+
         if platform.system() == "Windows":
             return remove_from_windows_path(entry_path)
         else:
             return remove_from_unix_path(entry_path)
-    except (UserPathError, RegistryError):
+
+    except (UserPathError, RegistryError, FileSystemError):
         # Re-raise our custom exceptions
         raise
     except Exception as e:
         # Convert unexpected errors to our exception type
         raise UserPathError(
             message=f"Unexpected error during PATH removal: {e}",
-            details=f"Entry path: {entry_path}, Platform: {platform.system()}",
+            details=f"Exception type: {type(e).__name__}, Entry path: {entry_path}, Platform: {platform.system()}",
         ) from e

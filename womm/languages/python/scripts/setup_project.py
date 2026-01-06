@@ -1,35 +1,32 @@
 #!/usr/bin/env python3
+# ///////////////////////////////////////////////////////////////
+# PYTHON PROJECT SETUP - Python Development Environment Setup
+# Project: works-on-my-machine
+# ///////////////////////////////////////////////////////////////
+
 """
 Python development environment initialization script.
 
-Usage:
-    python setup_project.py [project_name]
-        try:
-            from ....core.tools.cspell_utils import setup_project_cspell
-
-            success = setup_project_cspell(
-                project_path, "python", project_name
-            )
-            if success:
-                print("   [OK] CSpell configuration created")
-            else:
-                print("   [WARN] CSpell configuration failed")
-        except ImportError:
-            print("   [WARN] cspell_utils module not found")up_project.py --current-dir
-
-Features:
-    - Copy development configurations
-    - Initialize Git with adapted .gitignore
-    - Configure pre-commit hooks
-    - Create basic project structure
-    - Configure VSCode
+This script configures a complete Python development environment including:
+- Directory structure creation
+- Configuration files copying
+- Git initialization
+- CSpell configuration
+- Project files generation
+- VSCode configuration
+- Pre-commit hooks installation
 """
 
+# ///////////////////////////////////////////////////////////////
+# IMPORTS
+# ///////////////////////////////////////////////////////////////
+# Standard library imports
 import shutil
 import subprocess
 import sys
 from pathlib import Path
 
+# Local imports
 # Import security validator
 try:
     from ....core.utils.security.security_validator import SecurityValidator
@@ -37,6 +34,10 @@ try:
     SECURITY_AVAILABLE = True
 except ImportError:
     SECURITY_AVAILABLE = False
+
+# ///////////////////////////////////////////////////////////////
+# PYTHON PROJECT SETUP CLASS
+# ///////////////////////////////////////////////////////////////
 
 
 class PythonProjectSetup:
@@ -111,9 +112,9 @@ class PythonProjectSetup:
             else:
                 print(f"   [WARN] Missing file: {source}")
 
-    def setup_git(self):
-        """Initialise Git et configure .gitignore."""
-        print("\n[GIT] Configuration Git...")
+    def setup_git(self) -> None:
+        """Initialize Git and configure .gitignore."""
+        print("\n[GIT] Configuring Git...")
 
         if not (self.project_path / ".git").exists():
             try:
@@ -140,11 +141,11 @@ class PythonProjectSetup:
             except (subprocess.CalledProcessError, FileNotFoundError):
                 print("   [WARN] Git not found or initialization error")
 
-    def setup_cspell(self):
+    def setup_cspell(self) -> None:
         """Configure CSpell for the project."""
         print("[CSPELL] Configuring CSpell...")
 
-        # Importer le gestionnaire CSpell
+        # Import CSpell manager
         devtools_path = Path.home() / ".womm"
         sys.path.insert(0, str(devtools_path))
 
@@ -161,18 +162,18 @@ class PythonProjectSetup:
         except ImportError:
             print("   [WARN] cspell_utils module not found")
 
-    def setup_development_environment(self):
+    def setup_development_environment(self) -> bool:
         """Configure the Python development environment."""
         print("[ENV] Setting up development environment...")
 
-        # Importer le gestionnaire d'environnement
+        # Import environment manager
         devtools_path = Path.home() / ".womm"
         sys.path.insert(0, str(devtools_path))
 
         print("   [INFO] Development environment setup skipped (legacy)")
         return True
 
-    def create_project_files(self):
+    def create_project_files(self) -> None:
         """Create the basic project files."""
         print("\n[FILES] Creating basic files...")
 
@@ -184,11 +185,11 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "{self.project_name}"
 version = "0.1.0"
-description = "Description de votre projet Python"
+description = "Your Python project description"
 readme = "README.md"
 requires-python = ">=3.9"
 license = {{text = "MIT"}}
-authors = [{{name = "Votre Nom", email = "votre.email@example.com"}}]
+authors = [{{name = "Your Name", email = "your.email@example.com"}}]
 
 dependencies = [
     # Add your dependencies here
@@ -251,7 +252,7 @@ __version__ = "0.1.0"
         # README.md
         readme_content = f"""# {self.project_name}
 
-Description de votre projet Python.
+Your Python project description.
 
 ## 🚀 Installation
 
@@ -296,19 +297,19 @@ See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for complete development guide.
         # Test example
         test_content = f'''# -*- coding: utf-8 -*-
 """
-Tests pour {self.project_name}.
+Tests for {self.project_name}.
 """
 import pytest
 from {self.project_name} import __version__
 
 
 def test_version():
-    """Test de la version du package."""
+    """Test package version."""
     assert __version__ == "0.1.0"
 
 
 def test_import():
-    """Test d'import du package."""
+    """Test package import."""
     import {self.project_name}
     assert {self.project_name} is not None
 '''
@@ -317,9 +318,9 @@ def test_import():
         )
         print("   [OK] test example")
 
-    def setup_vscode(self):
+    def setup_vscode(self) -> None:
         """Configure VSCode."""
-        print("\n[VSCODE] Configuration VSCode...")
+        print("\n[VSCODE] Configuring VSCode...")
 
         vscode_files = ["settings.json", "extensions.json"]
 
@@ -333,8 +334,8 @@ def test_import():
             else:
                 print(f"   [WARN] Missing VSCode file: {file}")
 
-    def install_hooks(self):
-        """Installe les hooks pre-commit."""
+    def install_hooks(self) -> None:
+        """Install pre-commit hooks."""
         print("\n[HOOKS] Installing pre-commit hooks...")
 
         try:
@@ -363,7 +364,7 @@ def test_import():
                 capture_output=True,
             )
 
-            # Installer les hooks
+            # Install hooks
             # Security validation
             if SECURITY_AVAILABLE:
                 validator = SecurityValidator()
@@ -387,7 +388,7 @@ def test_import():
                 "   [WARN] pre-commit not found. Install with: pip install pre-commit"
             )
 
-    def print_next_steps(self):
+    def print_next_steps(self) -> None:
         """Display next steps."""
         print(
             f"""

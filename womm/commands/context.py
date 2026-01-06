@@ -1,23 +1,35 @@
 #!/usr/bin/env python3
+# ///////////////////////////////////////////////////////////////
+# CONTEXT - Context Menu Commands
+# Project: works-on-my-machine
+# ///////////////////////////////////////////////////////////////
+
 """
 Context menu commands for WOMM CLI.
-Handles Windows context menu management.
+
+This module handles Windows context menu management for scripts and tools.
+Provides commands for registering, unregistering, and managing context menu entries.
 """
 
+# ///////////////////////////////////////////////////////////////
 # IMPORTS
-########################################################
-# External modules and dependencies
-
+# ///////////////////////////////////////////////////////////////
+# Standard library imports
+import json
 import platform
+import re
+import traceback
+from datetime import datetime
 from pathlib import Path
+from typing import Any
 
+# Third-party imports
 import click
 
-# IMPORTS
-########################################################
-# Internal modules and dependencies
+# Local imports
 from rich import print
 
+from ..core.managers.context.context_menu import ContextMenuManager
 from ..core.managers.installation.installation_manager import get_target_womm_path
 from ..core.ui.common.console import (
     LogLevel,
@@ -29,11 +41,14 @@ from ..core.ui.common.console import (
 )
 from ..core.ui.common.panels import create_panel
 from ..core.ui.common.progress import create_spinner_with_status
+from ..core.ui.context.context import ContextMenuUI
+from ..core.ui.context.interactive_wizard import ContextMenuWizard
 from ..core.ui.interactive import InteractiveMenu
+from ..core.utils.context.context_parameters import ContextParameters
 
+# ///////////////////////////////////////////////////////////////
 # UTILITY FUNCTIONS
-########################################################
-# Helper functions and utilities
+# ///////////////////////////////////////////////////////////////
 
 
 def _check_windows_only() -> bool:
@@ -43,9 +58,6 @@ def _check_windows_only() -> bool:
         print_info("Consider using symbolic links or aliases on Unix systems")
         return False
     return True
-
-
-# Legacy functions removed - now using ContextMenuManager directly
 
 
 def _get_backup_directory() -> str:
@@ -65,9 +77,6 @@ def _get_backup_directory() -> str:
     return "."
 
 
-# Legacy functions removed - now using ContextMenuManager directly
-
-
 def _show_tip_panel(content: str, title: str = "Tip"):
     """Show a tip panel with consistent formatting."""
     tip_panel = create_panel(
@@ -83,23 +92,23 @@ def _show_tip_panel(content: str, title: str = "Tip"):
     print("")
 
 
-# MAIN FUNCTIONS
-########################################################
-# Core CLI functionality and command groups
+# ///////////////////////////////////////////////////////////////
+# COMMAND GROUPS
+# ///////////////////////////////////////////////////////////////
 
 
 @click.group(invoke_without_command=True)
 @click.help_option("-h", "--help")
 @click.pass_context
-def context_group(ctx):
+def context_group(ctx: click.Context) -> None:
     """Windows context menu management."""
     if ctx.invoked_subcommand is None:
         click.echo(ctx.get_help())
 
 
-# COMMAND FUNCTIONS
-########################################################
-# Command implementations
+# ///////////////////////////////////////////////////////////////
+# REGISTRATION COMMANDS
+# ///////////////////////////////////////////////////////////////
 
 
 @context_group.command("register")
@@ -171,19 +180,19 @@ def context_group(ctx):
     help="Verbose mode",
 )
 def context_register(
-    target_path,
-    label,
-    icon,
-    root,
-    file,
-    files,
-    background,
-    file_types,
-    extensions,
-    dry_run,
-    interactive,
-    verbose,
-):
+    target_path: str | None,
+    label: str | None,
+    icon: str,
+    root: bool,
+    file: bool,
+    files: bool,
+    background: bool,
+    file_types: tuple[str, ...],
+    extensions: tuple[str, ...],
+    dry_run: bool,
+    interactive: bool,
+    verbose: bool,
+) -> None:
     """📝 Register scripts in Windows context menu."""
     if not _check_windows_only():
         return
@@ -192,8 +201,6 @@ def context_register(
 
     # Handle interactive mode
     if interactive:
-        from ..core.ui.context.interactive_wizard import ContextMenuWizard
-
         target_path, label, icon, context_params = ContextMenuWizard.run_setup()
         if not target_path:  # User cancelled
             return
@@ -208,15 +215,10 @@ def context_register(
             print_info("Use --interactive for guided setup")
             return
 
-    # Import ContextMenuManager
-    from ..core.managers.context.managers.context_menu import ContextMenuManager
-
     # Initialize manager
     manager = ContextMenuManager()
 
     # Create context parameters from flags
-    from ..core.managers.context.utils.context_parameters import ContextParameters
-
     context_params = ContextParameters.from_flags(
         root=root,
         file=file,
@@ -280,9 +282,7 @@ def context_register(
             print_info("\n🔍 Dry run mode - no changes made")
             print_success("✅ Configuration validated successfully")
         else:
-            # Import UI and show success message
-            from ..core.ui.context.context import ContextMenuUI
-
+            # Show success message
             ui = ContextMenuUI()
             ui.show_register_success(label, info["registry_key"])
 
@@ -293,6 +293,11 @@ def context_register(
             print_info(f"Script path: {info.get('script_path')}")
             print_info(f"Script type: {info.get('script_type')}")
             print_info(f"Registry key: {info.get('registry_key')}")
+
+
+# ///////////////////////////////////////////////////////////////
+# UNREGISTRATION COMMANDS
+# ///////////////////////////////////////////////////////////////
 
 
 @context_group.command("unregister")
@@ -307,15 +312,12 @@ def context_register(
     "--dry-run", is_flag=True, help="Show what would be done without making changes"
 )
 @click.option("--verbose", is_flag=True, help="Verbose mode")
-def context_unregister(remove_key, dry_run, verbose):
+def context_unregister(remove_key: str, dry_run: bool, verbose: bool) -> None:
     """🗑️ Unregister scripts from Windows context menu."""
     if not _check_windows_only():
         return
 
     print_header("🗑️ Context Menu Unregistration")
-
-    # Import ContextMenuManager
-    from ..core.managers.context.managers.context_menu import ContextMenuManager
 
     # Initialize manager
     manager = ContextMenuManager()
@@ -336,14 +338,17 @@ def context_unregister(remove_key, dry_run, verbose):
             print_info(f"🔍 Would remove context menu entry: {remove_key}")
             print_success("✅ Dry run completed successfully")
         else:
-            # Import UI and show success message
-            from ..core.ui.context.context import ContextMenuUI
-
+            # Show success message
             ui = ContextMenuUI()
             ui.show_unregister_success(remove_key)
 
     else:
         print_error(f"Unregistration failed: {result['error']}")
+
+
+# ///////////////////////////////////////////////////////////////
+# LISTING AND STATUS COMMANDS
+# ///////////////////////////////////////////////////////////////
 
 
 @context_group.command("list")
@@ -354,15 +359,12 @@ def context_unregister(remove_key, dry_run, verbose):
     is_flag=True,
     help="Verbose mode",
 )
-def context_list(verbose):  # noqa: ARG001
+def context_list(verbose: bool) -> None:  # noqa: ARG001
     """📋 List registered context menu entries."""
     if not _check_windows_only():
         return
 
     print_header("📋 Context Menu List")
-
-    # Import ContextMenuManager
-    from ..core.managers.context.managers.context_menu import ContextMenuManager
 
     # Initialize manager
     manager = ContextMenuManager()
@@ -397,14 +399,70 @@ def context_list(verbose):  # noqa: ARG001
                         print(f"    Icon: {entry['icon']}")
                     print()
 
-        # Import UI and show commands panel
-        from ..core.ui.context.context import ContextMenuUI
-
+        # Show commands panel
         ui = ContextMenuUI()
         ui.show_list_commands()
 
     else:
         print_error(f"Failed to retrieve context menu entries: {result['error']}")
+
+
+@context_group.command("status")
+@click.help_option("-h", "--help")
+def context_status() -> None:
+    """📊 Show context menu registration status (Windows only)."""
+    if not _check_windows_only():
+        return
+
+    print_header("📊 Context Menu Status")
+
+    # Initialize manager
+    manager = ContextMenuManager()
+
+    # Get context menu entries
+    with create_spinner_with_status("Checking context menu registration status...") as (
+        progress,
+        task,
+    ):
+        progress.update(task, status="Retrieving context menu entries...")
+        result = manager.list_entries()
+
+    if result["success"]:
+        entries = result["entries"]
+        total_entries = sum(
+            len(entries.get(context_type, []))
+            for context_type in ["directory", "background"]
+        )
+
+        print_success(f"Found {total_entries} context menu entries")
+
+        # Show helpful information panel
+        info_content = """Context menu status information:
+
+• Entries with descriptions are managed by external tools
+• Entries without descriptions are system defaults or unmanaged
+• All entries are shown for both folder and background context menus
+• Backup files are stored in your WOMM installation directory"""
+
+        _show_tip_panel(info_content, "Status Information")
+
+    else:
+        print_error("Failed to retrieve context menu status")
+
+        # Show troubleshooting panel
+        troubleshoot_content = """Troubleshooting context menu issues:
+
+• Ensure you have administrator privileges
+• Check if Windows Registry access is blocked
+• Try running from an elevated command prompt
+• Verify WOMM installation is complete"""
+
+        _show_tip_panel(troubleshoot_content, "Troubleshooting")
+
+
+# ///////////////////////////////////////////////////////////////
+# QUICK SETUP COMMANDS
+# ///////////////////////////////////////////////////////////////
 
 
 @context_group.command("quick-setup")
@@ -421,15 +479,12 @@ def context_list(verbose):  # noqa: ARG001
     is_flag=True,
     help="Verbose mode",
 )
-def context_quick_setup(dry_run, verbose):
+def context_quick_setup(dry_run: bool, verbose: bool) -> None:
     """⚡ Quick setup common WOMM tools in context menu."""
     if not _check_windows_only():
         return
 
     print_header("⚡ Quick Setup Common WOMM Tools")
-
-    # Import ContextMenuManager
-    from ..core.managers.context.managers.context_menu import ContextMenuManager
 
     # Initialize manager
     manager = ContextMenuManager()
@@ -483,60 +538,9 @@ def context_quick_setup(dry_run, verbose):
         print_info(f"Would register {total_tools} WOMM tools")
 
 
-@context_group.command("status")
-@click.help_option("-h", "--help")
-def context_status():
-    """📊 Show context menu registration status (Windows only)."""
-    if not _check_windows_only():
-        return
-
-    print_header("📊 Context Menu Status")
-
-    # Import ContextMenuManager
-    from ..core.managers.context.managers.context_menu import ContextMenuManager
-
-    # Initialize manager
-    manager = ContextMenuManager()
-
-    # Get context menu entries
-    with create_spinner_with_status("Checking context menu registration status...") as (
-        progress,
-        task,
-    ):
-        progress.update(task, status="Retrieving context menu entries...")
-        result = manager.list_entries()
-
-    if result["success"]:
-        entries = result["entries"]
-        total_entries = sum(
-            len(entries.get(context_type, []))
-            for context_type in ["directory", "background"]
-        )
-
-        print_success(f"Found {total_entries} context menu entries")
-
-        # Show helpful information panel
-        info_content = """Context menu status information:
-
-• Entries with descriptions are managed by external tools
-• Entries without descriptions are system defaults or unmanaged
-• All entries are shown for both folder and background context menus
-• Backup files are stored in your WOMM installation directory"""
-
-        _show_tip_panel(info_content, "Status Information")
-
-    else:
-        print_error("Failed to retrieve context menu status")
-
-        # Show troubleshooting panel
-        troubleshoot_content = """Troubleshooting context menu issues:
-
-• Ensure you have administrator privileges
-• Check if Windows Registry access is blocked
-• Try running from an elevated command prompt
-• Verify WOMM installation is complete"""
-
-        _show_tip_panel(troubleshoot_content, "Troubleshooting")
+# ///////////////////////////////////////////////////////////////
+# BACKUP AND RESTORE COMMANDS
+# ///////////////////////////////////////////////////////////////
 
 
 @context_group.command("backup")
@@ -549,16 +553,13 @@ def context_status():
     is_flag=True,
     help="Verbose mode",
 )
-def context_backup(output, verbose):  # noqa: ARG001
+def context_backup(output: str | None, verbose: bool) -> None:  # noqa: ARG001
     """💾 Create backup of current context menu entries."""
 
     if not _check_windows_only():
         return
 
     print_header("💾 Context Menu Backup")
-
-    # Import ContextMenuManager
-    from ..core.managers.context.managers.context_menu import ContextMenuManager
 
     # Initialize manager
     manager = ContextMenuManager()
@@ -570,8 +571,6 @@ def context_backup(output, verbose):  # noqa: ARG001
         print_info(f"Backup location: {backup_file}")
     else:
         # Auto-generated path with timestamp
-        from datetime import datetime
-
         backup_dir = _get_backup_directory()
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         backup_file = f"{backup_dir}/context_menu_backup_{timestamp}.json"
@@ -586,9 +585,7 @@ def context_backup(output, verbose):  # noqa: ARG001
         result = manager.backup_entries(backup_file)
 
     if result["success"]:
-        # Import UI and show success message
-        from ..core.ui.context.context import ContextMenuUI
-
+        # Show success message
         ui = ContextMenuUI()
         ui.show_backup_success(backup_file, result["entry_count"])
     else:
@@ -614,16 +611,12 @@ def context_backup(output, verbose):  # noqa: ARG001
     is_flag=True,
     help="Verbose mode",
 )
-def context_restore(backup_file, dry_run, verbose):
+def context_restore(backup_file: str | None, dry_run: bool, verbose: bool) -> None:
     """🔄 Restore context menu entries from backup."""
     if not _check_windows_only():
         return
 
     print_header("🔄 Context Menu Restore")
-
-    # Import ContextMenuManager and UI
-    from ..core.managers.context.managers.context_menu import ContextMenuManager
-    from ..core.ui.context.context import ContextMenuUI
 
     # Initialize manager and UI
     manager = ContextMenuManager()
@@ -667,6 +660,11 @@ def context_restore(backup_file, dry_run, verbose):
         print_error(f"Restore failed: {result['error']}")
 
 
+# ///////////////////////////////////////////////////////////////
+# CHERRY-PICK COMMANDS
+# ///////////////////////////////////////////////////////////////
+
+
 @context_group.command("cherry-pick")
 @click.help_option("-h", "--help")
 @click.option(
@@ -681,7 +679,7 @@ def context_restore(backup_file, dry_run, verbose):
     is_flag=True,
     help="Verbose mode",
 )
-def context_cherry_pick(dry_run, verbose):
+def context_cherry_pick(dry_run: bool, verbose: bool) -> None:
     """🍒 Cherry-pick specific context menu entries from backups."""
     if not _check_windows_only():
         return
@@ -725,16 +723,21 @@ def context_cherry_pick(dry_run, verbose):
     except Exception as e:
         print_error(f"Cherry-pick failed: {e}")
         if verbose:
-            import traceback
-
             traceback.print_exc()
 
 
-def _collect_all_entries_from_backups(backup_dir: Path, verbose: bool) -> list:
-    """Collect and deduplicate all context menu entries from backup files."""
-    import json
+# ///////////////////////////////////////////////////////////////
+# HELPER FUNCTIONS - BACKUP OPERATIONS
+# ///////////////////////////////////////////////////////////////
 
-    all_entries = {}  # Using dict to automatically deduplicate by key_name
+
+def _collect_all_entries_from_backups(
+    backup_dir: Path, verbose: bool
+) -> list[dict[str, Any]]:
+    """Collect and deduplicate all context menu entries from backup files."""
+    all_entries: dict[
+        str, dict[str, Any]
+    ] = {}  # Using dict to automatically deduplicate by key_name
     backup_files = sorted(backup_dir.glob("context_menu_backup_*.json"))
 
     if verbose:
@@ -766,7 +769,7 @@ def _collect_all_entries_from_backups(backup_dir: Path, verbose: bool) -> list:
     return list(all_entries.values())
 
 
-def _format_entry_display_name(entry: dict) -> str:
+def _format_entry_display_name(entry: dict[str, Any]) -> str:
     """Format entry for display in selection menu."""
     key_name = entry.get("key_name", "Unknown")
     properties = entry.get("properties", {})
@@ -778,8 +781,6 @@ def _format_entry_display_name(entry: dict) -> str:
     command = properties.get("Command", "")
     if command:
         # Extract executable name from command
-        import re
-
         exe_match = re.search(r'"([^"]*\.exe)"', command)
         if exe_match:
             exe_name = Path(exe_match.group(1)).name
@@ -788,15 +789,12 @@ def _format_entry_display_name(entry: dict) -> str:
     return f"{display_text} [key: {key_name}]"
 
 
-def _get_current_context_entries(verbose: bool) -> set:
+def _get_current_context_entries(verbose: bool) -> set[str]:
     """Get currently installed context menu entries."""
     if verbose:
         print_info("Checking currently installed context menu entries...")
 
     try:
-        # Import ContextMenuManager
-        from ..core.managers.context.managers.context_menu import ContextMenuManager
-
         # Initialize manager
         manager = ContextMenuManager()
 
@@ -836,7 +834,9 @@ def _get_current_context_entries(verbose: bool) -> set:
         return set()
 
 
-def _filter_available_entries(all_entries: list, current_entries: set) -> list:
+def _filter_available_entries(
+    all_entries: list[dict[str, Any]], current_entries: set[str]
+) -> list[dict[str, Any]]:
     """Filter out entries that are already installed."""
     available = []
     for entry in all_entries:
@@ -846,7 +846,9 @@ def _filter_available_entries(all_entries: list, current_entries: set) -> list:
     return available
 
 
-def _show_cherry_pick_menu(available_entries: list) -> list:
+def _show_cherry_pick_menu(
+    available_entries: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
     """Show interactive menu for selecting entries to install."""
     print_info("Select context menu entries to install:")
 
@@ -868,11 +870,10 @@ def _show_cherry_pick_menu(available_entries: list) -> list:
     return selected if selected else []
 
 
-def _apply_cherry_picked_entries(selected_entries: list, dry_run: bool, verbose: bool):
+def _apply_cherry_picked_entries(
+    selected_entries: list[dict[str, Any]], dry_run: bool, verbose: bool
+) -> None:
     """Apply the selected context menu entries."""
-    # Import ContextMenuManager
-    from ..core.managers.context.managers.context_menu import ContextMenuManager
-
     # Initialize manager
     manager = ContextMenuManager()
 

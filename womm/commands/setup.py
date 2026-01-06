@@ -1,28 +1,50 @@
 #!/usr/bin/env python3
+# ///////////////////////////////////////////////////////////////
+# SETUP - Setup Commands
+# Project: works-on-my-machine
+# ///////////////////////////////////////////////////////////////
+
 """
 Setup commands for WOMM CLI.
-Handles configuration of existing projects using the modular architecture.
+
+This module handles configuration of existing projects using the modular architecture.
+Provides commands for setting up development environments in existing projects.
 """
 
+# ///////////////////////////////////////////////////////////////
+# IMPORTS
+# ///////////////////////////////////////////////////////////////
+# Standard library imports
 import sys
 from pathlib import Path
-from typing import Optional
+from typing import Any
 
+# Third-party imports
 import click
 
+# Local imports
 from ..core.managers.project import ProjectManager
 from ..core.ui.common.console import print_error, print_info, print_success
 from ..core.ui.project import ProjectWizard
 from ..core.utils.project.project_detector import ProjectDetector
 
+# ///////////////////////////////////////////////////////////////
+# COMMAND GROUPS
+# ///////////////////////////////////////////////////////////////
+
 
 @click.group(invoke_without_command=True)
 @click.help_option("-h", "--help")
 @click.pass_context
-def setup_group(ctx):
+def setup_group(ctx: click.Context) -> None:
     """🔧 Configure existing projects with development tools."""
     if ctx.invoked_subcommand is None:
         click.echo(ctx.get_help())
+
+
+# ///////////////////////////////////////////////////////////////
+# AUTO-DETECTION COMMANDS
+# ///////////////////////////////////////////////////////////////
 
 
 @setup_group.command("detect")
@@ -41,10 +63,16 @@ def setup_group(ctx):
     is_flag=True,
     help="Run in interactive mode with guided setup",
 )
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    help="Show what would be done without making changes",
+)
 def setup_detect(
     project_path: Path,
     interactive: bool,
-):
+    dry_run: bool,
+) -> None:
     """🔍 Auto-detect project type and configure development environment."""
 
     # Initialize project manager
@@ -52,28 +80,32 @@ def setup_detect(
 
     try:
         # Detect project type
-        detector = ProjectDetector(project_path)
-        detected_type, confidence = detector.detect_project_type()
+        detector = ProjectDetector()
+        detected_type = detector.detect_project_type(project_path)
 
-        if detected_type == "unknown" or confidence < 20:
+        if detected_type == "unknown" or not detected_type:
             print_error("No suitable project type detected in the specified directory")
             print_info("Supported project types: python, javascript, react, vue")
             sys.exit(1)
 
-        print_success(
-            f"Detected project type: {detected_type} (confidence: {confidence}%)"
-        )
+        print_success(f"Detected project type: {detected_type}")
 
         # Interactive mode
         if interactive:
             return _run_interactive_setup(project_manager, detected_type, project_path)
 
         # Non-interactive mode
-        return _run_direct_setup(project_manager, detected_type, project_path)
+        options = {"dry_run": dry_run}
+        return _run_direct_setup(project_manager, detected_type, project_path, options)
 
     except Exception as e:
         print_error(f"Error detecting project type: {e}")
         sys.exit(1)
+
+
+# ///////////////////////////////////////////////////////////////
+# PYTHON PROJECT COMMANDS
+# ///////////////////////////////////////////////////////////////
 
 
 @setup_group.command("python")
@@ -112,6 +144,11 @@ def setup_detect(
     is_flag=True,
     help="Setup Git hooks",
 )
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    help="Show what would be done without making changes",
+)
 def setup_python(
     project_path: Path,
     interactive: bool,
@@ -119,7 +156,8 @@ def setup_python(
     install_deps: bool,
     setup_dev_tools: bool,
     setup_git_hooks: bool,
-):
+    dry_run: bool,
+) -> None:
     """🐍 Configure existing Python project with development environment."""
 
     # Initialize project manager
@@ -136,12 +174,18 @@ def setup_python(
             "install_deps": install_deps,
             "setup_dev_tools": setup_dev_tools,
             "setup_git_hooks": setup_git_hooks,
+            "dry_run": dry_run,
         }
         return _run_direct_setup(project_manager, "python", project_path, options)
 
     except Exception as e:
         print_error(f"Error configuring Python project: {e}")
         sys.exit(1)
+
+
+# ///////////////////////////////////////////////////////////////
+# JAVASCRIPT PROJECT COMMANDS
+# ///////////////////////////////////////////////////////////////
 
 
 @setup_group.command("javascript")
@@ -158,7 +202,7 @@ def setup_python(
     "-t",
     "--type",
     "project_type",
-    type=click.Choice(["node", "react", "vue"]),
+    type=click.Choice(["javascript", "react", "vue"]),
     help="JavaScript project type (auto-detected if not specified)",
 )
 @click.option(
@@ -182,14 +226,20 @@ def setup_python(
     is_flag=True,
     help="Setup Git hooks",
 )
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    help="Show what would be done without making changes",
+)
 def setup_javascript(
     project_path: Path,
-    project_type: Optional[str],
+    project_type: str | None,
     interactive: bool,
     install_deps: bool,
     setup_dev_tools: bool,
     setup_git_hooks: bool,
-):
+    dry_run: bool,
+) -> None:
     """🟨 Configure existing JavaScript project with development environment."""
 
     # Initialize project manager
@@ -198,13 +248,13 @@ def setup_javascript(
     try:
         # Auto-detect type if not specified
         if not project_type:
-            detector = ProjectDetector(project_path)
-            detected_type, confidence = detector.detect_project_type()
+            detector = ProjectDetector()
+            detected_type = detector.detect_project_type(project_path)
             if detected_type in ["javascript", "react", "vue"]:
                 project_type = detected_type
             else:
                 print_error("Could not auto-detect JavaScript project type")
-                print_info("Please specify --type (node, react, vue)")
+                print_info("Please specify --type (javascript, react, vue)")
                 sys.exit(1)
 
         # Interactive mode
@@ -216,6 +266,7 @@ def setup_javascript(
             "install_deps": install_deps,
             "setup_dev_tools": setup_dev_tools,
             "setup_git_hooks": setup_git_hooks,
+            "dry_run": dry_run,
         }
         return _run_direct_setup(project_manager, project_type, project_path, options)
 
@@ -224,7 +275,11 @@ def setup_javascript(
         sys.exit(1)
 
 
-# Helper functions for interactive modes
+# ///////////////////////////////////////////////////////////////
+# HELPER FUNCTIONS - INTERACTIVE MODES
+# ///////////////////////////////////////////////////////////////
+
+
 def _run_interactive_setup(
     project_manager: ProjectManager, project_type: str, project_path: Path
 ) -> int:
@@ -251,12 +306,16 @@ def _run_interactive_setup(
         return 1
 
 
-# Helper functions for direct modes
+# ///////////////////////////////////////////////////////////////
+# HELPER FUNCTIONS - DIRECT MODES
+# ///////////////////////////////////////////////////////////////
+
+
 def _run_direct_setup(
     project_manager: ProjectManager,
     project_type: str,
     project_path: Path,
-    options: Optional[dict] = None,
+    options: dict[str, Any] | None = None,
 ) -> int:
     """Run direct project setup."""
 

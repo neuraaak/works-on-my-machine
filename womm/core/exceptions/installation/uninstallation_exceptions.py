@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+# ///////////////////////////////////////////////////////////////
+# UNINSTALLATION EXCEPTIONS - Uninstallation Exceptions
+# Project: works-on-my-machine
+# ///////////////////////////////////////////////////////////////
+
 """
 Uninstallation exceptions for Works On My Machine.
 
@@ -17,14 +22,13 @@ Following a pragmatic approach with 8 main exception types:
 8. UninstallationVerificationError - Verification errors during uninstallation
 """
 
+# ///////////////////////////////////////////////////////////////
 # IMPORTS
-########################################################
-# Standard library imports
-from typing import Optional
+# ///////////////////////////////////////////////////////////////
 
-# =============================================================================
+# ///////////////////////////////////////////////////////////////
 # UTILITY EXCEPTIONS
-# =============================================================================
+# ///////////////////////////////////////////////////////////////
 
 
 class UninstallationUtilityError(Exception):
@@ -34,7 +38,7 @@ class UninstallationUtilityError(Exception):
     Used for general errors like invalid arguments, unexpected failures, etc.
     """
 
-    def __init__(self, message: str, details: Optional[str] = None):
+    def __init__(self, message: str, details: str | None = None) -> None:
         """Initialize the exception with a message and optional details.
 
         Args:
@@ -46,9 +50,9 @@ class UninstallationUtilityError(Exception):
         super().__init__(self.message)
 
 
-# =============================================================================
+# ///////////////////////////////////////////////////////////////
 # UTILITY EXCEPTIONS - FILE OPERATIONS
-# =============================================================================
+# ///////////////////////////////////////////////////////////////
 
 
 class FileScanError(UninstallationUtilityError):
@@ -63,8 +67,8 @@ class FileScanError(UninstallationUtilityError):
         operation: str,
         target_path: str,
         reason: str,
-        details: Optional[str] = None,
-    ):
+        details: str | None = None,
+    ) -> None:
         """Initialize file scan error with specific context.
 
         Args:
@@ -92,8 +96,8 @@ class DirectoryAccessError(UninstallationUtilityError):
         operation: str,
         directory_path: str,
         reason: str,
-        details: Optional[str] = None,
-    ):
+        details: str | None = None,
+    ) -> None:
         """Initialize directory access error with specific context.
 
         Args:
@@ -111,9 +115,9 @@ class DirectoryAccessError(UninstallationUtilityError):
         super().__init__(message, details)
 
 
-# =============================================================================
+# ///////////////////////////////////////////////////////////////
 # UTILITY EXCEPTIONS - VERIFICATION OPERATIONS
-# =============================================================================
+# ///////////////////////////////////////////////////////////////
 
 
 class UninstallationVerificationError(UninstallationUtilityError):
@@ -128,8 +132,8 @@ class UninstallationVerificationError(UninstallationUtilityError):
         verification_type: str,
         target_path: str,
         reason: str,
-        details: Optional[str] = None,
-    ):
+        details: str | None = None,
+    ) -> None:
         """Initialize uninstallation verification error with specific context.
 
         Args:
@@ -145,9 +149,9 @@ class UninstallationVerificationError(UninstallationUtilityError):
         super().__init__(message, details)
 
 
-# =============================================================================
+# ///////////////////////////////////////////////////////////////
 # MANAGER EXCEPTIONS - BASE
-# =============================================================================
+# ///////////////////////////////////////////////////////////////
 
 
 class UninstallationManagerError(Exception):
@@ -157,7 +161,7 @@ class UninstallationManagerError(Exception):
     such as process orchestration, progress tracking, or state management.
     """
 
-    def __init__(self, message: str, details: Optional[str] = None):
+    def __init__(self, message: str, details: str | None = None) -> None:
         """Initialize the manager error with a message and optional details.
 
         Args:
@@ -169,9 +173,9 @@ class UninstallationManagerError(Exception):
         super().__init__(self.message)
 
 
-# =============================================================================
+# ///////////////////////////////////////////////////////////////
 # MANAGER EXCEPTIONS - FILE OPERATIONS
-# =============================================================================
+# ///////////////////////////////////////////////////////////////
 
 
 class UninstallationFileError(UninstallationManagerError):
@@ -186,8 +190,8 @@ class UninstallationFileError(UninstallationManagerError):
         operation: str,
         file_path: str,
         reason: str,
-        details: Optional[str] = None,
-    ):
+        details: str | None = None,
+    ) -> None:
         """Initialize uninstallation file error with specific context.
 
         Args:
@@ -203,9 +207,9 @@ class UninstallationFileError(UninstallationManagerError):
         super().__init__(message, details)
 
 
-# =============================================================================
+# ///////////////////////////////////////////////////////////////
 # MANAGER EXCEPTIONS - PATH OPERATIONS
-# =============================================================================
+# ///////////////////////////////////////////////////////////////
 
 
 class UninstallationPathError(UninstallationManagerError):
@@ -220,8 +224,8 @@ class UninstallationPathError(UninstallationManagerError):
         operation: str,
         path: str,
         reason: str,
-        details: Optional[str] = None,
-    ):
+        details: str | None = None,
+    ) -> None:
         """Initialize uninstallation path error with specific context.
 
         Args:
@@ -237,9 +241,9 @@ class UninstallationPathError(UninstallationManagerError):
         super().__init__(message, details)
 
 
-# =============================================================================
+# ///////////////////////////////////////////////////////////////
 # MANAGER EXCEPTIONS - VERIFICATION OPERATIONS
-# =============================================================================
+# ///////////////////////////////////////////////////////////////
 
 
 class UninstallationManagerVerificationError(UninstallationManagerError):
@@ -254,8 +258,8 @@ class UninstallationManagerVerificationError(UninstallationManagerError):
         verification_type: str,
         target: str,
         reason: str,
-        details: Optional[str] = None,
-    ):
+        details: str | None = None,
+    ) -> None:
         """Initialize uninstallation verification error with specific context.
 
         Args:

@@ -1,11 +1,20 @@
 #!/usr/bin/env python3
+# ///////////////////////////////////////////////////////////////
+# TEMPLATE UI - Template Management UI Components
+# Project: works-on-my-machine
+# ///////////////////////////////////////////////////////////////
+
 """
 Template UI components for WOMM CLI.
 Provides Rich-based UI for template management.
 """
 
+# ///////////////////////////////////////////////////////////////
+# IMPORTS
+# ///////////////////////////////////////////////////////////////
+# Standard library imports
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any
 
 from InquirerPy import inquirer
 from InquirerPy.validator import PathValidator
@@ -13,14 +22,22 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
+# Local imports
 from ...utils.project.project_detector import ProjectDetector
 
+# ///////////////////////////////////////////////////////////////
+# CONSOLE INSTANCE
+# ///////////////////////////////////////////////////////////////
 console = Console()
 
+# ///////////////////////////////////////////////////////////////
+# PUBLIC API
+# ///////////////////////////////////////////////////////////////
 
-def print_template_list(templates: Dict[str, List[str]]) -> None:
+
+def print_template_list(templates: dict[str, list[str]]) -> None:
     """Display templates in a Rich table."""
-    table = Table(title="📋 Available Templates")
+    table = Table(title="Available Templates")
     table.add_column("Project Type", style="cyan", width=15)
     table.add_column("Template Name", style="green", width=25)
     table.add_column("Description", style="white", width=40)
@@ -42,7 +59,7 @@ def print_template_list(templates: Dict[str, List[str]]) -> None:
     console.print(table)
 
 
-def print_template_info(template_name: str, template_info: Dict) -> None:
+def print_template_info(template_name: str, template_info: dict[str, Any]) -> None:
     """Display detailed template information in a Rich panel."""
     content = f"""
 [b]Name:[/b] {template_info.get("name", "N/A")}
@@ -63,7 +80,7 @@ def print_template_info(template_name: str, template_info: Dict) -> None:
     for file_path in template_info.get("files", []):
         content += f"  • {file_path}\n"
 
-    panel = Panel(content, title=f"📋 Template: {template_name}", border_style="blue")
+    panel = Panel(content, title=f"Template: {template_name}", border_style="blue")
     console.print(panel)
 
 
@@ -72,7 +89,7 @@ def print_template_creation_summary(
 ) -> None:
     """Display a summary of template creation in a Rich panel."""
     content = f"""
-✅ Template '{template_name}' created successfully!
+Template '{template_name}' created successfully!
 
 Source Project: {source_project}
 Files Processed: {file_count}
@@ -84,25 +101,25 @@ Next Steps:
 • Use 'womm template use {template_name}' to create projects from this template
 """
 
-    panel = Panel(content, title="🚀 Template Creation Complete", border_style="green")
+    panel = Panel(content, title="Template Creation Complete", border_style="green")
     console.print(panel)
 
 
 def print_template_deletion_summary(template_name: str) -> None:
     """Display a summary of template deletion in a Rich panel."""
     content = f"""
-🗑️ Template '{template_name}' deleted successfully!
+Template '{template_name}' deleted successfully!
 
 Note: This action cannot be undone.
 The template and all its files have been permanently removed.
 """
 
-    panel = Panel(content, title="🗑️ Template Deletion Complete", border_style="red")
+    panel = Panel(content, title="Template Deletion Complete", border_style="red")
     console.print(panel)
 
 
 def print_template_deletion_summary_multiple(
-    successful_templates: List[str], failed_templates: List[str]
+    successful_templates: list[str], failed_templates: list[str]
 ) -> None:
     """Display a summary of multiple template deletions in a Rich panel."""
     if not successful_templates and not failed_templates:
@@ -111,13 +128,13 @@ def print_template_deletion_summary_multiple(
     content = ""
 
     if successful_templates:
-        content += f"✅ Successfully deleted {len(successful_templates)} template(s):\n"
+        content += f"Successfully deleted {len(successful_templates)} template(s):\n"
         for template_name in successful_templates:
             content += f"  • {template_name}\n"
         content += "\n"
 
     if failed_templates:
-        content += f"❌ Failed to delete {len(failed_templates)} template(s):\n"
+        content += f"Failed to delete {len(failed_templates)} template(s):\n"
         for template_name in failed_templates:
             content += f"  • {template_name}\n"
         content += "\n"
@@ -125,14 +142,14 @@ def print_template_deletion_summary_multiple(
     content += "Note: This action cannot be undone.\n"
     content += "The templates and all their files have been permanently removed."
 
-    title = "🗑️ Template Deletion Summary"
+    title = "Template Deletion Summary"
     border_style = "green" if not failed_templates else "yellow"
 
     panel = Panel(content, title=title, border_style=border_style)
     console.print(panel)
 
 
-def interactive_template_create() -> Optional[Dict]:
+def interactive_template_create() -> dict[str, str] | None:
     """
     Interactive form for creating a template.
 
@@ -150,7 +167,7 @@ def interactive_template_create() -> Optional[Dict]:
                 return False
 
         source_project = inquirer.filepath(
-            message="📁 Select the source project to create template from:",
+            message="Select the source project to create template from:",
             validate=DirectoryValidator(),
         ).execute()
 
@@ -159,13 +176,13 @@ def interactive_template_create() -> Optional[Dict]:
 
         # Get template name
         template_name = inquirer.text(
-            message="📝 Enter template name (leave empty for auto-generation):",
+            message="Enter template name (leave empty for auto-generation):",
             default="",
         ).execute()
 
         # Get description
         description = inquirer.text(
-            message="📄 Enter template description:",
+            message="Enter template description:",
             default="",
         ).execute()
 
@@ -195,7 +212,7 @@ def interactive_template_create() -> Optional[Dict]:
         return None
 
 
-def interactive_template_delete(templates: Dict[str, List[str]]) -> Optional[List[str]]:
+def interactive_template_delete(templates: dict[str, list[str]]) -> list[str] | None:
     """
     Interactive form for deleting templates.
 
@@ -224,7 +241,7 @@ def interactive_template_delete(templates: Dict[str, List[str]]) -> Optional[Lis
     try:
         # Select templates to delete
         selected_items = inquirer.checkbox(
-            message="🗑️ Select templates to delete (use space to select/deselect):",
+            message="Select templates to delete (use space to select/deselect):",
             choices=all_templates,
         ).execute()
 
@@ -233,7 +250,7 @@ def interactive_template_delete(templates: Dict[str, List[str]]) -> Optional[Lis
 
         # Confirm deletion
         confirm = inquirer.confirm(
-            message="⚠️ Are you sure you want to delete the selected templates?",
+            message="Are you sure you want to delete the selected templates?",
             default=False,
         ).execute()
 
@@ -255,7 +272,7 @@ def interactive_template_delete(templates: Dict[str, List[str]]) -> Optional[Lis
         return None
 
 
-def _get_template_info(template_name: str) -> Optional[Dict]:
+def _get_template_info(template_name: str) -> dict[str, str | list | int] | None:
     """Get template information from template.json file."""
     try:
         template_dir = Path.home() / ".womm" / ".templates" / template_name

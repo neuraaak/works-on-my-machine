@@ -1,0 +1,346 @@
+# ///////////////////////////////////////////////////////////////
+# CURSOR IGNORE - Global Patterns
+# Project: works-on-my-machine
+# ///////////////////////////////////////////////////////////////
+
+# This file specifies patterns for files and directories that Cursor should
+# ignore during indexing and context building. These patterns help reduce
+# noise and improve performance by excluding generated, cached, and
+# dependency files from AI context.
+
+# ///////////////////////////////////////////////////////////////
+# DEPENDENCIES
+# ///////////////////////////////////////////////////////////////
+# Dependency directories that contain third-party code
+
+# Python virtual environments
+.venv/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+.conda/
+__pypackages__/
+
+# Node.js dependencies
+node_modules/
+.npm/
+.yarn/
+.pnp/
+.pnp.js
+jspm_packages/
+
+# Python package metadata
+*.egg-info/
+.eggs/
+*.egg
+.installed.cfg
+
+# ///////////////////////////////////////////////////////////////
+# BUILD ARTIFACTS
+# ///////////////////////////////////////////////////////////////
+# Compiled and generated build outputs
+
+# Python build artifacts
+build/
+dist/
+*.pyc
+*.pyo
+*.pyd
+*.so
+*.dylib
+*.dll
+__pycache__/
+*.py[cod]
+*$py.class
+
+# JavaScript/TypeScript build artifacts
+.next/
+.nuxt/
+dist/
+out/
+build/
+*.tsbuildinfo
+*.js.map
+*.d.ts.map
+
+# Compiled binaries
+*.exe
+*.bin
+*.app
+
+# ///////////////////////////////////////////////////////////////
+# CACHE FILES
+# ///////////////////////////////////////////////////////////////
+# Tool and framework cache directories
+
+# Python caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.pytype/
+.pyre/
+.hypothesis/
+.tox/
+.nox/
+.coverage
+htmlcov/
+.coverage.*
+*.cover
+
+# JavaScript/TypeScript caches
+.eslintcache
+.parcel-cache
+.cache/
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
+.nyc_output/
+
+# General caches
+.cache/
+*.cache
+
+# ///////////////////////////////////////////////////////////////
+# LOGS AND TEMPORARY FILES
+# ///////////////////////////////////////////////////////////////
+# Log files and temporary data
+
+# Log files
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+*.pid
+*.seed
+*.pid.lock
+
+# Temporary files
+*.tmp
+*.temp
+*~
+*.swp
+*.swo
+*.bak
+*.backup
+*.orig
+*.rej
+_temp/
+temp/
+tmp/
+
+# ///////////////////////////////////////////////////////////////
+# OPERATING SYSTEM FILES
+# ///////////////////////////////////////////////////////////////
+# OS-generated files and directories
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# macOS
+.DS_Store
+.DS_Store?
+._*
+.AppleDouble
+.LSOverride
+.Spotlight-V100
+.Trashes
+
+# Linux
+.directory
+.Trash-*
+
+# ///////////////////////////////////////////////////////////////
+# IDE AND EDITOR FILES
+# ///////////////////////////////////////////////////////////////
+# IDE-specific configuration and cache files
+
+# VSCode/Cursor (exclude workspace settings, keep project configs)
+.vscode/settings.json
+.vscode/launch.json
+.vscode/tasks.json
+.vscode/.ropeproject
+
+# JetBrains IDEs
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Vim
+*.swp
+*.swo
+*~
+
+# Emacs
+*~
+\#*\#
+.\#*
+
+# ///////////////////////////////////////////////////////////////
+# SENSITIVE FILES
+# ///////////////////////////////////////////////////////////////
+# Files containing secrets, credentials, or sensitive information
+
+# Environment variables
+.env
+.env.*
+.env.local
+.env.*.local
+.env.production
+.env.development
+.env.test
+
+# Secrets and credentials
+.secret*
+*secret*
+*password*
+*.key
+*.pem
+*.crt
+*.p12
+*.pfx
+credentials/
+keys/
+secrets/
+
+# ///////////////////////////////////////////////////////////////
+# TESTING AND COVERAGE
+# ///////////////////////////////////////////////////////////////
+# Test outputs and coverage reports
+
+# Test coverage
+coverage/
+.nyc_output/
+htmlcov/
+.coverage
+coverage.xml
+*.lcov
+*.cover
+
+# Test outputs
+.pytest_cache/
+test-results/
+test-output/
+*.test.js.snap
+
+# ///////////////////////////////////////////////////////////////
+# DOCUMENTATION BUILDS
+# ///////////////////////////////////////////////////////////////
+# Generated documentation
+
+# Sphinx
+docs/_build/
+docs/.doctrees/
+
+# MkDocs
+site/
+
+# JSDoc
+docs/api/
+
+# ///////////////////////////////////////////////////////////////
+# PACKAGE MANAGER FILES
+# ///////////////////////////////////////////////////////////////
+# Lock files and package manager caches
+
+# Python
+poetry.lock
+Pipfile.lock
+.pdm.toml
+
+# Node.js
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+.yarn-integrity
+
+# ///////////////////////////////////////////////////////////////
+# LARGE DATA FILES
+# ///////////////////////////////////////////////////////////////
+# Large files that don't need to be indexed
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+*.db-shm
+*.db-wal
+
+# Data files
+*.csv
+*.xlsx
+*.xls
+*.parquet
+*.feather
+
+# Media files (typically large)
+*.mp4
+*.avi
+*.mov
+*.mkv
+*.mp3
+*.wav
+*.flac
+
+# Archives
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.rar
+*.7z
+
+# ///////////////////////////////////////////////////////////////
+# FRAMEWORK-SPECIFIC
+# ///////////////////////////////////////////////////////////////
+# Framework build outputs and generated files
+
+# Next.js
+.next/
+out/
+
+# Nuxt.js
+.nuxt/
+dist/
+
+# Gatsby
+.cache/
+public/
+
+# Storybook
+.out/
+.storybook-out/
+
+# Angular
+.angular/
+
+# Vue
+.vuepress/dist/
+
+# ///////////////////////////////////////////////////////////////
+# PROJECT-SPECIFIC
+# ///////////////////////////////////////////////////////////////
+# Project-specific patterns (customize as needed)
+
+# Installation artifacts
+/.womm
+womm-installed.py
+
+# Generated configuration
+local_config/
+user_settings/
+
+# Temporary project files
+test_output/
+temp_projects/
+works-on-my-machine-temp/
+

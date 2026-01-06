@@ -1,15 +1,34 @@
 #!/usr/bin/env python3
+# ///////////////////////////////////////////////////////////////
+# BUILD_EXE - Executable Builder
+# Project: works-on-my-machine
+# ///////////////////////////////////////////////////////////////
+
 """
 Build script for WOMM executable installer.
+
+Creates a standalone executable using PyInstaller.
 """
 
+# ///////////////////////////////////////////////////////////////
+# IMPORTS
+# ///////////////////////////////////////////////////////////////
+# Standard library imports
 import subprocess
 import sys
 from pathlib import Path
 
+# ///////////////////////////////////////////////////////////////
+# FUNCTIONS
+# ///////////////////////////////////////////////////////////////
 
-def check_pyinstaller():
-    """Check if PyInstaller is installed."""
+
+def check_pyinstaller() -> bool:
+    """Check if PyInstaller is installed.
+
+    Returns:
+        bool: True if PyInstaller is available, False otherwise
+    """
     try:
         import PyInstaller
 
@@ -23,8 +42,12 @@ def check_pyinstaller():
         return True
 
 
-def create_spec_file():
-    """Create PyInstaller spec file."""
+def create_spec_file() -> Path:
+    """Create PyInstaller spec file.
+
+    Returns:
+        Path: Path to the created spec file
+    """
     spec_content = """# -*- mode: python ; coding: utf-8 -*-
 
 block_cipher = None
@@ -34,12 +57,37 @@ datas = [
     ('womm', 'womm'),
 ]
 
+# Explicitly include all dependencies
+hiddenimports = [
+    'click',
+    'rich',
+    'InquirerPy',
+    'tomli',
+    'womm',
+    'womm.cli',
+    'womm.core',
+    'womm.core.managers',
+    'womm.core.managers.installation',
+    'womm.core.managers.installation.installation_manager',
+    'womm.core.managers.system',
+    'womm.core.managers.system.user_path_manager',
+    'womm.core.ui',
+    'womm.core.ui.common',
+    'womm.core.ui.common.console',
+    'womm.core.utils',
+    'womm.core.utils.security',
+    'womm.core.utils.security.security_validator',
+    'womm.core.exceptions',
+    'womm.core.exceptions.installation',
+    'womm.core.exceptions.system',
+]
+
 a = Analysis(
     ['exe_script.py'],
     pathex=[],
     binaries=[],
     datas=datas,
-    hiddenimports=[],
+    hiddenimports=hiddenimports,
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
@@ -82,8 +130,12 @@ exe = EXE(
     return spec_path
 
 
-def build_executable():
-    """Build the executable."""
+def build_executable() -> bool:
+    """Build the executable.
+
+    Returns:
+        bool: True if build succeeded, False otherwise
+    """
     print("Building WOMM installer...")
 
     spec_path = create_spec_file()
@@ -107,8 +159,12 @@ def build_executable():
     return True
 
 
-def test_executable():
-    """Test the executable."""
+def test_executable() -> bool:
+    """Test the executable.
+
+    Returns:
+        bool: True if test passed, False otherwise
+    """
     exe_path = Path("dist") / "womm-installer.exe"
 
     if not exe_path.exists():
@@ -133,7 +189,13 @@ def test_executable():
         return False
 
 
-def main():
+# ///////////////////////////////////////////////////////////////
+# MAIN
+# ///////////////////////////////////////////////////////////////
+
+
+def main() -> None:
+    """Main function."""
     if len(sys.argv) > 1 and sys.argv[1] == "build":
         print("WOMM Installer Builder")
         print("=" * 30)

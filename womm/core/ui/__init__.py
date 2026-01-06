@@ -1,9 +1,20 @@
 #!/usr/bin/env python3
+# ///////////////////////////////////////////////////////////////
+# UI - User Interface Module
+# Project: works-on-my-machine
+# ///////////////////////////////////////////////////////////////
+
 """
-User Interface module using Rich for beautiful terminal output.
+User Interface module for Works On My Machine.
+
+This package contains UI components using Rich for beautiful terminal output.
+Provides console utilities, interactive components, and display functions.
 """
 
-# Import and expose common Rich utilities
+# ///////////////////////////////////////////////////////////////
+# IMPORTS
+# ///////////////////////////////////////////////////////////////
+# Local imports
 from .common.console import (
     LogLevel,
     console,
@@ -30,14 +41,15 @@ from .common.console import (
     set_log_level,
     set_warn_level,
 )
-
-# Import table utilities
 from .common.tables import create_backup_table
-
-# Import interactive components
 from .interactive import InteractiveMenu, format_backup_item
 
+# ///////////////////////////////////////////////////////////////
+# PUBLIC API
+# ///////////////////////////////////////////////////////////////
+
 __all__ = [
+    # Console and display functions
     "console",
     "LogLevel",
     "print_success",
@@ -55,7 +67,7 @@ __all__ = [
     "print_separator",
     "print_command",
     "print_result",
-    # Fonctions de configuration du niveau de logging
+    # Logging level configuration functions
     "set_log_level",
     "get_log_level",
     "set_debug_level",

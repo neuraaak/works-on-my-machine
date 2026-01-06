@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+# ///////////////////////////////////////////////////////////////
+# CONTEXT - Context Menu UI Components
+# Project: works-on-my-machine
+# ///////////////////////////////////////////////////////////////
+
 """
 Context menu UI components.
 
@@ -6,10 +11,13 @@ This module provides UI components for context menu operations,
 including backup selection and restoration interfaces.
 """
 
+# ///////////////////////////////////////////////////////////////
+# IMPORTS
+# ///////////////////////////////////////////////////////////////
+# Standard library imports
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 from rich import print
 
@@ -31,7 +39,7 @@ class ContextMenuUI:
     def show_backup_selection_menu(
         backup_dir: Path,
         verbose: bool = False,  # noqa: ARG004
-    ) -> Optional[Path]:
+    ) -> Path | None:
         """
         Show interactive menu for selecting a backup file to restore.
 

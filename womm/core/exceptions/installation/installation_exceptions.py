@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+# ///////////////////////////////////////////////////////////////
+# INSTALLATION EXCEPTIONS - Installation Exceptions
+# Project: works-on-my-machine
+# ///////////////////////////////////////////////////////////////
+
 """
 Installation exceptions for Works On My Machine.
 
@@ -18,14 +23,13 @@ Following a pragmatic approach with 8 main exception types:
 9. InstallationSystemError - System operation errors during installation
 """
 
+# ///////////////////////////////////////////////////////////////
 # IMPORTS
-########################################################
-# Standard library imports
-from typing import Optional
+# ///////////////////////////////////////////////////////////////
 
-# =============================================================================
+# ///////////////////////////////////////////////////////////////
 # UTILITY EXCEPTIONS
-# =============================================================================
+# ///////////////////////////////////////////////////////////////
 
 
 class InstallationUtilityError(Exception):
@@ -35,7 +39,7 @@ class InstallationUtilityError(Exception):
     Used for general errors like invalid arguments, unexpected failures, etc.
     """
 
-    def __init__(self, message: str, details: Optional[str] = None):
+    def __init__(self, message: str, details: str | None = None) -> None:
         """Initialize the exception with a message and optional details.
 
         Args:
@@ -47,9 +51,9 @@ class InstallationUtilityError(Exception):
         super().__init__(self.message)
 
 
-# =============================================================================
+# ///////////////////////////////////////////////////////////////
 # UTILITY EXCEPTIONS - FILE OPERATIONS
-# =============================================================================
+# ///////////////////////////////////////////////////////////////
 
 
 class FileVerificationError(InstallationUtilityError):
@@ -64,8 +68,8 @@ class FileVerificationError(InstallationUtilityError):
         verification_type: str,
         file_path: str,
         reason: str,
-        details: Optional[str] = None,
-    ):
+        details: str | None = None,
+    ) -> None:
         """Initialize file verification error with specific context.
 
         Args:
@@ -81,9 +85,9 @@ class FileVerificationError(InstallationUtilityError):
         super().__init__(message, details)
 
 
-# =============================================================================
+# ///////////////////////////////////////////////////////////////
 # UTILITY EXCEPTIONS - PATH OPERATIONS
-# =============================================================================
+# ///////////////////////////////////////////////////////////////
 
 
 class PathUtilityError(InstallationUtilityError):
@@ -98,8 +102,8 @@ class PathUtilityError(InstallationUtilityError):
         operation: str,
         path: str,
         reason: str,
-        details: Optional[str] = None,
-    ):
+        details: str | None = None,
+    ) -> None:
         """Initialize path utility error with specific context.
 
         Args:
@@ -115,9 +119,9 @@ class PathUtilityError(InstallationUtilityError):
         super().__init__(message, details)
 
 
-# =============================================================================
+# ///////////////////////////////////////////////////////////////
 # UTILITY EXCEPTIONS - EXECUTABLE OPERATIONS
-# =============================================================================
+# ///////////////////////////////////////////////////////////////
 
 
 class ExecutableVerificationError(InstallationUtilityError):
@@ -131,8 +135,8 @@ class ExecutableVerificationError(InstallationUtilityError):
         self,
         executable_name: str,
         reason: str,
-        details: Optional[str] = None,
-    ):
+        details: str | None = None,
+    ) -> None:
         """Initialize executable verification error with specific context.
 
         Args:
@@ -146,9 +150,9 @@ class ExecutableVerificationError(InstallationUtilityError):
         super().__init__(message, details)
 
 
-# =============================================================================
+# ///////////////////////////////////////////////////////////////
 # MANAGER EXCEPTIONS - BASE
-# =============================================================================
+# ///////////////////////////////////////////////////////////////
 
 
 class InstallationManagerError(Exception):
@@ -158,7 +162,7 @@ class InstallationManagerError(Exception):
     such as process orchestration, progress tracking, or state management.
     """
 
-    def __init__(self, message: str, details: Optional[str] = None):
+    def __init__(self, message: str, details: str | None = None) -> None:
         """Initialize the manager error with a message and optional details.
 
         Args:
@@ -170,9 +174,9 @@ class InstallationManagerError(Exception):
         super().__init__(self.message)
 
 
-# =============================================================================
+# ///////////////////////////////////////////////////////////////
 # MANAGER EXCEPTIONS - FILE OPERATIONS
-# =============================================================================
+# ///////////////////////////////////////////////////////////////
 
 
 class InstallationFileError(InstallationManagerError):
@@ -187,8 +191,8 @@ class InstallationFileError(InstallationManagerError):
         operation: str,
         file_path: str,
         reason: str,
-        details: Optional[str] = None,
-    ):
+        details: str | None = None,
+    ) -> None:
         """Initialize installation file error with specific context.
 
         Args:
@@ -204,9 +208,9 @@ class InstallationFileError(InstallationManagerError):
         super().__init__(message, details)
 
 
-# =============================================================================
+# ///////////////////////////////////////////////////////////////
 # MANAGER EXCEPTIONS - PATH OPERATIONS
-# =============================================================================
+# ///////////////////////////////////////////////////////////////
 
 
 class InstallationPathError(InstallationManagerError):
@@ -221,8 +225,8 @@ class InstallationPathError(InstallationManagerError):
         operation: str,
         path: str,
         reason: str,
-        details: Optional[str] = None,
-    ):
+        details: str | None = None,
+    ) -> None:
         """Initialize installation path error with specific context.
 
         Args:
@@ -238,9 +242,9 @@ class InstallationPathError(InstallationManagerError):
         super().__init__(message, details)
 
 
-# =============================================================================
+# ///////////////////////////////////////////////////////////////
 # MANAGER EXCEPTIONS - VERIFICATION OPERATIONS
-# =============================================================================
+# ///////////////////////////////////////////////////////////////
 
 
 class InstallationVerificationError(InstallationManagerError):
@@ -255,8 +259,8 @@ class InstallationVerificationError(InstallationManagerError):
         verification_type: str,
         target: str,
         reason: str,
-        details: Optional[str] = None,
-    ):
+        details: str | None = None,
+    ) -> None:
         """Initialize installation verification error with specific context.
 
         Args:
@@ -272,9 +276,9 @@ class InstallationVerificationError(InstallationManagerError):
         super().__init__(message, details)
 
 
-# =============================================================================
+# ///////////////////////////////////////////////////////////////
 # MANAGER EXCEPTIONS - SYSTEM OPERATIONS
-# =============================================================================
+# ///////////////////////////////////////////////////////////////
 
 
 class InstallationSystemError(InstallationManagerError):
@@ -288,8 +292,8 @@ class InstallationSystemError(InstallationManagerError):
         self,
         operation: str,
         reason: str,
-        details: Optional[str] = None,
-    ):
+        details: str | None = None,
+    ) -> None:
         """Initialize installation system error with specific context.
 
         Args:

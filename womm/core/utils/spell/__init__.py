@@ -1,10 +1,19 @@
+#!/usr/bin/env python3
+# ///////////////////////////////////////////////////////////////
+# UTILS SPELL - Spell Checking Utility Modules
+# Project: works-on-my-machine
+# ///////////////////////////////////////////////////////////////
+
 """
 Spell checking utility modules for Works On My Machine.
 
 This package contains pure utility functions for spell checking operations.
 """
 
-# Import utility functions for external use
+# ///////////////////////////////////////////////////////////////
+# IMPORTS
+# ///////////////////////////////////////////////////////////////
+# Local imports
 from .cspell_utils import (
     add_words_to_config,
     check_cspell_installed,
@@ -18,6 +27,10 @@ from .dictionary_utils import (
     get_dictionary_info,
     list_available_dictionaries,
 )
+
+# ///////////////////////////////////////////////////////////////
+# PUBLIC API
+# ///////////////////////////////////////////////////////////////
 
 __all__ = [
     "check_cspell_installed",

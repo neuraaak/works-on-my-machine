@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+# ///////////////////////////////////////////////////////////////
+# INTERACTIVE WIZARD - Context Menu Interactive Wizard
+# Project: works-on-my-machine
+# ///////////////////////////////////////////////////////////////
+
 """
 Interactive wizard for context menu configuration.
 
@@ -7,8 +12,11 @@ context menu entries, making it easy for users to set up their scripts
 without needing to know all the technical details.
 """
 
+# ///////////////////////////////////////////////////////////////
+# IMPORTS
+# ///////////////////////////////////////////////////////////////
+# Standard library imports
 from pathlib import Path
-from typing import Optional, Tuple
 
 try:
     from InquirerPy import inquirer
@@ -18,7 +26,7 @@ try:
 except ImportError:
     INQUIRERPY_AVAILABLE = False
 
-from ...managers.context.utils.context_parameters import ContextParameters, ContextType
+from ...utils.context.context_parameters import ContextParameters, ContextType
 from ..common.console import Console, print_error, print_info
 from ..interactive import InteractiveMenu
 
@@ -30,8 +38,8 @@ class ContextMenuWizard:
     _console = Console()
 
     @staticmethod
-    def run_setup() -> Tuple[
-        Optional[str], Optional[str], Optional[str], Optional[ContextParameters]
+    def run_setup() -> tuple[
+        str | None, str | None, str | None, ContextParameters | None
     ]:
         """
         Run the complete interactive setup wizard.
@@ -75,7 +83,7 @@ class ContextMenuWizard:
         return script_path, label, icon, context_params
 
     @staticmethod
-    def _select_script() -> Optional[str]:
+    def _select_script() -> str | None:
         """Interactive script file selection."""
         if INQUIRERPY_AVAILABLE:
             # Use InquirerPy for better file selection
@@ -85,7 +93,7 @@ class ContextMenuWizard:
             return ContextMenuWizard._select_script_fallback()
 
     @staticmethod
-    def _select_script_with_inquirer() -> Optional[str]:
+    def _select_script_with_inquirer() -> str | None:
         """Select script using InquirerPy file browser."""
         try:
             # Create a custom validator for script files
@@ -132,7 +140,7 @@ class ContextMenuWizard:
             return ContextMenuWizard._select_script_fallback()
 
     @staticmethod
-    def _select_script_fallback() -> Optional[str]:
+    def _select_script_fallback() -> str | None:
         """Fallback script selection using custom menu."""
         menu = InteractiveMenu(
             title="Select Script File",
@@ -157,7 +165,7 @@ class ContextMenuWizard:
             return None
 
     @staticmethod
-    def _browse_for_script() -> Optional[str]:
+    def _browse_for_script() -> str | None:
         """Browse for script files in current directory."""
         current_dir = Path.cwd()
 
@@ -213,7 +221,7 @@ class ContextMenuWizard:
             return None
 
     @staticmethod
-    def _browse_directory(directory: Path) -> Optional[str]:
+    def _browse_directory(directory: Path) -> str | None:
         """Browse a specific directory for script files."""
         if not directory.exists() or not directory.is_dir():
             print_error(f"Invalid directory: {directory}")
@@ -288,7 +296,7 @@ class ContextMenuWizard:
             return None
 
     @staticmethod
-    def _get_label() -> Optional[str]:
+    def _get_label() -> str | None:
         """Interactive label input."""
         if INQUIRERPY_AVAILABLE:
             return ContextMenuWizard._get_label_with_inquirer()
@@ -296,7 +304,7 @@ class ContextMenuWizard:
             return ContextMenuWizard._get_label_fallback()
 
     @staticmethod
-    def _get_label_with_inquirer() -> Optional[str]:
+    def _get_label_with_inquirer() -> str | None:
         """Get label using InquirerPy."""
         try:
             label = inquirer.text(
@@ -314,7 +322,7 @@ class ContextMenuWizard:
             return ContextMenuWizard._get_label_fallback()
 
     @staticmethod
-    def _get_label_fallback() -> Optional[str]:
+    def _get_label_fallback() -> str | None:
         """Fallback label input."""
         print_info("Enter the label to display in the context menu:")
         label = input("> ").strip()
@@ -324,7 +332,7 @@ class ContextMenuWizard:
         return label
 
     @staticmethod
-    def _select_icon(script_path: str) -> Optional[str]:  # noqa: ARG004
+    def _select_icon(script_path: str) -> str | None:  # noqa: ARG004
         """Interactive icon selection."""
         # Note: script_path is kept for future use when auto-detecting script icons
         if INQUIRERPY_AVAILABLE:
@@ -333,7 +341,7 @@ class ContextMenuWizard:
             return ContextMenuWizard._select_icon_fallback()
 
     @staticmethod
-    def _select_icon_with_inquirer() -> Optional[str]:
+    def _select_icon_with_inquirer() -> str | None:
         """Select icon using InquirerPy."""
         try:
             # First, ask for icon type
@@ -409,7 +417,7 @@ class ContextMenuWizard:
             return ContextMenuWizard._select_icon_fallback()
 
     @staticmethod
-    def _select_icon_fallback() -> Optional[str]:
+    def _select_icon_fallback() -> str | None:
         """Fallback icon selection using custom menu."""
         menu = InteractiveMenu(
             title="Select Icon", instruction="Choose icon for the context menu entry"

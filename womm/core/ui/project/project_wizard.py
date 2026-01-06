@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+# ///////////////////////////////////////////////////////////////
+# PROJECT WIZARD - Interactive Project Creation Wizard
+# Project: works-on-my-machine
+# ///////////////////////////////////////////////////////////////
+
 """
 Interactive wizard for project creation.
 
@@ -7,8 +12,11 @@ new projects, making it easy for users to set up their projects
 without needing to know all the technical details.
 """
 
+# ///////////////////////////////////////////////////////////////
+# IMPORTS
+# ///////////////////////////////////////////////////////////////
+# Standard library imports
 from pathlib import Path
-from typing import Dict, Optional
 
 try:
     from InquirerPy import inquirer
@@ -31,7 +39,7 @@ class ProjectWizard:
     _console = Console()
 
     @staticmethod
-    def run_interactive_setup() -> Optional[Dict]:
+    def run_interactive_setup() -> dict[str, str | bool | int] | None:
         """
         Run the complete interactive project creation wizard.
 
@@ -95,7 +103,7 @@ class ProjectWizard:
     @staticmethod
     def run_interactive_setup_for_existing_project(
         project_type: str, project_path: Path
-    ) -> Optional[Dict]:
+    ) -> dict[str, str | bool | int] | None:
         """
         Run interactive setup wizard for an existing project.
 
@@ -125,7 +133,7 @@ class ProjectWizard:
         }
 
     @staticmethod
-    def _select_project_type() -> Optional[str]:
+    def _select_project_type() -> str | None:
         """Interactive project type selection."""
         project_types = [
             (
@@ -160,7 +168,7 @@ class ProjectWizard:
             return selected["type"] if selected else None
 
     @staticmethod
-    def _get_project_name() -> Optional[str]:
+    def _get_project_name() -> str | None:
         """Get project name with validation."""
         if INQUIRERPY_AVAILABLE:
             while True:
@@ -203,7 +211,7 @@ class ProjectWizard:
         return is_valid
 
     @staticmethod
-    def _select_project_location(project_name: str) -> Optional[Path]:
+    def _select_project_location(project_name: str) -> Path | None:
         """Select project location."""
         current_dir = Path.cwd()
 
@@ -249,7 +257,7 @@ class ProjectWizard:
         return None
 
     @staticmethod
-    def _select_custom_location(project_name: str) -> Optional[Path]:
+    def _select_custom_location(project_name: str) -> Path | None:
         """Select custom project location."""
         if INQUIRERPY_AVAILABLE:
             # Use InquirerPy file browser for directory selection
@@ -293,7 +301,7 @@ class ProjectWizard:
         return None
 
     @staticmethod
-    def _configure_project_options(project_type: str) -> Dict:
+    def _configure_project_options(project_type: str) -> dict[str, str | bool]:
         """Configure project-specific options."""
         options = {}
 
@@ -378,7 +386,10 @@ class ProjectWizard:
 
     @staticmethod
     def _confirm_project_creation(
-        project_name: str, project_path: Path, project_type: str, options: Dict
+        project_name: str,
+        project_path: Path,
+        project_type: str,
+        options: dict[str, str | bool],
     ) -> bool:
         """Confirm project creation with a Rich panel."""
         from rich.console import Console
@@ -417,7 +428,9 @@ class ProjectWizard:
             return confirm in ["", "y", "yes"]
 
     @staticmethod
-    def _configure_setup_options(project_type: str) -> Dict:  # noqa: ARG004
+    def _configure_setup_options(
+        project_type: str,  # noqa: ARG004
+    ) -> dict[str, str | bool]:
         """Configure setup-specific options for an existing project."""
         options = {}
 
@@ -460,7 +473,9 @@ class ProjectWizard:
         return options
 
     @staticmethod
-    def _confirm_setup(project_type: str, project_path: Path, options: Dict) -> bool:
+    def _confirm_setup(
+        project_type: str, project_path: Path, options: dict[str, str | bool]
+    ) -> bool:
         """Confirm setup configuration with a Rich panel."""
         from rich.console import Console
         from rich.table import Table

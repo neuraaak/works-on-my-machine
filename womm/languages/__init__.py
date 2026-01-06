@@ -1,10 +1,24 @@
 #!/usr/bin/env python3
-"""
-Language support modules for WOMM.
+# ///////////////////////////////////////////////////////////////
+# LANGUAGES - Language Support Modules
+# Project: works-on-my-machine
+# ///////////////////////////////////////////////////////////////
 
-Provides language-specific setup, configuration, and tooling.
+"""
+Language support modules for Works On My Machine.
+
+This package provides language-specific setup, configuration, and tooling
+for different programming languages supported by WOMM.
 """
 
+# ///////////////////////////////////////////////////////////////
+# IMPORTS
+# ///////////////////////////////////////////////////////////////
+# Local imports
 from . import javascript, python
+
+# ///////////////////////////////////////////////////////////////
+# PUBLIC API
+# ///////////////////////////////////////////////////////////////
 
 __all__ = ["python", "javascript"]

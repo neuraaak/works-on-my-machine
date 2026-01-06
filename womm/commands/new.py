@@ -1,27 +1,53 @@
 #!/usr/bin/env python3
+# ///////////////////////////////////////////////////////////////
+# NEW - New Project Commands
+# Project: works-on-my-machine
+# ///////////////////////////////////////////////////////////////
+
 """
 New project commands for WOMM CLI.
-Handles creation of new Python and JavaScript projects using the modular architecture.
+
+This module handles creation of new Python and JavaScript projects using the modular architecture.
+Provides interactive and direct modes for project creation with comprehensive setup.
 """
 
+# ///////////////////////////////////////////////////////////////
+# IMPORTS
+# ///////////////////////////////////////////////////////////////
+# Standard library imports
 import sys
-from typing import Optional
 
+# Third-party imports
 import click
 
+# Local imports
 from ..core.managers.project import ProjectManager
-from ..core.ui.common.console import print_error, print_header
+from ..core.ui.common.console import (
+    print_dry_run_message,
+    print_dry_run_success,
+    print_dry_run_warning,
+    print_error,
+    print_header,
+)
 from ..core.ui.project import ProjectWizard
-from ..core.utils.security.security_validator import validate_user_input
+
+# ///////////////////////////////////////////////////////////////
+# COMMAND GROUPS
+# ///////////////////////////////////////////////////////////////
 
 
 @click.group(invoke_without_command=True)
 @click.help_option("-h", "--help")
 @click.pass_context
-def new_group(ctx):
+def new_group(ctx: click.Context) -> None:
     """🆕 Create new projects with modern development setup."""
     if ctx.invoked_subcommand is None:
         click.echo(ctx.get_help())
+
+
+# ///////////////////////////////////////////////////////////////
+# PYTHON PROJECT COMMANDS
+# ///////////////////////////////////////////////////////////////
 
 
 @new_group.command("python")
@@ -60,16 +86,22 @@ def new_group(ctx):
     "--project-repository",
     help="Project repository URL",
 )
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    help="Show what would be done without making changes",
+)
 def new_python(
-    project_name: Optional[str],
+    project_name: str | None,
     current_dir: bool,
-    target: Optional[str],
+    target: str | None,
     interactive: bool,
-    author_name: Optional[str],
-    author_email: Optional[str],
-    project_url: Optional[str],
-    project_repository: Optional[str],
-):
+    author_name: str | None,
+    author_email: str | None,
+    project_url: str | None,
+    project_repository: str | None,
+    dry_run: bool,
+) -> None:
     """🐍 Create a new Python project with full development environment."""
 
     # Initialize project manager
@@ -78,7 +110,20 @@ def new_python(
     try:
         # Interactive mode
         if interactive:
-            return _run_interactive_python_setup(project_manager)
+            if dry_run:
+                print_header("🐍 Interactive Python Project Setup (DRY RUN)")
+                print_dry_run_warning()
+                print_dry_run_message(
+                    "run interactive mode", "prompt user for project details"
+                )
+                print_dry_run_message("validate inputs", "check project configuration")
+                print_dry_run_message(
+                    "create project", "generate project structure and files"
+                )
+                print_dry_run_success()
+                return 0
+            else:
+                return _run_interactive_python_setup(project_manager)
 
         # Non-interactive mode
         return _run_direct_python_setup(
@@ -90,11 +135,17 @@ def new_python(
             author_email,
             project_url,
             project_repository,
+            dry_run,
         )
 
     except Exception as e:
         print_error(f"Error creating Python project: {e}")
         sys.exit(1)
+
+
+# ///////////////////////////////////////////////////////////////
+# JAVASCRIPT PROJECT COMMANDS
+# ///////////////////////////////////////////////////////////////
 
 
 @new_group.command("javascript")
@@ -140,17 +191,23 @@ def new_python(
     "--project-repository",
     help="Project repository URL",
 )
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    help="Show what would be done without making changes",
+)
 def new_javascript(
-    project_name: Optional[str],
+    project_name: str | None,
     current_dir: bool,
-    target: Optional[str],
+    target: str | None,
     project_type: str,
     interactive: bool,
-    author_name: Optional[str],
-    author_email: Optional[str],
-    project_url: Optional[str],
-    project_repository: Optional[str],
-):
+    author_name: str | None,
+    author_email: str | None,
+    project_url: str | None,
+    project_repository: str | None,
+    dry_run: bool,
+) -> None:
     """🟨 Create a new JavaScript/Node.js project with development tools."""
 
     # Initialize project manager
@@ -159,7 +216,20 @@ def new_javascript(
     try:
         # Interactive mode
         if interactive:
-            return _run_interactive_javascript_setup(project_manager)
+            if dry_run:
+                print_header("🟨 Interactive JavaScript Project Setup (DRY RUN)")
+                print_dry_run_warning()
+                print_dry_run_message(
+                    "run interactive mode", "prompt user for project details"
+                )
+                print_dry_run_message("validate inputs", "check project configuration")
+                print_dry_run_message(
+                    "create project", "generate project structure and files"
+                )
+                print_dry_run_success()
+                return 0
+            else:
+                return _run_interactive_javascript_setup(project_manager)
 
         # Non-interactive mode
         return _run_direct_javascript_setup(
@@ -172,6 +242,7 @@ def new_javascript(
             author_email,
             project_url,
             project_repository,
+            dry_run,
         )
 
     except Exception as e:
@@ -179,7 +250,11 @@ def new_javascript(
         sys.exit(1)
 
 
-# Helper functions for interactive modes
+# ///////////////////////////////////////////////////////////////
+# HELPER FUNCTIONS - INTERACTIVE MODES
+# ///////////////////////////////////////////////////////////////
+
+
 def _run_interactive_python_setup(project_manager: ProjectManager) -> int:
     """Run interactive Python project setup."""
     print_header("🐍 Interactive Python Project Setup")
@@ -248,25 +323,28 @@ def _run_interactive_javascript_setup(project_manager: ProjectManager) -> int:
         return 1
 
 
-# Helper functions for direct modes
+# ///////////////////////////////////////////////////////////////
+# HELPER FUNCTIONS - DIRECT MODES
+# ///////////////////////////////////////////////////////////////
+
+
 def _run_direct_python_setup(
     project_manager: ProjectManager,
-    project_name: Optional[str],
+    project_name: str | None,
     current_dir: bool,
-    target: Optional[str],
-    author_name: Optional[str],
-    author_email: Optional[str],
-    project_url: Optional[str],
-    project_repository: Optional[str],
+    target: str | None,
+    author_name: str | None,
+    author_email: str | None,
+    project_url: str | None,
+    project_repository: str | None,
+    dry_run: bool = False,
 ) -> int:
     """Run direct Python project setup."""
 
     # Validate project name if provided
-    if project_name and not current_dir:
-        is_valid, error = validate_user_input(project_name, "project_name")
-        if not is_valid:
-            print_error(f"Invalid project name: {error}")
-            return 1
+    if project_name and not current_dir and not project_name.strip():
+        print_error("Project name cannot be empty")
+        return 1
 
     # Prepare options
     options = {}
@@ -286,6 +364,7 @@ def _run_direct_python_setup(
         project_type="python",
         project_name=project_name,
         current_dir=current_dir,
+        dry_run=dry_run,
         **options,
     )
 
@@ -297,23 +376,22 @@ def _run_direct_python_setup(
 
 def _run_direct_javascript_setup(
     project_manager: ProjectManager,
-    project_name: Optional[str],
+    project_name: str | None,
     current_dir: bool,
-    target: Optional[str],
+    target: str | None,
     project_type: str,
-    author_name: Optional[str],
-    author_email: Optional[str],
-    project_url: Optional[str],
-    project_repository: Optional[str],
+    author_name: str | None,
+    author_email: str | None,
+    project_url: str | None,
+    project_repository: str | None,
+    dry_run: bool = False,
 ) -> int:
     """Run direct JavaScript project setup."""
 
     # Validate project name if provided
-    if project_name and not current_dir:
-        is_valid, error = validate_user_input(project_name, "project_name")
-        if not is_valid:
-            print_error(f"Invalid project name: {error}")
-            return 1
+    if project_name and not current_dir and not project_name.strip():
+        print_error("Project name cannot be empty")
+        return 1
 
     # Prepare options
     options = {}
@@ -336,6 +414,7 @@ def _run_direct_javascript_setup(
         project_type=pm_project_type,
         project_name=project_name,
         current_dir=current_dir,
+        dry_run=dry_run,
         **options,
     )
 

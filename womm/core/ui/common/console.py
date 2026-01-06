@@ -1,10 +1,16 @@
 #!/usr/bin/env python3
+# ///////////////////////////////////////////////////////////////
+# CONSOLE - Console Utilities
+# Project: works-on-my-machine
+# ///////////////////////////////////////////////////////////////
+
 """
 Console utilities using Rich for beautiful terminal output.
 """
 
+# ///////////////////////////////////////////////////////////////
 # IMPORTS
-########################################################
+# ///////////////////////////////////////////////////////////////
 # Standard library imports
 import contextlib
 import json
@@ -12,7 +18,6 @@ import logging
 from enum import Enum
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
-from typing import Optional
 
 # Third-party imports
 from rich.console import Console
@@ -22,8 +27,9 @@ from rich.text import Text
 # (None for this file)
 
 
+# ///////////////////////////////////////////////////////////////
 # CONSTANTS
-########################################################
+# ///////////////////////////////////////////////////////////////
 # Configuration values and constants
 
 # Color mapping for essential patterns
@@ -43,8 +49,9 @@ PATTERN_COLORS = {
 }
 
 
+# ///////////////////////////////////////////////////////////////
 # CLASSES
-########################################################
+# ///////////////////////////////////////////////////////////////
 # Class and enumeration definitions
 
 
@@ -58,8 +65,9 @@ class LogLevel(Enum):
     CRITICAL = "critical"
 
 
+# ///////////////////////////////////////////////////////////////
 # CONFIGURATION
-########################################################
+# ///////////////////////////////////////////////////////////////
 # Global variables and settings
 
 # Global console instance
@@ -69,7 +77,7 @@ console = Console()
 _min_log_level = LogLevel.INFO
 
 # Optional structured file logger (disabled by default)
-_structured_logger: Optional[logging.Logger] = None
+_structured_logger: logging.Logger | None = None
 _log_json_format: bool = False
 
 # Map UI log levels to Python logging
@@ -82,8 +90,9 @@ _PY_LOG_LEVEL = {
 }
 
 
+# ///////////////////////////////////////////////////////////////
 # CONFIGURATION FUNCTIONS
-########################################################
+# ///////////////////////////////////////////////////////////////
 # Settings and configuration management
 
 
@@ -94,7 +103,7 @@ def set_log_level(level: LogLevel):
 
 
 def configure_file_logging(
-    log_path: Optional[str] = None,
+    log_path: str | None = None,
     level: LogLevel = LogLevel.INFO,
     json_format: bool = False,
     max_bytes: int = 1_000_000,
@@ -173,7 +182,7 @@ def to_loglevel(value: str) -> LogLevel:
 
 def configure_logging(
     level: LogLevel = LogLevel.INFO,
-    file: Optional[str] = None,
+    file: str | None = None,
     json_format: bool = False,
     max_bytes: int = 1_000_000,
     backup_count: int = 3,
@@ -236,8 +245,9 @@ def set_critical_level():
     set_log_level(LogLevel.CRITICAL)
 
 
+# ///////////////////////////////////////////////////////////////
 # MAIN FUNCTIONS
-########################################################
+# ///////////////////////////////////////////////////////////////
 # Core functionality and primary operations
 
 
@@ -337,8 +347,9 @@ def print_deps(message: str, level: LogLevel = LogLevel.INFO, **kwargs):
     print_pattern(level, "DEPS", message, **kwargs)
 
 
+# ///////////////////////////////////////////////////////////////
 # UTILITY FUNCTIONS
-########################################################
+# ///////////////////////////////////////////////////////////////
 # Helper functions and utilities
 
 
@@ -370,3 +381,31 @@ def print_result(result: str, success: bool = True, **kwargs):
     """Display the result of an operation."""
     style = "bold green" if success else "bold red"
     console.print(result, style=style, **kwargs)
+
+
+# UTILITY FUNCTIONS
+########################################################
+# Helper functions for specific output types
+
+
+def print_dry_run_message(operation: str, details: str = ""):
+    """Print a consistent dry-run message.
+
+    Args:
+        operation: The operation that would be performed
+        details: Additional details about the operation
+    """
+    message = f"🔍 [DRY-RUN] Would {operation}"
+    if details:
+        message += f": {details}"
+    print_info(message)
+
+
+def print_dry_run_success():
+    """Print a consistent dry-run success message."""
+    print_success("✅ Dry run completed successfully")
+
+
+def print_dry_run_warning():
+    """Print a consistent dry-run warning message."""
+    print_warn("⚠️  DRY-RUN MODE - No changes will be made")

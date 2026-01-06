@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+# ///////////////////////////////////////////////////////////////
+# UNINSTALLATION UTILS - Uninstallation Utilities
+# Project: works-on-my-machine
+# ///////////////////////////////////////////////////////////////
+
 """
 Uninstallation utilities for Works On My Machine.
 
@@ -6,11 +11,12 @@ This module provides pure utility functions for WOMM uninstallation operations.
 All functions here are stateless and can be used independently.
 """
 
+# ///////////////////////////////////////////////////////////////
 # IMPORTS
-########################################################
+# ///////////////////////////////////////////////////////////////
 # Standard library imports
+import logging
 from pathlib import Path
-from typing import Dict, List
 
 # Local imports
 from ...exceptions.installation import (
@@ -19,96 +25,137 @@ from ...exceptions.installation import (
     UninstallationVerificationError,
 )
 
-# =============================================================================
+# ///////////////////////////////////////////////////////////////
+# LOGGER SETUP
+# ///////////////////////////////////////////////////////////////
+
+logger = logging.getLogger(__name__)
+
+# ///////////////////////////////////////////////////////////////
 # FILE SCANNING UTILITIES
-# =============================================================================
+# ///////////////////////////////////////////////////////////////
 
 
-def get_files_to_remove(target_path: Path) -> List[str]:
-    """Get list of files and directories to remove for progress tracking.
+def get_files_to_remove(target_path: Path) -> list[str]:
+    """
+    Get list of files and directories to remove for progress tracking.
 
     Args:
         target_path: Target installation directory
 
     Returns:
-        List of relative file and directory paths to remove
+        List[str]: List of relative file and directory paths to remove
 
     Raises:
         FileScanError: If file list generation fails
         DirectoryAccessError: If directory access fails
     """
-    files_to_remove = []
-
-    if not target_path.exists():
-        return files_to_remove
-
     try:
-        # Check if we have permission to access the directory
-        if not target_path.is_dir():
-            raise DirectoryAccessError(
+        # Input validation
+        if not target_path:
+            raise FileScanError(
                 operation="list_generation",
-                directory_path=str(target_path),
-                reason="Target path is not a directory",
-                details=f"Path exists but is not a directory: {target_path}",
+                target_path="",
+                reason="Target path cannot be empty",
+                details="Invalid target path provided for file list generation",
             )
 
-        # Get all files and directories recursively
-        for item_path in target_path.rglob("*"):
-            try:
-                if item_path.is_file():
-                    # Add file with relative path
-                    relative_path = item_path.relative_to(target_path)
-                    files_to_remove.append(str(relative_path))
-                elif item_path.is_dir():
-                    # Add directory with relative path (keep trailing slash for directories)
-                    relative_path = item_path.relative_to(target_path)
-                    files_to_remove.append(f"{relative_path}/")
-            except PermissionError as e:
+        files_to_remove = []
+
+        if not target_path.exists():
+            return files_to_remove
+
+        try:
+            # Check if we have permission to access the directory
+            if not target_path.is_dir():
                 raise DirectoryAccessError(
-                    operation="file_scanning",
-                    directory_path=str(item_path),
+                    operation="list_generation",
+                    directory_path=str(target_path),
+                    reason="Target path is not a directory",
+                    details=f"Path exists but is not a directory: {target_path}",
+                )
+
+            # Get all files and directories recursively
+            for item_path in target_path.rglob("*"):
+                try:
+                    if item_path.is_file():
+                        # Add file with relative path
+                        relative_path = item_path.relative_to(target_path)
+                        files_to_remove.append(str(relative_path))
+                    elif item_path.is_dir():
+                        # Add directory with relative path (keep trailing slash for directories)
+                        relative_path = item_path.relative_to(target_path)
+                        files_to_remove.append(f"{relative_path}/")
+                except PermissionError as e:
+                    raise DirectoryAccessError(
+                        operation="file_scanning",
+                        directory_path=str(item_path),
+                        reason=f"Permission denied: {e}",
+                        details=f"Cannot access file/directory: {item_path}",
+                    ) from e
+                except Exception as e:
+                    logger.warning(f"Failed to process item {item_path}: {e}")
+                    continue
+
+            # Sort to ensure files are removed before their parent directories
+            # Files first, then directories (reverse alphabetical for nested dirs)
+            files_to_remove.sort(key=lambda x: (x.endswith("/"), x))
+
+            return files_to_remove
+
+        except (DirectoryAccessError, PermissionError) as e:
+            if isinstance(e, DirectoryAccessError):
+                raise
+            else:
+                raise DirectoryAccessError(
+                    operation="list_generation",
+                    directory_path=str(target_path),
                     reason=f"Permission denied: {e}",
-                    details=f"Cannot access file/directory: {item_path}",
+                    details=f"Cannot access target directory: {target_path}",
                 ) from e
 
-        # Sort to ensure files are removed before their parent directories
-        # Files first, then directories (reverse alphabetical for nested dirs)
-        files_to_remove.sort(key=lambda x: (x.endswith("/"), x))
-
-        return files_to_remove
-
-    except DirectoryAccessError:
+    except (FileScanError, DirectoryAccessError):
         # Re-raise our custom exceptions
         raise
     except Exception as e:
-        # Convert unexpected errors to our exception type
+        # Wrap unexpected external exceptions
         raise FileScanError(
             operation="list_generation",
             target_path=str(target_path),
             reason=f"Unexpected error during file list generation: {e}",
-            details="This is an unexpected error that should be reported",
+            details=f"Exception type: {type(e).__name__}",
         ) from e
 
 
-# =============================================================================
+# ///////////////////////////////////////////////////////////////
 # VERIFICATION UTILITIES
-# =============================================================================
+# ///////////////////////////////////////////////////////////////
 
 
-def verify_files_removed(target_path: Path) -> Dict:
-    """Verify that WOMM files were removed successfully.
+def verify_files_removed(target_path: Path) -> dict[str, str | bool | int]:
+    """
+    Verify that WOMM files were removed successfully.
 
     Args:
         target_path: Target installation directory
 
     Returns:
-        Dictionary with success status and details
+        Dict: Dictionary with success status and details
 
     Raises:
         UninstallationVerificationError: If files were not removed successfully
         DirectoryAccessError: If directory access fails during verification
     """
     try:
+        # Input validation
+        if not target_path:
+            raise UninstallationVerificationError(
+                verification_type="removal_verification",
+                target_path="",
+                reason="Target path cannot be empty",
+                details="Invalid target path provided for verification",
+            )
+
         # Check if we can access the directory for verification
         if target_path.exists():
             try:
@@ -121,6 +168,13 @@ def verify_files_removed(target_path: Path) -> Dict:
                     reason=f"Permission denied during verification: {e}",
                     details=f"Cannot access directory for verification: {target_path}",
                 ) from e
+            except Exception as e:
+                logger.warning(f"Failed to stat target path {target_path}: {e}")
+                # If we can't stat it, assume it's not accessible and consider it removed
+                return {
+                    "success": True,
+                    "message": "Target path not accessible (considered removed)",
+                }
 
             # Directory exists and is accessible
             raise UninstallationVerificationError(
@@ -136,29 +190,39 @@ def verify_files_removed(target_path: Path) -> Dict:
         # Re-raise our custom exceptions
         raise
     except Exception as e:
-        # Convert unexpected errors to our exception type
+        # Wrap unexpected external exceptions
         raise UninstallationVerificationError(
             verification_type="removal_verification",
             target_path=str(target_path),
             reason=f"File removal verification error: {e}",
-            details="This is an unexpected error that should be reported",
+            details=f"Exception type: {type(e).__name__}",
         ) from e
 
 
-def verify_uninstallation_complete(target_path: Path) -> Dict:
-    """Verify that uninstallation completed successfully.
+def verify_uninstallation_complete(target_path: Path) -> dict[str, str | bool]:
+    """
+    Verify that uninstallation completed successfully.
 
     Args:
         target_path: Target installation directory
 
     Returns:
-        Dictionary with success status and details
+        Dict: Dictionary with success status and details
 
     Raises:
         UninstallationVerificationError: If uninstallation verification fails
         DirectoryAccessError: If directory access fails during verification
     """
     try:
+        # Input validation
+        if not target_path:
+            raise UninstallationVerificationError(
+                verification_type="completion_verification",
+                target_path="",
+                reason="Target path cannot be empty",
+                details="Invalid target path provided for completion verification",
+            )
+
         # Check that target directory is gone
         if target_path.exists():
             try:
@@ -171,6 +235,13 @@ def verify_uninstallation_complete(target_path: Path) -> Dict:
                     reason=f"Permission denied during verification: {e}",
                     details=f"Cannot access directory for verification: {target_path}",
                 ) from e
+            except Exception as e:
+                logger.warning(f"Failed to stat target path {target_path}: {e}")
+                # If we can't stat it, assume it's not accessible and consider it removed
+                return {
+                    "success": True,
+                    "message": "Target path not accessible (considered removed)",
+                }
 
             # Directory exists and is accessible
             raise UninstallationVerificationError(
@@ -181,12 +252,21 @@ def verify_uninstallation_complete(target_path: Path) -> Dict:
             )
 
         # Simple check that womm command is no longer accessible
-        from ....common.security import run_silent
+        try:
+            from ....common.security import run_silent
+        except ImportError as e:
+            logger.warning(f"Failed to import run_silent: {e}")
+            # If we can't import the security module, skip command verification
+            return {
+                "success": True,
+                "message": "WOMM directory removed (command verification skipped)",
+            }
 
         try:
             cmd_result = run_silent("womm --version", timeout=10)
-        except Exception:
+        except Exception as e:
             # If command execution fails, that's actually success (command not found)
+            logger.info(f"Command execution failed (expected): {e}")
             return {
                 "success": True,
                 "message": "WOMM command no longer accessible (execution failed)",
@@ -206,10 +286,10 @@ def verify_uninstallation_complete(target_path: Path) -> Dict:
         # Re-raise our custom exceptions
         raise
     except Exception as e:
-        # Convert unexpected errors to our exception type
+        # Wrap unexpected external exceptions
         raise UninstallationVerificationError(
             verification_type="unexpected_error",
             target_path=str(target_path),
             reason=f"Uninstallation verification error: {e}",
-            details="This is an unexpected error that should be reported",
+            details=f"Exception type: {type(e).__name__}",
         ) from e

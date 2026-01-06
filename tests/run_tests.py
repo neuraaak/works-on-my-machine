@@ -46,7 +46,9 @@ class TestRunner:
         try:
             # Use a secure command list - pytest is a trusted dependency
             cmd = [sys.executable, "-m", "pytest", "--version"]
-            subprocess.run(cmd, capture_output=True, check=True, timeout=10)  # noqa: S603
+            subprocess.run(  # noqa: S603
+                cmd, capture_output=True, check=True, timeout=10
+            )
             return True
         except (
             subprocess.CalledProcessError,

@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+# ///////////////////////////////////////////////////////////////
+# LAYER CONTROLLER - Layer Controller for Dynamic Progress Bars
+# Project: works-on-my-machine
+# ///////////////////////////////////////////////////////////////
+
 """
 Layer Controller for Dynamic Progress Bars.
 
@@ -6,19 +11,20 @@ This module provides utilities for managing individual layers within
 dynamic progress bar systems.
 """
 
+# ///////////////////////////////////////////////////////////////
 # IMPORTS
-########################################################
+# ///////////////////////////////////////////////////////////////
 # Standard library imports
 from enum import Enum
-from typing import Dict, List, Optional
 
 # Third-party imports
 from rich.progress import Progress
 
 # Local imports
 
+# ///////////////////////////////////////////////////////////////
 # ENUMS
-########################################################
+# ///////////////////////////////////////////////////////////////
 # Layer state management
 
 
@@ -40,8 +46,9 @@ class LayerType(Enum):
     DOWNLOAD = "download"
 
 
+# ///////////////////////////////////////////////////////////////
 # MAIN CLASS
-########################################################
+# ///////////////////////////////////////////////////////////////
 # Layer management class
 
 
@@ -63,7 +70,7 @@ class LayerController:
         self.active_layers = []  # List of active task IDs
         self.completed_layers = []  # List of completed task IDs
 
-    def create_layer(self, layer_config: Dict) -> int:
+    def create_layer(self, layer_config: dict[str, str | int]) -> int:
         """Create a new layer in the progress bar.
 
         Args:
@@ -300,7 +307,7 @@ class LayerController:
                 task_id, description=layer_metadata["created_description"]
             )
 
-    def get_active_layers(self) -> List[int]:
+    def get_active_layers(self) -> list[int]:
         """Get list of currently active layer task IDs.
 
         Returns:
@@ -308,7 +315,7 @@ class LayerController:
         """
         return self.active_layers.copy()
 
-    def get_layer_info(self, task_id: int) -> Optional[Dict]:
+    def get_layer_info(self, task_id: int) -> dict[str, str | int] | None:
         """Get information about a specific layer.
 
         Args:
@@ -319,7 +326,7 @@ class LayerController:
         """
         return self.layers.get(task_id)
 
-    def get_layers_by_state(self, state: LayerState) -> List[int]:
+    def get_layers_by_state(self, state: LayerState) -> list[int]:
         """Get layers filtered by their state.
 
         Args:
@@ -334,7 +341,7 @@ class LayerController:
             if metadata["state"] == state
         ]
 
-    def get_layers_by_type(self, layer_type: LayerType) -> List[int]:
+    def get_layers_by_type(self, layer_type: LayerType) -> list[int]:
         """Get layers filtered by their type.
 
         Args:

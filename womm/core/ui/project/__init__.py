@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+# ///////////////////////////////////////////////////////////////
+# UI PROJECT - Project UI Components
+# Project: works-on-my-machine
+# ///////////////////////////////////////////////////////////////
+
 """
 Project UI components package.
 
@@ -6,7 +11,10 @@ This package provides UI components for project creation and management,
 following the established patterns in the WOMM codebase.
 """
 
-# Import UI components
+# ///////////////////////////////////////////////////////////////
+# IMPORTS
+# ///////////////////////////////////////////////////////////////
+# Local imports
 from .completion_summaries import print_new_project_summary
 from .project_wizard import ProjectWizard
 from .setup_summaries import print_setup_completion_summary
@@ -22,7 +30,10 @@ from .template_ui import (
 from .templates.project_configurator import configure_project_options
 from .templates.template_selector import display_template_selection
 
-# Export all UI components
+# ///////////////////////////////////////////////////////////////
+# PUBLIC API
+# ///////////////////////////////////////////////////////////////
+
 __all__ = [
     # Project wizard
     "ProjectWizard",

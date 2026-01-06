@@ -6,8 +6,7 @@ This module provides UI components for template selection and management,
 following the established patterns in the WOMM codebase.
 """
 
-from typing import List, Optional
-
+# Third-party imports
 try:
     from InquirerPy import inquirer
     from InquirerPy.base.control import Choice
@@ -16,13 +15,16 @@ try:
 except ImportError:
     INQUIRERPY_AVAILABLE = False
 
+# Local imports
 from ...common.console import print_info
 from ...interactive import InteractiveMenu
 
+# ///////////////////////////////////////////////////////////////
+# PUBLIC API
+# ///////////////////////////////////////////////////////////////
 
-def display_template_selection(
-    templates: List[str], project_type: str
-) -> Optional[str]:
+
+def display_template_selection(templates: list[str], project_type: str) -> str | None:
     """
     Display interactive template selection menu.
 
@@ -37,7 +39,7 @@ def display_template_selection(
         print_info(f"No templates available for {project_type} projects")
         return None
 
-    print_info(f"📋 Available templates for {project_type} projects:")
+    print_info(f"Available templates for {project_type} projects:")
     print_info("=" * 50)
 
     if INQUIRERPY_AVAILABLE:

@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+# ///////////////////////////////////////////////////////////////
+# COMPLETION SUMMARIES - Project Creation Completion Summaries
+# Project: works-on-my-machine
+# ///////////////////////////////////////////////////////////////
+
 """
 Completion summaries for new project creation.
 
@@ -6,6 +11,10 @@ This module provides UI components for displaying completion summaries
 after creating new projects, following the established patterns in the WOMM codebase.
 """
 
+# ///////////////////////////////////////////////////////////////
+# IMPORTS
+# ///////////////////////////////////////////////////////////////
+# Standard library imports
 from pathlib import Path
 
 from ..common.console import console
@@ -81,7 +90,7 @@ def _print_python_new_summary(project_path: Path, project_name: str) -> None:
 
 def _print_javascript_new_summary(
     project_path: Path,
-    project_name: str,
+    project_name: str,  # noqa: ARG001
     project_type: str,  # noqa: ARG001
 ) -> None:
     """Print JavaScript project creation summary."""
@@ -149,7 +158,7 @@ def _print_javascript_new_summary(
 
 def _print_generic_new_summary(
     project_path: Path,
-    project_name: str,
+    project_name: str,  # noqa: ARG001
     project_type: str,  # noqa: ARG001
 ) -> None:
     """Print generic project creation summary."""

@@ -1,45 +1,51 @@
 #!/usr/bin/env python3
+# ///////////////////////////////////////////////////////////////
+# SPELL - Spell Checking Commands
+# Project: works-on-my-machine
+# ///////////////////////////////////////////////////////////////
+
 """
 Spell checking commands for WOMM CLI.
-Handles CSpell configuration and spell checking.
+
+This module handles CSpell configuration and spell checking functionality.
+Provides commands for installing, configuring, and running spell checks on projects.
 """
 
+# ///////////////////////////////////////////////////////////////
 # IMPORTS
-########################################################
-# External modules and dependencies
-
+# ///////////////////////////////////////////////////////////////
+# Standard library imports
 import sys
 from pathlib import Path
 
+# Third-party imports
 import click
 
-# IMPORTS
-########################################################
-# Internal modules and dependencies
+# Local imports
 # Lazy imports - spell_manager will be imported when needed
 
-# MAIN FUNCTIONS
-########################################################
-# Core CLI functionality and command groups
+# ///////////////////////////////////////////////////////////////
+# COMMAND GROUPS
+# ///////////////////////////////////////////////////////////////
 
 
 @click.group(invoke_without_command=True)
 @click.help_option("-h", "--help")
 @click.pass_context
-def spell_group(ctx):
+def spell_group(ctx: click.Context) -> None:
     """📝 Spell checking with CSpell."""
     if ctx.invoked_subcommand is None:
         click.echo(ctx.get_help())
 
 
-# COMMAND FUNCTIONS
-########################################################
-# Command implementations
+# ///////////////////////////////////////////////////////////////
+# INSTALLATION AND SETUP COMMANDS
+# ///////////////////////////////////////////////////////////////
 
 
 @spell_group.command("install")
 @click.help_option("-h", "--help")
-def spell_install():
+def spell_install() -> None:
     """📦 Install CSpell and dictionaries globally."""
     # Lazy import
     from ..core.managers.spell.spell_manager import spell_manager
@@ -58,7 +64,7 @@ def spell_install():
     type=click.Choice(["python", "javascript"]),
     help="Force project type",
 )
-def spell_setup(project_name, project_type):
+def spell_setup(project_name: str, project_type: str | None) -> None:
     """⚙️ Set CSpell for current project."""
     # Lazy import
     from ..core.managers.spell.spell_manager import spell_manager
@@ -67,15 +73,25 @@ def spell_setup(project_name, project_type):
     sys.exit(0 if result.success else 1)
 
 
+# ///////////////////////////////////////////////////////////////
+# STATUS AND INFORMATION COMMANDS
+# ///////////////////////////////////////////////////////////////
+
+
 @spell_group.command("status")
 @click.help_option("-h", "--help")
-def spell_status():
+def spell_status() -> None:
     """📊 Display CSpell project status."""
     # Lazy import
     from ..core.managers.spell.spell_manager import spell_manager
 
     result = spell_manager.display_project_status()
     sys.exit(0 if result.success else 1)
+
+
+# ///////////////////////////////////////////////////////////////
+# DICTIONARY MANAGEMENT COMMANDS
+# ///////////////////////////////////////////////////////////////
 
 
 @spell_group.command("add")
@@ -89,7 +105,17 @@ def spell_status():
     help="Add words from file",
 )
 @click.option("--interactive", is_flag=True, help="Interactive mode")
-def spell_add(words, file_path, interactive):
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    help="Show what would be done without making changes",
+)
+def spell_add(
+    words: tuple[str, ...],
+    file_path: str | None,
+    interactive: bool,
+    dry_run: bool,
+) -> None:
     """➕ Add words to CSpell configuration."""
     # Lazy import
     from ..core.managers.spell.spell_manager import spell_manager
@@ -98,6 +124,7 @@ def spell_add(words, file_path, interactive):
         words=list(words) if words else None,
         file_path=Path(file_path) if file_path else None,
         interactive=interactive,
+        dry_run=dry_run,
     )
     sys.exit(0 if result.success else 1)
 
@@ -110,7 +137,7 @@ def spell_add(words, file_path, interactive):
     is_flag=True,
     help="Skip confirmation prompt",
 )
-def spell_add_all(force):
+def spell_add_all(force: bool) -> None:
     """📚 Add all dictionaries from .cspell-dict/ to CSpell configuration."""
     # Lazy import
     from ..core.managers.spell.spell_manager import spell_manager
@@ -121,13 +148,18 @@ def spell_add_all(force):
 
 @spell_group.command("list-dicts")
 @click.help_option("-h", "--help")
-def spell_list_dicts():
+def spell_list_dicts() -> None:
     """📋 List available dictionaries in .cspell-dict/."""
     # Lazy import
     from ..core.managers.spell.spell_manager import spell_manager
 
     result = spell_manager.perform_list_dictionaries()
     sys.exit(0 if result.success else 1)
+
+
+# ///////////////////////////////////////////////////////////////
+# SPELL CHECKING COMMANDS
+# ///////////////////////////////////////////////////////////////
 
 
 @spell_group.command("check")
@@ -149,15 +181,15 @@ def spell_list_dicts():
     default=None,
     help="Export results to JSON file in specified directory",
 )
-def spell_check(path, json_export, json_output):
+def spell_check(path: str, json_export: bool, json_output: Path | None) -> None:
     """🔍 Check spelling in files."""
     # Lazy import
     from ..core.managers.spell.spell_manager import spell_manager
 
-    # Déterminer le chemin d'export JSON
+    # Determine JSON export path
     export_path = None
     if json_export:
-        # Utiliser le chemin par défaut ~/.womm/spell-results/
+        # Use default path ~/.womm/spell-results/
         from ..core.managers.installation.installation_manager import (
             get_target_womm_path,
         )
@@ -165,7 +197,7 @@ def spell_check(path, json_export, json_output):
         womm_path = get_target_womm_path()
         export_path = womm_path / "spell-results"
     elif json_output is not None:
-        # Utiliser le chemin personnalisé spécifié
+        # Use custom path specified
         export_path = json_output
 
     result = spell_manager.perform_spell_check(path=Path(path), json_output=export_path)

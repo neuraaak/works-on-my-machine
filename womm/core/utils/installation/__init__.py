@@ -1,10 +1,19 @@
 #!/usr/bin/env python3
+# ///////////////////////////////////////////////////////////////
+# UTILS INSTALLATION - Installation Utility Modules
+# Project: works-on-my-machine
+# ///////////////////////////////////////////////////////////////
+
 """
 Installation utility modules for Works On My Machine.
 
 This package contains utility functions for installation and uninstallation operations.
 """
 
+# ///////////////////////////////////////////////////////////////
+# IMPORTS
+# ///////////////////////////////////////////////////////////////
+# Local imports
 from .common_utils import get_current_womm_path, get_target_womm_path
 from .installation_utils import (
     create_womm_executable,
@@ -20,6 +29,10 @@ from .uninstallation_utils import (
     verify_files_removed,
     verify_uninstallation_complete,
 )
+
+# ///////////////////////////////////////////////////////////////
+# PUBLIC API
+# ///////////////////////////////////////////////////////////////
 
 __all__ = [
     # Common utilities

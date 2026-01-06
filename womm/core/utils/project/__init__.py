@@ -1,10 +1,19 @@
+#!/usr/bin/env python3
+# ///////////////////////////////////////////////////////////////
+# UTILS PROJECT - Project Utility Modules
+# Project: works-on-my-machine
+# ///////////////////////////////////////////////////////////////
+
 """
 Project utility modules for Works On My Machine.
 
 This package contains pure utility functions for project management operations.
 """
 
-# Import utility functions for external use
+# ///////////////////////////////////////////////////////////////
+# IMPORTS
+# ///////////////////////////////////////////////////////////////
+# Local imports
 from .project_detector import ProjectDetector
 from .template_helpers import (
     get_node_paths,
@@ -19,6 +28,10 @@ from .vscode_config import (
     get_platform_specific_settings,
     get_python_interpreter_paths,
 )
+
+# ///////////////////////////////////////////////////////////////
+# PUBLIC API
+# ///////////////////////////////////////////////////////////////
 
 __all__ = [
     "ProjectDetector",

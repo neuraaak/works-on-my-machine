@@ -4,22 +4,51 @@ Base project creator for WOMM CLI.
 Provides common functionality for all project types.
 """
 
+import logging
 import shutil
 from pathlib import Path
 from typing import Dict, Optional
 
+from ....exceptions.project import (
+    ProjectManagerError,
+    ProjectValidationError,
+    TemplateError,
+)
 from ....ui.common.console import print_error, print_info
 from ....utils.cli_utils import run_command
 from ....utils.project.project_validator import ProjectValidator
 from ....utils.project.template_helpers import generate_cross_platform_template
+
+# =============================================================================
+# LOGGER SETUP
+# =============================================================================
+
+logger = logging.getLogger(__name__)
+
+# =============================================================================
+# MAIN CLASS
+# =============================================================================
 
 
 class ProjectCreator:
     """Base project creator with common functionality."""
 
     def __init__(self):
-        """Initialize the project creator."""
-        self.validator = ProjectValidator()
+        """
+        Initialize the project creator.
+
+        Raises:
+            ProjectManagerError: If project creator initialization fails
+        """
+        try:
+            self.validator = ProjectValidator()
+
+        except Exception as e:
+            logger.error(f"Failed to initialize ProjectCreator: {e}")
+            raise ProjectManagerError(
+                message=f"Failed to initialize project creator: {e}",
+                details=f"Exception type: {type(e).__name__}",
+            ) from e
 
     def create_project_structure(
         self,
@@ -37,40 +66,153 @@ class ProjectCreator:
 
         Returns:
             True if structure creation was successful, False otherwise
+
+        Raises:
+            ProjectManagerError: If project structure creation fails
+            ProjectValidationError: If validation fails
         """
         try:
+            # Input validation
+            if not project_path:
+                raise ProjectValidationError(
+                    validation_type="project_path",
+                    value="None",
+                    reason="Project path must not be None",
+                    details="Project path parameter must be a valid Path object",
+                )
+
+            if not project_name:
+                raise ProjectValidationError(
+                    validation_type="project_name",
+                    value="None",
+                    reason="Project name must not be empty",
+                    details="Project name parameter must be a non-empty string",
+                )
+
             # Create project directory
-            project_path.mkdir(parents=True, exist_ok=True)
+            try:
+                project_path.mkdir(parents=True, exist_ok=True)
+            except Exception as e:
+                logger.error(f"Failed to create project directory {project_path}: {e}")
+                raise ProjectManagerError(
+                    message=f"Failed to create project directory: {e}",
+                    details=f"Exception type: {type(e).__name__}",
+                ) from e
 
             # Create basic directory structure
-            self._create_basic_directories(project_path)
+            try:
+                self._create_basic_directories(project_path)
+            except Exception as e:
+                logger.error(f"Failed to create basic directories: {e}")
+                raise ProjectManagerError(
+                    message=f"Failed to create basic directories: {e}",
+                    details=f"Exception type: {type(e).__name__}",
+                ) from e
 
             # Create basic files
-            self._create_basic_files(project_path, project_name)
+            try:
+                self._create_basic_files(project_path, project_name)
+            except Exception as e:
+                logger.error(f"Failed to create basic files: {e}")
+                raise ProjectManagerError(
+                    message=f"Failed to create basic files: {e}",
+                    details=f"Exception type: {type(e).__name__}",
+                ) from e
 
             return True
 
+        except (ProjectManagerError, ProjectValidationError):
+            # Re-raise our custom exceptions
+            raise
         except Exception as e:
+            # Wrap unexpected external exceptions
+            logger.error(f"Unexpected error in create_project_structure: {e}")
             print_error(f"Error creating project structure: {e}")
-            return False
+            raise ProjectManagerError(
+                message=f"Failed to create project structure: {e}",
+                details=f"Exception type: {type(e).__name__}",
+            ) from e
 
     def _create_basic_directories(self, project_path: Path) -> None:
-        """Create basic directory structure."""
-        directories = [
-            "src",
-            "tests",
-            "docs",
-            "scripts",
-            ".vscode",
-        ]
+        """
+        Create basic directory structure.
 
-        for directory in directories:
-            (project_path / directory).mkdir(exist_ok=True)
+        Args:
+            project_path: Path to the project
+
+        Raises:
+            ProjectManagerError: If directory creation fails
+        """
+        try:
+            # Input validation
+            if not project_path:
+                raise ProjectValidationError(
+                    validation_type="project_path",
+                    value="None",
+                    reason="Project path must not be None",
+                    details="Project path parameter must be a valid Path object",
+                )
+
+            directories = [
+                "src",
+                "tests",
+                "docs",
+                "scripts",
+                ".vscode",
+            ]
+
+            for directory in directories:
+                try:
+                    (project_path / directory).mkdir(exist_ok=True)
+                except Exception as e:
+                    logger.error(f"Failed to create directory {directory}: {e}")
+                    raise ProjectManagerError(
+                        message=f"Failed to create directory {directory}: {e}",
+                        details=f"Exception type: {type(e).__name__}",
+                    ) from e
+
+        except (ProjectManagerError, ProjectValidationError):
+            # Re-raise our custom exceptions
+            raise
+        except Exception as e:
+            # Wrap unexpected external exceptions
+            logger.error(f"Unexpected error in _create_basic_directories: {e}")
+            raise ProjectManagerError(
+                message=f"Failed to create basic directories: {e}",
+                details=f"Exception type: {type(e).__name__}",
+            ) from e
 
     def _create_basic_files(self, project_path: Path, project_name: str) -> None:
-        """Create basic project files."""
-        # Create README.md
-        readme_content = f"""# {project_name}
+        """
+        Create basic project files.
+
+        Args:
+            project_path: Path to the project
+            project_name: Name of the project
+
+        Raises:
+            ProjectManagerError: If file creation fails
+        """
+        try:
+            # Input validation
+            if not project_path:
+                raise ProjectValidationError(
+                    validation_type="project_path",
+                    value="None",
+                    reason="Project path must not be None",
+                    details="Project path parameter must be a valid Path object",
+                )
+
+            if not project_name:
+                raise ProjectValidationError(
+                    validation_type="project_name",
+                    value="None",
+                    reason="Project name must not be empty",
+                    details="Project name parameter must be a non-empty string",
+                )
+
+            # Create README.md
+            readme_content = f"""# {project_name}
 
 ## Description
 
@@ -139,11 +281,18 @@ npm run format
 This project is licensed under the MIT License.
 """
 
-        readme_path = project_path / "README.md"
-        readme_path.write_text(readme_content, encoding="utf-8")
+            try:
+                readme_path = project_path / "README.md"
+                readme_path.write_text(readme_content, encoding="utf-8")
+            except Exception as e:
+                logger.error(f"Failed to create README.md: {e}")
+                raise ProjectManagerError(
+                    message=f"Failed to create README.md: {e}",
+                    details=f"Exception type: {type(e).__name__}",
+                ) from e
 
-        # Create .gitignore
-        gitignore_content = """# Byte-compiled / optimized / DLL files
+            # Create .gitignore
+            gitignore_content = """# Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
@@ -450,8 +599,26 @@ ehthumbs.db
 Thumbs.db
 """
 
-        gitignore_path = project_path / ".gitignore"
-        gitignore_path.write_text(gitignore_content, encoding="utf-8")
+            try:
+                gitignore_path = project_path / ".gitignore"
+                gitignore_path.write_text(gitignore_content, encoding="utf-8")
+            except Exception as e:
+                logger.error(f"Failed to create .gitignore: {e}")
+                raise ProjectManagerError(
+                    message=f"Failed to create .gitignore: {e}",
+                    details=f"Exception type: {type(e).__name__}",
+                ) from e
+
+        except (ProjectManagerError, ProjectValidationError):
+            # Re-raise our custom exceptions
+            raise
+        except Exception as e:
+            # Wrap unexpected external exceptions
+            logger.error(f"Unexpected error in _create_basic_files: {e}")
+            raise ProjectManagerError(
+                message=f"Failed to create basic files: {e}",
+                details=f"Exception type: {type(e).__name__}",
+            ) from e
 
     def validate_project_config(
         self, project_name: str, project_path: Path, project_type: str
@@ -466,26 +633,82 @@ Thumbs.db
 
         Returns:
             True if configuration is valid, False otherwise
+
+        Raises:
+            ProjectManagerError: If validation fails
+            ProjectValidationError: If validation fails
         """
-        # Validate project name
-        is_valid, error = self.validator.validate_project_name(project_name)
-        if not is_valid:
-            print_error(f"Invalid project name: {error}")
-            return False
+        try:
+            # Input validation
+            if not project_name:
+                raise ProjectValidationError(
+                    validation_type="project_name",
+                    value="None",
+                    reason="Project name must not be empty",
+                    details="Project name parameter must be a non-empty string",
+                )
 
-        # Validate project path
-        is_valid, error = self.validator.validate_project_path(project_path)
-        if not is_valid:
-            print_error(f"Invalid project path: {error}")
-            return False
+            if not project_path:
+                raise ProjectValidationError(
+                    validation_type="project_path",
+                    value="None",
+                    reason="Project path must not be None",
+                    details="Project path parameter must be a valid Path object",
+                )
 
-        # Validate project type
-        is_valid, error = self.validator.validate_project_type(project_type)
-        if not is_valid:
-            print_error(f"Invalid project type: {error}")
-            return False
+            if not project_type:
+                raise ProjectValidationError(
+                    validation_type="project_type",
+                    value="None",
+                    reason="Project type must not be empty",
+                    details="Project type parameter must be a non-empty string",
+                )
 
-        return True
+            # Validate project name
+            try:
+                self.validator.validate_project_name(project_name)
+            except ProjectValidationError:
+                # Re-raise our custom exceptions
+                raise
+            except Exception as e:
+                logger.error(f"Failed to validate project name {project_name}: {e}")
+                print_error(f"Invalid project name: {e}")
+                return False
+
+            # Validate project path
+            try:
+                self.validator.validate_project_path(project_path)
+            except ProjectValidationError:
+                # Re-raise our custom exceptions
+                raise
+            except Exception as e:
+                logger.error(f"Failed to validate project path {project_path}: {e}")
+                print_error(f"Invalid project path: {e}")
+                return False
+
+            # Validate project type
+            try:
+                self.validator.validate_project_type(project_type)
+            except ProjectValidationError:
+                # Re-raise our custom exceptions
+                raise
+            except Exception as e:
+                logger.error(f"Failed to validate project type {project_type}: {e}")
+                print_error(f"Invalid project type: {e}")
+                return False
+
+            return True
+
+        except (ProjectManagerError, ProjectValidationError):
+            # Re-raise our custom exceptions
+            raise
+        except Exception as e:
+            # Wrap unexpected external exceptions
+            logger.error(f"Unexpected error in validate_project_config: {e}")
+            raise ProjectManagerError(
+                message=f"Failed to validate project config: {e}",
+                details=f"Exception type: {type(e).__name__}",
+            ) from e
 
     def generate_template_file(
         self,
@@ -503,17 +726,61 @@ Thumbs.db
 
         Returns:
             True if generation was successful, False otherwise
+
+        Raises:
+            ProjectManagerError: If template generation fails
+            TemplateError: If template processing fails
         """
         try:
+            # Input validation
+            if not template_path:
+                raise ProjectValidationError(
+                    validation_type="template_path",
+                    value="None",
+                    reason="Template path must not be None",
+                    details="Template path parameter must be a valid Path object",
+                )
+
+            if not output_path:
+                raise ProjectValidationError(
+                    validation_type="output_path",
+                    value="None",
+                    reason="Output path must not be None",
+                    details="Output path parameter must be a valid Path object",
+                )
+
             if template_vars is None:
                 template_vars = {}
 
-            generate_cross_platform_template(template_path, output_path, template_vars)
-            return True
+            try:
+                generate_cross_platform_template(
+                    template_path, output_path, template_vars
+                )
+                return True
+            except TemplateError:
+                # Re-raise our custom exceptions
+                raise
+            except Exception as e:
+                logger.error(f"Failed to generate template file: {e}")
+                print_error(f"Error generating template file: {e}")
+                raise TemplateError(
+                    operation="generation",
+                    template_path=str(template_path),
+                    reason=f"Failed to generate template file: {e}",
+                    details=f"Exception type: {type(e).__name__}",
+                ) from e
 
+        except (ProjectManagerError, TemplateError, ProjectValidationError):
+            # Re-raise our custom exceptions
+            raise
         except Exception as e:
+            # Wrap unexpected external exceptions
+            logger.error(f"Unexpected error in generate_template_file: {e}")
             print_error(f"Error generating template file: {e}")
-            return False
+            raise ProjectManagerError(
+                message=f"Failed to generate template file: {e}",
+                details=f"Exception type: {type(e).__name__}",
+            ) from e
 
     def copy_template_directory(
         self, source_dir: Path, target_dir: Path, **kwargs
@@ -528,23 +795,73 @@ Thumbs.db
 
         Returns:
             True if copy was successful, False otherwise
+
+        Raises:
+            ProjectManagerError: If directory copy fails
         """
         try:
-            if not source_dir.exists():
-                print_error(f"Template directory not found: {source_dir}")
-                return False
+            # Input validation
+            if not source_dir:
+                raise ProjectValidationError(
+                    validation_type="source_dir",
+                    value="None",
+                    reason="Source directory must not be None",
+                    details="Source directory parameter must be a valid Path object",
+                )
+
+            if not target_dir:
+                raise ProjectValidationError(
+                    validation_type="target_dir",
+                    value="None",
+                    reason="Target directory must not be None",
+                    details="Target directory parameter must be a valid Path object",
+                )
+
+            try:
+                if not source_dir.exists():
+                    logger.error(f"Template directory not found: {source_dir}")
+                    print_error(f"Template directory not found: {source_dir}")
+                    return False
+            except Exception as e:
+                logger.error(f"Failed to check source directory existence: {e}")
+                raise ProjectManagerError(
+                    message=f"Failed to check source directory existence: {e}",
+                    details=f"Exception type: {type(e).__name__}",
+                ) from e
 
             # Create target directory
-            target_dir.mkdir(parents=True, exist_ok=True)
+            try:
+                target_dir.mkdir(parents=True, exist_ok=True)
+            except Exception as e:
+                logger.error(f"Failed to create target directory {target_dir}: {e}")
+                raise ProjectManagerError(
+                    message=f"Failed to create target directory: {e}",
+                    details=f"Exception type: {type(e).__name__}",
+                ) from e
 
             # Copy directory contents
-            shutil.copytree(source_dir, target_dir, dirs_exist_ok=True, **kwargs)
+            try:
+                shutil.copytree(source_dir, target_dir, dirs_exist_ok=True, **kwargs)
+                return True
+            except Exception as e:
+                logger.error(f"Failed to copy template directory: {e}")
+                print_error(f"Error copying template directory: {e}")
+                raise ProjectManagerError(
+                    message=f"Failed to copy template directory: {e}",
+                    details=f"Exception type: {type(e).__name__}",
+                ) from e
 
-            return True
-
+        except (ProjectManagerError, ProjectValidationError):
+            # Re-raise our custom exceptions
+            raise
         except Exception as e:
+            # Wrap unexpected external exceptions
+            logger.error(f"Unexpected error in copy_template_directory: {e}")
             print_error(f"Error copying template directory: {e}")
-            return False
+            raise ProjectManagerError(
+                message=f"Failed to copy template directory: {e}",
+                details=f"Exception type: {type(e).__name__}",
+            ) from e
 
     def setup_git_repository(self, project_path: Path) -> bool:
         """
@@ -555,27 +872,65 @@ Thumbs.db
 
         Returns:
             True if Git setup was successful, False otherwise
+
+        Raises:
+            ProjectManagerError: If Git setup fails
         """
         try:
+            # Input validation
+            if not project_path:
+                raise ProjectValidationError(
+                    validation_type="project_path",
+                    value="None",
+                    reason="Project path must not be None",
+                    details="Project path parameter must be a valid Path object",
+                )
+
             # Check if git is available
-            if not shutil.which("git"):
-                print_info("Git not found, skipping repository initialization")
+            try:
+                if not shutil.which("git"):
+                    logger.info("Git not found, skipping repository initialization")
+                    print_info("Git not found, skipping repository initialization")
+                    return True
+            except Exception as e:
+                logger.warning(f"Failed to check Git availability: {e}")
+                print_info(
+                    "Git availability check failed, skipping repository initialization"
+                )
                 return True
 
             # Initialize git repository
-            result = run_command(
-                ["git", "init"],
-                cwd=project_path,
-                capture_output=True,
-                text=True,
-            )
+            try:
+                result = run_command(
+                    ["git", "init"],
+                    cwd=project_path,
+                    capture_output=True,
+                    text=True,
+                )
 
-            if result.returncode == 0:
-                return True
-            else:
-                print_error(f"Failed to initialize Git repository: {result.stderr}")
-                return False
+                if result.returncode == 0:
+                    return True
+                else:
+                    logger.error(
+                        f"Failed to initialize Git repository: {result.stderr}"
+                    )
+                    print_error(f"Failed to initialize Git repository: {result.stderr}")
+                    return False
+            except Exception as e:
+                logger.error(f"Failed to run git init command: {e}")
+                raise ProjectManagerError(
+                    message=f"Failed to run git init command: {e}",
+                    details=f"Exception type: {type(e).__name__}",
+                ) from e
 
+        except (ProjectManagerError, ProjectValidationError):
+            # Re-raise our custom exceptions
+            raise
         except Exception as e:
+            # Wrap unexpected external exceptions
+            logger.error(f"Unexpected error in setup_git_repository: {e}")
             print_error(f"Error setting up Git repository: {e}")
-            return False
+            raise ProjectManagerError(
+                message=f"Failed to setup Git repository: {e}",
+                details=f"Exception type: {type(e).__name__}",
+            ) from e

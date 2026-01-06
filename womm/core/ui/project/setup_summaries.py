@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+# ///////////////////////////////////////////////////////////////
+# SETUP SUMMARIES - Project Setup Completion Summaries
+# Project: works-on-my-machine
+# ///////////////////////////////////////////////////////////////
+
 """
 Setup completion summaries for existing projects.
 
@@ -6,6 +11,10 @@ This module provides UI components for displaying completion summaries
 after setting up existing projects, following the established patterns in the WOMM codebase.
 """
 
+# ///////////////////////////////////////////////////////////////
+# IMPORTS
+# ///////////////////////////////////////////////////////////////
+# Standard library imports
 from pathlib import Path
 
 from rich.panel import Panel

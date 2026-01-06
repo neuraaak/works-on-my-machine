@@ -4,14 +4,26 @@ Python project manager for WOMM CLI.
 Handles Python-specific project creation and setup.
 """
 
+import logging
 import venv
 from pathlib import Path
 
+from ....exceptions.project import (
+    ProjectManagerError,
+    ProjectValidationError,
+    TemplateError,
+)
 from ....ui.common.console import print_error
 from ....ui.common.extended.dynamic_progress import create_dynamic_layered_progress
 from ....ui.project import print_new_project_summary, print_setup_completion_summary
 from ....utils.cli_utils import run_command
 from .project_creator import ProjectCreator
+
+# =============================================================================
+# LOGGER SETUP
+# =============================================================================
+
+logger = logging.getLogger(__name__)
 
 # Configuration for DynamicLayeredProgress
 PYTHON_PROJECT_CREATION_STAGES = [
@@ -233,36 +245,127 @@ class PythonProjectManager(ProjectCreator):
     def _create_python_files(
         self, project_path: Path, project_name: str, **kwargs
     ) -> bool:
-        """Create Python-specific project files."""
+        """
+        Create Python-specific project files.
+
+        Args:
+            project_path: Path to the project
+            project_name: Name of the project
+            **kwargs: Additional configuration options
+
+        Returns:
+            True if file creation was successful, False otherwise
+
+        Raises:
+            ProjectManagerError: If Python file creation fails
+        """
         try:
+            # Input validation
+            if not project_path:
+                raise ProjectValidationError(
+                    validation_type="project_path",
+                    value="None",
+                    reason="Project path must not be None",
+                    details="Project path parameter must be a valid Path object",
+                )
+
+            if not project_name:
+                raise ProjectValidationError(
+                    validation_type="project_name",
+                    value="None",
+                    reason="Project name must not be empty",
+                    details="Project name parameter must be a non-empty string",
+                )
+
             # Create pyproject.toml
-            if not self._create_pyproject_toml(project_path, project_name, **kwargs):
+            try:
+                if not self._create_pyproject_toml(
+                    project_path, project_name, **kwargs
+                ):
+                    return False
+            except Exception as e:
+                logger.error(f"Failed to create pyproject.toml: {e}")
                 return False
 
             # Create main Python file
-            if not self._create_main_python_file(project_path, project_name):
+            try:
+                if not self._create_main_python_file(project_path, project_name):
+                    return False
+            except Exception as e:
+                logger.error(f"Failed to create main Python file: {e}")
                 return False
 
             # Create test file
-            if not self._create_test_file(project_path, project_name):
+            try:
+                if not self._create_test_file(project_path, project_name):
+                    return False
+            except Exception as e:
+                logger.error(f"Failed to create test file: {e}")
                 return False
 
             # Create requirements files
-            if not self._create_requirements_files(project_path):
+            try:
+                if not self._create_requirements_files(project_path):
+                    return False
+            except Exception as e:
+                logger.error(f"Failed to create requirements files: {e}")
                 return False
 
             # Create development configuration files
-            return self._create_dev_config_files(project_path)
+            try:
+                return self._create_dev_config_files(project_path)
+            except Exception as e:
+                logger.error(f"Failed to create dev config files: {e}")
+                return False
 
+        except (ProjectManagerError, ProjectValidationError):
+            # Re-raise our custom exceptions
+            raise
         except Exception as e:
+            # Wrap unexpected external exceptions
+            logger.error(f"Unexpected error in _create_python_files: {e}")
             print_error(f"Error creating Python files: {e}")
-            return False
+            raise ProjectManagerError(
+                message=f"Failed to create Python files: {e}",
+                details=f"Exception type: {type(e).__name__}",
+            ) from e
 
     def _create_pyproject_toml(
         self, project_path: Path, project_name: str, **kwargs
     ) -> bool:
-        """Create pyproject.toml configuration file."""
+        """
+        Create pyproject.toml configuration file.
+
+        Args:
+            project_path: Path to the project
+            project_name: Name of the project
+            **kwargs: Additional configuration options
+
+        Returns:
+            True if file creation was successful, False otherwise
+
+        Raises:
+            ProjectManagerError: If pyproject.toml creation fails
+            TemplateError: If template processing fails
+        """
         try:
+            # Input validation
+            if not project_path:
+                raise ProjectValidationError(
+                    validation_type="project_path",
+                    value="None",
+                    reason="Project path must not be None",
+                    details="Project path parameter must be a valid Path object",
+                )
+
+            if not project_name:
+                raise ProjectValidationError(
+                    validation_type="project_name",
+                    value="None",
+                    reason="Project name must not be empty",
+                    details="Project name parameter must be a non-empty string",
+                )
+
             template_path = self.template_dir / "pyproject.toml.template"
             output_path = project_path / "pyproject.toml"
 
@@ -279,31 +382,96 @@ class PythonProjectManager(ProjectCreator):
                 ),
             }
 
-            return self.generate_template_file(
-                template_path, output_path, template_vars
-            )
+            try:
+                return self.generate_template_file(
+                    template_path, output_path, template_vars
+                )
+            except TemplateError:
+                # Re-raise our custom exceptions
+                raise
+            except Exception as e:
+                logger.error(f"Failed to generate pyproject.toml template: {e}")
+                print_error(f"Error creating pyproject.toml: {e}")
+                raise TemplateError(
+                    operation="generation",
+                    template_path=str(template_path),
+                    reason=f"Failed to generate pyproject.toml: {e}",
+                    details=f"Exception type: {type(e).__name__}",
+                ) from e
 
+        except (ProjectManagerError, TemplateError, ProjectValidationError):
+            # Re-raise our custom exceptions
+            raise
         except Exception as e:
+            # Wrap unexpected external exceptions
+            logger.error(f"Unexpected error in _create_pyproject_toml: {e}")
             print_error(f"Error creating pyproject.toml: {e}")
-            return False
+            raise ProjectManagerError(
+                message=f"Failed to create pyproject.toml: {e}",
+                details=f"Exception type: {type(e).__name__}",
+            ) from e
 
     def _create_main_python_file(self, project_path: Path, project_name: str) -> bool:
-        """Create the main Python file."""
+        """
+        Create the main Python file.
+
+        Args:
+            project_path: Path to the project
+            project_name: Name of the project
+
+        Returns:
+            True if file creation was successful, False otherwise
+
+        Raises:
+            ProjectManagerError: If main Python file creation fails
+        """
         try:
+            # Input validation
+            if not project_path:
+                raise ProjectValidationError(
+                    validation_type="project_path",
+                    value="None",
+                    reason="Project path must not be None",
+                    details="Project path parameter must be a valid Path object",
+                )
+
+            if not project_name:
+                raise ProjectValidationError(
+                    validation_type="project_name",
+                    value="None",
+                    reason="Project name must not be empty",
+                    details="Project name parameter must be a non-empty string",
+                )
+
             # Create src directory structure
-            src_dir = project_path / "src" / project_name.replace("-", "_")
-            src_dir.mkdir(parents=True, exist_ok=True)
+            try:
+                src_dir = project_path / "src" / project_name.replace("-", "_")
+                src_dir.mkdir(parents=True, exist_ok=True)
+            except Exception as e:
+                logger.error(f"Failed to create src directory: {e}")
+                raise ProjectManagerError(
+                    message=f"Failed to create src directory: {e}",
+                    details=f"Exception type: {type(e).__name__}",
+                ) from e
 
             # Create __init__.py
-            init_file = src_dir / "__init__.py"
-            init_file.write_text(
-                f'"""Main package for {project_name}."""\n\n__version__ = "0.1.0"\n',
-                encoding="utf-8",
-            )
+            try:
+                init_file = src_dir / "__init__.py"
+                init_file.write_text(
+                    f'"""Main package for {project_name}."""\n\n__version__ = "0.1.0"\n',
+                    encoding="utf-8",
+                )
+            except Exception as e:
+                logger.error(f"Failed to create __init__.py: {e}")
+                raise ProjectManagerError(
+                    message=f"Failed to create __init__.py: {e}",
+                    details=f"Exception type: {type(e).__name__}",
+                ) from e
 
             # Create main.py
-            main_file = src_dir / "main.py"
-            main_content = f'''#!/usr/bin/env python3
+            try:
+                main_file = src_dir / "main.py"
+                main_content = f'''#!/usr/bin/env python3
 """
 Main entry point for {project_name}.
 
@@ -331,14 +499,28 @@ def main():
 
 
 '''
-            main_file.write_text(main_content, encoding="utf-8")
-            main_file.chmod(0o755)  # Make executable
+                main_file.write_text(main_content, encoding="utf-8")
+                main_file.chmod(0o755)  # Make executable
+            except Exception as e:
+                logger.error(f"Failed to create main.py: {e}")
+                raise ProjectManagerError(
+                    message=f"Failed to create main.py: {e}",
+                    details=f"Exception type: {type(e).__name__}",
+                ) from e
 
             return True
 
+        except (ProjectManagerError, ProjectValidationError):
+            # Re-raise our custom exceptions
+            raise
         except Exception as e:
+            # Wrap unexpected external exceptions
+            logger.error(f"Unexpected error in _create_main_python_file: {e}")
             print_error(f"Error creating main Python file: {e}")
-            return False
+            raise ProjectManagerError(
+                message=f"Failed to create main Python file: {e}",
+                details=f"Exception type: {type(e).__name__}",
+            ) from e
 
     def _create_test_file(self, project_path: Path, project_name: str) -> bool:
         """Create a basic test file."""
@@ -687,6 +869,7 @@ ignore_missing_imports = True
         install_deps: bool = False,
         setup_dev_tools: bool = False,
         setup_git_hooks: bool = False,
+        dry_run: bool = False,
         **kwargs,  # noqa: ARG002
     ) -> bool:
         """
@@ -698,12 +881,57 @@ ignore_missing_imports = True
             install_deps: Whether to install dependencies
             setup_dev_tools: Whether to set up development tools
             setup_git_hooks: Whether to set up Git hooks
+            dry_run: Show what would be done without making changes
             **kwargs: Additional options
 
         Returns:
             True if setup was successful, False otherwise
         """
         try:
+            if dry_run:
+                from ....ui.common.console import (
+                    print_dry_run_message,
+                    print_dry_run_success,
+                    print_dry_run_warning,
+                    print_header,
+                )
+
+                print_dry_run_warning()
+                print_header("🔧 Python Project Setup (DRY RUN)")
+
+                # Simulate setup process
+                print_dry_run_message(
+                    "validate project", f"check project at {project_path}"
+                )
+                print_dry_run_message(
+                    "detect project type", "identify Python project structure"
+                )
+
+                if virtual_env:
+                    print_dry_run_message(
+                        "setup virtual environment", f"create .venv in {project_path}"
+                    )
+
+                if install_deps:
+                    print_dry_run_message(
+                        "install dependencies",
+                        "install project dependencies from requirements.txt/pyproject.toml",
+                    )
+
+                if setup_dev_tools:
+                    print_dry_run_message(
+                        "configure development tools",
+                        "setup linting, formatting, and testing tools",
+                    )
+
+                if setup_git_hooks:
+                    print_dry_run_message(
+                        "setup git hooks", "configure pre-commit hooks"
+                    )
+
+                print_dry_run_success()
+                return True
+
             # Generate stages based on selected options
             setup_stages = get_python_setup_stages(
                 virtual_env=virtual_env,

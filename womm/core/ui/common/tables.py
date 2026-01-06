@@ -1,12 +1,18 @@
 #!/usr/bin/env python3
+# ///////////////////////////////////////////////////////////////
+# TABLES - Table Utilities
+# Project: works-on-my-machine
+# ///////////////////////////////////////////////////////////////
+
 """
 Table utilities using Rich for beautiful table output.
 """
 
+# ///////////////////////////////////////////////////////////////
 # IMPORTS
-########################################################
+# ///////////////////////////////////////////////////////////////
 # Standard library imports
-from typing import Any, Dict, List
+from typing import Any
 
 # Third-party imports
 from rich.console import Console
@@ -16,22 +22,24 @@ from rich.table import Table
 # (None for this file)
 
 
+# ///////////////////////////////////////////////////////////////
 # CONFIGURATION
-########################################################
+# ///////////////////////////////////////////////////////////////
 # Global variables and settings
 
 console = Console()
 
 
+# ///////////////////////////////////////////////////////////////
 # MAIN FUNCTIONS
-########################################################
+# ///////////////////////////////////////////////////////////////
 # Core table creation functionality
 
 
 def create_table(
     title: str,
-    columns: List[str],
-    rows: List[List[Any]],
+    columns: list[str],
+    rows: list[list[Any]],
     show_header: bool = True,
     **kwargs,
 ) -> Table:
@@ -49,13 +57,14 @@ def create_table(
     return table
 
 
+# ///////////////////////////////////////////////////////////////
 # UTILITY FUNCTIONS
-########################################################
+# ///////////////////////////////////////////////////////////////
 # Helper functions for specific table types
 
 
 def create_status_table(
-    title: str, data: List[Dict[str, Any]], status_column: str = "Status", **kwargs
+    title: str, data: list[dict[str, Any]], status_column: str = "Status", **kwargs
 ) -> Table:
     """Create a status table with colored status indicators."""
     if not data:
@@ -94,7 +103,7 @@ def create_status_table(
     return table
 
 
-def create_dependency_table(dependencies: Dict[str, str]) -> Table:
+def create_dependency_table(dependencies: dict[str, str]) -> Table:
     """Create a table for displaying dependencies."""
     table = Table(title="Dependencies", show_header=True)
     table.add_column("Tool", style="cyan", no_wrap=True)
@@ -110,7 +119,7 @@ def create_dependency_table(dependencies: Dict[str, str]) -> Table:
     return table
 
 
-def create_command_table(commands: List[Dict[str, str]]) -> Table:
+def create_command_table(commands: list[dict[str, str]]) -> Table:
     """Create a table for displaying available commands."""
     table = Table(title="Available Commands", show_header=True)
     table.add_column("Command", style="cyan", no_wrap=True)
@@ -125,7 +134,7 @@ def create_command_table(commands: List[Dict[str, str]]) -> Table:
     return table
 
 
-def create_dictionary_table(dictionaries: List[Dict[str, Any]]) -> Table:
+def create_dictionary_table(dictionaries: list[dict[str, Any]]) -> Table:
     """Create a table for displaying CSpell dictionaries."""
     table = Table(title="CSpell Dictionaries", show_header=True)
     table.add_column("File", style="cyan", no_wrap=True)
@@ -152,7 +161,7 @@ def create_dictionary_table(dictionaries: List[Dict[str, Any]]) -> Table:
     return table
 
 
-def create_backup_table(backups: List[Dict[str, Any]]) -> Table:
+def create_backup_table(backups: list[dict[str, Any]]) -> Table:
     """Create a table for displaying PATH backup information."""
     table = Table(title="PATH Backups", show_header=True)
     table.add_column("Backup File", style="cyan", no_wrap=True)

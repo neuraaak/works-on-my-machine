@@ -1,14 +1,21 @@
 #!/usr/bin/env python3
+# ///////////////////////////////////////////////////////////////
+# PROGRESS - Progress Utilities
+# Project: works-on-my-machine
+# ///////////////////////////////////////////////////////////////
+
 """
 Progress utilities using Rich for beautiful progress bars.
 """
 
+# ///////////////////////////////////////////////////////////////
 # IMPORTS
-########################################################
+# ///////////////////////////////////////////////////////////////
 # Standard library imports
 import time
+from collections.abc import Generator
 from contextlib import contextmanager
-from typing import Dict, Generator, List, Optional, Tuple
+from typing import Any
 
 # Third-party imports
 from rich.console import Console
@@ -27,8 +34,9 @@ from rich.progress import (
 # Local imports
 from .console import PATTERN_COLORS
 
+# ///////////////////////////////////////////////////////////////
 # CONFIGURATION
-########################################################
+# ///////////////////////////////////////////////////////////////
 # Global variables and settings
 
 console = Console()
@@ -39,15 +47,16 @@ pattern_color = PATTERN_COLORS.get("SYSTEM", "white")
 prefix = f"[{pattern_color}]• [bold {pattern_color}]{'SYSTEM'.ljust(8)}[/bold {pattern_color}][dim white]:: [/dim white]"
 
 
+# ///////////////////////////////////////////////////////////////
 # MAIN FUNCTIONS
-########################################################
+# ///////////////////////////////////////////////////////////////
 # Core progress bar functionality
 
 
 @contextmanager
 def create_progress(
     description: str = "Working...",
-    total: Optional[int] = None,
+    total: int | None = None,
     transient: bool = False,
 ):
     """Create a progress bar context manager."""
@@ -66,15 +75,16 @@ def create_progress(
         yield progress, task
 
 
+# ///////////////////////////////////////////////////////////////
 # SPINNER FUNCTIONS
-########################################################
+# ///////////////////////////////////////////////////////////////
 # Spinner-based progress indicators
 
 
 @contextmanager
 def create_spinner(
     description: str = "Working...",
-) -> Generator[Tuple[Progress, int], None, None]:
+) -> Generator[tuple[Progress, int], None, None]:
     """Create a simple spinner with description."""
     progress = Progress(
         TextColumn(prefix),
@@ -91,7 +101,7 @@ def create_spinner(
 @contextmanager
 def create_spinner_with_status(
     description: str = "Working...",
-) -> Generator[Tuple[Progress, int], None, None]:
+) -> Generator[tuple[Progress, int], None, None]:
     """Create a spinner that can update status messages."""
     progress = Progress(
         TextColumn(prefix),
@@ -106,15 +116,16 @@ def create_spinner_with_status(
         yield progress, task
 
 
+# ///////////////////////////////////////////////////////////////
 # DOWNLOAD FUNCTIONS
-########################################################
+# ///////////////////////////////////////////////////////////////
 # File download progress indicators
 
 
 @contextmanager
 def create_download_progress(
     description: str = "Downloading...",
-) -> Generator[Tuple[Progress, int], None, None]:
+) -> Generator[tuple[Progress, int], None, None]:
     """Create a download progress bar with speed and size information."""
     progress = Progress(
         TextColumn(prefix),
@@ -135,7 +146,7 @@ def create_download_progress(
 @contextmanager
 def create_file_download_progress(
     filename: str, total_size: int, description: str = "Downloading file..."
-) -> Generator[Tuple[Progress, int], None, None]:
+) -> Generator[tuple[Progress, int], None, None]:
     """
     Create a progress bar for downloading a specific file.
 
@@ -160,15 +171,16 @@ def create_file_download_progress(
         yield progress, task
 
 
+# ///////////////////////////////////////////////////////////////
 # DEPENDENCY FUNCTIONS
-########################################################
+# ///////////////////////////////////////////////////////////////
 # Dependency installation and management progress
 
 
 @contextmanager
 def create_dependency_progress(
-    dependencies: List[str], description: str = "Installing dependencies..."
-) -> Generator[Tuple[Progress, int, str], None, None]:
+    dependencies: list[str], description: str = "Installing dependencies..."
+) -> Generator[tuple[Progress, int, str], None, None]:
     """
     Create a progress bar for dependency installation.
 
@@ -211,8 +223,8 @@ def create_dependency_progress(
 
 @contextmanager
 def create_package_install_progress(
-    packages: List[Tuple[str, str]], description: str = "Installing packages..."
-) -> Generator[Tuple[Progress, int, str, str], None, None]:
+    packages: list[tuple[str, str]], description: str = "Installing packages..."
+) -> Generator[tuple[Progress, int, str, str], None, None]:
     """
     Create a progress bar for package installation with version info.
 
@@ -256,8 +268,9 @@ def create_package_install_progress(
             time.sleep(0.1)
 
 
+# ///////////////////////////////////////////////////////////////
 # UTILITY FUNCTIONS
-########################################################
+# ///////////////////////////////////////////////////////////////
 # Helper functions and utilities
 
 
@@ -281,14 +294,15 @@ def track_installation_steps(steps: list, description: str = "Installation Progr
             progress.advance(task)
 
 
+# ///////////////////////////////////////////////////////////////
 # STEP-BASED PROGRESS FUNCTIONS
-########################################################
+# ///////////////////////////////////////////////////////////////
 # Step-based progress bar implementations
 
 
 @contextmanager
 def create_step_progress(
-    steps: List[str],
+    steps: list[str],
     description: str = "Processing...",
     show_step_numbers: bool = True,
     show_time: bool = True,
@@ -349,9 +363,9 @@ def create_step_progress(
 
 @contextmanager
 def create_file_copy_progress(
-    files: List[str],
+    files: list[str],
     description: str = "Copying files...",
-) -> Generator[Tuple[Progress, int, str], None, None]:
+) -> Generator[tuple[Progress, int, str], None, None]:
     """
     Create a progress bar specifically for file copying operations.
 
@@ -380,7 +394,7 @@ def create_file_copy_progress(
 
 @contextmanager
 def create_installation_progress(
-    steps: List[Tuple[str, str]],
+    steps: list[tuple[str, str]],
     description: str = "Installation in progress...",
 ):
     """
@@ -425,7 +439,7 @@ def create_installation_progress(
 
 @contextmanager
 def create_build_progress(
-    phases: List[Tuple[str, int]],
+    phases: list[tuple[str, int]],
     description: str = "Building project...",
 ):
     """
@@ -460,7 +474,7 @@ def create_build_progress(
 
 @contextmanager
 def create_deployment_progress(
-    stages: List[str],
+    stages: list[str],
     description: str = "Deploying...",
 ):
     """
@@ -504,16 +518,17 @@ def create_deployment_progress(
             time.sleep(0.1)
 
 
+# ///////////////////////////////////////////////////////////////
 # LAYERED PROGRESS FUNCTIONS
-########################################################
+# ///////////////////////////////////////////////////////////////
 # Multi-level progress bar implementations
 
 
 @contextmanager
 def create_layered_progressbar(
-    layers: List[Dict[str, any]],
+    layers: list[dict[str, Any]],
     show_time: bool = True,
-) -> Generator[Tuple[Progress, Dict[str, int]], None, None]:
+) -> Generator[tuple[Progress, dict[str, int]], None, None]:
     """
     Create a multi-level progress bar with dynamic layers.
 

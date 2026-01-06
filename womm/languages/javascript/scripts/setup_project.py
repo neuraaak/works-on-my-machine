@@ -1,36 +1,34 @@
 #!/usr/bin/env python3
+# ///////////////////////////////////////////////////////////////
+# JAVASCRIPT PROJECT SETUP - JavaScript Development Environment Setup
+# Project: works-on-my-machine
+# ///////////////////////////////////////////////////////////////
+
 """
 JavaScript/Node.js development environment initialization script.
 
-Usage:
-    python setup_project.py [project_name] [--type=node|react|vue|vanilla]
-    python setu        try:
-            from ....core.tools.cspell_utils import setup_project_cspell
-
-            success = setup_project_cspell(
-                project_path, "javascript", project_name
-            )
-            if success:
-                print("   [OK] CSpell configuration created")
-            else:
-                print("   [WARN] CSpell configuration failed")
-        except ImportError:
-            print("   [WARN] cspell_utils module not found") --current-dir
-
-Features:
-    - Copy development configurations
-    - Initialize Git with appropriate .gitignore
-    - Configure pre-commit hooks
-    - Create basic project structure
-    - Configure VSCode and NPM
+This script configures a complete JavaScript development environment including:
+- Directory structure creation
+- Configuration files copying
+- Git initialization
+- CSpell configuration
+- Package.json generation
+- Project files generation
+- VSCode configuration
+- NPM dependencies installation
 """
 
+# ///////////////////////////////////////////////////////////////
+# IMPORTS
+# ///////////////////////////////////////////////////////////////
+# Standard library imports
 import json
 import shutil
 import subprocess
 import sys
 from pathlib import Path
 
+# Local imports
 # Import security validator if available
 try:
     from ....core.utils.security.security_validator import SecurityValidator
@@ -38,6 +36,10 @@ try:
     SECURITY_AVAILABLE = True
 except ImportError:
     SECURITY_AVAILABLE = False
+
+# ///////////////////////////////////////////////////////////////
+# JAVASCRIPT PROJECT SETUP CLASS
+# ///////////////////////////////////////////////////////////////
 
 
 class JavaScriptProjectSetup:
@@ -96,7 +98,7 @@ class JavaScriptProjectSetup:
 
     def __init__(
         self, project_path: Path, project_name: str, project_type: str = "node"
-    ):
+    ) -> None:
         """Initialize the JavaScript project configuration script."""
         self.project_path = project_path
         self.project_name = project_name
@@ -104,7 +106,7 @@ class JavaScriptProjectSetup:
         self.js_tools_path = Path(__file__).parent.parent
         self.devtools_path = self.js_tools_path.parent.parent
 
-    def setup_all(self):
+    def setup_all(self) -> None:
         """Configure the complete development environment."""
         print(f"[JS] Setting up JavaScript environment for '{self.project_name}'")
         print(f"[DIR] Directory: {self.project_path}")
@@ -123,7 +125,7 @@ class JavaScriptProjectSetup:
         print("\n[SUCCESS] JavaScript configuration completed!")
         self.print_next_steps()
 
-    def create_directory_structure(self):
+    def create_directory_structure(self) -> None:
         """Create the basic directory structure."""
         print("\n[DIRS] Creating directory structure...")
 
@@ -148,7 +150,7 @@ class JavaScriptProjectSetup:
             directory.mkdir(parents=True, exist_ok=True)
             print(f"   [OK] {directory}")
 
-    def copy_configs(self):
+    def copy_configs(self) -> None:
         """Copy configuration files."""
         print("\n[CONFIG] Copying JavaScript configurations...")
 
@@ -168,7 +170,7 @@ class JavaScriptProjectSetup:
             else:
                 print(f"   [WARN] Missing file: {source}")
 
-    def setup_git(self):
+    def setup_git(self) -> None:
         """Initialize Git and configure .gitignore."""
         print("\n[GIT] Configuring Git...")
 
@@ -197,11 +199,11 @@ class JavaScriptProjectSetup:
             except (subprocess.CalledProcessError, FileNotFoundError):
                 print("   [WARN] Git not found or initialization error")
 
-    def setup_cspell(self):
+    def setup_cspell(self) -> None:
         """Configure CSpell for the project."""
         print("[CSPELL] Configuring CSpell...")
 
-        # Importer le gestionnaire CSpell
+        # Import CSpell manager
         devtools_path = Path.home() / ".womm"
         sys.path.insert(0, str(devtools_path))
 
@@ -218,18 +220,18 @@ class JavaScriptProjectSetup:
         except ImportError:
             print("   [WARN] cspell_utils module not found")
 
-    def setup_development_environment(self):
+    def setup_development_environment(self) -> bool:
         """Configure the JavaScript development environment."""
         print("[ENV] Setting up development environment...")
 
-        # Importer le gestionnaire d'environnement
+        # Import environment manager
         devtools_path = Path.home() / ".womm"
         sys.path.insert(0, str(devtools_path))
 
         print("   [INFO] Development environment setup skipped (legacy)")
         return True
 
-    def create_package_json(self):
+    def create_package_json(self) -> None:
         """Create the package.json file."""
         print("\n[PACKAGE] Creating package.json...")
 
@@ -269,7 +271,7 @@ class JavaScriptProjectSetup:
         )
         print("   [OK] package.json")
 
-    def create_project_files(self):
+    def create_project_files(self) -> None:
         """Create basic project files based on type."""
         print("\n[FILES] Creating basic files...")
 
@@ -328,7 +330,7 @@ See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for the complete development guid
         # Test example
         self._create_test_files()
 
-    def _create_type_specific_files(self):
+    def _create_type_specific_files(self) -> None:
         """Create type-specific project files."""
         if self.project_type == "node":
             # src/index.js
@@ -431,7 +433,7 @@ createApp(App).mount('#app');
 
         print(f"   [OK] {self.project_type} files created")
 
-    def _create_typescript_config(self):
+    def _create_typescript_config(self) -> None:
         """Create TypeScript configuration."""
         tsconfig = {
             "compilerOptions": {
@@ -461,7 +463,7 @@ createApp(App).mount('#app');
         )
         print("   [OK] tsconfig.json")
 
-    def _create_test_files(self):
+    def _create_test_files(self) -> None:
         """Create example test files."""
         if self.project_type == "node":
             test_content = """import request from 'supertest';
@@ -503,7 +505,7 @@ describe('App Component', () => {{
         )
         print("   [OK] Test files")
 
-    def setup_vscode(self):
+    def setup_vscode(self) -> None:
         """Configure VSCode."""
         print("\n[VSCODE] Configuring VSCode...")
 
@@ -519,7 +521,7 @@ describe('App Component', () => {{
             else:
                 print(f"   [WARN] Missing VSCode file: {file}")
 
-    def install_dependencies(self):
+    def install_dependencies(self) -> None:
         """Install NPM dependencies."""
         print("\n[INSTALL] Installing dependencies...")
 
@@ -591,7 +593,7 @@ describe('App Component', () => {{
         except (subprocess.CalledProcessError, FileNotFoundError):
             print("   [WARN] npm not found. Install Node.js/npm")
 
-    def print_next_steps(self):
+    def print_next_steps(self) -> None:
         """Display next steps."""
         print(
             f"""
