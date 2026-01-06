@@ -15,11 +15,19 @@ and project setup across multiple programming languages.
 # PACKAGE METADATA
 # ///////////////////////////////////////////////////////////////
 
-from importlib.metadata import version
+from importlib.metadata import PackageNotFoundError, version
 
-__version__ = version("works-on-my-machine")
+try:
+    __version__ = version("works-on-my-machine")
+except PackageNotFoundError:
+    # Fallback for frozen/executable environments without dist metadata
+    __version__ = "0.0.0"
+
 __author__ = "Neuraaak"
-__description__ = "Universal development tools for multiple languages - Automatic installation, cross-platform configuration, global commands"
+__description__ = (
+    "Universal development tools for multiple languages - "
+    "Automatic installation, cross-platform configuration, global commands"
+)
 
 # ///////////////////////////////////////////////////////////////
 # IMPORTS

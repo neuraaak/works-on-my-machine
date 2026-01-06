@@ -4,10 +4,19 @@ on:
   push:
     tags:
       - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag name to release (e.g. v1.0)"
+        required: true
+        default: "v1.0"
 
 permissions:
   contents: write
   packages: write
+
+env:
+  RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
 
 jobs:
   build-and-release:
@@ -25,6 +34,9 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
+          # Install project (and runtime dependencies) so PyInstaller can collect them
+          pip install .
+          # Ensure PyInstaller is available (also in dev extras, but explicit here)
           pip install pyinstaller
 
       - name: Build executable
@@ -36,8 +48,8 @@ jobs:
         uses: ncipollo/release-action@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          tag: ${{ github.ref_name }}
-          name: WOMM ${{ github.ref_name }} - Standalone Installer
+          tag: ${{ env.RELEASE_TAG }}
+          name: WOMM ${{ env.RELEASE_TAG }} - Standalone Installer
           body: |
             ## WOMM Standalone Installer
 
