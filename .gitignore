@@ -8,7 +8,10 @@ __pycache__/
 .Python
 
 # Distribution / packaging
+# On ignore le dossier build racine, mais on garde le build de .scripts suivi
 build/
+!/.scripts/build/
+!/.scripts/build/**
 develop-eggs/
 dist/
 downloads/

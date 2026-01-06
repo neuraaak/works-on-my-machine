@@ -3,7 +3,7 @@ name: Build and Release
 on:
   push:
     tags:
-      - 'v*.*.*'
+      - "v*.*.*"
 
 permissions:
   contents: write
@@ -12,26 +12,27 @@ permissions:
 jobs:
   build-and-release:
     runs-on: windows-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.11'
-          
+          python-version: "3.11"
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install pyinstaller
-          
+
       - name: Build executable
         run: |
-          python build_exe.py build
-          
+          python .scripts/build/build_exe.py build
+
       - name: Create or Update Release
+        id: create_release
         uses: ncipollo/release-action@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -39,22 +40,22 @@ jobs:
           name: WOMM ${{ github.ref_name }} - Standalone Installer
           body: |
             ## WOMM Standalone Installer
-            
+
             This release includes the standalone installer executable for Windows.
-            
+
             ### Download
             - **womm-installer.exe** - Windows installer (no Python required)
-            
+
             ### Installation
             1. Download and run `womm-installer.exe`
             2. Follow the installation prompts
             3. WOMM will be installed to `~/.womm/`
-            
+
             ### Alternative Installation
             ```bash
             # Via pip
             pip install works-on-my-machine
-            
+
             # Via git
             git clone https://github.com/neuraaak/works-on-my-machine
             cd works-on-my-machine
@@ -66,7 +67,7 @@ jobs:
           replacesArtifacts: true
           artifacts: ./dist/womm-installer.exe
           artifactContentType: application/octet-stream
-          
+
       - name: Show Release Info
         run: |
           echo "✅ Release created successfully!"

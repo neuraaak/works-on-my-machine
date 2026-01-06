@@ -67,7 +67,18 @@ fi
 
 # Note: Ruff lint is intentionally skipped to avoid errors
 
-# Add all reformatted files to staging area
+# Update README version badge from pyproject.toml before staging
+if [ "$overall_success" = true ]; then
+    echo "🔄 Updating README version badge from pyproject.toml..."
+    if python .scripts/dev/update_readme_version.py; then
+        echo "✅ README badge updated"
+    else
+        echo "❌ Failed to update README badge"
+        overall_success=false
+    fi
+fi
+
+# Add all reformatted files (and updated README) to staging area
 if [ "$overall_success" = true ]; then
     echo "📝 Adding reformatted files to staging area..."
     if git add .; then

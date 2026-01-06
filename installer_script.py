@@ -78,7 +78,7 @@ def run_womm_install(temp_path: Path) -> bool:
         sys.path.insert(0, str(temp_path))
 
         # Import and run womm install
-        from womm.cli import womm
+        from womm.cli import womm  # noqa: PLC0415
 
         # Set command line arguments for install
         sys.argv = ["womm", "install", "--force"]
@@ -89,12 +89,12 @@ def run_womm_install(temp_path: Path) -> bool:
         # Restore original directory
         os.chdir(original_cwd)
 
-        print("WOMM installation completed successfully")
-        return True
-
     except Exception as e:
         print(f"Error running womm install: {e}")
         return False
+    else:
+        print("WOMM installation completed successfully")
+        return True
 
 
 def install_womm() -> bool:

@@ -1,34 +1,33 @@
 #!/usr/bin/env python3
 # ///////////////////////////////////////////////////////////////
-# SETUP - Package Setup Script
+# UPDATE_README_VERSION - Sync README badge with pyproject version
 # Project: works-on-my-machine
 # ///////////////////////////////////////////////////////////////
 
-"""
-Setup script for works-on-my-machine package.
+"""Update the version badge in README.md from pyproject.toml.
+
+This keeps the visible version in the README in sync with the
+canonical [project].version value defined in pyproject.toml.
 """
 
 # ///////////////////////////////////////////////////////////////
 # IMPORTS
 # ///////////////////////////////////////////////////////////////
+# Standard library imports
+
 from __future__ import annotations
 
 import re
 from pathlib import Path
 
-from setuptools import setup
-
 # ///////////////////////////////////////////////////////////////
-# HELPERS
+# PUBLIC METHODS
 # ///////////////////////////////////////////////////////////////
 
 
 def read_version() -> str:
-    """Read project version from pyproject.toml [project] section.
-
-    This avoids having to duplicate the version in multiple places.
-    """
-    pyproject_path = Path(__file__).with_name("pyproject.toml")
+    """Read version from pyproject.toml [project].version."""
+    pyproject_path = Path("pyproject.toml")
     content = pyproject_path.read_text(encoding="utf-8")
 
     in_project_section = False
@@ -57,29 +56,36 @@ def read_version() -> str:
     )
 
 
+def update_readme(version: str) -> None:
+    """Replace version badge in README.md with the given version."""
+    readme_path = Path("README.md")
+    content = readme_path.read_text(encoding="utf-8")
+
+    # Match shields.io badge: Version-X.Y.Z-orange.svg?style=for-the-badge
+    pattern = r"(Version-)(\d+\.\d+\.\d+)(-orange\.svg\?style=for-the-badge\))"
+    new_content, count = re.subn(
+        pattern,
+        rf"\g<1>{version}\g<3>",
+        content,
+        count=1,
+    )
+
+    if count == 0:
+        raise RuntimeError("Version badge not found in README.md")  # noqa: TRY003
+
+    readme_path.write_text(new_content, encoding="utf-8")
+    print(f"[VERSION] Updated README.md badge to version {version}")
+
+
+def main() -> None:
+    """Entry point."""
+    version = read_version()
+    update_readme(version)
+
+
 # ///////////////////////////////////////////////////////////////
-# CONFIGURATION
+# MAIN
 # ///////////////////////////////////////////////////////////////
 
-setup(
-    name="works-on-my-machine",
-    version=read_version(),
-    description="Universal development tools for Python and JavaScript",
-    author="Neuraaak",
-    url="https://github.com/neuraaak/works-on-my-machine",
-    python_requires=">=3.9",
-    install_requires=[
-        "click>=8.0.0",
-        "rich>=13.0.0",
-        "InquirerPy>=0.3.4",
-        "tomli>=2.0.0",
-    ],
-    entry_points={
-        "console_scripts": [
-            "womm=womm.cli:main",
-        ],
-    },
-    packages=["womm"],
-    include_package_data=True,
-    zip_safe=False,
-)
+if __name__ == "__main__":
+    main()

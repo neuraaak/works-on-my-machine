@@ -1,5 +1,8 @@
-# Makefile pour {{PROJECT_NAME}}
-# Usage: make <target>
+# ///////////////////////////////////////////////////////////////
+# MAKEFILE - JavaScript Project Commands
+# Project: {{PROJECT_NAME}}
+# Usage : make <target>
+# ///////////////////////////////////////////////////////////////
 
 .PHONY: help install dev build start lint format test test-cov clean setup-hooks
 
@@ -8,7 +11,7 @@ NODE := node
 NPM := npm
 PACKAGE := {{PROJECT_NAME}}
 
-# Couleurs pour l'affichage
+# Colors for display
 BLUE := \033[34m
 GREEN := \033[32m
 YELLOW := \033[33m
@@ -21,25 +24,25 @@ help:
 	@echo ""
 	@echo "$(GREEN)Installation:$(RESET)"
 	@echo "  install      - Install dependencies"
-	@echo "  setup-hooks  - Installer les hooks pre-commit"
+	@echo "  setup-hooks  - Install pre-commit hooks"
 	@echo ""
 	@echo "$(GREEN)Development:$(RESET)"
-@echo "  dev          - Development server"
-	@echo "  build        - Build de production"
-	@echo "  start        - Serveur de production"
+	@echo "  dev          - Development server"
+	@echo "  build        - Production build"
+	@echo "  start        - Production server"
 	@echo ""
 	@echo "$(GREEN)Formatting and quality:$(RESET)"
-@echo "  format       - Format code (Prettier)"
-@echo "  lint         - Check code quality"
-@echo "  fix          - Automatically fix issues"
+	@echo "  format       - Format code (Prettier)"
+	@echo "  lint         - Check code quality"
+	@echo "  fix          - Automatically fix issues"
 	@echo ""
 	@echo "$(GREEN)Tests:$(RESET)"
-	@echo "  test         - Lancer les tests"
-	@echo "  test-cov     - Tests avec couverture"
-	@echo "  test-watch   - Tests en mode watch"
+	@echo "  test         - Run tests"
+	@echo "  test-cov     - Tests with coverage"
+	@echo "  test-watch   - Tests in watch mode"
 	@echo ""
-	@echo "$(GREEN)Nettoyage:$(RESET)"
-	@echo "  clean        - Nettoyer les fichiers temporaires"
+	@echo "$(GREEN)Cleanup:$(RESET)"
+	@echo "  clean        - Remove temporary files"
 
 # Installation
 install:
@@ -52,23 +55,23 @@ dev:
 	$(NPM) run dev
 
 build:
-	@echo "$(BLUE)Build de production...$(RESET)"
+	@echo "$(BLUE)Running production build...$(RESET)"
 	$(NPM) run build
 
 start:
 	@echo "$(BLUE)Starting production server...$(RESET)"
 	$(NPM) start
 
-# Formatage automatique
+# Formatting
 format:
-	@echo "$(BLUE)Formatage du code avec Prettier...$(RESET)"
+	@echo "$(BLUE)Formatting code with Prettier...$(RESET)"
 	$(NPM) run format
 
-# Correction automatique
+# Auto-fix
 fix:
-	@echo "$(BLUE)Correction automatique avec ESLint...$(RESET)"
+	@echo "$(BLUE)Automatically fixing issues with ESLint...$(RESET)"
 	$(NPM) run lint:fix
-	@echo "$(BLUE)Formatage du code...$(RESET)"
+	@echo "$(BLUE)Formatting code...$(RESET)"
 	$(NPM) run format
 	@echo "$(GREEN)Code automatically fixed!$(RESET)"
 
@@ -81,26 +84,26 @@ lint:
 
 # Tests
 test:
-	@echo "$(BLUE)Lancement des tests...$(RESET)"
+	@echo "$(BLUE)Running tests...$(RESET)"
 	$(NPM) test
 
 test-cov:
-	@echo "$(BLUE)Tests avec couverture...$(RESET)"
+	@echo "$(BLUE)Running tests with coverage...$(RESET)"
 	$(NPM) run test:coverage
 
 test-watch:
-	@echo "$(BLUE)Tests en mode watch...$(RESET)"
+	@echo "$(BLUE)Running tests in watch mode...$(RESET)"
 	$(NPM) run test:watch
 
-# Hooks pre-commit
+# Pre-commit hooks
 setup-hooks:
-	@echo "$(BLUE)Installation des hooks pre-commit...$(RESET)"
+	@echo "$(BLUE)Installing pre-commit hooks...$(RESET)"
 	$(NPM) run prepare
 	@echo "$(GREEN)Pre-commit hooks installed!$(RESET)"
 
-# Nettoyage
+# Cleanup
 clean:
-	@echo "$(BLUE)Nettoyage des fichiers temporaires...$(RESET)"
+	@echo "$(BLUE)Cleaning temporary files...$(RESET)"
 	rm -rf node_modules/.cache 2>/dev/null || true
 	rm -rf .next 2>/dev/null || true
 	rm -rf dist 2>/dev/null || true

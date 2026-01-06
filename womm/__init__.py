@@ -15,7 +15,9 @@ and project setup across multiple programming languages.
 # PACKAGE METADATA
 # ///////////////////////////////////////////////////////////////
 
-__version__ = "2.7.0"
+from importlib.metadata import version
+
+__version__ = version("works-on-my-machine")
 __author__ = "Neuraaak"
 __description__ = "Universal development tools for multiple languages - Automatic installation, cross-platform configuration, global commands"
 
@@ -36,15 +38,15 @@ from .languages import javascript, python
 # ///////////////////////////////////////////////////////////////
 
 __all__ = [
-    "__version__",
+    "LintManager",
+    "SpellManager",
     "__author__",
     "__description__",
-    "runtime_manager",
-    "package_manager",
+    "__version__",
     "dev_tools_manager",
-    "SpellManager",
-    "LintManager",
-    "python",
     "javascript",
     "main",
+    "package_manager",
+    "python",
+    "runtime_manager",
 ]

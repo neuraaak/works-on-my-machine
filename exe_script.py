@@ -30,7 +30,7 @@ def main() -> None:
         sys.path.insert(0, str(project_root))
 
         # Import and run womm install
-        from womm.cli import womm
+        from womm.cli import womm  # noqa: PLC0415
 
         # Set command line arguments for install
         sys.argv = ["womm", "install", "--force"]

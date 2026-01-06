@@ -30,7 +30,7 @@ def main() -> None:
         sys.path.insert(0, str(project_root))
 
         # Import and run the __main__ module
-        from womm.__main__ import main as womm_main
+        from womm.__main__ import main as womm_main  # noqa: PLC0415
 
         womm_main()
     except ImportError as e:

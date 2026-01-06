@@ -88,8 +88,8 @@ if [ -n "$version" ]; then
     
     # Build package locally (GitHub Actions will handle PyPI upload)
     echo "🔨 [AUTO-TAG] Building package locally..."
-    if ! python build_package.py build >/dev/null 2>&1; then
-        echo "⚠️  [AUTO-TAG] build_package.py build failed; continuing with tag push anyway"
+    if ! python .scripts/build/build_package.py build >/dev/null 2>&1; then
+        echo "⚠️  [AUTO-TAG] .scripts/build/build_package.py build failed; continuing with tag push anyway"
     fi
 
     # Automatic tag push (after successful builds)

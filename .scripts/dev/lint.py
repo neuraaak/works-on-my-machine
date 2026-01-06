@@ -10,7 +10,7 @@ Code quality check script for WOMM project.
 Runs Black, isort, and Ruff on the codebase.
 
 Usage:
-    python lint.py [options]
+    python .scripts/dev/lint.py [options]
 
 Options:
     --check-only    Only check, don't fix
@@ -27,7 +27,6 @@ import argparse
 import subprocess
 import sys
 from pathlib import Path
-from typing import List
 
 # ///////////////////////////////////////////////////////////////
 # CLASSES
@@ -50,14 +49,15 @@ class CodeQualityChecker:
         """
         self.check_only = check_only
         self.verbose = verbose
-        self.project_root = Path(__file__).parent
+        # Project root is the parent of the .scripts/dev directory
+        self.project_root = Path(__file__).resolve().parents[1]
         self.python_files = self._find_python_files()
 
     # ///////////////////////////////////////////////////////////////
     # PRIVATE METHODS
     # ///////////////////////////////////////////////////////////////
 
-    def _find_python_files(self) -> List[Path]:
+    def _find_python_files(self) -> list[Path]:
         """Find all Python files in the project.
 
         Returns:
@@ -65,12 +65,14 @@ class CodeQualityChecker:
         """
         python_files = []
 
-        # Directories to scan
+        # Directories/files to scan (relative to project root)
         scan_dirs = [
             "womm",
             "tests",
-            "build_package.py",
-            "lint.py",
+            "womm.py",
+            "installer_script.py",
+            "exe_script.py",
+            ".scripts",
         ]
 
         # Directories to exclude
@@ -102,7 +104,7 @@ class CodeQualityChecker:
 
         return python_files
 
-    def _run_command(self, command: List[str], description: str) -> bool:
+    def _run_command(self, command: list[str], description: str) -> bool:
         """Run a command and return success status.
 
         Args:
@@ -125,12 +127,6 @@ class CodeQualityChecker:
                 cwd=self.project_root,
             )
 
-            if self.verbose and result.stdout:
-                print(result.stdout)
-
-            print(f"SUCCESS: {description} completed successfully")
-            return True
-
         except subprocess.CalledProcessError as e:
             print(f"ERROR: {description} failed:")
             if e.stdout:
@@ -138,6 +134,12 @@ class CodeQualityChecker:
             if e.stderr:
                 print(f"STDERR: {e.stderr}")
             return False
+        else:
+            if self.verbose and result.stdout:
+                print(result.stdout)
+
+            print(f"SUCCESS: {description} completed successfully")
+            return True
 
     # ///////////////////////////////////////////////////////////////
     # PUBLIC METHODS
@@ -268,9 +270,9 @@ def main() -> None:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  python lint.py              # Fix all issues
-  python lint.py --check-only # Only check, don't fix
-  python lint.py --verbose    # Verbose output
+  python .scripts/dev/lint.py              # Fix all issues
+  python .scripts/dev/lint.py --check-only # Only check, don't fix
+  python .scripts/dev/lint.py --verbose    # Verbose output
         """,
     )
 
