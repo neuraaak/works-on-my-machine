@@ -25,10 +25,7 @@ from .context import (
 )
 
 # Local imports - Cspell interfaces
-from .cspell import (
-    CSpellCheckerInterface,
-    CSpellDictionaryInterface,
-)
+from .cspell import CSpellCheckerInterface, CSpellDictionaryInterface
 
 # Local imports - Dependencies interfaces
 from .dependencies import (
@@ -38,9 +35,7 @@ from .dependencies import (
 )
 
 # Local imports - Lint interfaces
-from .lint import (
-    PythonLintInterface,
-)
+from .lint import PythonLintInterface
 
 # Local imports - Project interfaces
 from .project import (
@@ -59,10 +54,7 @@ from .system import (
 )
 
 # Local imports - Womm deployment interfaces
-from .womm_setup import (
-    WommInstallerInterface,
-    WommUninstallerInterface,
-)
+from .womm_setup import WommInstallerInterface, WommUninstallerInterface
 
 # ///////////////////////////////////////////////////////////////
 # PUBLIC API

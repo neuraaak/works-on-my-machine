@@ -30,12 +30,8 @@ except ImportError:
     INQUIRERPY_AVAILABLE = False
 
 
-from ...interfaces import ProjectManagerInterface
 from ...shared.configs.project import ProjectVariantConfig
-from ...utils.project import (
-    check_project_name,
-    suggest_project_name,
-)
+from ...utils.project import check_project_name, suggest_project_name
 from ..common.ezpl_bridge import ezconsole, ezprinter
 from ..common.interactive_menu import InteractiveMenu
 
@@ -132,9 +128,8 @@ class ProjectWizard:
     @staticmethod
     def _select_project_type() -> str | None:
         """Interactive project type selection."""
-        # Get project types from ProjectManagerInterface (uses ProjectConfig)
-        project_manager = ProjectManagerInterface()
-        project_types = project_manager.get_available_project_types()
+        # Get project types directly from config (no need for interface)
+        project_types = ProjectVariantConfig.get_project_types_for_ui()
 
         if INQUIRERPY_AVAILABLE:
             choices = [Choice(value=ptype, name=desc) for ptype, desc in project_types]

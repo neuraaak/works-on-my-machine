@@ -29,10 +29,7 @@ from typing import ClassVar
 # Local imports
 from ...exceptions.common import ValidationServiceError
 from ...exceptions.system import RegistryServiceError
-from ...exceptions.womm_deployment import (
-    ExeVerificationServiceError,
-    PathUtilityError,
-)
+from ...exceptions.womm_deployment import ExeVerificationServiceError, PathUtilityError
 from ...shared.results import WOMMInstallerVerificationResult
 from ..common.command_runner_service import CommandRunnerService
 from ..system.path_service import SystemPathService

@@ -29,10 +29,7 @@ from ...exceptions.system import (
     RegistryServiceError,
     UserPathServiceError,
 )
-from ...exceptions.womm_deployment import (
-    DeploymentUtilityError,
-    WommUninstallerError,
-)
+from ...exceptions.womm_deployment import DeploymentUtilityError, WommUninstallerError
 from ...interfaces import (
     SystemPathInterface,
     WommInstallerInterface,

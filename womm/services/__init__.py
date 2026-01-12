@@ -33,23 +33,13 @@ from .context import (
 )
 
 # Local imports - Cspell services
-from .cspell import (
-    CSpellCheckerService,
-    CSpellDictionaryService,
-)
+from .cspell import CSpellCheckerService, CSpellDictionaryService
 
 # Local imports - Dependencies services
-from .dependencies import (
-    DevToolsService,
-    RuntimeService,
-    SystemPackageManagerService,
-)
+from .dependencies import DevToolsService, RuntimeService, SystemPackageManagerService
 
 # Local imports - Lint services
-from .lint import (
-    LintService,
-    PythonLintService,
-)
+from .lint import LintService, PythonLintService
 
 # Local imports - Project services
 from .project import (
@@ -62,17 +52,10 @@ from .project import (
 )
 
 # Local imports - System services
-from .system import (
-    SystemDetectorService,
-    SystemEnvironmentService,
-    SystemPathService,
-)
+from .system import SystemDetectorService, SystemEnvironmentService, SystemPathService
 
 # Local imports - Womm deployment services
-from .womm_setup import (
-    WommInstallerService,
-    WommUninstallerService,
-)
+from .womm_setup import WommInstallerService, WommUninstallerService
 
 # ///////////////////////////////////////////////////////////////
 # PUBLIC API

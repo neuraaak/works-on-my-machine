@@ -24,16 +24,10 @@ import platform
 from time import sleep
 
 # Local imports
-from ...exceptions.system import (
-    EnvironmentInterfaceError,
-    EnvironmentServiceError,
-)
+from ...exceptions.system import EnvironmentInterfaceError, EnvironmentServiceError
 from ...services import SystemEnvironmentService
 from ...shared.results import EnvironmentRefreshResult
-from ...ui.common import (
-    ezlogger,
-    ezprinter,
-)
+from ...ui.common import ezlogger, ezprinter
 
 # ///////////////////////////////////////////////////////////////
 # MAIN CLASS

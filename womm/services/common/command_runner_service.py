@@ -35,10 +35,7 @@ from ...exceptions.common import (
     TimeoutError,
 )
 from ...shared.result_models import CommandResult
-from ...shared.results import (
-    CommandAvailabilityResult,
-    CommandVersionResult,
-)
+from ...shared.results import CommandAvailabilityResult, CommandVersionResult
 
 # ///////////////////////////////////////////////////////////////
 # COMMAND RUNNER SERVICE CLASS
@@ -404,9 +401,7 @@ class CommandRunnerService:
             # Additional security check
             security_validated = False
             try:
-                from .security_validator_service import (
-                    SecurityValidatorService,
-                )
+                from .security_validator_service import SecurityValidatorService
 
                 validator = SecurityValidatorService()
                 validation_result = validator.validate_command([command])

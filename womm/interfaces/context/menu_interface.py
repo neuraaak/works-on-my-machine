@@ -39,10 +39,7 @@ from ...shared.configs.context import ContextTypesConfig
 from ...shared.result_models import ContextValidationResult
 from .icon_interface import ContextIconInterface
 from .registry_interface import ContextRegistryInterface
-from .script_detector_interface import (
-    ContextScriptDetectorInterface,
-    ScriptType,
-)
+from .script_detector_interface import ContextScriptDetectorInterface, ScriptType
 
 # ///////////////////////////////////////////////////////////////
 # MAIN CLASS
@@ -764,3 +761,155 @@ class ContextMenuInterface:
                 f"Unexpected error during script validation: {e}",
                 details=f"Script path: {script_path}",
             ) from e
+
+    # ///////////////////////////////////////////////////////////////
+    # PLATFORM AND UTILITY METHODS
+    # ///////////////////////////////////////////////////////////////
+
+    def is_windows(self) -> bool:
+        """Check if running on Windows platform."""
+        import platform
+
+        return platform.system().lower() == "windows"
+
+    def get_backup_directory(self) -> Path:
+        """Get the backup directory path, creating it if needed."""
+        return self.backup_manager._get_backup_directory()
+
+    def collect_entries_from_backups(self) -> list[dict]:
+        """
+        Collect all unique context menu entries from backup files.
+
+        Returns:
+            List of unique entries with metadata
+        """
+        import json
+
+        backup_dir = self.get_backup_directory()
+        all_entries: dict[str, dict] = {}
+        backup_files = sorted(backup_dir.glob("context_menu_backup_*.json"))
+
+        for backup_file in backup_files:
+            try:
+                with open(backup_file, encoding="utf-8") as f:
+                    data = json.load(f)
+
+                entries = data.get("entries", [])
+                for entry in entries:
+                    key_name = entry.get("key_name")
+                    if key_name and key_name not in all_entries:
+                        entry["_source_backup"] = backup_file.name
+                        entry["_display_name"] = self._format_entry_display(entry)
+                        all_entries[key_name] = entry
+
+            except Exception as e:
+                self.logger.debug(f"Error reading {backup_file.name}: {e}")
+
+        return list(all_entries.values())
+
+    def _format_entry_display(self, entry: dict) -> str:
+        """Format entry for display in selection menu."""
+        import re
+
+        key_name = entry.get("key_name", "Unknown")
+        properties = entry.get("properties", {})
+
+        display_text = properties.get("MUIVerb") or properties.get("@", key_name)
+
+        command = properties.get("Command", "")
+        if command:
+            exe_match = re.search(r'"([^"]*\.exe)"', command)
+            if exe_match:
+                exe_name = Path(exe_match.group(1)).name
+                display_text = f"{display_text} ({exe_name})"
+
+        return f"{display_text} [key: {key_name}]"
+
+    def get_current_entry_keys(self) -> set[str]:
+        """
+        Get set of currently installed context menu entry keys.
+
+        Returns:
+            Set of key names currently installed
+        """
+        try:
+            result = self.list_entries()
+            if result["success"]:
+                entries = result["entries"]
+                current_keys = set()
+                for context_type in ["directory", "background"]:
+                    for entry in entries.get(context_type, []):
+                        key_name = entry.get("key_name")
+                        if key_name:
+                            current_keys.add(key_name)
+                return current_keys
+        except Exception as e:
+            self.logger.debug(f"Error checking current entries: {e}")
+        return set()
+
+    def filter_available_entries(
+        self, all_entries: list[dict], current_keys: set[str]
+    ) -> list[dict]:
+        """
+        Filter out entries that are already installed.
+
+        Args:
+            all_entries: All entries from backups
+            current_keys: Set of currently installed entry keys
+
+        Returns:
+            List of entries not yet installed
+        """
+        return [
+            entry
+            for entry in all_entries
+            if entry.get("key_name") and entry.get("key_name") not in current_keys
+        ]
+
+    def apply_cherry_picked_entries(
+        self, selected_entries: list[dict]
+    ) -> dict[str, bool]:
+        """
+        Apply selected context menu entries.
+
+        Args:
+            selected_entries: List of entries to apply
+
+        Returns:
+            Dict mapping key names to success status
+        """
+        results = {}
+
+        for entry in selected_entries:
+            key_name = entry.get("key_name")
+            properties = entry.get("properties", {})
+            command = properties.get("Command", "")
+            muiverb = properties.get("MUIVerb")
+            icon = properties.get("Icon")
+
+            if not command:
+                self.logger.warning(f"Skipping {key_name}: no command found")
+                results[key_name] = False
+                continue
+
+            # Extract script path from command
+            script_path = None
+            if '"' in command:
+                script_match = command.split('"')[1]
+                if script_match and Path(script_match).exists():
+                    script_path = script_match
+
+            if not script_path:
+                self.logger.warning(
+                    f"Skipping {key_name}: could not extract script path"
+                )
+                results[key_name] = False
+                continue
+
+            # Execute registration
+            result = self.register_script(
+                script_path, muiverb or key_name, icon or "auto"
+            )
+            results[key_name] = result.get("success", False)
+
+        return results

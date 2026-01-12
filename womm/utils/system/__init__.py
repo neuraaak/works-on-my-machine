@@ -39,10 +39,7 @@ from .environment_utils import (
     read_windows_registry_path,
     refresh_path_from_registry,
 )
-from .path_utils import (
-    deduplicate_path_entries,
-    extract_path_from_reg_output,
-)
+from .path_utils import deduplicate_path_entries, extract_path_from_reg_output
 
 # ///////////////////////////////////////////////////////////////
 # PUBLIC API

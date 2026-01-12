@@ -14,10 +14,7 @@ This package exports all exceptions for linting operations.
 # IMPORTS
 # ///////////////////////////////////////////////////////////////
 # Local imports
-from .lint_interface import (
-    LintInterfaceError,
-    PythonLintInterfaceError,
-)
+from .lint_interface import LintInterfaceError, PythonLintInterfaceError
 from .lint_service import (
     LintServiceError,
     ToolAvailabilityServiceError,

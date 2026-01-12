@@ -37,15 +37,16 @@ from ...shared.configs.dependencies import (
     RuntimeConfig,
 )
 from ...ui.common import ezconsole, ezpl_bridge, ezprinter
-from ...ui.runtime import (
-    display_runtime_check_all,
+from ...ui.dependencies import (
     display_runtime_check_specific,
     display_runtime_install_result,
     display_runtimes_list,
 )
 from ...ui.system import (
-    display_available_managers,
     display_best_manager,
+    display_deps_check_results,
+    display_deps_status_table,
+    display_deps_validation_results,
     display_system_managers_list,
 )
 
@@ -83,15 +84,9 @@ def _find_tool_info(tool_name: str) -> tuple[str, str] | None:
 # ///////////////////////////////////////////////////////////////
 
 
-@click.group(name="deps")
-@click.option(
-    "-v",
-    "--verbose",
-    is_flag=True,
-    help="Enable verbose output with detailed information.",
-)
+@click.group(invoke_without_command=True)
 @click.pass_context
-def deps_group(ctx: click.Context, verbose: bool) -> None:
+def deps_group(ctx: click.Context) -> None:
     """
     Manage dependencies across all strata (system, runtime, tools).
 
@@ -104,13 +99,8 @@ def deps_group(ctx: click.Context, verbose: bool) -> None:
 
     Each strata depends on the lower ones. Use subcommands to manage each level.
     """
-    # Store verbose in context for subcommands
-    ctx.ensure_object(dict)
-    ctx.obj["verbose"] = verbose
-
-    if verbose:
-        logger.setLevel(logging.DEBUG)
-        logger.debug("Verbose mode enabled")
+    if ctx.invoked_subcommand is None:
+        click.echo(ctx.get_help())
 
 
 # ///////////////////////////////////////////////////////////////
@@ -118,7 +108,7 @@ def deps_group(ctx: click.Context, verbose: bool) -> None:
 # ///////////////////////////////////////////////////////////////
 
 
-@deps_group.group(name="system")
+@deps_group.group(name="system", invoke_without_command=True)
 @click.pass_context
 def system_group(ctx: click.Context) -> None:
     """
@@ -134,6 +124,8 @@ def system_group(ctx: click.Context) -> None:
         womm deps system list            # List all managers
         womm deps system best            # Show best available manager
     """
+    if ctx.invoked_subcommand is None:
+        click.echo(ctx.get_help())
 
 
 @system_group.command(name="check")
@@ -145,8 +137,7 @@ def system_group(ctx: click.Context) -> None:
     is_flag=True,
     help="Show detailed information about the manager.",
 )
-@click.pass_context
-def system_check(ctx: click.Context, manager: str | None, verbose: bool) -> None:
+def system_check(manager: str | None, verbose: bool) -> None:
     """
     Check system package manager availability.
 
@@ -163,7 +154,7 @@ def system_check(ctx: click.Context, manager: str | None, verbose: bool) -> None
         ezpl_bridge.set_level(LogLevel.DEBUG.label)
 
     # Print header
-    ezprinter.print_header("System Package Manager availability checking")
+    ezprinter.print_header("System Package Manager Check")
 
     try:
         interface = SystemPackageManagerInterface()
@@ -177,17 +168,16 @@ def system_check(ctx: click.Context, manager: str | None, verbose: bool) -> None
                     msg += f" (version {result.version})"
                 ezprinter.success(msg)
 
-                if verbose or ctx.obj.get("verbose"):
+                if verbose:
                     ezprinter.info(f"Platform: {result.platform}")
                     ezprinter.info(f"Priority: {result.priority}")
             else:
                 ezprinter.error(f"{manager} is not available")
-                if verbose or ctx.obj.get("verbose"):
+                if verbose:
                     ezprinter.info(f"Error: {result.error}")
         else:
-            # Check all managers
-            results = interface.detect_available_managers()
-            display_available_managers(results, verbose or ctx.obj.get("verbose"))
+            # Check all managers - interface handles spinner + UI
+            interface.check_all_managers()
 
     except Exception as e:
         logger.error(f"Failed to check system package managers: {e}")
@@ -203,8 +193,7 @@ def system_check(ctx: click.Context, manager: str | None, verbose: bool) -> None
     is_flag=True,
     help="Show detailed information for each manager.",
 )
-@click.pass_context
-def system_list(ctx: click.Context, verbose: bool) -> None:
+def system_list(verbose: bool) -> None:
     """
     List all system package managers and their status.
 
@@ -220,12 +209,13 @@ def system_list(ctx: click.Context, verbose: bool) -> None:
         ezpl_bridge.set_level(LogLevel.DEBUG.label)
 
     # Print header
-    ezprinter.print_header("System Package Manager listing")
+    ezprinter.print_header("System Package Manager List")
 
     try:
+        # TODO: Migrate to interface method that handles data retrieval + UI display
         interface = SystemPackageManagerInterface()
         status = interface.get_installation_status()
-        display_system_managers_list(status, verbose or ctx.obj.get("verbose"))
+        display_system_managers_list(status, verbose)
 
     except Exception as e:
         logger.error(f"Failed to list system package managers: {e}")
@@ -241,8 +231,7 @@ def system_list(ctx: click.Context, verbose: bool) -> None:
     is_flag=True,
     help="Show why this manager was selected as best.",
 )
-@click.pass_context
-def system_best(ctx: click.Context, verbose: bool) -> None:
+def system_best(verbose: bool) -> None:
     """
     Show the best available system package manager.
 
@@ -258,12 +247,13 @@ def system_best(ctx: click.Context, verbose: bool) -> None:
         ezpl_bridge.set_level(LogLevel.DEBUG.label)
 
     # Print header
-    ezprinter.print_header("System Package Manager recommendation")
+    ezprinter.print_header("Best System Package Manager")
 
     try:
+        # TODO: Migrate to interface method that handles data retrieval + UI display
         interface = SystemPackageManagerInterface()
         best = interface.get_best_available_manager()
-        display_best_manager(best, interface, verbose or ctx.obj.get("verbose"))
+        display_best_manager(best, interface, verbose)
 
     except Exception as e:
         logger.error(f"Failed to get best system package manager: {e}")
@@ -276,7 +266,7 @@ def system_best(ctx: click.Context, verbose: bool) -> None:
 # ///////////////////////////////////////////////////////////////
 
 
-@deps_group.group(name="runtime")
+@deps_group.group(name="runtime", invoke_without_command=True)
 @click.pass_context
 def runtime_group(ctx: click.Context) -> None:
     """
@@ -292,6 +282,8 @@ def runtime_group(ctx: click.Context) -> None:
         womm deps runtime install python # Install with best manager
         womm deps runtime list           # List available runtimes
     """
+    if ctx.invoked_subcommand is None:
+        click.echo(ctx.get_help())
 
 
 @runtime_group.command(name="check")
@@ -303,8 +295,7 @@ def runtime_group(ctx: click.Context) -> None:
     is_flag=True,
     help="Show detailed information about the runtime.",
 )
-@click.pass_context
-def runtime_check(ctx: click.Context, runtime: str | None, verbose: bool) -> None:
+def runtime_check(runtime: str | None, verbose: bool) -> None:
     """
     Check runtime installation status.
 
@@ -321,20 +312,18 @@ def runtime_check(ctx: click.Context, runtime: str | None, verbose: bool) -> Non
         ezpl_bridge.set_level(LogLevel.DEBUG.label)
 
     # Print header
-    ezprinter.print_header("Runtime availability checking")
+    ezprinter.print_header("Runtime Check")
 
     try:
         interface = RuntimeInterface()
 
         if runtime:
-            # Check specific runtime
+            # TODO: Migrate to interface method that handles check + UI display
             result = interface.check_runtime(runtime)
-            display_runtime_check_specific(
-                result, runtime, verbose or ctx.obj.get("verbose")
-            )
+            display_runtime_check_specific(result, runtime, verbose)
         else:
-            # Check all runtimes
-            display_runtime_check_all(interface, verbose or ctx.obj.get("verbose"))
+            # Check all runtimes - interface handles spinner + UI
+            interface.check_all_runtimes()
 
     except Exception as e:
         logger.error(f"Failed to check runtime: {e}")
@@ -356,10 +345,7 @@ def runtime_check(ctx: click.Context, runtime: str | None, verbose: bool) -> Non
     is_flag=True,
     help="Show detailed installation progress.",
 )
-@click.pass_context
-def runtime_install(
-    ctx: click.Context, runtime: str, manager: str | None, verbose: bool
-) -> None:
+def runtime_install(runtime: str, manager: str | None, verbose: bool) -> None:
     """
     Install a runtime.
 
@@ -379,22 +365,22 @@ def runtime_install(
         ezpl_bridge.set_level(LogLevel.DEBUG.label)
 
     # Print header
-    ezprinter.print_header("Runtime installation")
+    ezprinter.print_header("Runtime Installation")
 
     try:
         interface = RuntimeInterface()
 
-        if verbose or ctx.obj.get("verbose"):
+        # TODO: Migrate verbose output to interface
+        if verbose:
             ezprinter.info(f"Installing {runtime}...")
             if manager:
                 ezprinter.info(f"Using specified manager: {manager}")
             else:
                 ezprinter.info("Auto-selecting best system package manager...")
 
+        # TODO: Migrate to interface method that handles install + UI display
         result = interface.install_runtime(runtime)
-        display_runtime_install_result(
-            result, runtime, verbose or ctx.obj.get("verbose")
-        )
+        display_runtime_install_result(result, runtime, verbose)
 
     except Exception as e:
         logger.error(f"Failed to install runtime {runtime}: {e}")
@@ -410,8 +396,7 @@ def runtime_install(
     is_flag=True,
     help="Show detailed information for each runtime.",
 )
-@click.pass_context
-def runtime_list(ctx: click.Context, verbose: bool) -> None:
+def runtime_list(verbose: bool) -> None:
     """
     List all available runtimes.
 
@@ -427,10 +412,10 @@ def runtime_list(ctx: click.Context, verbose: bool) -> None:
         ezpl_bridge.set_level(LogLevel.DEBUG.label)
 
     # Print header
-    ezprinter.print_header("Runtime listing")
+    ezprinter.print_header("Runtime List")
 
     try:
-        display_runtimes_list(verbose or ctx.obj.get("verbose"))
+        display_runtimes_list(verbose)
 
     except Exception as e:
         logger.error(f"Failed to list runtimes: {e}")
@@ -443,7 +428,7 @@ def runtime_list(ctx: click.Context, verbose: bool) -> None:
 # ///////////////////////////////////////////////////////////////
 
 
-@deps_group.group(name="tool")
+@deps_group.group(name="tool", invoke_without_command=True)
 @click.pass_context
 def tool_group(ctx: click.Context) -> None:
     """
@@ -459,6 +444,8 @@ def tool_group(ctx: click.Context) -> None:
         womm deps tool install cspell # Install with dependency resolution
         womm deps tool list           # List available tools
     """
+    if ctx.invoked_subcommand is None:
+        click.echo(ctx.get_help())
 
 
 @tool_group.command(name="check")
@@ -470,8 +457,7 @@ def tool_group(ctx: click.Context) -> None:
     is_flag=True,
     help="Show detailed information about the tool.",
 )
-@click.pass_context
-def tool_check(ctx: click.Context, tool: str | None, verbose: bool) -> None:
+def tool_check(tool: str | None, verbose: bool) -> None:
     """
     Check development tool availability.
 
@@ -488,13 +474,13 @@ def tool_check(ctx: click.Context, tool: str | None, verbose: bool) -> None:
         ezpl_bridge.set_level(LogLevel.DEBUG.label)
 
     # Print header
-    ezprinter.print_header("Dev Tools availability checking")
+    ezprinter.print_header("Dev Tools Check")
 
     try:
         interface = DevToolsInterface()
 
         if tool:
-            # Check specific tool
+            # TODO: Migrate specific tool check to interface method with UI display
             tool_info = _find_tool_info(tool)
             if not tool_info:
                 ezprinter.error(f"Unknown tool: {tool}")
@@ -502,14 +488,15 @@ def tool_check(ctx: click.Context, tool: str | None, verbose: bool) -> None:
 
             language, tool_type = tool_info
             result = interface.check_dev_tool(language, tool_type, tool)
+
+            # TODO: Migrate result display to UI module (display_tool_check_specific)
             if result.success:
                 msg = f"{tool} is available"
                 if result.path:
                     msg += f" ({result.path})"
                 ezprinter.success(msg)
 
-                if verbose or ctx.obj.get("verbose"):
-                    # Show dependency chain
+                if verbose:
                     try:
                         chain = DependenciesHierarchy.get_devtool_chain(tool)
                         ezprinter.info(
@@ -522,29 +509,11 @@ def tool_check(ctx: click.Context, tool: str | None, verbose: bool) -> None:
             else:
                 ezprinter.warning(f"{tool} is not available")
 
-                if verbose or ctx.obj.get("verbose"):
+                if verbose:
                     ezprinter.info("Use 'womm deps tool install' to install it")
         else:
-            # Check all tools
-            ezprinter.info("Checking development tools...\n")
-            for category, tools in DevToolsConfig.DEVTOOLS_DEPENDENCIES.items():
-                ezprinter.info(f"\n{category.upper()}:")
-                for subcategory, tool_list in tools.items():
-                    if verbose or ctx.obj.get("verbose"):
-                        ezprinter.info(f"  [{subcategory}]")
-
-                    for tool_name in tool_list:
-                        result = interface.check_dev_tool(
-                            category, subcategory, tool_name
-                        )
-                        status = "✓" if result.success else "✗"
-                        prefix = "    " if (verbose or ctx.obj.get("verbose")) else "  "
-                        msg = f"{prefix}{status} {tool_name}"
-
-                        if result.success:
-                            ezprinter.success(msg)
-                        else:
-                            ezprinter.warning(msg)
+            # Check all tools - interface handles spinner + UI
+            interface.check_all_tools()
 
     except Exception as e:
         logger.error(f"Failed to check tool: {e}")
@@ -566,8 +535,7 @@ def tool_check(ctx: click.Context, tool: str | None, verbose: bool) -> None:
     is_flag=True,
     help="Show detailed installation progress.",
 )
-@click.pass_context
-def tool_install(ctx: click.Context, tool: str, force: bool, verbose: bool) -> None:
+def tool_install(tool: str, force: bool, verbose: bool) -> None:
     """
     Install a development tool (auto-resolves dependencies).
 
@@ -588,15 +556,15 @@ def tool_install(ctx: click.Context, tool: str, force: bool, verbose: bool) -> N
         ezpl_bridge.set_level(LogLevel.DEBUG.label)
 
     # Print header
-    ezprinter.print_header("Dev Tool installation")
+    ezprinter.print_header("Dev Tool Installation")
 
     try:
         interface = DevToolsInterface()
 
-        if verbose or ctx.obj.get("verbose"):
+        # TODO: Migrate verbose output and dependency chain display to interface/UI
+        if verbose:
             ezprinter.info(f"Installing {tool}...")
 
-            # Show dependency chain
             try:
                 chain = DependenciesHierarchy.get_devtool_chain(tool)
                 ezprinter.info(
@@ -605,7 +573,7 @@ def tool_install(ctx: click.Context, tool: str, force: bool, verbose: bool) -> N
             except Exception as e:
                 logger.debug(f"Could not resolve dependency chain: {e}")
 
-        # Check if already installed (unless force)
+        # TODO: Migrate installation logic and result display to interface/UI
         if not force:
             tool_info = _find_tool_info(tool)
             if not tool_info:
@@ -627,6 +595,7 @@ def tool_install(ctx: click.Context, tool: str, force: bool, verbose: bool) -> N
         language, tool_type = tool_info
         result = interface.install_dev_tool(language, tool_type, tool)
 
+        # TODO: Migrate result display to UI module (display_tool_install_result)
         if result.success:
             msg = f"{tool} installed successfully"
             if result.path:
@@ -652,8 +621,7 @@ def tool_install(ctx: click.Context, tool: str, force: bool, verbose: bool) -> N
     is_flag=True,
     help="Show dependency chains for each tool.",
 )
-@click.pass_context
-def tool_list(ctx: click.Context, category: str | None, verbose: bool) -> None:
+def tool_list(category: str | None, verbose: bool) -> None:
     """
     List available development tools.
 
@@ -670,9 +638,10 @@ def tool_list(ctx: click.Context, category: str | None, verbose: bool) -> None:
         ezpl_bridge.set_level(LogLevel.DEBUG.label)
 
     # Print header
-    ezprinter.print_header("Dev Tool listing")
+    ezprinter.print_header("Dev Tool List")
 
     try:
+        # TODO: Migrate entire tool list display to UI module (display_devtools_list)
         from rich.table import Table
 
         tools_config = DevToolsConfig.DEVTOOLS_DEPENDENCIES
@@ -685,13 +654,13 @@ def tool_list(ctx: click.Context, category: str | None, verbose: bool) -> None:
             table.add_column("Category", style="cyan")
             table.add_column("Tools", style="white")
 
-            if verbose or ctx.obj.get("verbose"):
+            if verbose:
                 table.add_column("Package Manager", style="yellow")
 
             for subcat, tools in tools_config[category].items():
                 row = [subcat, ", ".join(tools)]
 
-                if verbose or ctx.obj.get("verbose"):
+                if verbose:
                     pm = DevToolsConfig.DEFAULT_RUNTIME_PACKAGE_MANAGER.get(
                         category, "N/A"
                     )
@@ -705,14 +674,14 @@ def tool_list(ctx: click.Context, category: str | None, verbose: bool) -> None:
             table.add_column("Category", style="yellow", no_wrap=True)
             table.add_column("Tools", style="white")
 
-            if verbose or ctx.obj.get("verbose"):
+            if verbose:
                 table.add_column("Package Manager", style="magenta")
 
             for lang, categories in tools_config.items():
                 for subcat, tools in categories.items():
                     row = [lang, subcat, ", ".join(tools)]
 
-                    if verbose or ctx.obj.get("verbose"):
+                    if verbose:
                         pm = DevToolsConfig.DEFAULT_RUNTIME_PACKAGE_MANAGER.get(
                             lang, "N/A"
                         )
@@ -741,8 +710,7 @@ def tool_list(ctx: click.Context, category: str | None, verbose: bool) -> None:
     is_flag=True,
     help="Show detailed information for each component.",
 )
-@click.pass_context
-def deps_check(ctx: click.Context, verbose: bool) -> None:
+def deps_check(verbose: bool) -> None:
     """
     Check all dependencies across all strata.
 
@@ -759,61 +727,35 @@ def deps_check(ctx: click.Context, verbose: bool) -> None:
     if verbose:
         ezpl_bridge.set_level(LogLevel.DEBUG.label)
 
+    if verbose:
+        ezpl_bridge.set_level(LogLevel.DEBUG.label)
+
     # Print header
-    ezprinter.print_header("Global dependencies checking")
+    ezprinter.print_header("Dependencies Check")
 
     try:
-        ezprinter.info("Checking all dependencies...\n")
-
-        # Strata 1
-        ezprinter.info("\n=== System Package Managers (Strata 1) ===")
         system_interface = SystemPackageManagerInterface()
-        results = system_interface.detect_available_managers()
-        available = [name for name, res in results.items() if res.success]
-
-        if available:
-            ezprinter.success(f"Available: {', '.join(available)}")
-            if verbose or ctx.obj.get("verbose"):
-                for name in available:
-                    res = results[name]
-                    ezprinter.info(f"  • {name}: v{res.version}")
-        else:
-            ezprinter.warning("No system package managers available")
-        ezconsole.print("")
-
-        # Strata 2
-        ezprinter.info("\n=== Runtimes (Strata 2) ===")
         runtime_interface = RuntimeInterface()
-        for runtime in RuntimeConfig.RUNTIMES:
-            result = runtime_interface.check_runtime(runtime)
-            status = "✓" if result.success else "✗"
-            version = f"v{result.version}" if result.version else "N/A"
-            msg = f"{status} {runtime}: {version}"
-
-            if result.success:
-                ezprinter.success(msg)
-            else:
-                ezprinter.warning(msg)
-        ezconsole.print("")
-
-        # Strata 3
-        ezprinter.info("\n=== Development Tools (Strata 3) ===")
         tool_interface = DevToolsInterface()
-        for category, tools in DevToolsConfig.DEVTOOLS_DEPENDENCIES.items():
-            if verbose or ctx.obj.get("verbose"):
-                ezprinter.info(f"\n{category}:")
 
+        # Collect all results
+        system_results = system_interface.detect_available_managers()
+        runtime_results = {
+            rt: runtime_interface.check_runtime(rt) for rt in RuntimeConfig.RUNTIMES
+        }
+
+        # Tool results
+        tool_results = {}
+        for category, tools in DevToolsConfig.DEVTOOLS_DEPENDENCIES.items():
             for subcategory, tool_list in tools.items():
                 for tool in tool_list:
                     result = tool_interface.check_dev_tool(category, subcategory, tool)
-                    status = "✓" if result.success else "✗"
-                    prefix = "  " if (verbose or ctx.obj.get("verbose")) else ""
-                    msg = f"{prefix}{status} {tool}"
+                    tool_results[tool] = result
 
-                    if result.success:
-                        ezprinter.success(msg)
-                    else:
-                        ezprinter.warning(msg)
+        # Display via UI function (to be created)
+        display_deps_check_results(
+            system_results, runtime_results, tool_results, verbose
+        )
 
     except Exception as e:
         logger.error(f"Failed to check dependencies: {e}")
@@ -829,8 +771,7 @@ def deps_check(ctx: click.Context, verbose: bool) -> None:
     is_flag=True,
     help="Show additional details in the status report.",
 )
-@click.pass_context
-def deps_status(ctx: click.Context, verbose: bool) -> None:
+def deps_status(verbose: bool) -> None:
     """
     Show comprehensive dependency status report.
 
@@ -845,94 +786,37 @@ def deps_status(ctx: click.Context, verbose: bool) -> None:
     if verbose:
         ezpl_bridge.set_level(LogLevel.DEBUG.label)
 
+    if verbose:
+        ezpl_bridge.set_level(LogLevel.DEBUG.label)
+
     # Print header
-    ezprinter.print_header("Comprehensive Dependency Status Report")
+    ezprinter.print_header("Dependency Status")
 
     try:
-        from rich.table import Table
-
-        # Create comprehensive status table
-        table = Table(title="WOMM Dependency Status", show_header=True)
-        table.add_column("Strata", style="cyan", width=20)
-        table.add_column("Component", style="yellow", width=30)
-        table.add_column("Status", style="green", width=10, justify="center")
-        table.add_column("Version", style="white", width=15)
-
-        if verbose or ctx.obj.get("verbose"):
-            table.add_column("Details", style="blue", width=30)
-
-        # Strata 1
         system_interface = SystemPackageManagerInterface()
-        status_data = system_interface.get_installation_status()
-        for name, info in status_data.items():
-            if info["supported_on_current_platform"]:
-                row = [
-                    "System PKG MGR",
-                    name,
-                    "✓" if info["available"] else "✗",
-                    info["version"] or "N/A",
-                ]
-
-                if verbose or ctx.obj.get("verbose"):
-                    details = f"Priority: {info.get('priority', 'N/A')}"
-                    row.append(details)
-
-                table.add_row(*row)
-
-        # Strata 2
         runtime_interface = RuntimeInterface()
-        for runtime in RuntimeConfig.RUNTIMES:
-            result = runtime_interface.check_runtime(runtime)
-            row = [
-                "Runtime",
-                runtime,
-                "✓" if result.success else "✗",
-                result.version or "N/A",
-            ]
-
-            if verbose or ctx.obj.get("verbose"):
-                config = RuntimeConfig.RUNTIMES.get(runtime, {})
-                min_ver = config.get("version", "Any")
-                row.append(f"Min: {min_ver}")
-
-            table.add_row(*row)
-
-        # Strata 3 (sample tools)
         tool_interface = DevToolsInterface()
+
+        # Collect data
+        system_status = system_interface.get_installation_status()
+        runtime_results = {
+            rt: runtime_interface.check_runtime(rt) for rt in RuntimeConfig.RUNTIMES
+        }
+
         sample_tools = ["cspell", "ruff", "pytest", "eslint"]
+        tool_results = {}
         for tool in sample_tools:
             try:
                 tool_info = _find_tool_info(tool)
-                if not tool_info:
-                    logger.debug(f"Tool {tool} not found in config")
-                    continue
-
-                language, tool_type = tool_info
-                result = tool_interface.check_dev_tool(language, tool_type, tool)
-                row = [
-                    "DevTool",
-                    tool,
-                    "✓" if result.success else "✗",
-                    "N/A",
-                ]
-
-                if verbose or ctx.obj.get("verbose"):
-                    try:
-                        chain = DependenciesHierarchy.get_devtool_chain(tool)
-                        row.append(
-                            f"{chain['runtime_package_manager']} → {chain['runtime']}"
-                        )
-                    except Exception as e:
-                        logger.debug(
-                            f"Could not resolve dependency chain for {tool}: {e}"
-                        )
-                        row.append("N/A")
-
-                table.add_row(*row)
+                if tool_info:
+                    language, tool_type = tool_info
+                    result = tool_interface.check_dev_tool(language, tool_type, tool)
+                    tool_results[tool] = result
             except Exception as e:
                 logger.debug(f"Could not check tool {tool}: {e}")
 
-        ezconsole.print(table)
+        # Display via UI function (to be created)
+        display_deps_status_table(system_status, runtime_results, tool_results, verbose)
 
     except Exception as e:
         logger.error(f"Failed to generate status report: {e}")
@@ -948,8 +832,7 @@ def deps_status(ctx: click.Context, verbose: bool) -> None:
     is_flag=True,
     help="Show detailed validation information.",
 )
-@click.pass_context
-def deps_validate(ctx: click.Context, verbose: bool) -> None:
+def deps_validate(verbose: bool) -> None:
     """
     Validate all dependency chains.
 
@@ -966,19 +849,15 @@ def deps_validate(ctx: click.Context, verbose: bool) -> None:
         ezpl_bridge.set_level(LogLevel.DEBUG.label)
 
     # Print header
-    ezprinter.print_header("Dependency Chain Validation")
+    ezprinter.print_header("Dependency Validation")
 
     try:
-        ezprinter.info("Validating dependency chains...\n")
-
+        # Collect validation results
         issues = []
         valid_count = 0
 
         # Check each devtool's chain
-        for category, tools in DevToolsConfig.DEVTOOLS_DEPENDENCIES.items():
-            if verbose or ctx.obj.get("verbose"):
-                ezprinter.info(f"\n=== {category.upper()} ===")
-
+        for _category, tools in DevToolsConfig.DEVTOOLS_DEPENDENCIES.items():
             for _subcategory, tool_list in tools.items():
                 for tool in tool_list:
                     try:
@@ -990,21 +869,11 @@ def deps_validate(ctx: click.Context, verbose: bool) -> None:
                             issues.append(f"❌ {tool}: Missing runtime")
                         else:
                             valid_count += 1
-                            if verbose or ctx.obj.get("verbose"):
-                                ezprinter.success(
-                                    f"✓ {tool}: {chain['runtime_package_manager']} → {chain['runtime']}"
-                                )
                     except Exception as e:
                         issues.append(f"❌ {tool}: Invalid chain ({e})")
 
-        # Summary
-        ezconsole.print("")
-        if issues:
-            ezprinter.error(f"\n{len(issues)} issue(s) found:")
-            for issue in issues:
-                ezprinter.error(f"  {issue}")
-        else:
-            ezprinter.success(f"\n✓ All {valid_count} dependency chains are valid")
+        # Display via UI function (to be created)
+        display_deps_validation_results(issues, valid_count, verbose)
 
     except Exception as e:
         logger.error(f"Failed to validate dependencies: {e}")

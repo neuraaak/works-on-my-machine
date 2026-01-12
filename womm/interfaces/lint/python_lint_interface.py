@@ -35,6 +35,7 @@ from ...shared.results.lint_results import LintSummaryResult, ToolStatusResult
 
 # Local imports
 from ...ui.common import ezprinter
+from ...ui.lint import display_lint_summary, display_tool_status
 from ...utils.lint import export_lint_results_to_json
 
 # ///////////////////////////////////////////////////////////////
@@ -138,8 +139,6 @@ class PythonLintInterface:
             LintCheckInterfaceError: If linting check fails
         """
         try:
-            ezprinter.print_header("Checking Python Code")
-
             with ezprinter.create_spinner_with_status(
                 "Scanning project for Python files..."
             ) as (progress, task):
@@ -252,6 +251,9 @@ class PythonLintInterface:
                 except Exception as e:
                     logger.warning(f"Failed to generate output files: {e}")
 
+            # Display results via UI
+            display_lint_summary(summary, mode="check")
+
             return summary
 
         except PythonLintInterfaceError:
@@ -288,8 +290,6 @@ class PythonLintInterface:
             LintFixInterfaceError: If linting fix fails
         """
         try:
-            ezprinter.print_header("Fixing Python Code")
-
             with ezprinter.create_spinner_with_status(
                 "Scanning project for Python files..."
             ) as (progress, task):
@@ -402,6 +402,9 @@ class PythonLintInterface:
                 except Exception as e:
                     logger.warning(f"Failed to generate output files: {e}")
 
+            # Display results via UI
+            display_lint_summary(summary, mode="fix")
+
             return summary
 
         except PythonLintInterfaceError:
@@ -428,15 +431,18 @@ class PythonLintInterface:
             LintToolStatusInterfaceError: If tool status retrieval fails
         """
         try:
-            ezprinter.print_header("Linting Tools Status")
-
             try:
                 tool_summary = self.python_lint_service.get_tool_summary()
-                return ToolStatusResult(
+                result = ToolStatusResult(
                     success=True,
                     message="Tool status retrieved successfully",
                     tool_summary=tool_summary,
                 )
+
+                # Display results via UI
+                display_tool_status(tool_summary)
+
+                return result
             except (LintServiceError, ToolAvailabilityServiceError) as e:
                 # Convert service exceptions to interface exceptions
                 raise PythonLintInterfaceError(

@@ -36,9 +36,7 @@ from .security_service import (
     PathValidationError,
     SecurityServiceError,
 )
-from .validation_service import (
-    ValidationServiceError,
-)
+from .validation_service import ValidationServiceError
 
 # ///////////////////////////////////////////////////////////////
 # PUBLIC API

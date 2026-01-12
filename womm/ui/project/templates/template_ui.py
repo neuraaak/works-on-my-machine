@@ -25,7 +25,6 @@ from rich.panel import Panel
 from rich.table import Table
 
 # Local imports
-from ....services import ProjectDetectionService
 from ....utils.womm_setup import get_womm_installation_path
 from ...common.ezpl_bridge import ezconsole
 
@@ -196,8 +195,7 @@ def interactive_template_create() -> dict[str, str] | None:
         # Auto-generate template name if not provided
         if not answers["template_name"]:
             source_path = Path(answers["source_project"])
-            project_type = _detect_project_type(source_path)
-            answers["template_name"] = f"{project_type}-{source_path.name}"
+            answers["template_name"] = source_path.name
 
         # Auto-generate description if not provided
         if not answers["description"]:
@@ -286,16 +284,6 @@ def _get_template_info(template_name: str) -> dict[str, str | list | int] | None
         return None
     except Exception:
         return None
-
-
-def _detect_project_type(project_path: Path) -> str:
-    """Detect the type of project."""
-    try:
-        detector = ProjectDetectionService()
-        result = detector.detect_project_type(project_path)
-        return result or "unknown"
-    except Exception:
-        return "unknown"
 
 
 # ///////////////////////////////////////////////////////////////

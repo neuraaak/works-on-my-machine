@@ -23,9 +23,7 @@ from threading import Lock
 from typing import ClassVar
 
 # Local imports
-from ...exceptions.womm_deployment import (
-    VerificationServiceError,
-)
+from ...exceptions.womm_deployment import VerificationServiceError
 from ...shared.result_models import WOMMInstallerVerificationResult
 from ..common.command_runner_service import CommandRunnerService
 

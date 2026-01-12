@@ -22,9 +22,7 @@ from pathlib import Path
 
 # Local imports
 from ...exceptions.common import DirectoryAccessError, FileScanError
-from ...exceptions.womm_deployment import (
-    VerificationServiceError,
-)
+from ...exceptions.womm_deployment import VerificationServiceError
 
 # ///////////////////////////////////////////////////////////////
 # LOGGER SETUP

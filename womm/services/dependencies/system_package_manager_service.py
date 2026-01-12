@@ -165,7 +165,19 @@ class SystemPackageManagerService:
             try:
                 # Get version flag from config, default to --version
                 version_flag = config.get("version_flag", "--version")
-                result = self._command_runner.run_silent([command, version_flag])
+                # Use subprocess directly with shell=True for Windows scripts (.ps1)
+                import subprocess
+
+                # nosec B602: shell=True is safe here - command and version_flag
+                # are from internal config, not user input
+                result = subprocess.run(  # noqa: S602
+                    f"{command} {version_flag}",
+                    capture_output=True,
+                    text=True,
+                    shell=True,  # nosec B602
+                    timeout=10,
+                    check=False,  # We handle errors ourselves
+                )
 
                 # Check if command succeeded (returncode == 0)
                 if result.returncode == 0 and result.stdout:
@@ -173,24 +185,30 @@ class SystemPackageManagerService:
                     if stdout:
                         # Try to extract version number from output
                         # Some managers output just the version, others include the name
-                        lines = stdout.split("\n")
-                        first_line = lines[0].strip()
-
-                        # Try to find a version pattern (numbers with dots)
                         import re
 
-                        version_match = re.search(r"(\d+\.\d+(?:\.\d+)?)", first_line)
-                        if version_match:
-                            version = version_match.group(1)
+                        # Search across all lines for version patterns
+                        # Pattern 1: tag: vX.Y.Z (scoop style)
+                        tag_match = re.search(r"tag:\s*v?(\d+\.\d+(?:\.\d+)?)", stdout)
+                        if tag_match:
+                            version = tag_match.group(1)
+                            logger.debug(
+                                f"Parsed version {version} for {manager_name} from tag"
+                            )
                         else:
-                            # Fallback: use first word
-                            words = first_line.split()
-                            if words:
-                                version = words[0]
+                            # Pattern 2: standard version pattern (X.Y.Z)
+                            version_match = re.search(r"v?(\d+\.\d+(?:\.\d+)?)", stdout)
+                            if version_match:
+                                version = version_match.group(1)
+                            else:
+                                # Fallback: use first word of first line
+                                lines = stdout.split("\n")
+                                first_line = lines[0].strip()
+                                words = first_line.split()
+                                if words:
+                                    version = words[0]
 
-                        logger.debug(
-                            f"Parsed version {version} for {manager_name} from: {first_line}"
-                        )
+                            logger.debug(f"Parsed version {version} for {manager_name}")
             except Exception as e:
                 logger.debug(f"Failed to get version for {manager_name}: {e}")
                 # Continue execution as version check failure is not critical

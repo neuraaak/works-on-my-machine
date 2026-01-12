@@ -28,10 +28,7 @@ from ...exceptions.context import ContextUtilityError
 from ...exceptions.system import RegistryServiceError
 from ...shared.configs.context import ContextConfig
 from ...shared.result_models import ContextRegistryResult
-from ...utils.context import (
-    generate_registry_key_name,
-    get_registry_entry_info,
-)
+from ...utils.context import generate_registry_key_name, get_registry_entry_info
 
 # ///////////////////////////////////////////////////////////////
 # LOGGER SETUP

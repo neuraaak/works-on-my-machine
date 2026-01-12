@@ -31,16 +31,10 @@ from ...exceptions.cspell import (
     CSpellServiceError,
 )
 from ...services import CSpellCheckerService
-from ...shared.results import (
-    CSpellInstallResult,
-    CSpellResult,
-)
+from ...shared.results import CSpellInstallResult, CSpellResult
 from ...ui.common import ezprinter
 from ...ui.cspell import display_spell_status_table
-from ...utils.cspell import (
-    export_spell_results_to_json,
-    format_project_status,
-)
+from ...utils.cspell import export_spell_results_to_json, format_project_status
 
 # ///////////////////////////////////////////////////////////////
 # LOGGER SETUP

@@ -29,11 +29,7 @@ from ...exceptions.system import (
 )
 from ...services import SystemDetectorService
 from ...shared.results import SystemDetectionResult
-from ...ui.common import (
-    ezlogger,
-    ezpl_bridge,
-    ezprinter,
-)
+from ...ui.common import ezlogger, ezpl_bridge, ezprinter
 from ...ui.system import display_system_detection_results
 
 # ///////////////////////////////////////////////////////////////

@@ -39,11 +39,7 @@ from ...exceptions.womm_deployment import (
 )
 from ...services import WommUninstallerService
 from ...shared.results import UninstallationResult
-from ...ui.common import (
-    confirm,
-    ezconsole,
-    ezprinter,
-)
+from ...ui.common import confirm, ezconsole, ezprinter
 from ...utils.womm_setup import (
     get_default_womm_path,
     get_files_to_remove,

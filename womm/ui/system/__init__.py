@@ -20,6 +20,9 @@ from __future__ import annotations
 from .display import (
     display_available_managers,
     display_best_manager,
+    display_deps_check_results,
+    display_deps_status_table,
+    display_deps_validation_results,
     display_system_detection_results,
     display_system_managers_list,
 )
@@ -31,6 +34,9 @@ from .display import (
 __all__ = [
     "display_available_managers",
     "display_best_manager",
+    "display_deps_check_results",
+    "display_deps_status_table",
+    "display_deps_validation_results",
     "display_system_detection_results",
     "display_system_managers_list",
 ]

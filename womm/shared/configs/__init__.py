@@ -24,11 +24,7 @@ from __future__ import annotations
 # ///////////////////////////////////////////////////////////////
 # Local imports
 from .context import ContextConfig
-from .dependencies import (
-    DevToolsConfig,
-    RuntimeConfig,
-    SystemPackageManagerConfig,
-)
+from .dependencies import DevToolsConfig, RuntimeConfig, SystemPackageManagerConfig
 from .lint import PythonLintingConfig
 from .project import (
     JavaScriptProjectConfig,

@@ -25,14 +25,8 @@ import click
 from ezpl.types import LogLevel
 
 # Local imports
-from ...exceptions.cspell import (
-    CSpellDictionaryInterfaceError,
-    CSpellInterfaceError,
-)
-from ...interfaces import (
-    CSpellCheckerInterface,
-    CSpellDictionaryInterface,
-)
+from ...exceptions.cspell import CSpellDictionaryInterfaceError, CSpellInterfaceError
+from ...interfaces import CSpellCheckerInterface, CSpellDictionaryInterface
 from ...ui.common import ezpl_bridge, ezprinter
 
 # ///////////////////////////////////////////////////////////////

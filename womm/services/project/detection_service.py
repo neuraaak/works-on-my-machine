@@ -23,10 +23,7 @@ from threading import Lock
 from typing import ClassVar
 
 # Local imports
-from ...exceptions.project import (
-    ProjectDetectionServiceError,
-    ProjectServiceError,
-)
+from ...exceptions.project import ProjectDetectionServiceError, ProjectServiceError
 from ...shared.configs.project import ProjectConfig
 from ...shared.results import ProjectDetectionResult
 from ...utils.project import (

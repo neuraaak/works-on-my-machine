@@ -26,13 +26,12 @@ from dataclasses import dataclass
 # Local imports
 from ...exceptions.common import ValidationServiceError
 from ...exceptions.dependencies import SystemPkgManagerInterfaceError
-from ...exceptions.womm_deployment import (
-    DependencyServiceError,
-)
+from ...exceptions.womm_deployment import DependencyServiceError
 from ...services import CommandRunnerService, SystemPackageManagerService
 from ...shared.configs.dependencies import SystemPackageManagerConfig
 from ...shared.results import BaseResult, PackageManagerResult
 from ...ui.common import ezconsole, ezprinter
+from ...ui.dependencies import display_system_table
 
 # ///////////////////////////////////////////////////////////////
 # LOGGER SETUP
@@ -191,6 +190,58 @@ class SystemPackageManagerInterface:
                 message=f"Failed to detect available managers: {e}",
                 details=f"Exception type: {type(e).__name__}",
             ) from e
+
+    def check_all_managers(self) -> dict[str, PackageManagerResult]:
+        """
+        Check all system package managers with a single spinner and display results.
+
+        Uses a single spinner with status updates, then displays a summary table.
+
+        Returns:
+            Dictionary mapping manager names to PackageManagerResult objects
+        """
+        results = {}
+
+        with ezprinter.create_spinner_with_status(
+            "Checking system package manager availability..."
+        ) as (progress, task):
+            progress.update(task, status="Initializing...")
+
+            # Get list of managers for current platform
+            platform_managers = []
+            for manager_name in SYSTEM_PACKAGE_MANAGERS:
+                platform_result = (
+                    self.package_manager_service.is_manager_for_current_platform(
+                        manager_name
+                    )
+                )
+                if platform_result.is_for_current_platform:
+                    platform_managers.append(manager_name)
+
+            for manager_name in platform_managers:
+                progress.update(task, status=f"Checking {manager_name}")
+
+                try:
+                    result = self._check_package_manager_internal(
+                        manager_name, None, None
+                    )
+                    results[manager_name] = result
+                except Exception as e:
+                    logger.warning(f"Failed to check {manager_name}: {e}")
+                    results[manager_name] = PackageManagerResult(
+                        success=False,
+                        package_manager_name=manager_name,
+                        message=f"Failed to check {manager_name}",
+                        error=str(e),
+                    )
+
+            progress.update(task, status="Check completed")
+
+        # Display results via UI
+        print()
+        display_system_table(results)
+
+        return results
 
     def check_package_manager(
         self, manager_name: str, show_ui: bool = True
@@ -705,10 +756,11 @@ class SystemPackageManagerInterface:
 
             # Check if manager is available
             try:
-                available, version = (
-                    self.package_manager_service.check_manager_availability(
-                        manager_name
-                    )
+                (
+                    available,
+                    version,
+                ) = self.package_manager_service.check_manager_availability(
+                    manager_name
                 )
             except Exception as e:
                 logger.warning(f"Failed to check availability for {manager_name}: {e}")
@@ -834,10 +886,11 @@ class SystemPackageManagerInterface:
 
             # Check if manager is available
             try:
-                available, version = (
-                    self.package_manager_service.check_manager_availability(
-                        manager_name
-                    )
+                (
+                    available,
+                    version,
+                ) = self.package_manager_service.check_manager_availability(
+                    manager_name
                 )
             except Exception as e:
                 logger.warning(f"Failed to check availability for {manager_name}: {e}")

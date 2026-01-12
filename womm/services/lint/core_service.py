@@ -28,15 +28,12 @@ from typing import ClassVar
 from ...exceptions.common import TimeoutError, ValidationServiceError
 from ...exceptions.lint import (
     LintServiceError,
+    ToolAvailabilityServiceError,
     ToolExecutionServiceError,
 )
 from ...shared.result_models import ToolResult
-from ...utils.lint import (
-    check_tool_availability,
-    get_tool_version,
-    parse_lint_output,
-    validate_lint_result,
-)
+from ...utils.lint import get_tool_version as get_tool_version_util
+from ...utils.lint import parse_lint_output, validate_lint_result
 from ..common.command_runner_service import CommandRunnerService
 
 # ///////////////////////////////////////////////////////////////
@@ -84,6 +81,8 @@ class LintService:
     def check_tool_available(self, tool_name: str) -> bool:
         """Check if a linting tool is available.
 
+        Uses DevToolsService to centralize dependency checking.
+
         Args:
             tool_name: Name of the tool to check
 
@@ -91,13 +90,21 @@ class LintService:
             bool: True if tool is available, False otherwise
         """
         try:
-            return check_tool_availability(tool_name, self.command_runner)
+            # Import here to avoid circular imports
+            from ..dependencies.devtools_dependencies_service import DevToolsService
+
+            service = DevToolsService()
+            result = service.check_tool_availability(tool_name)
+            return result.is_available
         except Exception as e:
             self.logger.debug(f"Error checking tool availability for {tool_name}: {e}")
             return False
 
     def get_tool_version(self, tool_name: str) -> str:
         """Get version of a linting tool.
+
+        First checks if tool is available via DevToolsService (centralized),
+        then gets version using command execution.
 
         Args:
             tool_name: Name of the tool
@@ -109,7 +116,29 @@ class LintService:
             ToolAvailabilityError: If tool is not available
             ToolExecutionError: If version check fails
         """
-        return get_tool_version(tool_name, self.command_runner)
+        try:
+            # First, check if tool is available via DevToolsService
+            # This centralizes dependency checking at service layer
+            if not self.check_tool_available(tool_name):
+                raise ToolAvailabilityServiceError(
+                    message=f"Tool '{tool_name}' not available",
+                    tool_name=tool_name,
+                    details=f"Tool '{tool_name}' not available in system PATH",
+                )
+
+            # Now get the version using the utility function
+            return get_tool_version_util(tool_name, self.command_runner)
+
+        except ToolAvailabilityServiceError:
+            raise
+        except Exception as e:
+            self.logger.error(f"Error getting tool version for {tool_name}: {e}")
+            raise ToolExecutionServiceError(
+                message=f"Version check failed for {tool_name}",
+                tool_name=tool_name,
+                operation="version_check",
+                details=str(e),
+            ) from e
 
     def run_tool_check(
         self,

@@ -34,10 +34,7 @@ from ...exceptions.system import (
 )
 from ...shared.results import PathOperationResult
 from ...shared.results.base import CommandResult
-from ...utils.system import (
-    deduplicate_path_entries,
-    extract_path_from_reg_output,
-)
+from ...utils.system import deduplicate_path_entries, extract_path_from_reg_output
 from ..common.command_runner_service import CommandRunnerService
 
 # ///////////////////////////////////////////////////////////////

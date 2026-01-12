@@ -18,14 +18,12 @@ from pathlib import Path
 # Local imports
 from ...exceptions.common import ValidationServiceError
 from ...exceptions.dependencies import DevToolsInterfaceError
-from ...exceptions.womm_deployment import (
-    DependencyServiceError,
-)
+from ...exceptions.womm_deployment import DependencyServiceError
 from ...services import CommandRunnerService, DevToolsService
 from ...shared.configs.dependencies import DevToolsConfig
 from ...shared.results import DevToolResult
 from ...ui.common import ezprinter
-from ...ui.dependencies import display_devtools_status_table
+from ...ui.dependencies import display_devtools_status_table, display_tool_table
 
 # ///////////////////////////////////////////////////////////////
 # LOGGER SETUP
@@ -142,7 +140,8 @@ class DevToolsInterface:
 
             # Check if tool is available
             try:
-                available = self.dev_tools_service.check_tool_availability(tool)
+                check_result = self.dev_tools_service.check_tool_availability(tool)
+                available = check_result.is_available
             except Exception as e:
                 logger.warning(f"Failed to check tool availability for {tool}: {e}")
                 available = False
@@ -171,6 +170,69 @@ class DevToolsInterface:
                 message=f"Failed to check development tool: {e}",
                 details=f"Exception type: {type(e).__name__}",
             ) from e
+
+    def check_all_tools(self) -> dict[str, DevToolResult]:
+        """
+        Check all development tools with a single spinner and display results.
+
+        Uses a single spinner with status updates, then displays a summary table.
+
+        Returns:
+            Dictionary mapping tool names to DevToolResult objects
+        """
+        # Collect all tools with their config
+        tool_configs = [
+            (category, subcategory, tool)
+            for category, tools in DEVTOOLS_DEPENDENCIES.items()
+            for subcategory, tool_list in tools.items()
+            for tool in tool_list
+        ]
+
+        results = {}
+
+        with ezprinter.create_spinner_with_status(
+            "Checking development tool availability..."
+        ) as (progress, task):
+            progress.update(task, status="Initializing...")
+
+            for category, subcategory, tool in tool_configs:
+                progress.update(task, status=f"Checking {tool}")
+
+                try:
+                    # Direct service call (no UI)
+                    result = self.dev_tools_service.check_tool_availability(tool)
+                    is_available = result.is_available
+
+                    cache_key = f"{category}:{subcategory}:{tool}"
+                    self.cache[cache_key] = is_available
+
+                    results[tool] = DevToolResult(
+                        success=is_available,
+                        tool_name=tool,
+                        language=category,
+                        tool_type=subcategory,
+                        path=shutil.which(tool) if is_available else None,
+                        message=f"Dev tool {tool} {'available' if is_available else 'not found'}",
+                        error=(
+                            None if is_available else f"Dev tool {tool} not installed"
+                        ),
+                    )
+                except Exception as e:
+                    logger.warning(f"Failed to check {tool}: {e}")
+                    results[tool] = DevToolResult(
+                        success=False,
+                        tool_name=tool,
+                        message=f"Failed to check {tool}",
+                        error=str(e),
+                    )
+
+            progress.update(task, status="Check completed")
+
+        # Display results via UI
+        print()
+        display_tool_table(results)
+
+        return results
 
     def install_dev_tool(
         self, language: str, tool_type: str, tool: str

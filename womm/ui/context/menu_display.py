@@ -332,6 +332,100 @@ class ContextMenuUI:
         ezconsole.print(tip_panel)
         ezconsole.print("")
 
+    @staticmethod
+    def show_tip_panel(content: str, title: str = "Tip") -> None:
+        """Show a tip panel with consistent formatting."""
+        tip_panel = Panel(
+            content,
+            title=title,
+            border_style="yellow",
+            style="bright_yellow",
+            padding=(1, 1),
+            width=80,
+        )
+        ezconsole.print("")
+        ezconsole.print(tip_panel)
+        ezconsole.print("")
+
+    @staticmethod
+    def show_cherry_pick_menu(available_entries: list[dict]) -> list[dict]:
+        """
+        Show interactive menu for selecting entries to install.
+
+        Args:
+            available_entries: List of available entries
+
+        Returns:
+            List of selected entries
+        """
+        from ..common import InteractiveMenu
+
+        ezprinter.info("Select context menu entries to install:")
+
+        menu = InteractiveMenu(
+            title="Cherry-pick Context Menu Entries",
+            instruction="Use space to select/deselect, enter to confirm, q to quit",
+        )
+
+        def format_entry(entry: dict) -> str:
+            return entry.get("_display_name", entry.get("key_name", "Unknown"))
+
+        selected = menu.select_multiple_from_list(
+            available_entries, display_func=format_entry
+        )
+
+        return selected if selected else []
+
+    @staticmethod
+    def show_cherry_pick_complete(entry_count: int) -> None:
+        """Show success message after cherry-pick operation."""
+        ezprinter.success(f"Cherry-pick completed! {entry_count} entries installed")
+
+        tip_content = f"""Cherry-pick installation completed successfully.
+
+• {entry_count} context menu entries installed
+• Changes should be visible immediately in File Explorer
+• Use 'womm context list' to verify the new entries
+• If an entry doesn't work, check the original script path"""
+
+        tip_panel = Panel(
+            tip_content,
+            title="Cherry-pick Complete",
+            border_style="green",
+            style="bright_green",
+            padding=(1, 1),
+            width=80,
+        )
+        ezconsole.print("")
+        ezconsole.print(tip_panel)
+        ezconsole.print("")
+
+    @staticmethod
+    def show_context_entries(entries: dict) -> None:
+        """
+        Display context menu entries in formatted output.
+
+        Args:
+            entries: Dictionary of entries by context type
+        """
+        ezprinter.section("Context Menu Entries")
+
+        for context_type in ["directory", "background"]:
+            ezconsole.print(f"\n[bold]{context_type.upper()} CONTEXT:[/bold]")
+            context_entries = entries.get(context_type, [])
+
+            if not context_entries:
+                ezconsole.print("  No entries found")
+            else:
+                for entry in context_entries:
+                    ezconsole.print(f"  Key: {entry['key_name']}")
+                    ezconsole.print(f"    Display: {entry['display_name']}")
+                    if entry.get("command"):
+                        ezconsole.print(f"    Command: {entry['command']}")
+                    if entry.get("icon"):
+                        ezconsole.print(f"    Icon: {entry['icon']}")
+                    ezconsole.print()
+
 
 # ///////////////////////////////////////////////////////////////
 # PUBLIC API

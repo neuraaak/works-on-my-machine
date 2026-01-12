@@ -31,11 +31,7 @@ from ...exceptions.cspell import (
     DictionaryServiceError,
 )
 from ...services import CSpellDictionaryService
-from ...shared.results import (
-    AddWordsResult,
-    CSpellResult,
-    DictionarySetupResult,
-)
+from ...shared.results import AddWordsResult, CSpellResult, DictionarySetupResult
 from ...ui.common import ezconsole, ezprinter
 from ...utils.cspell import format_dictionary_info
 

@@ -39,12 +39,15 @@ def display_lint_summary(summary: LintSummaryResult, mode: str = "check") -> Non
     """
     # Display scan summary first
     if summary.scan_summary:
+        print()
         _display_scan_info(summary.scan_summary)
 
     # Display tool results
+    print()
     _display_tool_results(summary.tool_results, mode)
 
     # Display overall summary
+    print()
     _display_overall_summary(summary, mode)
 
 
@@ -55,7 +58,6 @@ def _display_scan_info(scan_summary: dict) -> None:
     directories = scan_summary.get("directories", set())
     extensions = scan_summary.get("extensions", {})
 
-    ezconsole.print("")
     ezprinter.info(
         f"📁 Scanned {total_files} files ({_format_size(total_size)}) across {len(directories)} directories"
     )
@@ -131,8 +133,12 @@ def _display_overall_summary(summary: LintSummaryResult, mode: str) -> None:
                     f"⚠️  Found {summary.total_issues} issues across {summary.total_files} files."
                 )
         else:
-            ezprinter.error(
-                f"❌ Linting failed with {summary.total_issues} issues in {summary.total_files} files."
+            ezprinter.tip(
+                "For detailed diagnostics, run the tools directly:\n"
+                "  • ruff check <path>\n"
+                "  • black --check <path>\n"
+                "  • isort --check-only <path>\n"
+                "  • bandit -r <path>"
             )
     elif summary.success:
         if summary.total_fixed > 0:
@@ -142,8 +148,12 @@ def _display_overall_summary(summary: LintSummaryResult, mode: str) -> None:
         else:
             ezprinter.info(f"✅ No issues to fix in {summary.total_files} files.")
     else:
-        ezprinter.error(
-            f"❌ Failed to complete fixes. Processed {summary.total_files} files."
+        ezprinter.tip(
+            "Some tools reported issues. For detailed diagnostics and auto-fixes, run the tools directly:\n"
+            "  • ruff check --fix <path>\n"
+            "  • black <path>\n"
+            "  • isort <path>\n"
+            "  • bandit -r <path>  (security only, no auto-fix)"
         )
 
 

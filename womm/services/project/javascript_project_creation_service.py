@@ -30,10 +30,7 @@ from typing import Any, ClassVar
 
 # Local imports
 from ...exceptions.common import ValidationServiceError
-from ...exceptions.project import (
-    ProjectServiceError,
-    TemplateServiceError,
-)
+from ...exceptions.project import ProjectServiceError, TemplateServiceError
 from ...shared.results import ProjectCreationResult
 from ...utils.common import get_assets_module_path
 from ...utils.project import (

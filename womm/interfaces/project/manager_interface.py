@@ -23,9 +23,7 @@ from pathlib import Path
 
 # Local imports
 from ...exceptions.common import ValidationServiceError
-from ...exceptions.project import (
-    ProjectServiceError,
-)
+from ...exceptions.project import ProjectServiceError
 from ...shared.configs.project import ProjectConfig
 from ...shared.results import (
     ProjectCreationResult,
@@ -33,9 +31,7 @@ from ...shared.results import (
     ProjectSetupResult,
 )
 from ...ui.common import ezprinter
-from ..dependencies.runtime_interface import (
-    RuntimeInterface,
-)
+from ..dependencies.runtime_interface import RuntimeInterface
 from .create_interface import ProjectCreateInterface
 from .detection_interface import ProjectDetectionInterface
 from .setup_interface import ProjectSetupInterface

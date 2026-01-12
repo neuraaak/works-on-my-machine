@@ -22,13 +22,12 @@ import shutil
 # Local imports
 from ...exceptions.common import ValidationServiceError
 from ...exceptions.dependencies import RuntimeInterfaceError
-from ...exceptions.womm_deployment import (
-    DependencyServiceError,
-)
+from ...exceptions.womm_deployment import DependencyServiceError
 from ...services import CommandRunnerService, RuntimeService
 from ...shared.configs.dependencies import RuntimeConfig
 from ...shared.results import RuntimeResult
 from ...ui.common import ezprinter
+from ...ui.dependencies import display_runtime_table
 
 # ///////////////////////////////////////////////////////////////
 # LOGGER SETUP
@@ -191,6 +190,63 @@ class RuntimeInterface:
                 reason=f"Failed to check runtime: {e}",
                 details=f"Exception type: {type(e).__name__}",
             ) from e
+
+    def check_all_runtimes(self) -> dict[str, RuntimeResult]:
+        """
+        Check all configured runtimes with a single spinner and display results.
+
+        Uses a single spinner with status updates for each runtime,
+        then displays a summary table.
+
+        Returns:
+            Dictionary mapping runtime names to RuntimeResult objects
+        """
+        runtimes = list(RUNTIMES.keys())
+        results = {}
+
+        with ezprinter.create_spinner_with_status(
+            "Checking runtime availability..."
+        ) as (progress, task):
+            progress.update(task, status="Initializing...")
+
+            for runtime in runtimes:
+                progress.update(task, status=f"Checking {runtime}")
+
+                try:
+                    # Call service directly (no spinner)
+                    service_result = (
+                        self.runtime_manager_service.check_runtime_installation(runtime)
+                    )
+                    available = service_result.is_installed
+                    version = service_result.version
+
+                    # Cache the result
+                    self.cache[runtime] = (available, version)
+
+                    results[runtime] = RuntimeResult(
+                        success=available,
+                        runtime_name=runtime,
+                        version=version,
+                        path=shutil.which(runtime) if available else None,
+                        message=f"Runtime {runtime} {'available' if available else 'not found'}",
+                        error=None if available else f"Runtime {runtime} not installed",
+                    )
+                except Exception as e:
+                    logger.warning(f"Failed to check runtime {runtime}: {e}")
+                    results[runtime] = RuntimeResult(
+                        success=False,
+                        runtime_name=runtime,
+                        message=f"Failed to check {runtime}",
+                        error=str(e),
+                    )
+
+            progress.update(task, status="Check completed")
+
+        # Display results table via UI
+        print()
+        display_runtime_table(results)
+
+        return results
 
     def install_runtime(
         self, runtime: str, _extra_pm_args: list[str] | None = None

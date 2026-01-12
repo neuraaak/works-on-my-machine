@@ -192,6 +192,140 @@ def display_system_detection_results(data: dict) -> None:
     ezpl_bridge.console.print(panel)
 
 
+def display_deps_check_results(
+    system_results: dict,
+    runtime_results: dict,
+    tool_results: dict,
+    verbose: bool = False,
+) -> None:
+    """
+    Display dependency check results (all strata).
+
+    Args:
+        system_results: System package manager results
+        runtime_results: Runtime check results
+        tool_results: Development tool check results
+        verbose: Whether to show additional details
+    """
+    ezprinter.info("Checking all dependencies...\n")
+
+    # Strata 1
+    ezprinter.info("\n=== System Package Managers (Strata 1) ===")
+    available = [name for name, res in system_results.items() if res.success]
+    if available:
+        ezprinter.success(f"Available: {', '.join(available)}")
+        if verbose:
+            for name in available:
+                res = system_results[name]
+                ezprinter.info(f"  • {name}: v{res.version}")
+    else:
+        ezprinter.warning("No system package managers available")
+    ezconsole.print("")
+
+    # Strata 2
+    ezprinter.info("\n=== Runtimes (Strata 2) ===")
+    for runtime, result in runtime_results.items():
+        status = "✓" if result.success else "✗"
+        version = f"v{result.version}" if result.version else "N/A"
+        msg = f"{status} {runtime}: {version}"
+        if result.success:
+            ezprinter.success(msg)
+        else:
+            ezprinter.warning(msg)
+    ezconsole.print("")
+
+    # Strata 3
+    ezprinter.info("\n=== Development Tools (Strata 3) ===")
+    for tool, result in tool_results.items():
+        status = "✓" if result.success else "✗"
+        prefix = "  " if verbose else ""
+        msg = f"{prefix}{status} {tool}"
+        if result.success:
+            ezprinter.success(msg)
+        else:
+            ezprinter.warning(msg)
+
+
+def display_deps_status_table(
+    system_status: dict,
+    runtime_results: dict,
+    tool_results: dict,
+    verbose: bool = False,
+) -> None:
+    """
+    Display comprehensive dependency status in a table.
+
+    Args:
+        system_status: System manager status data
+        runtime_results: Runtime check results
+        tool_results: Development tool check results (tool name -> result)
+        verbose: Whether to show additional details column
+    """
+    table = Table(title="WOMM Dependency Status", show_header=True)
+    table.add_column("Strata", style="cyan", width=20)
+    table.add_column("Component", style="yellow", width=30)
+    table.add_column("Status", style="green", width=10, justify="center")
+    table.add_column("Version", style="white", width=15)
+
+    if verbose:
+        table.add_column("Details", style="blue", width=30)
+
+    # Strata 1
+    for name, info in system_status.items():
+        if info.get("supported_on_current_platform"):
+            row = [
+                "System PKG MGR",
+                name,
+                "✓" if info.get("available") else "✗",
+                info.get("version") or "N/A",
+            ]
+            if verbose:
+                row.append(f"Priority: {info.get('priority', 'N/A')}")
+            table.add_row(*row)
+
+    # Strata 2
+    for runtime, result in runtime_results.items():
+        row = [
+            "Runtime",
+            runtime,
+            "✓" if result.success else "✗",
+            result.version or "N/A",
+        ]
+        if verbose:
+            row.append("Min: Any")
+        table.add_row(*row)
+
+    # Strata 3
+    for tool, result in tool_results.items():
+        row = ["DevTool", tool, "✓" if result.success else "✗", "N/A"]
+        if verbose:
+            row.append("N/A")
+        table.add_row(*row)
+
+    ezconsole.print(table)
+
+
+def display_deps_validation_results(
+    issues: list[str], valid_count: int, _verbose: bool = False
+) -> None:
+    """
+    Display dependency validation results.
+
+    Args:
+        issues: List of validation issues found
+        valid_count: Number of valid dependency chains
+        verbose: Whether to show detailed results
+    """
+    ezprinter.info("Validating dependency chains...\n")
+
+    if issues:
+        ezprinter.error(f"\n{len(issues)} issue(s) found:")
+        for issue in issues:
+            ezprinter.error(f"  {issue}")
+    else:
+        ezprinter.success(f"\n✓ All {valid_count} dependency chains are valid")
+
+
 # ///////////////////////////////////////////////////////////////
 # PUBLIC API
 # ///////////////////////////////////////////////////////////////
@@ -199,6 +333,9 @@ def display_system_detection_results(data: dict) -> None:
 __all__ = [
     "display_available_managers",
     "display_best_manager",
+    "display_deps_check_results",
+    "display_deps_status_table",
+    "display_deps_validation_results",
     "display_system_detection_results",
     "display_system_managers_list",
 ]

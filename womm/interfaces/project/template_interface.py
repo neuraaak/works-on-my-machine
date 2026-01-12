@@ -28,10 +28,7 @@ from pathlib import Path
 
 # Local imports
 from ...exceptions.common import ValidationServiceError
-from ...exceptions.project import (
-    TemplateInterfaceError,
-    TemplateServiceError,
-)
+from ...exceptions.project import TemplateInterfaceError, TemplateServiceError
 from ...services import ProjectDetectionService, TemplateService
 from ...shared.results import TemplateResult
 from ...ui.common import ezprinter

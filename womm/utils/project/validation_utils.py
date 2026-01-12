@@ -25,9 +25,7 @@ from pathlib import Path
 
 # Local imports
 from ...exceptions.common import ValidationServiceError
-from ...exceptions.project import (
-    ProjectServiceError,
-)
+from ...exceptions.project import ProjectServiceError
 from ...shared.configs.project import ProjectConfig
 
 # ///////////////////////////////////////////////////////////////

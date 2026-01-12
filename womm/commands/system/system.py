@@ -24,14 +24,8 @@ import click
 from ezpl.types import LogLevel
 
 # Local imports
-from ...exceptions.system import (
-    DetectorInterfaceError,
-    EnvironmentInterfaceError,
-)
-from ...interfaces import (
-    SystemDetectorInterface,
-    SystemEnvironmentInterface,
-)
+from ...exceptions.system import DetectorInterfaceError, EnvironmentInterfaceError
+from ...interfaces import SystemDetectorInterface, SystemEnvironmentInterface
 from ...ui.common import ezpl_bridge, ezprinter
 
 # ///////////////////////////////////////////////////////////////
