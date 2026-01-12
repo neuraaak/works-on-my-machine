@@ -1,0 +1,103 @@
+# MANIFEST.in for {{PROJECT_NAME}}
+# This file specifies which files to include in the source distribution
+
+# Documentation files
+include README.md
+include CHANGELOG.md
+include LICENSE
+include AUTHORS.md
+include CONTRIBUTING.md
+include SECURITY.md
+
+# Development configuration
+include pyproject.toml
+include Makefile
+include manage.py
+
+# Package data files
+recursive-include {{PROJECT_NAME}}/static *
+recursive-include {{PROJECT_NAME}}/templates *
+recursive-include {{PROJECT_NAME}}/locale *
+recursive-include {{PROJECT_NAME}}/media *
+
+# Django app data
+recursive-include apps/*/static *
+recursive-include apps/*/templates *
+recursive-include apps/*/locale *
+recursive-include apps/*/fixtures *
+
+# Configuration and schemas
+recursive-include {{PROJECT_NAME}}/schemas *.json *.yaml *.yml
+recursive-include {{PROJECT_NAME}}/config *.ini *.cfg *.conf *.json *.yaml *.yml
+
+# Sphinx documentation
+recursive-include docs *.rst *.md *.py *.txt *.png *.jpg *.svg
+include docs/Makefile
+include docs/make.bat
+
+# Tests (for source distribution)
+recursive-include tests *.py *.json *.yaml *.yml *.txt *.csv
+recursive-include tests/data *
+recursive-include tests/fixtures *
+recursive-include tests/samples *
+
+# Scripts and tools
+recursive-include scripts *.py *.sh *.bat *.ps1
+recursive-include tools *.py
+
+# Translation/localization files
+recursive-include {{PROJECT_NAME}}/locale *.po *.pot *.mo
+recursive-include apps/*/locale *.po *.pot *.mo
+
+# MIME type files and icons
+recursive-include {{PROJECT_NAME}}/icons *.png *.ico *.svg
+recursive-include {{PROJECT_NAME}}/images *.png *.jpg *.jpeg *.gif *.svg
+
+# Global exclusions
+global-exclude *.pyc
+global-exclude *.pyo
+global-exclude *.pyd
+global-exclude __pycache__
+global-exclude .DS_Store
+global-exclude Thumbs.db
+global-exclude *.so
+global-exclude *.dylib
+global-exclude *.dll
+
+# Development exclusions
+global-exclude .git*
+global-exclude .pytest_cache
+global-exclude .mypy_cache
+global-exclude .coverage
+global-exclude htmlcov
+global-exclude .tox
+global-exclude build
+global-exclude dist
+global-exclude *.egg-info
+
+# Virtual environment exclusions
+global-exclude venv
+global-exclude .venv
+global-exclude env
+global-exclude .env
+
+# Editor exclusions
+global-exclude *.swp
+global-exclude *.swo
+global-exclude *~
+global-exclude .#*
+
+# Backup exclusions
+global-exclude *.bak
+global-exclude *.backup
+global-exclude *.orig
+
+# Django-specific exclusions
+global-exclude migrations/*.py
+global-exclude !migrations/__init__.py
+global-exclude db.sqlite3
+global-exclude db.sqlite3-journal
+global-exclude staticfiles
+global-exclude static_collected
+global-exclude media
+

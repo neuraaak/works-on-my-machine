@@ -1,0 +1,30 @@
+#!/usr/bin/env python3
+# ///////////////////////////////////////////////////////////////
+# SHARED - Shared Utilities and Models
+# Project: works-on-my-machine
+# ///////////////////////////////////////////////////////////////
+
+"""
+Shared utilities and models for Works On My Machine.
+
+This package contains common utility modules, models, and shared functionality
+used across different parts of the WOMM system.
+"""
+
+from __future__ import annotations
+
+# ///////////////////////////////////////////////////////////////
+# IMPORTS
+# ///////////////////////////////////////////////////////////////
+# Local imports
+# Note: Only import what exists to avoid circular imports
+# Results package is available
+from . import results
+
+# ///////////////////////////////////////////////////////////////
+# PUBLIC API
+# ///////////////////////////////////////////////////////////////
+
+__all__ = [
+    "results",
+]

@@ -140,10 +140,12 @@ class TestSecurityValidator:
     def test_validate_command_valid(self, command):
         """Test valid command validation."""
         validator = SecurityValidator()
-        is_valid, error = validator.validate_command(command)
+        result = validator.validate_command(command)
 
-        assert is_valid, f"Valid command {command} was rejected: {error}"
-        assert error == ""
+        assert result.is_valid, (
+            f"Valid command {command} was rejected: {result.validation_reason}"
+        )
+        assert result.success
 
     @pytest.mark.parametrize(
         "command",
@@ -160,18 +162,21 @@ class TestSecurityValidator:
     def test_validate_command_invalid(self, command):
         """Test invalid command validation."""
         validator = SecurityValidator()
-        is_valid, error = validator.validate_command(command)
+        result = validator.validate_command(command)
 
-        assert not is_valid, f"Invalid command {command} was accepted"
-        assert "not allowed" in error or "Invalid argument" in error
+        assert not result.is_valid, f"Invalid command {command} was accepted"
+        assert (
+            "not allowed" in result.validation_reason
+            or "Invalid argument" in result.validation_reason
+        )
 
     def test_validate_command_empty(self):
         """Test empty command validation."""
         validator = SecurityValidator()
-        is_valid, error = validator.validate_command([])
+        result = validator.validate_command([])
 
-        assert not is_valid
-        assert "Empty command" in error
+        assert not result.is_valid
+        assert "Empty command" in result.validation_reason
 
     def test_validate_argument(self):
         """Test argument validation."""

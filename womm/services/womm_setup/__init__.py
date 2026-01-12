@@ -1,0 +1,29 @@
+#!/usr/bin/env python3
+# ///////////////////////////////////////////////////////////////
+# SERVICES INSTALLATION - Installation Services
+# Project: works-on-my-machine
+# ///////////////////////////////////////////////////////////////
+
+"""
+Installation services for Works On My Machine.
+
+This package contains services for installation and uninstallation operations.
+"""
+
+from __future__ import annotations
+
+# ///////////////////////////////////////////////////////////////
+# IMPORTS
+# ///////////////////////////////////////////////////////////////
+# Local imports
+from .installer_service import WommInstallerService
+from .uninstaller_service import WommUninstallerService
+
+# ///////////////////////////////////////////////////////////////
+# PUBLIC API
+# ///////////////////////////////////////////////////////////////
+
+__all__ = [
+    "WommInstallerService",
+    "WommUninstallerService",
+]

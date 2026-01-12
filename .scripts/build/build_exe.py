@@ -36,8 +36,8 @@ def check_pyinstaller() -> bool:
         return True
     except ImportError:
         print("PyInstaller not found. Installing...")
-        subprocess.run(  # noqa: S603
-            [sys.executable, "-m", "pip", "install", "pyinstaller"]
+        subprocess.run(
+            [sys.executable, "-m", "pip", "install", "pyinstaller"], check=False
         )
         return True
 
@@ -140,8 +140,9 @@ def build_executable() -> bool:
 
     spec_path = create_spec_file()
 
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, "-m", "PyInstaller", str(spec_path), "--clean"],
+        check=False,
         capture_output=True,
         text=True,
     )
@@ -176,8 +177,8 @@ def test_executable() -> bool:
     print(f"Size: {size_mb:.1f} MB")
 
     try:
-        subprocess.run(  # noqa: S603
-            [str(exe_path)], capture_output=True, text=True, timeout=10
+        subprocess.run(
+            [str(exe_path)], check=False, capture_output=True, text=True, timeout=10
         )
         print("Executable runs!")
         return True

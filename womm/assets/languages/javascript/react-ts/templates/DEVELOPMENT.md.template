@@ -1,0 +1,300 @@
+# ⚛️📘 Development Guide - {{PROJECT_NAME}}
+
+[🏠 Main](../../README.md) > [⚛️📘 React TypeScript](../REACT-TS.md) > [📖 Development Guide](DEVELOPMENT.md)
+
+[← Back to React TypeScript Documentation](../REACT-TS.md)
+
+> Complete guide for contributing to **{{PROJECT_NAME}}** project
+
+## Table of Contents
+- [Installation and Setup](#-installation-and-setup)
+- [Development Environment](#️-development-environment)
+- [Code Standards](#-code-standards)
+- [Tests](#-tests)
+- [Git Workflow](#-git-workflow)
+- [Architecture](#️-architecture)
+- [Security](#-security)
+- [Build and Deployment](#-build-and-deployment)
+- [Debugging](#-debugging)
+- [Resources](#-resources)
+
+## Related Documentation
+- [React TypeScript Tools](../REACT-TS.md) - React TypeScript development tools
+- [Main README](../../README.md) - Project overview
+
+## 🚀 Installation and Setup
+
+### Prerequisites
+- **Node.js** >= 18.0.0
+- **npm** >= 9.0.0 (or **yarn**, **pnpm**)
+- **Git** for version control
+
+### Installation
+```bash
+# Clone the project
+git clone <repository-url>
+cd {{PROJECT_NAME}}
+
+# Install dependencies
+npm install
+
+# Install pre-commit hooks
+npm run prepare
+```
+
+## 🛠️ Development Environment
+
+### Available Scripts
+```bash
+# Development
+npm run dev              # Development server
+npm run build            # Production build
+npm run start            # Production server
+
+# Code quality
+npm run lint             # ESLint checking
+npm run lint:fix         # Auto-fix ESLint issues
+npm run format           # Prettier formatting
+npm run format:check     # Format checking
+npm run type-check       # TypeScript type checking
+
+# Tests
+npm test                 # Jest tests
+npm run test:watch       # Watch mode tests
+npm run test:coverage    # Tests with coverage
+```
+
+### Project Structure
+```
+{{PROJECT_NAME}}/
+├── src/                 # Main source code
+│   ├── components/     # React components
+│   ├── pages/          # Page components
+│   ├── hooks/         # Custom React hooks
+│   ├── utils/          # Utilities and helpers
+│   ├── services/       # API services
+│   ├── types/          # TypeScript type definitions
+│   └── styles/        # Global styles
+├── public/             # Static assets
+├── tests/              # Unit and integration tests
+├── docs/               # Documentation
+└── config/             # Build/dev configuration
+```
+
+## 📋 Code Standards
+
+### ESLint
+- **Rules**: React + TypeScript + Standard rules
+- **Extensions**: React hooks, TypeScript, security, best practices
+- **Auto-fix** enabled for fixable errors
+
+### Prettier
+- **Print Width**: 80 characters
+- **Quotes**: Single quotes
+- **Semicolons**: Enabled
+- **Tab Width**: 2 spaces
+- **JSX** support enabled
+
+### TypeScript Standards
+- **Strict mode** enabled
+- **Explicit types** for public APIs
+- **Interfaces** preferred over types for objects
+- **Functional components** with TypeScript
+
+## 🧪 Tests
+
+### Test Structure
+```
+tests/
+├── unit/               # Unit tests
+├── integration/        # Integration tests
+├── e2e/               # End-to-end tests (if applicable)
+└── __mocks__/         # Global mocks
+```
+
+### Naming Conventions
+- **Test files**: `*.test.ts` or `*.spec.ts`
+- **Folders**: Same structure as `src/`
+- **Mocks**: `__mocks__/module-name.ts`
+
+### Test Types
+```typescript
+// Component test
+import { render, screen } from '@testing-library/react';
+import MyComponent from './MyComponent';
+
+describe('MyComponent', () => {
+  it('renders correctly', () => {
+    render(<MyComponent title="Test" />);
+    expect(screen.getByText('Test')).toBeInTheDocument();
+  });
+});
+
+// Hook test
+import { renderHook } from '@testing-library/react';
+import { useCustomHook } from './hooks/useCustomHook';
+
+describe('useCustomHook', () => {
+  it('should return expected value', () => {
+    const { result } = renderHook(() => useCustomHook());
+    expect(result.current).toBeDefined();
+  });
+});
+```
+
+## 🔄 Git Workflow
+
+### Branches
+- **main**: Production code
+- **develop**: Feature integration
+- **feature/feature-name**: New features
+- **fix/fix-name**: Bug fixes
+- **hotfix/hotfix-name**: Urgent fixes
+
+### Commits
+**Conventional Commits** convention:
+```bash
+# Format
+type(scope): description
+
+# Examples
+feat(auth): add user authentication
+fix(api): resolve data fetching error
+docs(readme): update installation guide
+style(button): improve hover effects
+refactor(utils): optimize data processing
+test(user): add login flow tests
+```
+
+### Pull Requests
+1. **Create branch** from `develop`
+2. **Develop** the feature
+3. **Test** locally (lint + type-check + tests)
+4. **Create PR** to `develop`
+5. **Code Review** required
+6. **Merge** after approval
+
+## 🏗️ Architecture
+
+### Recommended Patterns
+- **Functional components** with TypeScript
+- **Custom hooks** with TypeScript
+- **Context API** for global state (if needed)
+- **Service layer** for API calls
+- **Type definitions** for type safety
+
+### State Management
+```typescript
+// Local state (useState)
+const [state, setState] = useState<StateType>(initialValue);
+
+// Global state (Context)
+const { user, updateUser } = useUserContext();
+
+// Server state (React Query, SWR)
+const { data, error, isLoading } = useQuery<User[]>('users', fetchUsers);
+```
+
+### Component Organization
+```typescript
+import React from 'react';
+
+interface MyComponentProps {
+  title: string;
+  children?: React.ReactNode;
+}
+
+function MyComponent({ title, children }: MyComponentProps) {
+  return (
+    <div>
+      <h1>{title}</h1>
+      {children}
+    </div>
+  );
+}
+
+export default MyComponent;
+```
+
+## 🔒 Security
+
+### Best Practices
+- **Input validation** for user data
+- **XSS protection** (React escapes by default)
+- **HTTPS** in production
+- **Environment variables** for secrets
+- **CSP** (Content Security Policy)
+
+### Environment Variables
+```bash
+# .env.local
+NODE_ENV=development
+REACT_APP_API_URL=http://localhost:3001
+REACT_APP_PUBLIC_KEY=your-public-key
+```
+
+## 📦 Build and Deployment
+
+### Production Build
+```bash
+# Optimized build
+npm run build
+
+# Build verification
+npm run start
+
+# Type checking
+npm run type-check
+```
+
+### Optimizations
+- **Automatic code splitting**
+- **Tree shaking** enabled
+- **Asset compression**
+- **Component lazy loading**
+- **Type checking** in CI/CD
+
+## 🐛 Debugging
+
+### Development Tools
+- **React DevTools** browser extension
+- **TypeScript Compiler** for type checking
+- **Network tab** for APIs
+- **Console** for logs
+- **Sources** for debugging
+
+### Logs and Monitoring
+```typescript
+// Structured logs
+console.group('User Action');
+console.log('Action:', action);
+console.log('Payload:', payload);
+console.groupEnd();
+
+// Error boundaries
+class ErrorBoundary extends React.Component {
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error('Error:', error);
+    // Send to monitoring service
+  }
+}
+```
+
+## 📚 Resources
+
+### Documentation
+- **README.md**: Project overview
+- **CHANGELOG.md**: Version history
+- **API.md**: API documentation (if applicable)
+- **DEPLOYMENT.md**: Deployment guide
+
+### Useful Links
+- [React Documentation](https://react.dev/)
+- [TypeScript Documentation](https://www.typescriptlang.org/docs/)
+- [Best Practices Guide](#)
+- [Team Standards](#)
+
+---
+
+⚛️📘 **Happy React TypeScript Development!** 🚀
+

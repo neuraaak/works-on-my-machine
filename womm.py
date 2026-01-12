@@ -30,16 +30,16 @@ def main() -> None:
         sys.path.insert(0, str(project_root))
 
         # Import and run the __main__ module
-        from womm.__main__ import main as womm_main  # noqa: PLC0415
+        from womm.__main__ import main as womm_main
 
         womm_main()
     except ImportError as e:
-        print("❌ Error: Could not import womm package")
-        print("💡 Make sure you're in the works-on-my-machine directory")
-        print(f"🔧 Error details: {e}")
+        print("Error: Could not import womm package", file=sys.stderr)
+        print("Make sure you're in the works-on-my-machine directory", file=sys.stderr)
+        print(f"Error details: {e}", file=sys.stderr)
         sys.exit(1)
     except Exception as e:
-        print(f"❌ Error running WOMM: {e}")
+        print(f"Error running WOMM: {e}", file=sys.stderr)
         sys.exit(1)
 
 

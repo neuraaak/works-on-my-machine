@@ -1,0 +1,153 @@
+{
+    // Auto-formatting on save
+    "editor.formatOnSave": true,
+    "editor.formatOnPaste": true,
+    "editor.codeActionsOnSave": {
+        "source.organizeImports": "explicit",
+        "source.fixAll.eslint": "explicit"
+    },
+    // TypeScript configuration
+    "typescript.preferences.quoteStyle": "single",
+    "typescript.suggest.autoImports": true,
+    "typescript.preferences.allowIncompleteCompletions": true,
+    "typescript.preferences.includePackageJsonAutoImports": "auto",
+    "typescript.updateImportsOnFileMove.enabled": "always",
+    // JavaScript configuration (for JS files in TS projects)
+    "javascript.preferences.quoteStyle": "single",
+    "javascript.suggest.autoImports": true,
+    "javascript.preferences.allowIncompleteCompletions": true,
+    "javascript.preferences.includePackageJsonAutoImports": "auto",
+    "javascript.updateImportsOnFileMove.enabled": "always",
+    // ESLint configuration
+    "eslint.enable": true,
+    "eslint.validate": [
+        "javascript",
+        "typescript",
+        "vue"
+    ],
+    "eslint.alwaysShowStatus": true,
+    // Prettier configuration
+    "prettier.enable": true,
+    "prettier.requireConfig": true,
+    // File associations and formatting
+    "[typescript]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.formatOnSave": true
+    },
+    "[vue]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.formatOnSave": true
+    },
+    "[javascript]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.formatOnSave": true
+    },
+    "[json]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[jsonc]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    // Editor appearance
+    "editor.rulers": [
+        80
+    ],
+    "editor.tabSize": 2,
+    "editor.insertSpaces": true,
+    "files.trimTrailingWhitespace": true,
+    "files.insertFinalNewline": true,
+    "files.trimFinalNewlines": true,
+    // File exclusions
+    "files.exclude": {
+        "**/node_modules": true,
+        "**/dist": true,
+        "**/build": true,
+        "**/.cache": true,
+        "**/coverage": true,
+        "**/.nyc_output": true,
+        "**/*.log": true,
+        "**/.env*": true,
+        "**/.secret*": true,
+        "**/*password*": true,
+        "**/*secret*": true,
+        "**/*.key": true,
+        "**/*.pem": true,
+        "**/*.crt": true,
+        "**/credentials": true
+    },
+    // Search exclusions
+    "search.exclude": {
+        "**/node_modules": true,
+        "**/dist": true,
+        "**/build": true,
+        "**/coverage": true,
+        "**/.nyc_output": true,
+        "**/package-lock.json": true,
+        "**/yarn.lock": true,
+        "**/pnpm-lock.yaml": true,
+        "**/.env*": true,
+        "**/.secret*": true,
+        "**/*password*": true,
+        "**/*secret*": true,
+        "**/*.key": true,
+        "**/*.pem": true,
+        "**/*.crt": true,
+        "**/credentials": true
+    },
+    // Git configuration
+    "git.ignoreLimitWarning": true,
+    // npm and Node.js
+    "npm.enableScriptExplorer": true,
+    // Performance optimizations
+    "files.watcherExclude": {
+        "**/node_modules/**": true,
+        "**/dist/**": true,
+        "**/build/**": true,
+        "**/coverage/**": true,
+        "**/.cache/**": true,
+        "**/.env*": true,
+        "**/.secret*": true,
+        "**/*password*": true,
+        "**/*secret*": true,
+        "**/*.key": true,
+        "**/*.pem": true,
+        "**/*.crt": true,
+        "**/credentials/**": true
+    },
+    // Terminal environment (cross-platform)
+    "terminal.integrated.env.windows": {
+        "NODE_PATH": "${workspaceFolder}/node_modules"
+    },
+    "terminal.integrated.env.linux": {
+        "NODE_PATH": "${workspaceFolder}/node_modules"
+    },
+    "terminal.integrated.env.osx": {
+        "NODE_PATH": "${workspaceFolder}/node_modules"
+    },
+    // CSpell configuration
+    "cSpell.enabled": true,
+    "cSpell.language": "en,fr",
+    "cSpell.enableFiletypes": [
+        "javascript",
+        "typescript",
+        "vue",
+        "html",
+        "css",
+        "scss",
+        "json",
+        "markdown",
+        "yaml"
+    ],
+    "cSpell.words": [],
+    "cSpell.userWords": [],
+    "cSpell.ignorePaths": [
+        "**/node_modules/**",
+        "**/dist/**",
+        "**/build/**",
+        "**/coverage/**",
+        "**/.cache/**",
+        "**/package-lock.json",
+        "**/yarn.lock",
+        "**/pnpm-lock.yaml"
+    ]
+}

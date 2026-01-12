@@ -1,0 +1,345 @@
+# 🎯 Development Guide - {{PROJECT_NAME}}
+
+[🏠 Main](../../README.md) > [🎯 Django](../DJANGO.md) > [📖 Development Guide](DEVELOPMENT.md)
+
+[← Back to Django Documentation](../DJANGO.md)
+
+> Complete guide for contributing to **{{PROJECT_NAME}}** Django project
+
+## Table of Contents
+- [Environment Setup](#-environment-setup)
+- [Development Tools](#️-development-tools)
+- [Code Standards](#-code-standards)
+- [Django-Specific Guidelines](#-django-specific-guidelines)
+- [Pre-commit Hooks](#-pre-commit-hooks)
+- [Tests](#-tests)
+- [Database Management](#-database-management)
+- [Recommended Development Workflow](#️-recommended-development-workflow)
+
+## Related Documentation
+- [Django Tools](../DJANGO.md) - Django development tools
+- [Main README](../../README.md) - Project overview
+
+## 🚀 Environment Setup
+
+### Prerequisites
+- **Python** >= 3.10
+- **pip** >= 23.0
+- **Git** for version control
+- **Database** (SQLite by default, PostgreSQL/MySQL optional)
+
+### Quick Installation
+```bash
+# Create virtual environment
+python -m venv .venv
+source .venv/bin/activate  # Linux/Mac
+# or
+.venv\Scripts\activate  # Windows
+
+# Install package in development mode
+pip install -e ".[dev]"
+
+# Run migrations
+python manage.py migrate
+
+# Create superuser (optional)
+python manage.py createsuperuser
+```
+
+## 🛠️ Development Tools
+
+### Automatic Formatting
+
+#### VSCode (Recommended)
+The project includes a complete VSCode configuration in `.vscode/settings.json` that enables:
+- **Automatic formatting on save** with Black
+- **Automatic import organization** with isort
+- **Real-time linting** with Ruff
+- **Django support** with django-stubs
+- **Test discovery** with pytest-django
+
+### Development Commands
+
+#### Django Management Commands
+```bash
+# Development server
+python manage.py runserver
+
+# Create migrations
+python manage.py makemigrations
+
+# Apply migrations
+python manage.py migrate
+
+# Collect static files
+python manage.py collectstatic --noinput
+
+# Create superuser
+python manage.py createsuperuser
+
+# Django shell
+python manage.py shell
+```
+
+#### Development scripts
+```bash
+# Formatting and quality
+womm lint python        # Check code quality
+womm lint python --fix  # Auto-fix issues
+
+# Tests
+pytest                                   # Run tests
+pytest --cov                           # Tests with coverage
+```
+
+#### With Make (Linux/Mac/WSL)
+```bash
+make help           # Show help
+make format         # Format code (black + isort)
+make lint           # Check code quality
+make test           # Run tests
+make migrate        # Run migrations
+make runserver      # Start development server
+make clean          # Clean temporary files
+```
+
+## 📏 Code Standards
+
+### Black Configuration
+- **Line length**: 88 characters
+- **Python versions**: 3.10+
+- **Automatic formatting** enabled on save
+
+### isort Configuration
+- **Profile**: black (compatible)
+- **Line length**: 88
+- **Django-aware** import organization
+- **Sections**: FUTURE, STDLIB, DJANGO, THIRDPARTY, FIRSTPARTY, LOCALFOLDER
+
+### Ruff Configuration
+- **Max length**: 88 characters
+- **Django plugin** enabled
+- **Configuration**: `pyproject.toml`
+
+## 🎯 Django-Specific Guidelines
+
+### Project Structure
+```
+{{PROJECT_NAME}}/
+├── {{PROJECT_NAME}}/        # Main Django project
+│   ├── settings/            # Settings modules
+│   │   ├── __init__.py
+│   │   ├── base.py
+│   │   ├── development.py
+│   │   └── production.py
+│   ├── urls.py              # Root URLconf
+│   ├── wsgi.py              # WSGI config
+│   └── asgi.py              # ASGI config
+├── apps/                    # Django apps
+│   └── <app_name>/
+│       ├── models.py
+│       ├── views.py
+│       ├── urls.py
+│       ├── admin.py
+│       └── migrations/
+├── templates/               # Project-wide templates
+├── static/                  # Static files (CSS, JS, images)
+├── media/                   # User-uploaded files
+├── tests/                   # Test suite
+├── manage.py                # Django management script
+├── pyproject.toml           # Project configuration
+└── .gitignore              # Git ignored files
+```
+
+### Best Practices
+- **Apps organization**: One app per feature/domain
+- **Settings separation**: base, development, production
+- **Model organization**: Keep models focused and normalized
+- **View organization**: Use class-based views when appropriate
+- **URL patterns**: Use namespaced URLs
+- **Template organization**: App-specific templates in app directories
+
+### Code Examples
+```python
+# models.py
+from django.db import models
+from django.utils.translation import gettext_lazy as _
+
+class MyModel(models.Model):
+    """Example Django model."""
+    
+    name = models.CharField(
+        max_length=100,
+        verbose_name=_("Name"),
+        help_text=_("Model name"),
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = _("My Model")
+        verbose_name_plural = _("My Models")
+        ordering = ["-created_at"]
+    
+    def __str__(self) -> str:
+        return self.name
+
+# views.py
+from django.views.generic import ListView
+from django.contrib.auth.mixins import LoginRequiredMixin
+from .models import MyModel
+
+class MyModelListView(LoginRequiredMixin, ListView):
+    """List view for MyModel."""
+    
+    model = MyModel
+    template_name = "app/mymodel_list.html"
+    context_object_name = "objects"
+    paginate_by = 20
+```
+
+## 🔒 Pre-commit Hooks
+
+### Installation
+```bash
+# Install pre-commit
+pip install pre-commit
+
+# Install hooks
+pre-commit install
+```
+
+### Automatic checks
+Hooks run before each commit:
+- Formatting with Black
+- Import organization with isort
+- Linting with Ruff (including Django rules)
+- General checks
+
+## 🧪 Tests
+
+### Test Structure
+```
+tests/
+├── conftest.py                 # pytest configuration
+├── test_models.py              # Model tests
+├── test_views.py               # View tests
+├── test_forms.py               # Form tests
+├── test_utils.py               # Utility tests
+└── factories.py                # Factory Boy factories
+```
+
+### Execution
+```bash
+# Quick tests
+pytest
+
+# Tests with coverage
+pytest --cov={{PROJECT_NAME}}
+
+# Specific test file
+pytest tests/test_models.py -v
+
+# Tests with database
+pytest --reuse-db
+
+# Skip migrations (faster)
+pytest --nomigrations
+```
+
+### Test Examples
+```python
+import pytest
+from django.test import TestCase
+from django.contrib.auth import get_user_model
+from .models import MyModel
+
+User = get_user_model()
+
+@pytest.mark.django_db
+class TestMyModel:
+    """Test MyModel."""
+    
+    def test_model_creation(self):
+        """Test model can be created."""
+        obj = MyModel.objects.create(name="Test")
+        assert obj.name == "Test"
+        assert obj.pk is not None
+```
+
+## 💾 Database Management
+
+### Migrations
+```bash
+# Create migrations
+python manage.py makemigrations
+
+# Apply migrations
+python manage.py migrate
+
+# Show migration status
+python manage.py showmigrations
+
+# Rollback migration
+python manage.py migrate app_name migration_number
+```
+
+### Database Reset (Development)
+```bash
+# Delete database and recreate
+rm db.sqlite3
+python manage.py migrate
+python manage.py createsuperuser
+```
+
+## 🔧 Recommended Development Workflow
+
+### 1. Before starting
+```bash
+# Update dependencies
+pip install -e ".[dev]"
+
+# Install hooks
+pre-commit install
+
+# Run migrations
+python manage.py migrate
+```
+
+### 2. During development
+- **VSCode** will format automatically on save
+- **Or manually**: `womm lint python --fix`
+- **Tests**: `pytest`
+- **Server**: `python manage.py runserver`
+
+### 3. Before committing
+```bash
+# Complete verification
+womm lint python
+pytest
+python manage.py check
+```
+
+### 4. Pre-commit hooks run automatically
+
+## 📝 Conventions
+
+### Commits
+- **Format**: `type: clear description`
+- **Types**: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`
+- **Django-specific**: `migration`, `model`, `view`, `template`
+
+### Code
+- **Type hints** recommended
+- **Docstrings** standard format
+- **Django conventions** followed
+- **Tests** for new features
+
+### Documentation
+- **Comments** in English for international compatibility
+- **README** in English for international compatibility
+
+---
+
+🎯 **Happy Django Development!** 🚀
+

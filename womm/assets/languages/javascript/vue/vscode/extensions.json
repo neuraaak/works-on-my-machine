@@ -1,0 +1,31 @@
+{
+    "recommendations": [
+        // Linting and formatting
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        // Testing
+        "orta.vscode-jest",
+        "ms-vscode.test-adapter-converter",
+        // Vue development
+        "Vue.volar",
+        // Node.js development
+        "ms-vscode.vscode-node-azure-pack",
+        "christian-kohler.npm-intellisense",
+        "eg2.vscode-npm-script",
+        // General utilities
+        "ms-vscode.vscode-json",
+        "redhat.vscode-yaml",
+        "streetsidesoftware.code-spell-checker",
+        "formulahendry.auto-rename-tag",
+        // Git integration
+        "eamodio.gitlens",
+        // Documentation
+        "yzhang.markdown-all-in-one",
+        // Debugging
+        "ms-vscode.vscode-js-debug-nightly",
+        // Package management
+        "christian-kohler.path-intellisense",
+        // Live preview
+        "ms-vscode.live-server"
+    ]
+}

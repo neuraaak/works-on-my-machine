@@ -1,0 +1,299 @@
+# 🟨 Development Guide - {{PROJECT_NAME}}
+
+[🏠 Main](../../README.md) > [🟨 JavaScript](../JAVASCRIPT.md) > [📖 Development Guide](DEVELOPMENT.md)
+
+[← Back to JavaScript Documentation](../JAVASCRIPT.md)
+
+> Complete guide for contributing to **{{PROJECT_NAME}}** project
+
+## Table of Contents
+- [Installation and Setup](#-installation-and-setup)
+- [Development Environment](#️-development-environment)
+- [Code Standards](#-code-standards)
+- [Tests](#-tests)
+- [Git Workflow](#-git-workflow)
+- [Architecture](#️-architecture)
+- [Security](#-security)
+- [Build and Deployment](#-build-and-deployment)
+- [Debugging](#-debugging)
+- [Resources](#-resources)
+
+## Related Documentation
+- [JavaScript Tools](../JAVASCRIPT.md) - JavaScript development tools
+- [Main README](../../README.md) - Project overview
+
+## 🚀 Installation and Setup
+
+### Prerequisites
+- **Node.js** >= 18.0.0
+- **npm** >= 9.0.0 (or **yarn**, **pnpm**)
+- **Git** for version control
+
+### Installation
+```bash
+# Clone the project
+git clone <repository-url>
+cd {{PROJECT_NAME}}
+
+# Install dependencies
+npm install
+
+# Install pre-commit hooks
+npm run prepare
+```
+
+## 🛠️ Development Environment
+
+### Available Scripts
+```bash
+# Development
+npm run dev              # Development server
+npm run build            # Production build
+npm run start            # Production server
+
+# Code quality
+npm run lint             # ESLint checking
+npm run lint:fix         # Auto-fix ESLint issues
+npm run format           # Prettier formatting
+npm run format:check     # Format checking
+
+# Tests
+npm test                 # Jest tests
+npm run test:watch       # Watch mode tests
+npm run test:coverage    # Tests with coverage
+```
+
+### Project Structure
+```
+{{PROJECT_NAME}}/
+├── src/                 # Main source code
+│   ├── utils/          # Utilities and helpers
+│   ├── services/       # API services
+│   ├── lib/            # Library modules
+│   └── config/         # Configuration files
+├── tests/              # Unit and integration tests
+├── docs/               # Documentation
+└── scripts/            # Build and utility scripts
+```
+
+## 📋 Code Standards
+
+### ESLint
+- **Rules**: Standard JavaScript rules
+- **Extensions**: Security, best practices
+- **Auto-fix** enabled for fixable errors
+
+### Prettier
+- **Print Width**: 80 characters
+- **Quotes**: Single quotes
+- **Semicolons**: Enabled
+- **Tab Width**: 2 spaces
+
+### JavaScript Standards
+- **ES6+** features preferred
+- **Strict mode** enabled (`"use strict"`)
+- **JSDoc** comments for public APIs
+- **CommonJS** or **ES Modules** based on project type
+
+## 🧪 Tests
+
+### Test Structure
+```
+tests/
+├── unit/               # Unit tests
+├── integration/        # Integration tests
+├── e2e/               # End-to-end tests (if applicable)
+└── __mocks__/         # Global mocks
+```
+
+### Naming Conventions
+- **Test files**: `*.test.js` or `*.spec.js`
+- **Folders**: Same structure as `src/`
+- **Mocks**: `__mocks__/module-name.js`
+
+### Test Types
+```javascript
+// Unit test
+const { utilityFunction } = require('./utils');
+
+describe('UtilityFunction', () => {
+  it('should return expected result', () => {
+    expect(utilityFunction(input)).toBe(expectedOutput);
+  });
+});
+
+// Integration test
+const { apiService } = require('./services/api');
+
+describe('ApiService', () => {
+  it('should fetch data correctly', async () => {
+    const data = await apiService.getData();
+    expect(data).toBeDefined();
+  });
+});
+```
+
+## 🔄 Git Workflow
+
+### Branches
+- **main**: Production code
+- **develop**: Feature integration
+- **feature/feature-name**: New features
+- **fix/fix-name**: Bug fixes
+- **hotfix/hotfix-name**: Urgent fixes
+
+### Commits
+**Conventional Commits** convention:
+```bash
+# Format
+type(scope): description
+
+# Examples
+feat(auth): add user authentication
+fix(api): resolve data fetching error
+docs(readme): update installation guide
+style(button): improve hover effects
+refactor(utils): optimize data processing
+test(user): add login flow tests
+```
+
+### Pull Requests
+1. **Create branch** from `develop`
+2. **Develop** the feature
+3. **Test** locally (lint + tests)
+4. **Create PR** to `develop`
+5. **Code Review** required
+6. **Merge** after approval
+
+## 🏗️ Architecture
+
+### Recommended Patterns
+- **Modular design** with clear separation of concerns
+- **Service layer** for API calls and business logic
+- **Utility functions** for reusable code
+- **Configuration management** for environment-specific settings
+- **Error handling** with proper error classes
+
+### Module Organization
+```javascript
+// Service pattern
+const userService = {
+  async getAll() {
+    const response = await fetch('/api/users');
+    return response.json();
+  },
+  
+  async getById(id) {
+    const response = await fetch(`/api/users/${id}`);
+    return response.json();
+  }
+};
+
+module.exports = userService;
+```
+
+### Error Handling
+```javascript
+// Custom error classes
+class ApiError extends Error {
+  constructor(message, statusCode) {
+    super(message);
+    this.name = 'ApiError';
+    this.statusCode = statusCode;
+  }
+}
+
+// Error handling pattern
+try {
+  const data = await userService.getById(id);
+  return data;
+} catch (error) {
+  if (error instanceof ApiError) {
+    console.error(`API Error: ${error.message} (${error.statusCode})`);
+  }
+  throw error;
+}
+```
+
+## 🔒 Security
+
+### Best Practices
+- **Input validation** for user data
+- **Data sanitization**
+- **HTTPS** in production
+- **Environment variables** for secrets
+- **CSP** (Content Security Policy)
+
+### Environment Variables
+```bash
+# .env.local
+NODE_ENV=development
+API_URL=http://localhost:3001
+DATABASE_URL=postgresql://user:pass@localhost/db
+JWT_SECRET=your-secret-key
+PORT=3000
+```
+
+## 📦 Build and Deployment
+
+### Production Build
+```bash
+# Optimized build
+npm run build
+
+# Build verification
+npm run start
+
+# Bundle analysis (if available)
+npm run analyze
+```
+
+### Optimizations
+- **Automatic code splitting**
+- **Tree shaking** enabled
+- **Asset compression**
+- **Component lazy loading**
+- **Service Worker** (PWA)
+
+## 🐛 Debugging
+
+### Development Tools
+- **Node.js Inspector** for debugging
+- **Network tab** for APIs
+- **Console** for logs
+- **Sources** for debugging
+- **Chrome DevTools** for Node.js debugging
+
+### Logs and Monitoring
+```javascript
+// Structured logs
+console.group('User Action');
+console.log('Action:', action);
+console.log('Payload:', payload);
+console.groupEnd();
+
+// Error monitoring
+try {
+  // Risky code
+} catch (error) {
+  console.error('Error:', error);
+  // Send to monitoring service
+}
+```
+
+## 📚 Resources
+
+### Documentation
+- **README.md**: Project overview
+- **CHANGELOG.md**: Version history
+- **API.md**: API documentation (if applicable)
+- **DEPLOYMENT.md**: Deployment guide
+
+### Useful Links
+- [Framework Documentation](#)
+- [Best Practices Guide](#)
+- [Team Standards](#)
+
+---
+
+🟨 **Happy JavaScript Development!** 🚀

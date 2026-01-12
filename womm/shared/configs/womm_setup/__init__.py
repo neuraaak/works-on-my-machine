@@ -1,0 +1,30 @@
+#!/usr/bin/env python3
+# ///////////////////////////////////////////////////////////////
+# WOMM DEPLOYMENT CONFIGS - Deployment Configuration Modules
+# Project: works-on-my-machine
+# ///////////////////////////////////////////////////////////////
+
+"""
+WOMM deployment configuration modules for Works On My Machine.
+
+This package contains configuration classes for:
+- WOMM deployment and installation
+- Essential files management
+- Backup configuration
+"""
+
+from __future__ import annotations
+
+# ///////////////////////////////////////////////////////////////
+# IMPORTS
+# ///////////////////////////////////////////////////////////////
+# Local imports
+from .womm_deployment_config import WOMMDeploymentConfig
+
+# ///////////////////////////////////////////////////////////////
+# PUBLIC API
+# ///////////////////////////////////////////////////////////////
+
+__all__ = [
+    "WOMMDeploymentConfig",
+]

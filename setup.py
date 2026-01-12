@@ -24,37 +24,19 @@ from setuptools import setup
 
 
 def read_version() -> str:
-    """Read project version from pyproject.toml [project] section.
+    """Read project version from womm/__init__.py.
 
-    This avoids having to duplicate the version in multiple places.
+    This reads the canonical version defined in the package itself.
     """
-    pyproject_path = Path(__file__).with_name("pyproject.toml")
-    content = pyproject_path.read_text(encoding="utf-8")
+    womm_init_path = Path(__file__).parent / "womm" / "__init__.py"
+    content = womm_init_path.read_text(encoding="utf-8")
 
-    in_project_section = False
-    for line in content.splitlines():
-        stripped = line.strip()
+    # Match __version__ = "X.Y.Z"
+    match = re.search(r'__version__\s*=\s*["\']([^"\']+)["\']', content)
+    if match:
+        return match.group(1)
 
-        if stripped.startswith("[project]"):
-            in_project_section = True
-            continue
-
-        if (
-            in_project_section
-            and stripped.startswith("[")
-            and not stripped.startswith("[project]")
-        ):
-            # We left the [project] section without finding a version
-            break
-
-        if in_project_section and stripped.startswith("version"):
-            match = re.match(r'version\s*=\s*["\']([^"\']+)["\']', stripped)
-            if match:
-                return match.group(1)
-
-    raise RuntimeError(  # noqa: TRY003
-        "Unable to find [project].version in pyproject.toml"
-    )
+    raise RuntimeError("Unable to find __version__ in womm/__init__.py")
 
 
 # ///////////////////////////////////////////////////////////////

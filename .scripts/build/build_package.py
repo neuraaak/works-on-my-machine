@@ -37,9 +37,7 @@ def run_command(command: list[str], description: str = "") -> bool:
         print(f"🔄 {description}...")
 
     try:
-        result = subprocess.run(  # noqa: S603
-            command, check=True, capture_output=True, text=True
-        )
+        result = subprocess.run(command, check=True, capture_output=True, text=True)
         if result.stdout:
             print(result.stdout)
         return True

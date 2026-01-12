@@ -1,0 +1,136 @@
+{
+  "version": "0.2",
+  "description": "CSpell configuration for Django project: {{PROJECT_NAME}}",
+  "extends": "@cspell/dict-python/cspell-ext.json",
+  "language": "en,fr",
+  "words": [
+    "{{PROJECT_NAME}}",
+    "pytest",
+    "setuptools",
+    "ruff",
+    "isort",
+    "mypy",
+    "black",
+    "django",
+    "djangorestframework",
+    "wsgi",
+    "asgi",
+    "makemigrations",
+    "migrate",
+    "collectstatic",
+    "runserver",
+    "createsuperuser",
+    "middleware",
+    "urlpatterns",
+    "urlconf",
+    "models",
+    "viewsets",
+    "serializers",
+    "queryset",
+    "modelform",
+    "formset",
+    "admin",
+    "apps",
+    "migrations"
+  ],
+  "dictionaries": [
+    "python",
+    "django",
+    "companies",
+    "softwareTerms"
+  ],
+  "import": [
+    "@cspell/dict-python/cspell-ext.json",
+    "@cspell/dict-django/cspell-ext.json",
+    "@cspell/dict-companies/cspell-ext.json",
+    "@cspell/dict-software-terms/cspell-ext.json"
+  ],
+  "overrides": [
+    {
+      "filename": "**/*.{py,pyi}",
+      "includeRegExpList": [
+        "PythonDocString",
+        "string"
+      ]
+    },
+    {
+      "filename": "**/requirements*.txt",
+      "dictionaries": ["python", "npm"]
+    },
+    {
+      "filename": "**/pyproject.toml",
+      "words": [
+        "buildbackend",
+        "sdist", 
+        "wheel",
+        "pypi",
+        "classifiers"
+      ]
+    },
+    {
+      "filename": "**/manage.py",
+      "words": [
+        "django",
+        "execute",
+        "from",
+        "command",
+        "line",
+        "utility"
+      ]
+    },
+    {
+      "filename": "**/settings.py",
+      "words": [
+        "django",
+        "settings",
+        "config",
+        "middleware",
+        "installed",
+        "apps",
+        "databases",
+        "secret",
+        "key",
+        "debug",
+        "allowed",
+        "hosts"
+      ]
+    },
+    {
+      "filename": "**/urls.py",
+      "words": [
+        "urlpatterns",
+        "path",
+        "include",
+        "views",
+        "admin"
+      ]
+    },
+    {
+      "filename": "**/*.md",
+      "dictionaries": [
+        "python",
+        "django",
+        "companies",
+        "softwareTerms"
+      ]
+    }
+  ],
+  "ignorePaths": [
+    "__pycache__/**",
+    "*.egg-info/**",
+    ".pytest_cache/**",
+    ".mypy_cache/**",
+    ".tox/**",
+    "venv/**",
+    ".venv/**",
+    "build/**",
+    "dist/**",
+    "migrations/**",
+    "db.sqlite3",
+    "staticfiles/**",
+    "static_collected/**"
+  ],
+  "allowCompoundWords": true,
+  "caseSensitive": false
+}
+

@@ -119,7 +119,7 @@ class CodeQualityChecker:
             print(f"   Command: {' '.join(command)}")
 
         try:
-            result = subprocess.run(  # noqa: S603
+            result = subprocess.run(
                 command,
                 check=True,
                 capture_output=not self.verbose,

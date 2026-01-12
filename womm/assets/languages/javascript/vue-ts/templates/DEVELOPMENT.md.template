@@ -1,0 +1,307 @@
+# 💚📘 Development Guide - {{PROJECT_NAME}}
+
+[🏠 Main](../../README.md) > [💚📘 Vue TypeScript](../VUE-TS.md) > [📖 Development Guide](DEVELOPMENT.md)
+
+[← Back to Vue TypeScript Documentation](../VUE-TS.md)
+
+> Complete guide for contributing to **{{PROJECT_NAME}}** project
+
+## Table of Contents
+- [Installation and Setup](#-installation-and-setup)
+- [Development Environment](#️-development-environment)
+- [Code Standards](#-code-standards)
+- [Tests](#-tests)
+- [Git Workflow](#-git-workflow)
+- [Architecture](#️-architecture)
+- [Security](#-security)
+- [Build and Deployment](#-build-and-deployment)
+- [Debugging](#-debugging)
+- [Resources](#-resources)
+
+## Related Documentation
+- [Vue TypeScript Tools](../VUE-TS.md) - Vue TypeScript development tools
+- [Main README](../../README.md) - Project overview
+
+## 🚀 Installation and Setup
+
+### Prerequisites
+- **Node.js** >= 18.0.0
+- **npm** >= 9.0.0 (or **yarn**, **pnpm**)
+- **Git** for version control
+
+### Installation
+```bash
+# Clone the project
+git clone <repository-url>
+cd {{PROJECT_NAME}}
+
+# Install dependencies
+npm install
+
+# Install pre-commit hooks
+npm run prepare
+```
+
+## 🛠️ Development Environment
+
+### Available Scripts
+```bash
+# Development
+npm run dev              # Development server
+npm run build            # Production build
+npm run start            # Production server
+
+# Code quality
+npm run lint             # ESLint checking
+npm run lint:fix         # Auto-fix ESLint issues
+npm run format           # Prettier formatting
+npm run format:check     # Format checking
+npm run type-check       # TypeScript type checking
+
+# Tests
+npm test                 # Jest tests
+npm run test:watch       # Watch mode tests
+npm run test:coverage    # Tests with coverage
+```
+
+### Project Structure
+```
+{{PROJECT_NAME}}/
+├── src/                 # Main source code
+│   ├── components/     # Vue components
+│   ├── views/          # Page components
+│   ├── composables/    # Composition API functions
+│   ├── utils/          # Utilities and helpers
+│   ├── services/       # API services
+│   ├── types/          # TypeScript type definitions
+│   └── styles/        # Global styles
+├── public/             # Static assets
+├── tests/              # Unit and integration tests
+├── docs/               # Documentation
+└── config/             # Build/dev configuration
+```
+
+## 📋 Code Standards
+
+### ESLint
+- **Rules**: Vue + TypeScript + Standard rules
+- **Extensions**: Vue 3, TypeScript, security, best practices
+- **Auto-fix** enabled for fixable errors
+
+### Prettier
+- **Print Width**: 80 characters
+- **Quotes**: Single quotes
+- **Semicolons**: Enabled
+- **Tab Width**: 2 spaces
+- **Vue** support enabled
+
+### TypeScript Standards
+- **Strict mode** enabled
+- **Explicit types** for public APIs
+- **Interfaces** preferred over types for objects
+- **Composition API** with TypeScript
+
+## 🧪 Tests
+
+### Test Structure
+```
+tests/
+├── unit/               # Unit tests
+├── integration/        # Integration tests
+├── e2e/               # End-to-end tests (if applicable)
+└── __mocks__/         # Global mocks
+```
+
+### Naming Conventions
+- **Test files**: `*.test.ts` or `*.spec.ts`
+- **Folders**: Same structure as `src/`
+- **Mocks**: `__mocks__/module-name.ts`
+
+### Test Types
+```typescript
+// Component test
+import { mount } from '@vue/test-utils';
+import MyComponent from './MyComponent.vue';
+
+describe('MyComponent', () => {
+  it('renders correctly', () => {
+    const wrapper = mount(MyComponent, {
+      props: { title: 'Test' }
+    });
+    expect(wrapper.text()).toContain('Test');
+  });
+});
+
+// Composable test
+import { useCustomComposable } from './composables/useCustomComposable';
+
+describe('useCustomComposable', () => {
+  it('should return expected value', () => {
+    const result = useCustomComposable();
+    expect(result.value).toBeDefined();
+  });
+});
+```
+
+## 🔄 Git Workflow
+
+### Branches
+- **main**: Production code
+- **develop**: Feature integration
+- **feature/feature-name**: New features
+- **fix/fix-name**: Bug fixes
+- **hotfix/hotfix-name**: Urgent fixes
+
+### Commits
+**Conventional Commits** convention:
+```bash
+# Format
+type(scope): description
+
+# Examples
+feat(auth): add user authentication
+fix(api): resolve data fetching error
+docs(readme): update installation guide
+style(button): improve hover effects
+refactor(utils): optimize data processing
+test(user): add login flow tests
+```
+
+### Pull Requests
+1. **Create branch** from `develop`
+2. **Develop** the feature
+3. **Test** locally (lint + type-check + tests)
+4. **Create PR** to `develop`
+5. **Code Review** required
+6. **Merge** after approval
+
+## 🏗️ Architecture
+
+### Recommended Patterns
+- **Composition API** with TypeScript
+- **Composables** with TypeScript
+- **Pinia** for state management (if needed)
+- **Service layer** for API calls
+- **Type definitions** for type safety
+
+### State Management
+```typescript
+// Local state (ref, reactive)
+import { ref, reactive } from 'vue';
+
+const count = ref<number>(0);
+const state = reactive<{ user: User | null }>({ user: null });
+
+// Global state (Pinia)
+import { useUserStore } from './stores/user';
+
+const userStore = useUserStore();
+```
+
+### Component Organization
+```vue
+<template>
+  <div>
+    <h1>{{ title }}</h1>
+    <slot />
+  </div>
+</template>
+
+<script setup lang="ts">
+interface Props {
+  title: string;
+}
+
+defineProps<Props>();
+</script>
+
+<style scoped>
+h1 {
+  color: #42b983;
+}
+</style>
+```
+
+## 🔒 Security
+
+### Best Practices
+- **Input validation** for user data
+- **XSS protection** (Vue escapes by default)
+- **HTTPS** in production
+- **Environment variables** for secrets
+- **CSP** (Content Security Policy)
+
+### Environment Variables
+```bash
+# .env.local
+NODE_ENV=development
+VUE_APP_API_URL=http://localhost:3001
+VUE_APP_PUBLIC_KEY=your-public-key
+```
+
+## 📦 Build and Deployment
+
+### Production Build
+```bash
+# Optimized build
+npm run build
+
+# Build verification
+npm run start
+
+# Type checking
+npm run type-check
+```
+
+### Optimizations
+- **Automatic code splitting**
+- **Tree shaking** enabled
+- **Asset compression**
+- **Component lazy loading**
+- **Type checking** in CI/CD
+
+## 🐛 Debugging
+
+### Development Tools
+- **Vue DevTools** browser extension
+- **TypeScript Compiler** for type checking
+- **Network tab** for APIs
+- **Console** for logs
+- **Sources** for debugging
+
+### Logs and Monitoring
+```typescript
+// Structured logs
+console.group('User Action');
+console.log('Action:', action);
+console.log('Payload:', payload);
+console.groupEnd();
+
+// Error handling
+import { onErrorCaptured } from 'vue';
+
+onErrorCaptured((err: Error, instance, info: string) => {
+  console.error('Error:', err);
+  // Send to monitoring service
+  return false;
+});
+```
+
+## 📚 Resources
+
+### Documentation
+- **README.md**: Project overview
+- **CHANGELOG.md**: Version history
+- **API.md**: API documentation (if applicable)
+- **DEPLOYMENT.md**: Deployment guide
+
+### Useful Links
+- [Vue Documentation](https://vuejs.org/)
+- [TypeScript Documentation](https://www.typescriptlang.org/docs/)
+- [Best Practices Guide](#)
+- [Team Standards](#)
+
+---
+
+💚📘 **Happy Vue TypeScript Development!** 🚀
+

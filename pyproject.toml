@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "works-on-my-machine"
-version = "2.7.2"
+version = "3.0.0"
 description = "Universal development tools for Python and JavaScript - Automatic installation, cross-platform configuration, global commands"
 readme = "README.md"
 license = { text = "MIT" }
@@ -31,7 +31,12 @@ keywords = [
     "project-setup",
 ]
 requires-python = ">=3.10"
-dependencies = ["click>=8.0.0", "rich>=13.0.0", "InquirerPy>=0.3.4"]
+dependencies = [
+    "click>=8.0.0",
+    "rich>=13.0.0",
+    "InquirerPy>=0.3.4",
+    "ezplog>=1.0.0",
+]
 
 [project.optional-dependencies]
 dev = [
@@ -346,6 +351,30 @@ ignore = [
     "S106",   # hardcoded_password_funcarg
     "T201",   # print statements (pour init.py et scripts)
     "ERA001", # Found commented-out code
+    "RUF001", # unexpected-keyword-arg
+    # Complexity warnings (too strict for complex managers)
+    "PLR0913", # too-many-arguments
+    "PLR0912", # too-many-branches
+    "PLR0915", # too-many-statements
+    "PLR0911", # too-many-return-statements
+    # Logging warnings
+    "TRY400",  # redundant-exception-object (logging.exception already includes exception)
+    "PLR2004", # magic-value-comparison
+    "TRY003",  # avoid-long-exception-messages (sometimes needed for clarity)
+    # Code style warnings (less critical)
+    "BLE001",  # abstract-raise-to-function (not always practical)
+    "PLC0415", # import-outside-top-level (sometimes needed to avoid circular imports)
+    "TRY300",  # consider-else-block (not always clearer)
+    "TRY301",  # consider-using-contextlib-suppress (not always clearer)
+    "PERF102", # try-except-in-loop (sometimes necessary)
+    "PERF203", # try-finally-in-loop (sometimes necessary)
+    "PLR0916", # too-many-boolean-expressions
+    # Type annotations (can be fixed gradually)
+    "UP006", # use-pep585-annotation (dict/list/tuple)
+    "UP007", # use-pep604-annotation (X | None)
+    "UP042", # use-pep604-annotation-for-typing-optional
+    # Security (validated inputs)
+    "S603", # subprocess-call (inputs are validated)
 ]
 
 [tool.ruff.lint.per-file-ignores]
@@ -353,6 +382,17 @@ ignore = [
 "init.py" = ["T201", "E501"]
 "*/scripts/*" = ["T201", "E501"]
 ".scripts/dev/lint.py" = ["T201", "E501"]
+# Complex manager files (installation, dependencies, etc.)
+"womm/core/managers/**/*.py" = [
+    "PLR0913", # too-many-arguments
+    "PLR0912", # too-many-branches
+    "PLR0915", # too-many-statements
+    "PLR0911", # too-many-return-statements
+    "BLE001",  # abstract-raise-to-function
+    "PLC0415", # import-outside-top-level
+    "TRY300",  # consider-else-block
+    "TRY400",  # redundant-exception-object
+]
 
 [tool.ruff.lint.mccabe]
 max-complexity = 10

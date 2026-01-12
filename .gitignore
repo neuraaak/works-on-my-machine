@@ -77,7 +77,7 @@ nosetests.xml
 
 # Cursor AI
 .cursor/
-.github/copilot
+.github/instructions/
 
 # Other editors
 .idea/

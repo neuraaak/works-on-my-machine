@@ -246,7 +246,8 @@ class TestSecureCLIManager:
             manager = SecureCLIManager()
             result = manager.check_command_available("python")
 
-            assert result is True
+            assert result.is_available is True
+            assert result.success is True
             mock_which.assert_called_once_with("python")
 
     def test_check_command_available_not_found(self):
@@ -257,7 +258,8 @@ class TestSecureCLIManager:
             manager = SecureCLIManager()
             result = manager.check_command_available("nonexistent")
 
-            assert result is False
+            assert result.is_available is False
+            assert result.success is False
 
     def test_check_command_available_invalid(self):
         """Test command availability check with invalid command."""
@@ -267,7 +269,8 @@ class TestSecureCLIManager:
             manager = SecureCLIManager()
             result = manager.check_command_available("rm")
 
-            assert result is False  # rm is not in allowed commands
+            assert result.is_available is False  # rm is not in allowed commands
+            assert result.security_validated is False
 
     @patch("shared.secure_cli_manager.subprocess.run")
     def test_get_command_version(self, mock_subprocess):
@@ -280,9 +283,10 @@ class TestSecureCLIManager:
             mock_which.return_value = "/usr/bin/python"
 
             manager = SecureCLIManager(verbose=False)
-            version = manager.get_command_version("python")
+            result = manager.get_command_version("python")
 
-            assert version == "Python 3.8.10"
+            assert result.version == "Python 3.8.10"
+            assert result.success is True
 
     def test_get_command_version_not_available(self):
         """Test getting version of unavailable command."""
@@ -290,9 +294,10 @@ class TestSecureCLIManager:
             mock_which.return_value = None
 
             manager = SecureCLIManager()
-            version = manager.get_command_version("nonexistent")
+            result = manager.get_command_version("nonexistent")
 
-            assert version is None
+            assert result.version == ""
+            assert result.success is False
 
     def test_find_executable(self):
         """Test finding first available executable."""
@@ -391,11 +396,12 @@ class TestGlobalFunctions:
     @patch("shared.secure_cli_manager.default_secure_cli")
     def test_check_tool_secure(self, mock_default_cli):
         """Test check_tool_secure function."""
-        mock_default_cli.check_command_available.return_value = True
+        mock_result = Mock(is_available=True, success=True)
+        mock_default_cli.check_command_available.return_value = mock_result
 
         result = check_tool_secure("python")
 
-        assert result is True
+        assert result.is_available is True
         mock_default_cli.check_command_available.assert_called_once_with("python")
 
     @patch("shared.secure_cli_manager.default_secure_cli")

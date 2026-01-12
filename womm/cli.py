@@ -11,6 +11,8 @@ Modular CLI interface for universal development tools.
 Provides the main Click-based command-line interface for WOMM.
 """
 
+from __future__ import annotations
+
 # ///////////////////////////////////////////////////////////////
 # IMPORTS
 # ///////////////////////////////////////////////////////////////
@@ -22,9 +24,17 @@ import sys
 import click
 
 # Local imports
-# Import version and core commands only to avoid circular imports
-from . import __version__
-from .commands import install, path_cmd, uninstall
+from . import (
+    HAS_PROOF_FILE,
+    __version__,
+)
+from .ui.common.ezpl_bridge import ezlogger  # noqa: F401
+from .ui.common.ezpl_bridge import (
+    ezpl_bridge,
+    ezprinter,
+)
+from .utils.common import is_pip_installation
+from .utils.womm_setup.common_utils import is_valid_womm_installation
 
 # ///////////////////////////////////////////////////////////////
 # CONSTANTS
@@ -62,11 +72,6 @@ if sys.platform == "win32":
     default=False,
     help="Use JSON lines format for file logs",
 )
-@click.option(
-    "--dry-run",
-    is_flag=True,
-    help="Show what would be done without making changes (global mode)",
-)
 @click.version_option(version=__version__)
 @click.pass_context
 def womm(
@@ -74,7 +79,6 @@ def womm(
     log_level: str | None,
     log_file: str | None,
     log_json: bool,
-    dry_run: bool,
 ) -> None:
     """🛠️ Works On My Machine - Universal development tools.
 
@@ -84,50 +88,62 @@ def womm(
     🔒 Enhanced with comprehensive security validation.
     """
 
-    # Configure logging early
-    from .core.ui.common.console import (
-        configure_logging,
-        get_log_level,
-        print_warn,
-        to_loglevel,
-    )
+    # ///////////////////////////////////////////////////////////////
+    # INSTALLATION GUARD - Enforce installation workflow
+    # ///////////////////////////////////////////////////////////////
 
-    try:
-        if log_level or log_file or log_json:
-            level_to_set = to_loglevel(log_level) if log_level else get_log_level()
-            configure_logging(level=level_to_set, file=log_file, json_format=log_json)
-    except Exception as e:  # noqa: BLE001
-        print_warn(f"Failed to configure logging: {e}")
+    # Check if WOMM is properly installed and initialized
+    if is_pip_installation():
+        # In pip installations, verify installation validity before allowing commands
+        invoked_cmd = ctx.invoked_subcommand
 
-    # Set global dry-run mode if specified
-    if dry_run:
-        os.environ["WOMM_DRY_RUN"] = "1"
-        from .core.ui.common.console import print_system
+        # Commands allowed even without installation
+        unguarded_commands = {
+            "install",  # Installation command
+            "system",  # System detection (diagnostic only)
+            "help",  # Help command (implicit)
+            None,  # No subcommand (show help)
+        }
 
-        print_system("🔍 GLOBAL DRY-RUN MODE ENABLED - No changes will be made")
+        # If invoking a guarded command, check installation validity
+        if (
+            invoked_cmd
+            and invoked_cmd not in unguarded_commands
+            and not is_valid_womm_installation()
+        ):
+            ezprinter.error(
+                "WOMM Installation Required\n\n"
+                "This WOMM installation has not been initialized yet.\n"
+                "Please run the installation command first:\n\n"
+                "  womm install\n\n"
+                "After installation, you'll have full access to all WOMM commands."
+            )
+            sys.exit(1)
+
+    # Configure logging early (if needed)
+    # TODO: Configure logging via ezpl when available
+    if log_level or log_file or log_json:
+        ezprinter.warning(
+            "Log configuration options are not yet fully supported via ezpl"
+        )
 
     # Show welcome message only when no subcommand is provided
     if ctx.invoked_subcommand is None:
-        try:
-            from .core.ui.common.console import console
-            from .core.ui.common.panels import create_info_panel
-
-            print(
-                r"""
+        ezpl_bridge.console.print(
+            r"""
 ================================================================================
                     __      _____  __  __ __  __
                     \ \    / / _ \|  \/  |  \/  |
                      \ \/\/ / (_) | |\/| | |\/| |
                       \_/\_/ \___/|_|  |_|_|  |_|
-
 ================================================================================
 
 
 """
-            )
+        )
 
-            # Welcome message
-            info_content = """
+        # Welcome message
+        info_content = """
 Universal development tools for Python and JavaScript projects.
 
 Features:
@@ -138,11 +154,11 @@ Features:
 • Global command access
 """
 
-            panel = create_info_panel("Welcome", info_content.strip(), padding=(1, 1))
-            console.print(panel)
+        panel = ezprinter.create_info_panel("Welcome", info_content.strip())
+        ezpl_bridge.console.print(panel)
 
-            # Tips
-            info_content = """
+        # Tips
+        info_content = """
 💡 Tips:
 • Use WOMM commands in any directory
 • Install globally for easy access
@@ -151,81 +167,98 @@ Features:
 • Use --dry-run to preview changes without making them
 """
 
-            from .core.ui.common.panels import create_panel
-
-            panel = create_panel(
-                info_content.strip(),
-                title="💡 Tips",
-                border_style="yellow",
-                padding=(1, 1),
-                width=80,
-            )
-            console.print(panel)
-
-        except Exception:
-            # In normal operation, UI should be available; if not, re-raise
-            raise
+        panel = ezprinter.create_panel(
+            info_content.strip(),
+            title="💡 Tips",
+            border_style="yellow",
+        )
+        ezpl_bridge.console.print(panel)
 
 
 # ///////////////////////////////////////////////////////////////
 # COMMAND REGISTRATION
 # ///////////////////////////////////////////////////////////////
 # Register all command groups and subcommands
+# Commands are filtered based on HAS_PROOF_FILE:
+# - Without proof file: Only install and system (setup phase)
+# - With proof file: All commands except install (operational phase)
 
-# Register core command groups
-womm.add_command(install)
-womm.add_command(uninstall)
-womm.add_command(path_cmd)
+# Register core command groups (lazy imports to avoid loading all modules)
+try:
+    from .commands.core.womm_setup import install, path_cmd, uninstall
+
+    # Only register path_cmd and uninstall if proof file exists
+    if not HAS_PROOF_FILE:
+        womm.add_command(install)
+
+    # Only register path_cmd and uninstall if proof file exists
+    if HAS_PROOF_FILE:
+        womm.add_command(uninstall)
+        womm.add_command(path_cmd)
+except ImportError:
+    pass
 
 # Dynamic imports to avoid circular dependencies
+# Only register project commands if proof file exists
+if HAS_PROOF_FILE:
+    try:
+        from .commands.project import create
+
+        womm.add_command(create.create_group)
+    except ImportError:
+        pass
+
+    try:
+        from .commands.tools import lint
+
+        womm.add_command(lint.lint_group)
+    except ImportError:
+        pass
+
+    try:
+        from .commands.tools import cspell
+
+        womm.add_command(cspell.cspell_group)
+    except ImportError:
+        pass
+
+# System commands are always available
 try:
-    from .commands import new
-
-    womm.add_command(new.new_group)
-except ImportError:
-    pass
-
-try:
-    from .commands import lint
-
-    womm.add_command(lint.lint_group)
-except ImportError:
-    pass
-
-try:
-    from .commands import spell
-
-    womm.add_command(spell.spell_group)
-except ImportError:
-    pass
-
-try:
-    from .commands import system
+    from .commands.system import system
 
     womm.add_command(system.system_group)
 except ImportError:
     pass
 
-try:
-    from .commands import context
+# Only register context commands if proof file exists
+if HAS_PROOF_FILE:
+    try:
+        from .commands.system import context
 
-    womm.add_command(context.context_group)
-except ImportError:
-    pass
+        womm.add_command(context.context_group)
+    except ImportError:
+        pass
 
-try:
-    from .commands import setup
+    try:
+        from .commands.project import setup
 
-    womm.add_command(setup.setup_group)
-except ImportError:
-    pass
+        womm.add_command(setup.setup_group)
+    except ImportError:
+        pass
 
-try:
-    from .commands import template
+    try:
+        from .commands.project import template
 
-    womm.add_command(template.template_group)
-except ImportError:
-    pass
+        womm.add_command(template.template_group)
+    except ImportError:
+        pass
+
+    try:
+        from .commands.system import deps
+
+        womm.add_command(deps.deps_group)
+    except ImportError:
+        pass
 
 # ///////////////////////////////////////////////////////////////
 # UTILITY FUNCTIONS

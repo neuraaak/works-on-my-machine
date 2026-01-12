@@ -1,0 +1,29 @@
+#!/usr/bin/env python3
+# ///////////////////////////////////////////////////////////////
+# SERVICES SPELL - Spell Checking Services
+# Project: works-on-my-machine
+# ///////////////////////////////////////////////////////////////
+
+"""
+Spell checking services for Works On My Machine.
+
+This package contains services for spell checking operations and dictionary management.
+"""
+
+from __future__ import annotations
+
+# ///////////////////////////////////////////////////////////////
+# IMPORTS
+# ///////////////////////////////////////////////////////////////
+# Local imports
+from .checker_service import CSpellCheckerService
+from .dictionary_service import CSpellDictionaryService
+
+# ///////////////////////////////////////////////////////////////
+# PUBLIC API
+# ///////////////////////////////////////////////////////////////
+
+__all__ = [
+    "CSpellCheckerService",
+    "CSpellDictionaryService",
+]

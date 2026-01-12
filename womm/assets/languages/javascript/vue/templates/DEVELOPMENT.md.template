@@ -1,0 +1,305 @@
+# 💚 Development Guide - {{PROJECT_NAME}}
+
+[🏠 Main](../../README.md) > [💚 Vue](../VUE.md) > [📖 Development Guide](DEVELOPMENT.md)
+
+[← Back to Vue Documentation](../VUE.md)
+
+> Complete guide for contributing to **{{PROJECT_NAME}}** project
+
+## Table of Contents
+- [Installation and Setup](#-installation-and-setup)
+- [Development Environment](#️-development-environment)
+- [Code Standards](#-code-standards)
+- [Tests](#-tests)
+- [Git Workflow](#-git-workflow)
+- [Architecture](#️-architecture)
+- [Security](#-security)
+- [Build and Deployment](#-build-and-deployment)
+- [Debugging](#-debugging)
+- [Resources](#-resources)
+
+## Related Documentation
+- [Vue Tools](../VUE.md) - Vue development tools
+- [Main README](../../README.md) - Project overview
+
+## 🚀 Installation and Setup
+
+### Prerequisites
+- **Node.js** >= 18.0.0
+- **npm** >= 9.0.0 (or **yarn**, **pnpm**)
+- **Git** for version control
+
+### Installation
+```bash
+# Clone the project
+git clone <repository-url>
+cd {{PROJECT_NAME}}
+
+# Install dependencies
+npm install
+
+# Install pre-commit hooks
+npm run prepare
+```
+
+## 🛠️ Development Environment
+
+### Available Scripts
+```bash
+# Development
+npm run dev              # Development server
+npm run build            # Production build
+npm run start            # Production server
+
+# Code quality
+npm run lint             # ESLint checking
+npm run lint:fix         # Auto-fix ESLint issues
+npm run format           # Prettier formatting
+npm run format:check     # Format checking
+
+# Tests
+npm test                 # Jest tests
+npm run test:watch       # Watch mode tests
+npm run test:coverage    # Tests with coverage
+```
+
+### Project Structure
+```
+{{PROJECT_NAME}}/
+├── src/                 # Main source code
+│   ├── components/     # Vue components
+│   ├── views/          # Page components
+│   ├── composables/    # Composition API functions
+│   ├── utils/          # Utilities and helpers
+│   ├── services/       # API services
+│   └── styles/        # Global styles
+├── public/             # Static assets
+├── tests/              # Unit and integration tests
+├── docs/               # Documentation
+└── config/             # Build/dev configuration
+```
+
+## 📋 Code Standards
+
+### ESLint
+- **Rules**: Vue + Standard JavaScript rules
+- **Extensions**: Vue 3, security, best practices
+- **Auto-fix** enabled for fixable errors
+
+### Prettier
+- **Print Width**: 80 characters
+- **Quotes**: Single quotes
+- **Semicolons**: Enabled
+- **Tab Width**: 2 spaces
+- **Vue** support enabled
+
+### Vue Standards
+- **Composition API** preferred
+- **Single File Components** (.vue)
+- **Props** validation
+- **ES6+** features preferred
+
+## 🧪 Tests
+
+### Test Structure
+```
+tests/
+├── unit/               # Unit tests
+├── integration/        # Integration tests
+├── e2e/               # End-to-end tests (if applicable)
+└── __mocks__/         # Global mocks
+```
+
+### Naming Conventions
+- **Test files**: `*.test.js` or `*.spec.js`
+- **Folders**: Same structure as `src/`
+- **Mocks**: `__mocks__/module-name.js`
+
+### Test Types
+```javascript
+// Component test
+import { mount } from '@vue/test-utils';
+import MyComponent from './MyComponent.vue';
+
+describe('MyComponent', () => {
+  it('renders correctly', () => {
+    const wrapper = mount(MyComponent, {
+      props: { title: 'Test' }
+    });
+    expect(wrapper.text()).toContain('Test');
+  });
+});
+
+// Composable test
+import { useCustomComposable } from './composables/useCustomComposable';
+
+describe('useCustomComposable', () => {
+  it('should return expected value', () => {
+    const result = useCustomComposable();
+    expect(result.value).toBeDefined();
+  });
+});
+```
+
+## 🔄 Git Workflow
+
+### Branches
+- **main**: Production code
+- **develop**: Feature integration
+- **feature/feature-name**: New features
+- **fix/fix-name**: Bug fixes
+- **hotfix/hotfix-name**: Urgent fixes
+
+### Commits
+**Conventional Commits** convention:
+```bash
+# Format
+type(scope): description
+
+# Examples
+feat(auth): add user authentication
+fix(api): resolve data fetching error
+docs(readme): update installation guide
+style(button): improve hover effects
+refactor(utils): optimize data processing
+test(user): add login flow tests
+```
+
+### Pull Requests
+1. **Create branch** from `develop`
+2. **Develop** the feature
+3. **Test** locally (lint + tests)
+4. **Create PR** to `develop`
+5. **Code Review** required
+6. **Merge** after approval
+
+## 🏗️ Architecture
+
+### Recommended Patterns
+- **Composition API** for component logic
+- **Composables** for reusable logic
+- **Pinia** for state management (if needed)
+- **Service layer** for API calls
+- **Component composition** over inheritance
+
+### State Management
+```javascript
+// Local state (ref, reactive)
+import { ref, reactive } from 'vue';
+
+const count = ref(0);
+const state = reactive({ user: null });
+
+// Global state (Pinia)
+import { useUserStore } from './stores/user';
+
+const userStore = useUserStore();
+```
+
+### Component Organization
+```vue
+<template>
+  <div>
+    <h1>{{ title }}</h1>
+    <slot />
+  </div>
+</template>
+
+<script>
+export default {
+  name: 'MyComponent',
+  props: {
+    title: {
+      type: String,
+      required: true
+    }
+  }
+};
+</script>
+
+<style scoped>
+h1 {
+  color: #42b983;
+}
+</style>
+```
+
+## 🔒 Security
+
+### Best Practices
+- **Input validation** for user data
+- **XSS protection** (Vue escapes by default)
+- **HTTPS** in production
+- **Environment variables** for secrets
+- **CSP** (Content Security Policy)
+
+### Environment Variables
+```bash
+# .env.local
+NODE_ENV=development
+VUE_APP_API_URL=http://localhost:3001
+VUE_APP_PUBLIC_KEY=your-public-key
+```
+
+## 📦 Build and Deployment
+
+### Production Build
+```bash
+# Optimized build
+npm run build
+
+# Build verification
+npm run start
+```
+
+### Optimizations
+- **Automatic code splitting**
+- **Tree shaking** enabled
+- **Asset compression**
+- **Component lazy loading**
+- **Service Worker** (PWA)
+
+## 🐛 Debugging
+
+### Development Tools
+- **Vue DevTools** browser extension
+- **Network tab** for APIs
+- **Console** for logs
+- **Sources** for debugging
+- **Components** tab in Vue DevTools
+
+### Logs and Monitoring
+```javascript
+// Structured logs
+console.group('User Action');
+console.log('Action:', action);
+console.log('Payload:', payload);
+console.groupEnd();
+
+// Error handling
+import { onErrorCaptured } from 'vue';
+
+onErrorCaptured((err, instance, info) => {
+  console.error('Error:', err);
+  // Send to monitoring service
+  return false;
+});
+```
+
+## 📚 Resources
+
+### Documentation
+- **README.md**: Project overview
+- **CHANGELOG.md**: Version history
+- **API.md**: API documentation (if applicable)
+- **DEPLOYMENT.md**: Deployment guide
+
+### Useful Links
+- [Vue Documentation](https://vuejs.org/)
+- [Best Practices Guide](#)
+- [Team Standards](#)
+
+---
+
+💚 **Happy Vue Development!** 🚀
+
