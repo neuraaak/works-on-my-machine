@@ -1,14 +1,13 @@
 #!/usr/bin/env python3
 # ///////////////////////////////////////////////////////////////
-# COMMANDS - CLI Commands Package
+# COMMANDS SYSTEM - System CLI Commands Package
 # Project: works-on-my-machine
 # ///////////////////////////////////////////////////////////////
 
 """
-WOMM CLI Commands Package.
+System WOMM CLI Commands Package.
 
-This package contains all command modules for the WOMM CLI interface.
-Each module represents a specific command group with related functionality.
+This package contains system-related command modules for WOMM.
 """
 
 from __future__ import annotations
@@ -17,11 +16,16 @@ from __future__ import annotations
 # IMPORTS
 # ///////////////////////////////////////////////////////////////
 # Local imports
-# Note: Imports are done lazily in cli.py to avoid loading all modules at startup
-# This prevents import errors when modules have dependencies that aren't yet migrated
+from .context import context_group
+from .deps import deps_group
+from .system import system_group
 
 # ///////////////////////////////////////////////////////////////
 # PUBLIC API
 # ///////////////////////////////////////////////////////////////
 
-__all__: list[str] = []
+__all__ = [
+    "context_group",
+    "deps_group",
+    "system_group",
+]

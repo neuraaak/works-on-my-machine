@@ -18,29 +18,38 @@ from __future__ import annotations
 # ///////////////////////////////////////////////////////////////
 # Local imports
 from .base import BaseResult, CommandResult
+from .command_results import (
+    CommandAvailabilityResult,
+    CommandVersionResult,
+)
 from .context_results import (
     ContextRegistryResult,
     ContextValidationResult,
 )
 from .cspell_results import (
     AddWordsResult,
+    CSpellCheckResult,
     CSpellConfigResult,
     CSpellInstallResult,
+    CSpellResult,
+    CSpellSummary,
     DictionaryResult,
     DictionarySetupResult,
-    SpellCheckResult,
-    SpellResult,
-    SpellSummary,
 )
 from .dependencies_results import (
     DependencyCheckResult,
+    DevToolAvailabilityResult,
     DevToolResult,
+    PackageManagerAvailabilityResult,
+    PackageManagerPlatformResult,
     PackageManagerResult,
+    RuntimeInstallationResult,
     RuntimeResult,
 )
 from .file_results import (
     FileOperationResult,
     FileScanResult,
+    FileSearchResult,
 )
 from .installation_results import (
     InstallationResult,
@@ -61,6 +70,9 @@ from .project_results import (
     TemplateResult,
 )
 from .security_results import (
+    CommandValidationResult,
+    PathValidationResult,
+    SecurityReportResult,
     SecurityResult,
     ValidationResult,
 )
@@ -81,13 +93,20 @@ from .system_results import (
 __all__ = [
     "AddWordsResult",
     "BaseResult",
+    "CSpellCheckResult",
     "CSpellConfigResult",
     "CSpellInstallResult",
+    "CSpellResult",
+    "CSpellSummary",
+    "CommandAvailabilityResult",
     "CommandResult",
+    "CommandValidationResult",
+    "CommandVersionResult",
     "ConfigurationResult",
     "ContextRegistryResult",
     "ContextValidationResult",
     "DependencyCheckResult",
+    "DevToolAvailabilityResult",
     "DevToolResult",
     "DictionaryResult",
     "DictionarySetupResult",
@@ -95,21 +114,24 @@ __all__ = [
     "EnvironmentVerificationResult",
     "FileOperationResult",
     "FileScanResult",
+    "FileSearchResult",
     "InstallationResult",
     "LintSummaryResult",
+    "PackageManagerAvailabilityResult",
+    "PackageManagerPlatformResult",
     "PackageManagerResult",
     "PathOperationResult",
+    "PathValidationResult",
     "PrerequisitesCheckResult",
     "PrerequisitesInstallResult",
     "ProjectCreationResult",
     "ProjectDetectionResult",
     "ProjectSetupResult",
+    "RuntimeInstallationResult",
     "RuntimeResult",
+    "SecurityReportResult",
     "SecurityResult",
     "SetupResult",
-    "SpellCheckResult",
-    "SpellResult",
-    "SpellSummary",
     "SystemDetectionResult",
     "SystemInfoResult",
     "TemplateResult",

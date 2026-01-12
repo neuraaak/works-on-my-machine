@@ -17,14 +17,13 @@ from __future__ import annotations
 # IMPORTS
 # ///////////////////////////////////////////////////////////////
 # Local imports
-# Note: Only import what exists to avoid circular imports
-# Results package is available
-from . import results
+from . import configs, results
 
 # ///////////////////////////////////////////////////////////////
 # PUBLIC API
 # ///////////////////////////////////////////////////////////////
 
 __all__ = [
+    "configs",
     "results",
 ]

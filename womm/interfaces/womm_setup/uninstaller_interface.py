@@ -38,12 +38,12 @@ from ...exceptions.womm_deployment import (
     WommUninstallerError,
 )
 from ...services import WommUninstallerService
-from ...shared.results.installation_results import UninstallationResult
-from ...ui.common.ezpl_bridge import (
+from ...shared.results import UninstallationResult
+from ...ui.common import (
+    confirm,
     ezconsole,
     ezprinter,
 )
-from ...ui.common.prompts import confirm
 from ...utils.womm_setup import (
     get_default_womm_path,
     get_files_to_remove,

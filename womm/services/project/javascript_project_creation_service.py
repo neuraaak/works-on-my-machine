@@ -34,7 +34,7 @@ from ...exceptions.project import (
     ProjectServiceError,
     TemplateServiceError,
 )
-from ...shared.results.project_results import ProjectCreationResult
+from ...shared.results import ProjectCreationResult
 from ...utils.common import get_assets_module_path
 from ...utils.project import (
     check_npm_available,

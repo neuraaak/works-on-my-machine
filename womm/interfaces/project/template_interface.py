@@ -33,8 +33,8 @@ from ...exceptions.project import (
     TemplateServiceError,
 )
 from ...services import ProjectDetectionService, TemplateService
-from ...shared.results.project_results import TemplateResult
-from ...ui.common.ezpl_bridge import ezprinter
+from ...shared.results import TemplateResult
+from ...ui.common import ezprinter
 from ...utils.womm_setup import get_womm_installation_path
 
 # ///////////////////////////////////////////////////////////////

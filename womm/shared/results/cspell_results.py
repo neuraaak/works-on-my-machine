@@ -67,13 +67,14 @@ class DictionaryResult(BaseResult):
 
 
 @dataclass
-class SpellCheckResult(BaseResult):
+class CSpellCheckResult(BaseResult):
     """Result of a spell checking operation with detailed issues."""
 
     target_path: Path | None = None
     files_checked: int = 0
     issues_found: int = 0
     issues: list[dict[str, Any]] | None = None
+    issues_by_file: dict[str, set[str]] | None = None  # file -> set of unknown words
     raw_output: str = ""
     raw_stderr: str = ""
     check_time: float = 0.0
@@ -82,6 +83,8 @@ class SpellCheckResult(BaseResult):
         """Initialize derived fields."""
         if self.issues is None:
             self.issues = []
+        if self.issues_by_file is None:
+            self.issues_by_file = {}
 
 
 # ///////////////////////////////////////////////////////////////
@@ -90,7 +93,7 @@ class SpellCheckResult(BaseResult):
 
 
 @dataclass
-class SpellResult(BaseResult):
+class CSpellResult(BaseResult):
     """Result of a spell checking operation."""
 
     data: dict[str, Any] | None = None
@@ -107,7 +110,7 @@ class SpellResult(BaseResult):
 
 
 @dataclass
-class SpellSummary(BaseResult):
+class CSpellSummary(BaseResult):
     """Summary of spell checking operations."""
 
     total_files: int = 0
@@ -193,12 +196,12 @@ class DictionarySetupResult(BaseResult):
 
 __all__ = [
     "AddWordsResult",
+    "CSpellCheckResult",
     "CSpellConfigResult",
     "CSpellInstallResult",
+    "CSpellResult",
+    "CSpellSummary",
     "DictionaryResult",
     "DictionarySetupResult",
     "ProjectSetupResult",
-    "SpellCheckResult",
-    "SpellResult",
-    "SpellSummary",
 ]

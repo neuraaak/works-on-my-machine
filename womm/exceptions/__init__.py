@@ -76,10 +76,10 @@ from .dependencies import (
     DependenciesServiceError,
     DevToolsInterfaceError,
     DevToolsServiceError,
-    PackageManagerInterfaceError,
-    PackageManagerServiceError,
-    RuntimeManagerInterfaceError,
-    RuntimeManagerServiceError,
+    RuntimeInterfaceError,
+    RuntimeServiceError,
+    SystemPkgManagerInterfaceError,
+    SystemPkgManagerServiceError,
 )
 
 # Local imports - Lint exceptions
@@ -176,10 +176,10 @@ __all__ = [  # noqa: RUF022
     "DependenciesServiceError",
     "DevToolsServiceError",
     "DevToolsInterfaceError",
-    "PackageManagerServiceError",
-    "PackageManagerInterfaceError",
-    "RuntimeManagerServiceError",
-    "RuntimeManagerInterfaceError",
+    "SystemPkgManagerServiceError",
+    "SystemPkgManagerInterfaceError",
+    "RuntimeServiceError",
+    "RuntimeInterfaceError",
     # Lint exceptions
     "PythonLintInterfaceError",
     "PythonLintInterfaceError",

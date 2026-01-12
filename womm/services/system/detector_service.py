@@ -33,8 +33,8 @@ from ...exceptions.system import (
     ReportGenerationServiceError,
     SystemDetectionServiceError,
 )
-from ...shared.configs.system.system_detector_config import SystemDetectorConfig
-from ...shared.results.system_results import SystemInfoResult
+from ...shared.configs.system import SystemDetectorConfig
+from ...shared.results import SystemInfoResult
 from ...utils.system import (
     create_editor_entry,
     create_package_manager_entry,

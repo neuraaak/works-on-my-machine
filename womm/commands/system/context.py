@@ -30,13 +30,11 @@ import click
 from ezpl.types import LogLevel
 
 # Local imports
-from ..interfaces import ContextMenuInterface
-from ..services import ContextParametersService
-from ..ui.common.ezpl_bridge import ezconsole, ezpl_bridge, ezprinter
-from ..ui.common.interactive_menu import InteractiveMenu
-from ..ui.context.menu_display import ContextMenuUI
-from ..ui.context.wizard import ContextMenuWizard
-from ..utils.womm_setup import get_default_womm_path
+from ...interfaces import ContextMenuInterface
+from ...services import ContextParametersService
+from ...ui.common import InteractiveMenu, ezconsole, ezpl_bridge, ezprinter
+from ...ui.context import ContextMenuUI, ContextMenuWizard
+from ...utils.womm_setup import get_default_womm_path
 
 # ///////////////////////////////////////////////////////////////
 # UTILITY FUNCTIONS

@@ -24,7 +24,7 @@ from typing import ClassVar
 
 # Local imports
 from ...exceptions.cspell import CSpellServiceError, DictionaryServiceError
-from ...shared.results.cspell_results import DictionaryResult
+from ...shared.results import DictionaryResult
 
 # ///////////////////////////////////////////////////////////////
 # MODULE LOGGER
@@ -179,8 +179,10 @@ class CSpellDictionaryService:
             ) from e
 
     @staticmethod
-    def _list_available_dictionaries(project_path: Path | None = None) -> list[Path]:
-        """List all available dictionary files in .cspell-dict/."""
+    def _list_available_dictionaries(
+        project_path: Path | None = None, dict_dir: Path | None = None
+    ) -> list[Path]:
+        """List all available dictionary files in specified or default .cspell-dict/."""
         try:
             if project_path is None:
                 project_path = Path.cwd()
@@ -192,7 +194,11 @@ class CSpellDictionaryService:
                     details="Invalid project path provided for dictionary listing",
                 )
 
-            cspell_dict_dir = project_path / ".cspell-dict"
+            # Use specified dict_dir or default to .cspell-dict/
+            if dict_dir is None:
+                cspell_dict_dir = project_path / ".cspell-dict"
+            else:
+                cspell_dict_dir = dict_dir
 
             if not cspell_dict_dir.exists() or not cspell_dict_dir.is_dir():
                 return []
@@ -212,7 +218,10 @@ class CSpellDictionaryService:
             ) from e
 
     @staticmethod
-    def _get_dictionary_info(project_path: Path | None = None) -> dict[str, object]:
+    @staticmethod
+    def _get_dictionary_info(
+        project_path: Path | None = None, dict_dir: Path | None = None
+    ) -> dict[str, object]:
         """Get information about available dictionaries."""
         try:
             if project_path is None:
@@ -225,7 +234,11 @@ class CSpellDictionaryService:
                     details="Invalid project path provided for dictionary info",
                 )
 
-            cspell_dict_dir = project_path / ".cspell-dict"
+            # Use specified dict_dir or default to .cspell-dict/
+            if dict_dir is None:
+                cspell_dict_dir = project_path / ".cspell-dict"
+            else:
+                cspell_dict_dir = dict_dir
 
             info: dict[str, object] = {
                 "directory_exists": cspell_dict_dir.exists(),
@@ -240,7 +253,7 @@ class CSpellDictionaryService:
 
             try:
                 dict_files = CSpellDictionaryService._list_available_dictionaries(
-                    project_path
+                    project_path, cspell_dict_dir
                 )
             except Exception:
                 return info
@@ -544,12 +557,13 @@ class CSpellDictionaryService:
             ) from e
 
     def get_dictionary_info(
-        self, project_path: Path | None = None
+        self, project_path: Path | None = None, dict_dir: Path | None = None
     ) -> dict[str, object]:
         """Get information about available dictionaries.
 
         Args:
             project_path: Project root path (defaults to current directory)
+            dict_dir: Dictionary directory path (defaults to .cspell-dict/ in project)
 
         Returns:
             dict: Dictionary information
@@ -558,7 +572,7 @@ class CSpellDictionaryService:
             SpellServiceError: If dictionary info retrieval fails unexpectedly
             DictionaryError: If dictionary file reading fails
         """
-        return self._get_dictionary_info(project_path)
+        return self._get_dictionary_info(project_path, dict_dir)
 
     def list_available_dictionaries(
         self, project_path: Path | None = None

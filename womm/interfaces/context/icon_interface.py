@@ -24,7 +24,7 @@ from ...exceptions.context import (
     MenuInterfaceError,
     ValidationInterfaceError,
 )
-from ...shared.configs.context.script_config import IconConfig
+from ...shared.configs.context import IconConfig
 
 # ///////////////////////////////////////////////////////////////
 # MAIN CLASS

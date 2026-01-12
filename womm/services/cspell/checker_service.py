@@ -26,7 +26,7 @@ from typing import ClassVar
 
 # Local imports
 from ...exceptions.cspell import CheckServiceError, CSpellServiceError
-from ...shared.results.cspell_results import CSpellConfigResult, SpellCheckResult
+from ...shared.results import CSpellCheckResult, CSpellConfigResult
 from ...utils.womm_setup import get_womm_installation_path
 from ..common.command_runner_service import CommandRunnerService
 
@@ -226,7 +226,12 @@ class CSpellCheckerService:
 
     @staticmethod
     def _parse_cspell_output(output: str) -> list[dict[str, str | int]]:
-        """Parse CSpell output to extract spell checking issues."""
+        """Parse CSpell output to extract spell checking issues.
+
+        Expected format:
+        womm/bin/refresh_env.cmd:105:100 - Unknown word (HKLM)
+        womm/cli.py:129:72 - Unknown word (ezpl)
+        """
         issues: list[dict[str, str | int]] = []
 
         if not output:
@@ -235,42 +240,41 @@ class CSpellCheckerService:
         try:
             lines = output.strip().split("\n")
             for line in lines:
-                if ":" in line and ("Unknown word" in line or "Spelling error" in line):
-                    parts = line.split(":", 3)
-                    if len(parts) >= 4:
-                        file_path = parts[0]
-                        try:
-                            line_num = int(parts[1])
-                            col_num = int(parts[2])
-                        except ValueError:
-                            line_num = 0
-                            col_num = 0
+                if not line.strip():
+                    continue
 
-                        error_info = parts[3].strip()
-                        if "--" in error_info:
-                            error_parts = error_info.split("--", 1)
-                            word_info = error_parts[0].strip()
-                            context = (
-                                error_parts[1].strip() if len(error_parts) > 1 else ""
-                            )
-                        else:
-                            word_info = error_info
-                            context = ""
+                # Parse line format: file:line:col - Unknown word (word)
+                if "- Unknown word" in line:
+                    # Split by first colon to get file path
+                    if ":" not in line:
+                        continue
 
-                        word = ""
-                        if "(" in word_info and ")" in word_info:
-                            word = word_info.split("(")[1].split(")")[0]
-                        elif "Unknown word" in word_info:
-                            word = word_info.replace("Unknown word", "").strip()
+                    parts = line.split(":", 2)
+                    if len(parts) < 3:
+                        continue
 
+                    file_path = parts[0]
+
+                    try:
+                        line_num = int(parts[1])
+                        col_num_str = parts[2].split(" ")[0]
+                        col_num = int(col_num_str)
+                    except ValueError:
+                        line_num = 0
+                        col_num = 0
+
+                    # Extract word from parentheses
+                    word = ""
+                    if "(" in line and ")" in line:
+                        word = line.split("(")[1].split(")")[0]
+
+                    if word:  # Only add if we extracted a word
                         issues.append(
                             {
                                 "file": file_path,
                                 "line": line_num,
                                 "column": col_num,
                                 "word": word,
-                                "message": word_info,
-                                "context": context,
                             }
                         )
         except Exception as e:
@@ -303,98 +307,7 @@ class CSpellCheckerService:
                 details=f"Exception type: {type(e).__name__}",
             ) from e
 
-    def setup_project(
-        self,
-        project_path: Path,
-        project_type: str | None = None,
-        project_name: str = "",
-    ) -> CSpellConfigResult:
-        """Configure CSpell for a specific project.
-
-        Args:
-            project_path: Path to the project directory
-            project_type: Type of project (python, javascript). If None, will be detected.
-            project_name: Name of the project
-
-        Returns:
-            CSpellConfigResult: Result of configuration operation
-
-        Raises:
-            SpellServiceError: If project setup fails
-            CSpellError: If CSpell configuration fails
-        """
-        try:
-            # Input validation
-            if not project_path:
-                raise CSpellServiceError(
-                    message="Project path cannot be empty",
-                    operation="setup_project",
-                    details="Invalid project path provided for CSpell setup",
-                )
-
-            # Detect project type if not provided
-            if not project_type:
-                project_type = self._detect_project_type(project_path)
-                if not project_type:
-                    raise CSpellServiceError(
-                        message="Could not detect project type",
-                        operation="setup_project",
-                        details="Project type detection failed, please specify manually",
-                    )
-
-            if not project_name:
-                project_name = project_path.name
-
-            # Get and read template
-            template_path = self._get_template_path(project_type)
-            template_content = self._read_template(template_path)
-            config_content = self._process_template(template_content, project_name)
-
-            # Write configuration
-            config_file = project_path / "cspell.json"
-            try:
-                config_file.write_text(config_content, encoding="utf-8")
-            except (PermissionError, OSError) as e:
-                raise CheckServiceError(
-                    message=f"Failed to write configuration file: {e}",
-                    operation="config_writing",
-                    reason=f"Failed to write configuration file: {e}",
-                    details=f"Cannot write to project directory: {project_path}",
-                ) from e
-
-            # Parse config to get words count and dictionaries
-            try:
-                config_data = self._parse_config_from_content(config_content)
-                words_count = self._get_config_words_count(config_data)
-                dictionaries = self._get_config_dictionaries(config_data)
-            except CheckServiceError:
-                # If parsing fails, use defaults
-                words_count = 0
-                dictionaries = []
-
-            self.logger.info(f"CSpell configuration created: {config_file}")
-
-            return CSpellConfigResult(
-                success=True,
-                message=f"CSpell configuration created successfully for {project_name}",
-                config_path=config_file,
-                project_type=project_type,
-                words_count=words_count,
-                dictionaries=dictionaries,
-            )
-
-        except (CSpellServiceError, CheckServiceError):
-            # Re-raise our custom exceptions
-            raise
-        except Exception as e:
-            # Wrap unexpected external exceptions
-            raise CSpellServiceError(
-                message=f"Project CSpell setup failed: {e}",
-                operation="setup_project",
-                details=f"Exception type: {type(e).__name__}",
-            ) from e
-
-    def run_spellcheck(self, path: Path) -> SpellCheckResult:
+    def run_spellcheck(self, path: Path) -> CSpellCheckResult:
         """Run spell check and return detailed results.
 
         Args:
@@ -418,7 +331,7 @@ class CSpellCheckerService:
                 )
 
             if not self.is_installed():
-                return SpellCheckResult(
+                return CSpellCheckResult(
                     success=False,
                     error="CSpell not installed - use: spellcheck --install",
                     target_path=path,
@@ -440,7 +353,7 @@ class CSpellCheckerService:
             else:
                 cmd = ["npx", "cspell", "lint", str(path)]
 
-            cmd.extend(["--no-progress", "--show-context"])
+            cmd.extend(["--no-progress", "--no-summary"])
             self.logger.debug(f"Checking: {path}")
 
             # Execute command
@@ -464,6 +377,16 @@ class CSpellCheckerService:
             # Parse output
             issues = self._parse_cspell_output(result.stdout) if result.stdout else []
 
+            # Build issues_by_file dict: file -> set of unknown words
+            issues_by_file: dict[str, set[str]] = {}
+            for issue in issues:
+                file_path = issue["file"]
+                word = issue.get("word", "")
+                if word:
+                    if file_path not in issues_by_file:
+                        issues_by_file[file_path] = set()
+                    issues_by_file[file_path].add(word)
+
             # Count files and issues
             files_checked = len({issue["file"] for issue in issues}) if issues else 0
             issues_found = len(issues)
@@ -473,13 +396,14 @@ class CSpellCheckerService:
 
             check_time = time.time() - start_time
 
-            return SpellCheckResult(
+            return CSpellCheckResult(
                 success=success,
                 message=f"Spell check completed: {issues_found} issues found in {files_checked} files",
                 target_path=path,
                 files_checked=files_checked,
                 issues_found=issues_found,
                 issues=issues,
+                issues_by_file=issues_by_file,
                 raw_output=result.stdout,
                 raw_stderr=result.stderr,
                 check_time=check_time,

@@ -90,7 +90,7 @@ class DevToolsInterfaceError(DependenciesInterfaceError):
         super().__init__(message, operation, details)
 
 
-class PackageManagerInterfaceError(DependenciesInterfaceError):
+class SystemPkgManagerInterfaceError(DependenciesInterfaceError):
     """Exception raised when package manager interface operations fail.
 
     This exception is raised when package manager detection, checking,
@@ -121,7 +121,7 @@ class PackageManagerInterfaceError(DependenciesInterfaceError):
 # ///////////////////////////////////////////////////////////////
 
 
-class RuntimeManagerInterfaceError(DependenciesInterfaceError):
+class RuntimeInterfaceError(DependenciesInterfaceError):
     """Exception raised when runtime manager interface operations fail.
 
     This exception is raised when runtime detection, checking,

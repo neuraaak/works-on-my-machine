@@ -25,9 +25,9 @@ from typing import ClassVar
 # Local imports
 from ...exceptions.common import ValidationServiceError
 from ...exceptions.dependencies import DevToolsServiceError
+from ...shared.configs.dependencies import DevToolsConfig
 from ...shared.configs.dependencies.dependencies_hierarchy import DependenciesHierarchy
-from ...shared.configs.dependencies.devtools_config import DevToolsConfig
-from ...shared.results.dependencies_results import DevToolAvailabilityResult
+from ...shared.results import DevToolAvailabilityResult
 from ..common.command_runner_service import CommandRunnerService
 
 # ///////////////////////////////////////////////////////////////

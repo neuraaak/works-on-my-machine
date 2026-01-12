@@ -23,9 +23,10 @@ import logging
 
 # Third-party imports
 import click
+from ezpl.types import LogLevel
 
 # Local imports
-from ...interfaces.dependencies import (
+from ...interfaces import (
     DevToolsInterface,
     RuntimeInterface,
     SystemPackageManagerInterface,
@@ -35,7 +36,18 @@ from ...shared.configs.dependencies import (
     DevToolsConfig,
     RuntimeConfig,
 )
-from ...ui.common.ezpl_bridge import ezconsole, ezprinter
+from ...ui.common import ezconsole, ezpl_bridge, ezprinter
+from ...ui.runtime import (
+    display_runtime_check_all,
+    display_runtime_check_specific,
+    display_runtime_install_result,
+    display_runtimes_list,
+)
+from ...ui.system import (
+    display_available_managers,
+    display_best_manager,
+    display_system_managers_list,
+)
 
 # ///////////////////////////////////////////////////////////////
 # LOGGER SETUP
@@ -147,6 +159,12 @@ def system_check(ctx: click.Context, manager: str | None, verbose: bool) -> None
         womm deps system check winget    # Check winget only
         womm deps system check -v        # Verbose output
     """
+    if verbose:
+        ezpl_bridge.set_level(LogLevel.DEBUG.label)
+
+    # Print header
+    ezprinter.print_header("System Package Manager availability checking")
+
     try:
         interface = SystemPackageManagerInterface()
 
@@ -168,22 +186,8 @@ def system_check(ctx: click.Context, manager: str | None, verbose: bool) -> None
                     ezprinter.info(f"Error: {result.error}")
         else:
             # Check all managers
-            ezprinter.info("Checking system package managers...\n")
             results = interface.detect_available_managers()
-            available = [name for name, res in results.items() if res.success]
-
-            if available:
-                ezprinter.success(f"Available managers: {', '.join(available)}")
-
-                if verbose or ctx.obj.get("verbose"):
-                    ezprinter.info("\nDetails:")
-                    for name in available:
-                        res = results[name]
-                        ezprinter.info(
-                            f"  • {name}: v{res.version} (priority: {res.priority})"
-                        )
-            else:
-                ezprinter.warning("No system package managers detected")
+            display_available_managers(results, verbose or ctx.obj.get("verbose"))
 
     except Exception as e:
         logger.error(f"Failed to check system package managers: {e}")
@@ -212,37 +216,16 @@ def system_list(ctx: click.Context, verbose: bool) -> None:
         womm deps system list
         womm deps system list -v
     """
-    try:
-        from rich.table import Table
+    if verbose:
+        ezpl_bridge.set_level(LogLevel.DEBUG.label)
 
+    # Print header
+    ezprinter.print_header("System Package Manager listing")
+
+    try:
         interface = SystemPackageManagerInterface()
         status = interface.get_installation_status()
-
-        # Create table with rich
-        table = Table(title="System Package Managers", show_header=True)
-        table.add_column("Manager", style="cyan", no_wrap=True)
-        table.add_column("Available", style="green", justify="center")
-        table.add_column("Version", style="yellow")
-        table.add_column("Platform", style="blue")
-
-        if verbose or ctx.obj.get("verbose"):
-            table.add_column("Priority", style="magenta", justify="center")
-
-        for name, info in status.items():
-            if info["supported_on_current_platform"]:
-                row = [
-                    name,
-                    "✓" if info["available"] else "✗",
-                    info["version"] or "N/A",
-                    info["platform"],
-                ]
-
-                if verbose or ctx.obj.get("verbose"):
-                    row.append(str(info.get("priority", "N/A")))
-
-                table.add_row(*row)
-
-        ezconsole.print(table)
+        display_system_managers_list(status, verbose or ctx.obj.get("verbose"))
 
     except Exception as e:
         logger.error(f"Failed to list system package managers: {e}")
@@ -271,36 +254,16 @@ def system_best(ctx: click.Context, verbose: bool) -> None:
         womm deps system best
         womm deps system best -v
     """
+    if verbose:
+        ezpl_bridge.set_level(LogLevel.DEBUG.label)
+
+    # Print header
+    ezprinter.print_header("System Package Manager recommendation")
+
     try:
         interface = SystemPackageManagerInterface()
         best = interface.get_best_available_manager()
-
-        if best:
-            result = interface.check_package_manager(best)
-            msg = f"✨ Best manager: {best}"
-            if result.version:
-                msg += f" (version {result.version})"
-            ezprinter.success(msg)
-
-            if verbose or ctx.obj.get("verbose"):
-                ezprinter.info(f"Platform: {result.platform}")
-                ezprinter.info(f"Priority: {result.priority}")
-                ezprinter.info(
-                    "\nThis manager was selected based on:"
-                    "\n  • Platform compatibility"
-                    "\n  • Availability on system"
-                    "\n  • Priority ranking"
-                )
-        else:
-            ezprinter.error("No system package manager available")
-
-            if verbose or ctx.obj.get("verbose"):
-                ezprinter.info(
-                    "\nTip: Install a package manager for your platform:"
-                    "\n  • Windows: winget, chocolatey, scoop"
-                    "\n  • macOS: homebrew"
-                    "\n  • Linux: apt, dnf, pacman (usually pre-installed)"
-                )
+        display_best_manager(best, interface, verbose or ctx.obj.get("verbose"))
 
     except Exception as e:
         logger.error(f"Failed to get best system package manager: {e}")
@@ -354,40 +317,24 @@ def runtime_check(ctx: click.Context, runtime: str | None, verbose: bool) -> Non
         womm deps runtime check python   # Check Python only
         womm deps runtime check -v       # Verbose output
     """
+    if verbose:
+        ezpl_bridge.set_level(LogLevel.DEBUG.label)
+
+    # Print header
+    ezprinter.print_header("Runtime availability checking")
+
     try:
         interface = RuntimeInterface()
 
         if runtime:
             # Check specific runtime
             result = interface.check_runtime(runtime)
-            if result.success:
-                msg = f"{runtime} is installed"
-                if result.version:
-                    msg += f" (version {result.version})"
-                ezprinter.success(msg)
-
-                if verbose or ctx.obj.get("verbose"):
-                    ezprinter.info(f"Path: {result.path}")
-            else:
-                ezprinter.warning(f"{runtime} is not installed")
-
-                if verbose or ctx.obj.get("verbose"):
-                    config = RuntimeConfig.RUNTIMES.get(runtime, {})
-                    min_version = config.get("version", "N/A")
-                    ezprinter.info(f"Required version: {min_version}")
+            display_runtime_check_specific(
+                result, runtime, verbose or ctx.obj.get("verbose")
+            )
         else:
             # Check all runtimes
-            ezprinter.info("Checking runtimes...\n")
-            for runtime_name in RuntimeConfig.RUNTIMES:
-                result = interface.check_runtime(runtime_name)
-                status = "✓" if result.success else "✗"
-                version = f"v{result.version}" if result.version else "N/A"
-
-                msg = f"{status} {runtime_name}: {version}"
-                if result.success:
-                    ezprinter.success(msg)
-                else:
-                    ezprinter.warning(msg)
+            display_runtime_check_all(interface, verbose or ctx.obj.get("verbose"))
 
     except Exception as e:
         logger.error(f"Failed to check runtime: {e}")
@@ -428,6 +375,12 @@ def runtime_install(
         womm deps runtime install python --via winget
         womm deps runtime install node -v         # Verbose mode
     """
+    if verbose:
+        ezpl_bridge.set_level(LogLevel.DEBUG.label)
+
+    # Print header
+    ezprinter.print_header("Runtime installation")
+
     try:
         interface = RuntimeInterface()
 
@@ -439,19 +392,9 @@ def runtime_install(
                 ezprinter.info("Auto-selecting best system package manager...")
 
         result = interface.install_runtime(runtime)
-
-        if result.success:
-            msg = f"{runtime} installed successfully"
-            if result.version:
-                msg += f" (version {result.version})"
-            ezprinter.success(msg)
-
-            if verbose or ctx.obj.get("verbose"):
-                ezprinter.info(f"Path: {result.path}")
-        else:
-            ezprinter.error(f"Failed to install {runtime}")
-            if result.error:
-                ezprinter.error(f"Error: {result.error}")
+        display_runtime_install_result(
+            result, runtime, verbose or ctx.obj.get("verbose")
+        )
 
     except Exception as e:
         logger.error(f"Failed to install runtime {runtime}: {e}")
@@ -480,33 +423,14 @@ def runtime_list(ctx: click.Context, verbose: bool) -> None:
         womm deps runtime list
         womm deps runtime list -v
     """
+    if verbose:
+        ezpl_bridge.set_level(LogLevel.DEBUG.label)
+
+    # Print header
+    ezprinter.print_header("Runtime listing")
+
     try:
-        from rich.table import Table
-
-        table = Table(title="Available Runtimes", show_header=True)
-        table.add_column("Runtime", style="cyan", no_wrap=True)
-        table.add_column("Min Version", style="yellow")
-        table.add_column("Priority", style="magenta", justify="center")
-
-        if verbose or ctx.obj.get("verbose"):
-            table.add_column("Package Managers", style="blue")
-
-        for name, config in RuntimeConfig.RUNTIMES.items():
-            row = [
-                name,
-                config.get("version", "Any"),
-                str(config.get("priority", "N/A")),
-            ]
-
-            if verbose or ctx.obj.get("verbose"):
-                managers = config.get("package_managers", [])
-                row.append(
-                    ", ".join(managers[:3]) + ("..." if len(managers) > 3 else "")
-                )
-
-            table.add_row(*row)
-
-        ezconsole.print(table)
+        display_runtimes_list(verbose or ctx.obj.get("verbose"))
 
     except Exception as e:
         logger.error(f"Failed to list runtimes: {e}")
@@ -560,6 +484,12 @@ def tool_check(ctx: click.Context, tool: str | None, verbose: bool) -> None:
         womm deps tool check cspell   # Check cspell only
         womm deps tool check -v       # Verbose output
     """
+    if verbose:
+        ezpl_bridge.set_level(LogLevel.DEBUG.label)
+
+    # Print header
+    ezprinter.print_header("Dev Tools availability checking")
+
     try:
         interface = DevToolsInterface()
 
@@ -654,6 +584,12 @@ def tool_install(ctx: click.Context, tool: str, force: bool, verbose: bool) -> N
         womm deps tool install ruff --force
         womm deps tool install eslint -v
     """
+    if verbose:
+        ezpl_bridge.set_level(LogLevel.DEBUG.label)
+
+    # Print header
+    ezprinter.print_header("Dev Tool installation")
+
     try:
         interface = DevToolsInterface()
 
@@ -730,6 +666,12 @@ def tool_list(ctx: click.Context, category: str | None, verbose: bool) -> None:
         womm deps tool list python   # List Python tools only
         womm deps tool list -v       # Show dependency chains
     """
+    if verbose:
+        ezpl_bridge.set_level(LogLevel.DEBUG.label)
+
+    # Print header
+    ezprinter.print_header("Dev Tool listing")
+
     try:
         from rich.table import Table
 
@@ -814,6 +756,12 @@ def deps_check(ctx: click.Context, verbose: bool) -> None:
         womm deps check
         womm deps check -v
     """
+    if verbose:
+        ezpl_bridge.set_level(LogLevel.DEBUG.label)
+
+    # Print header
+    ezprinter.print_header("Global dependencies checking")
+
     try:
         ezprinter.info("Checking all dependencies...\n")
 
@@ -894,6 +842,12 @@ def deps_status(ctx: click.Context, verbose: bool) -> None:
         womm deps status
         womm deps status -v
     """
+    if verbose:
+        ezpl_bridge.set_level(LogLevel.DEBUG.label)
+
+    # Print header
+    ezprinter.print_header("Comprehensive Dependency Status Report")
+
     try:
         from rich.table import Table
 
@@ -1008,6 +962,12 @@ def deps_validate(ctx: click.Context, verbose: bool) -> None:
         womm deps validate
         womm deps validate -v
     """
+    if verbose:
+        ezpl_bridge.set_level(LogLevel.DEBUG.label)
+
+    # Print header
+    ezprinter.print_header("Dependency Chain Validation")
+
     try:
         ezprinter.info("Validating dependency chains...\n")
 

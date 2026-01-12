@@ -31,12 +31,12 @@ from ...exceptions.cspell import (
     CSpellServiceError,
 )
 from ...services import CSpellCheckerService
-from ...shared.results.cspell_results import (
+from ...shared.results import (
     CSpellInstallResult,
-    ProjectSetupResult,
-    SpellResult,
+    CSpellResult,
 )
-from ...ui.common.ezpl_bridge import ezprinter
+from ...ui.common import ezprinter
+from ...ui.cspell import display_spell_status_table
 from ...utils.cspell import (
     export_spell_results_to_json,
     format_project_status,
@@ -155,8 +155,6 @@ class CSpellCheckerInterface:
             CSpellInterfaceError: If CSpell installation fails
         """
         try:
-            ezprinter.print_header("CSpell Installation")
-
             # Check if CSpell is already available
             if self.cspell_available:
                 ezprinter.success("CSpell is already available")
@@ -243,102 +241,7 @@ class CSpellCheckerInterface:
                 details=str(e),
             ) from e
 
-    def perform_setup_project(
-        self, project_name: str, project_type: str | None = None
-    ) -> ProjectSetupResult:
-        """
-        Set up CSpell configuration for a project with integrated UI.
-
-        Args:
-            project_name: Name of the project
-            project_type: Type of the project (optional)
-
-        Returns:
-            ProjectSetupResult: Result of the project setup operation
-
-        Raises:
-            CSpellInterfaceError: If project setup fails
-        """
-        try:
-            ezprinter.print_header("CSpell Project Setup")
-
-            # Check CSpell availability - early return if not available
-            cspell_check = self._ensure_cspell_available("project setup")
-            if cspell_check is not None:  # Error occurred
-                return cspell_check
-
-            with ezprinter.create_spinner_with_status(
-                "Setting up CSpell configuration..."
-            ) as (
-                progress,
-                task,
-            ):
-                # Determine project path
-                progress.update(task, status="Determining project path...")
-                project_path = (
-                    Path.cwd() / project_name if project_name != "." else Path.cwd()
-                )
-
-                # Use CSpellCheckerService for setup
-                progress.update(task, status="Creating CSpell configuration...")
-                try:
-                    result = self._checker_service.setup_project(
-                        project_path, project_type, project_name
-                    )
-                    success = result.success
-                except (CSpellServiceError, CheckServiceError) as e:
-                    logger.error(f"Project setup service error: {e}", exc_info=True)
-                    raise CSpellInterfaceError(
-                        f"Failed to setup project CSpell configuration: {e.message}",
-                        operation="setup_project",
-                        details=str(e),
-                    ) from e
-                except Exception as e:
-                    logger.error(
-                        f"Unexpected error during project setup: {e}", exc_info=True
-                    )
-                    raise CSpellInterfaceError(
-                        f"An unexpected error occurred: {e}",
-                        operation="setup_project",
-                        details=str(e),
-                    ) from e
-
-                if success:
-                    progress.update(task, status="Configuration created successfully!")
-                    ezprinter.success(
-                        f"✅ CSpell configured for {project_name} ({result.project_type})"
-                    )
-                    ezprinter.success("✅ CSpell setup completed successfully")
-                    return ProjectSetupResult(
-                        success=True,
-                        message=f"CSpell configured for {project_name} ({result.project_type})",
-                        project_path=project_path,
-                        project_type=result.project_type,
-                        config_created=True,
-                        setup_time=0.0,
-                    )
-                else:
-                    progress.update(task, status="Configuration failed")
-                    ezprinter.error("❌ Failed to setup CSpell configuration")
-                    return ProjectSetupResult(
-                        success=False,
-                        message="Failed to create CSpell configuration",
-                        error="setup_failed",
-                        project_path=project_path,
-                        config_created=False,
-                        setup_time=0.0,
-                    )
-
-        except CSpellInterfaceError:
-            raise
-        except Exception as e:
-            logger.error(f"Unexpected error in perform_setup_project: {e}")
-            raise CSpellInterfaceError(
-                f"Project setup failed: {e}",
-                details=f"Exception type: {type(e).__name__}",
-            ) from e
-
-    def display_project_status(self, project_path: Path | None = None) -> SpellResult:
+    def display_project_status(self, project_path: Path | None = None) -> CSpellResult:
         """
         Get and display CSpell configuration status for a project with integrated UI.
 
@@ -355,13 +258,12 @@ class CSpellCheckerInterface:
             if project_path is None:
                 project_path = Path.cwd()
 
-            ezprinter.print_header("CSpell Project Status")
-
             # Check and display CSpell availability (non-blocking for status command)
             if not self.cspell_available:
                 ezprinter.error("❌ CSpell is not installed")
                 ezprinter.info('💡 Install using: "womm spell install"')
 
+            # Use spinner for gathering status information
             with ezprinter.create_spinner_with_status("Analyzing project...") as (
                 progress,
                 task,
@@ -412,27 +314,11 @@ class CSpellCheckerInterface:
 
                 progress.update(task, status="Status analysis complete!")
 
-            # Display results with nice UI (AFTER spinner closes)
+            # Display results in panel (AFTER spinner closes)
             print("")
-            if status["config_exists"]:
-                ezprinter.success("✅ CSpell configuration found")
-                ezprinter.system(f"📁 Words count: {status.get('words_count', 0)}")
-            else:
-                ezprinter.error("❌ No CSpell configuration found")
-                ezprinter.system("💡 Run: womm spell setup <project_name>")
+            display_spell_status_table(status)
 
-            # Display status with nice formatting
-            print("")
-            configured_text = "✅" if status.get("config_exists") else "❌"
-            ezprinter.system(f"Project configured: {configured_text}")
-
-            if status.get("config_path"):
-                ezprinter.system(f"Config file: {status['config_path']}")
-
-            if status.get("words_count"):
-                ezprinter.info(f"Custom words: {status['words_count']}")
-
-            return SpellResult(
+            return CSpellResult(
                 success=True,
                 message="Project status retrieved successfully",
                 data=status,
@@ -447,54 +333,69 @@ class CSpellCheckerInterface:
                 details=f"Exception type: {type(e).__name__}",
             ) from e
 
-    def perform_spell_check(
+    def perform_cspell_lint(
         self,
         path: Path | None = None,
-        json_output: Path | None = None,
-    ) -> SpellResult:
+        json_export: bool = False,
+        directory: Path | None = None,
+        add_words: bool = False,
+    ) -> CSpellResult:
         """
-        Perform spell check with integrated UI.
+        Perform spell lint with integrated UI and optional JSON export.
+
+        Lint mode provides a summary of unknown words by file instead of detailed issues.
 
         Args:
-            path: Path to check (defaults to current directory)
-            json_output: Optional path to export results as JSON
+            path: Path to lint (defaults to current directory)
+            json_export: Export results to default path ~/.womm/spell-results/
+            directory: Custom path to export results as JSON
+            add_words: Add detected unknown words to cspell.json
 
         Returns:
-            SpellResult: Result of the spell check operation
+            SpellResult: Result of the spell lint operation
 
         Raises:
-            CSpellInterfaceError: If spell check fails
+            CSpellInterfaceError: If spell lint fails
         """
         try:
             if path is None:
                 path = Path.cwd()
 
-            ezprinter.print_header("Spell Check")
+            # Determine JSON export path based on flags
+            export_path = None
+            if json_export:
+                # Use default path ~/.womm/spell-results/
+                from ...utils.womm_setup import get_default_womm_path
+
+                export_path = get_default_womm_path() / "spell-results"
+            elif directory is not None:
+                # Use custom path specified
+                export_path = directory
 
             # Check CSpell availability - early return if not available
-            cspell_check = self._ensure_cspell_available("spell check")
+            cspell_check = self._ensure_cspell_available("spell lint")
             if cspell_check is not None:  # Error occurred
                 return cspell_check
 
-            with ezprinter.create_spinner_with_status("Running spell check...") as (
+            # Use CSpellCheckerService for the actual spell lint
+            with ezprinter.create_spinner_with_status("Running spell lint...") as (
                 progress,
                 task,
             ):
-                progress.update(task, status="Checking files...")
+                progress.update(task, status="Linting files...")
 
-                # Use CSpellCheckerService for the actual spell check
                 try:
-                    spell_result = self._checker_service.run_spellcheck(path)
+                    lint_result = self._checker_service.run_spellcheck(path)
                 except (CheckServiceError, CSpellServiceError) as e:
-                    logger.error(f"Spell check service error: {e}", exc_info=True)
+                    logger.error(f"Spell lint service error: {e}", exc_info=True)
                     raise CSpellInterfaceError(
-                        f"Failed to run spell check: {e.message}",
+                        f"Failed to run spell lint: {e.message}",
                         operation="run_spellcheck",
                         details=str(e),
                     ) from e
                 except Exception as e:
                     logger.error(
-                        f"Unexpected error during spell check: {e}", exc_info=True
+                        f"Unexpected error during spell lint: {e}", exc_info=True
                     )
                     raise CSpellInterfaceError(
                         f"An unexpected error occurred: {e}",
@@ -502,83 +403,115 @@ class CSpellCheckerInterface:
                         details=str(e),
                     ) from e
 
-                if spell_result.success or spell_result.issues_found > 0:
-                    progress.update(task, status="Spell check completed!")
-
-                    # Convert to dict format for compatibility
-                    summary = {
-                        "files_checked": spell_result.files_checked,
-                        "issues_found": spell_result.issues_found,
-                    }
-                    issues = spell_result.issues or []
-
-                    if issues:
-                        ezprinter.warning(
-                            f"⚠️  Spell check completed with {summary['issues_found']} issues found in {summary['files_checked']} files"
-                        )
-                        message = f"Spell check completed with {summary['issues_found']} issues found"
-                    else:
-                        ezprinter.success(
-                            "✅ Spell check completed successfully - No issues found"
-                        )
-                        message = "Spell check completed successfully - No issues found"
-
-                    # Display issues if present
-                    if issues:
-                        ezprinter.debug(f"📋 Found {len(issues)} spelling issues:")
-                        print("")
-
-                        # Use the function UI dedicated to display the table
-                        try:
-                            from ...ui import display_spell_issues_table
-
-                            display_spell_issues_table(issues)
-                            print("")
-                        except Exception as e:
-                            logger.warning(f"Failed to display spell issues table: {e}")
-
-                    # Export JSON if requested
-                    if json_output is not None:
-                        try:
-                            export_file = export_spell_results_to_json(
-                                path, summary, issues, json_output
-                            )
-                            ezprinter.success(f"Results exported to: {export_file}")
-                            ezprinter.system(
-                                f"Summary: {summary['issues_found']} issues in {summary['files_checked']} files"
-                            )
-                        except Exception as e:
-                            logger.warning(
-                                f"Failed to export spell results to JSON: {e}"
-                            )
-
-                    return SpellResult(
-                        success=True,
-                        message=message,
-                        data={
-                            "path": str(path),
-                            "summary": summary,
-                            "issues": issues,
-                            "json_output": json_output,
-                        },
+                if not (lint_result.success or lint_result.issues_found > 0):
+                    progress.update(task, status="Spell lint failed")
+                    raise CSpellInterfaceError(
+                        "Spell lint failed",
+                        operation="run_spellcheck",
                     )
-                else:
-                    progress.update(task, status="Spell check failed")
-                    ezprinter.error("❌ Spell check failed")
-                    message = "Spell check failed"
 
-                    return SpellResult(
-                        success=False,
-                        message=message,
-                        error="spellcheck_failed",
-                        data={"path": str(path)},
+                progress.update(task, status="Spell lint completed!")
+
+            # Process results after spinner is complete
+            # Convert to dict format for compatibility
+            summary = {
+                "files_checked": lint_result.files_checked,
+                "issues_found": lint_result.issues_found,
+            }
+            issues = lint_result.issues or []
+            issues_by_file = lint_result.issues_by_file or {}
+
+            if issues_by_file:
+                ezprinter.warning(
+                    f"⚠️  Spell lint completed with {summary['issues_found']} unknown words found in {summary['files_checked']} files"
+                )
+                message = f"Spell lint completed with {summary['issues_found']} unknown words found"
+            else:
+                ezprinter.success(
+                    "✅ Spell lint completed successfully - No issues found"
+                )
+                message = "Spell lint completed successfully - No issues found"
+
+            # Display lint summary if present
+            if issues_by_file:
+                ezprinter.debug("📋 Unknown words by file:")
+                print("")
+
+                # Use the UI function to display the lint summary table
+                try:
+                    from ...ui.cspell import display_lint_summary
+
+                    display_lint_summary(issues_by_file)
+                    print("")
+                except ImportError:
+                    logger.warning(
+                        "display_lint_summary not available, displaying issues list instead"
                     )
+                    from ...ui.cspell import display_spell_issues_table
+
+                    display_spell_issues_table(issues)
+                    print("")
+                except Exception as e:
+                    logger.warning(f"Failed to display lint summary table: {e}")
+
+            # Add words to cspell.json if requested
+            if add_words and issues_by_file:
+                try:
+                    from . import CSpellDictionaryInterface
+
+                    all_words = []
+                    for words_set in issues_by_file.values():
+                        all_words.extend(words_set)
+
+                    if all_words:
+                        dictionary = CSpellDictionaryInterface()
+                        add_result = dictionary.perform_add_words(
+                            words=all_words, project_path=path
+                        )
+                        if add_result.success:
+                            ezprinter.success(
+                                f"✅ Added {len(all_words)} words to cspell.json"
+                            )
+                        else:
+                            ezprinter.warning(
+                                "⚠️  Failed to add some words to cspell.json"
+                            )
+                except Exception as e:
+                    logger.warning(f"Failed to add words to cspell.json: {e}")
+                    ezprinter.warning(f"Could not auto-add words: {e}")
+
+            # Export JSON if requested
+            if export_path is not None:
+                try:
+                    export_file = export_spell_results_to_json(
+                        path, summary, issues, export_path
+                    )
+                    ezprinter.success(f"Results exported to: {export_file}")
+                    ezprinter.system(
+                        f"Summary: {summary['issues_found']} issues in {summary['files_checked']} files"
+                    )
+                except Exception as e:
+                    logger.warning(f"Failed to export lint results to JSON: {e}")
+
+            return CSpellResult(
+                success=True,
+                message=message,
+                data={
+                    "path": str(path),
+                    "summary": summary,
+                    "issues": issues,
+                    "issues_by_file": {
+                        file: list(words) for file, words in issues_by_file.items()
+                    },
+                    "json_output": export_path,
+                },
+            )
 
         except CSpellInterfaceError:
             raise
         except Exception as e:
-            logger.error(f"Unexpected error in perform_spell_check: {e}")
+            logger.error(f"Unexpected error in perform_spell_lint: {e}")
             raise CSpellInterfaceError(
-                f"Spell check failed: {e}",
+                f"Spell lint failed: {e}",
                 details=f"Exception type: {type(e).__name__}",
             ) from e

@@ -29,7 +29,7 @@ from ...exceptions.lint import (
     PythonLintInterfaceError,
 )
 from ...interfaces import PythonLintInterface
-from ...ui.common.ezpl_bridge import ezpl_bridge, ezprinter
+from ...ui.common import ezpl_bridge, ezprinter
 
 # ///////////////////////////////////////////////////////////////
 # COMMAND GROUPS

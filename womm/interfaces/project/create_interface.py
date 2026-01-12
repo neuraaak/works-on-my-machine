@@ -38,8 +38,8 @@ from ...services import (
     PythonProjectCreationService,
     TemplateService,
 )
-from ...shared.results.project_results import ProjectCreationResult
-from ...ui.common.ezpl_bridge import ezprinter
+from ...shared.results import ProjectCreationResult
+from ...ui.common import ezprinter
 from ...utils.project import (
     validate_project_name,
     validate_project_path,

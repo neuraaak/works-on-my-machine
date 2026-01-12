@@ -29,8 +29,8 @@ from ...exceptions.system import (
     EnvironmentServiceError,
 )
 from ...services import SystemEnvironmentService
-from ...shared.results.system_results import EnvironmentRefreshResult
-from ...ui.common.ezpl_bridge import (
+from ...shared.results import EnvironmentRefreshResult
+from ...ui.common import (
     ezlogger,
     ezprinter,
 )
@@ -158,12 +158,15 @@ class SystemEnvironmentInterface:
         if success:
             # Verify the refresh worked
             if self.verify_environment_refresh():
-                ezprinter.info("WOMM should now be accessible in the current session")
+                print()
+                ezprinter.tip(
+                    "Recent PATH additions should now be accessible in this terminal session"
+                )
             else:
                 ezprinter.warning(
-                    "Environment refreshed but WOMM may not be accessible in current session"
+                    "Environment refreshed but changes may not be accessible in current session"
                 )
-                ezprinter.info(
+                ezprinter.tip(
                     "Solution: Restart your terminal or open a new command prompt"
                 )
         else:

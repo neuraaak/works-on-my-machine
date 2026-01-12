@@ -28,8 +28,8 @@ from ...exceptions.common import (
     PathValidationError,
     SecurityServiceError,
 )
-from ...shared.configs.security.security_patterns_config import SecurityPatternsConfig
-from ...shared.results.security_results import (
+from ...shared.configs.security import SecurityPatternsConfig
+from ...shared.results import (
     CommandValidationResult,
     PathValidationResult,
     SecurityReportResult,

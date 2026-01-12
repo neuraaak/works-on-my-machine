@@ -24,7 +24,7 @@ from ...exceptions.context import (
     ValidationInterfaceError,
 )
 from ...services import CommandRunnerService
-from ...shared.configs.context.script_config import ScriptConfig
+from ...shared.configs.context import ScriptConfig
 
 # ///////////////////////////////////////////////////////////////
 # MAIN CLASS

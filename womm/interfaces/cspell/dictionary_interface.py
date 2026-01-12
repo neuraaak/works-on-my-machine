@@ -31,12 +31,12 @@ from ...exceptions.cspell import (
     DictionaryServiceError,
 )
 from ...services import CSpellDictionaryService
-from ...shared.results.cspell_results import (
+from ...shared.results import (
     AddWordsResult,
+    CSpellResult,
     DictionarySetupResult,
-    SpellResult,
 )
-from ...ui.common.ezpl_bridge import ezprinter
+from ...ui.common import ezconsole, ezprinter
 from ...utils.cspell import format_dictionary_info
 
 # ///////////////////////////////////////////////////////////////
@@ -262,7 +262,6 @@ class CSpellDictionaryInterface:
 
             if dry_run:
                 ezprinter.print_dry_run_warning()
-                ezprinter.print_header("Add Words to CSpell Configuration (DRY RUN)")
 
                 # Simulate word addition process
                 if interactive:
@@ -295,8 +294,6 @@ class CSpellDictionaryInterface:
                     words_added=0,
                     addition_time=0.0,
                 )
-
-            ezprinter.print_header("Add Words to CSpell Configuration")
 
             # Handle interactive mode
             if interactive:
@@ -446,14 +443,20 @@ class CSpellDictionaryInterface:
             ) from e
 
     def perform_add_all_dictionaries(
-        self, force: bool = False, project_path: Path | None = None
-    ) -> SpellResult:
+        self,
+        force: bool = False,
+        project_path: Path | None = None,
+        dict_dir: Path | None = None,
+    ) -> CSpellResult:
         """
-        Add all dictionaries from .cspell-dict/ to CSpell configuration with integrated UI.
+        Add all dictionaries to CSpell configuration with integrated UI.
+
+        Scans the specified directory (or .cspell-dict/ by default) for dictionary files.
 
         Args:
             force: Whether to force the operation without confirmation
             project_path: Path to the project (defaults to current directory)
+            dict_dir: Path to dictionary directory (defaults to .cspell-dict/ in project)
 
         Returns:
             SpellResult: Result of the dictionary addition operation
@@ -465,12 +468,14 @@ class CSpellDictionaryInterface:
             if project_path is None:
                 project_path = Path.cwd()
 
-            ezprinter.print_header("Add All Dictionaries")
+            # Determine which directory to scan
+            if dict_dir is None:
+                dict_dir = project_path / ".cspell-dict"
 
             # Get dictionary information
             try:
                 dict_info_raw = self._dictionary_service.get_dictionary_info(
-                    project_path
+                    project_path, dict_dir
                 )
                 dict_info = format_dictionary_info(dict_info_raw)
             except (DictionaryServiceError, CSpellServiceError) as e:
@@ -496,7 +501,7 @@ class CSpellDictionaryInterface:
                 ezprinter.info(
                     "💡 Create the directory and add dictionary files (.txt)"
                 )
-                return SpellResult(
+                return CSpellResult(
                     success=False,
                     message=".cspell-dict directory not found",
                     error="dict_dir_not_found",
@@ -506,7 +511,7 @@ class CSpellDictionaryInterface:
             if dict_info["total_files"] == 0:
                 ezprinter.error("❌ .cspell-dict directory is empty")
                 ezprinter.info("💡 Add .txt files with one word per line")
-                return SpellResult(
+                return CSpellResult(
                     success=False,
                     message=".cspell-dict directory is empty",
                     error="dict_dir_empty",
@@ -531,7 +536,7 @@ class CSpellDictionaryInterface:
                 )
                 if response not in ["y", "yes"]:
                     ezprinter.info("ℹ️ Operation cancelled by user")
-                    return SpellResult(
+                    return CSpellResult(
                         success=False,
                         message="Operation cancelled by user",
                         error="user_cancelled",
@@ -566,13 +571,13 @@ class CSpellDictionaryInterface:
                 ezprinter.success(
                     f"✅ {result.files_processed} dictionaries added successfully"
                 )
-                return SpellResult(
+                return CSpellResult(
                     success=True,
                     message=f"{result.files_processed} dictionaries added successfully",
                 )
             else:
                 ezprinter.error("❌ No dictionaries could be added")
-                return SpellResult(
+                return CSpellResult(
                     success=False,
                     message="No dictionaries could be added",
                     error="all_dictionaries_failed",
@@ -589,7 +594,7 @@ class CSpellDictionaryInterface:
 
     def perform_list_dictionaries(
         self, project_path: Path | None = None
-    ) -> SpellResult:
+    ) -> CSpellResult:
         """
         List all available dictionaries with integrated UI.
 
@@ -605,8 +610,6 @@ class CSpellDictionaryInterface:
         try:
             if project_path is None:
                 project_path = Path.cwd()
-
-            ezprinter.print_header("Available Dictionaries")
 
             # Get dictionary information
             try:
@@ -637,7 +640,7 @@ class CSpellDictionaryInterface:
                 ezprinter.info(
                     "💡 Create the directory and add dictionary files (.txt)"
                 )
-                return SpellResult(
+                return CSpellResult(
                     success=False,
                     message=".cspell-dict directory not found",
                     error="dict_dir_not_found",
@@ -646,7 +649,7 @@ class CSpellDictionaryInterface:
             if dict_info["total_files"] == 0:
                 ezprinter.warning("⚠️  .cspell-dict directory is empty")
                 ezprinter.info("💡 Add .txt files with one word per line")
-                return SpellResult(
+                return CSpellResult(
                     success=True,
                     message="No dictionaries found",
                     data={"dictionaries": []},
@@ -655,10 +658,20 @@ class CSpellDictionaryInterface:
             # Display dictionaries
             ezprinter.success(f"📚 Found {dict_info['total_files']} dictionary files")
             print("")
-            for file_path in dict_info["files"]:
-                ezprinter.system(f"  📄 {file_path}")
 
-            return SpellResult(
+            # Format dictionary list for panel display
+            dict_list = "\n".join(f"📄 {file_path}" for file_path in dict_info["files"])
+
+            # Display in a panel
+            content = ezprinter.create_info_panel(
+                title="Available Dictionaries",
+                content=dict_list,
+                border_style="cyan",
+                width=90,
+            )
+            ezconsole.print(content)
+
+            return CSpellResult(
                 success=True,
                 message=f"Found {dict_info['total_files']} dictionary files",
                 data={

@@ -27,8 +27,8 @@ from ezpl.types import LogLevel
 
 # Local imports
 from ...interfaces import ProjectManagerInterface
-from ...ui.common.ezpl_bridge import ezpl_bridge, ezprinter
-from ...ui.project.project_wizard import ProjectWizard
+from ...ui.common import ezpl_bridge, ezprinter
+from ...ui.project import ProjectWizard
 
 # ///////////////////////////////////////////////////////////////
 # COMMAND GROUPS

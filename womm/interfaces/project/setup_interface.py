@@ -34,8 +34,8 @@ from ...services import (
     ProjectDetectionService,
     PythonProjectCreationService,
 )
-from ...shared.results.project_results import ProjectSetupResult
-from ...ui.common.ezpl_bridge import ezprinter
+from ...shared.results import ProjectSetupResult
+from ...ui.common import ezprinter
 from ...utils.project import (
     copy_asset_type,
     validate_project_path,

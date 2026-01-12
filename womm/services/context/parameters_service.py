@@ -26,7 +26,7 @@ from typing import ClassVar
 # Local imports
 from ...exceptions.common import ValidationServiceError
 from ...exceptions.context import ContextUtilityError
-from ...shared.configs.context.context_config import ContextConfig
+from ...shared.configs.context import ContextConfig
 from ...utils.context import (
     build_command_with_parameter,
     get_available_file_types,

@@ -31,7 +31,7 @@ except ImportError:
 
 
 from ...interfaces import ProjectManagerInterface
-from ...shared.configs.project.project_variant_config import ProjectVariantConfig
+from ...shared.configs.project import ProjectVariantConfig
 from ...utils.project import (
     check_project_name,
     suggest_project_name,

@@ -26,15 +26,13 @@ from ...exceptions.common import ValidationServiceError
 from ...exceptions.project import (
     ProjectServiceError,
 )
-from ...shared.configs.project.project_config import ProjectConfig
-from ...shared.results.project_results import (
+from ...shared.configs.project import ProjectConfig
+from ...shared.results import (
     ProjectCreationResult,
     ProjectDetectionResult,
     ProjectSetupResult,
 )
-from ...ui.common.ezpl_bridge import (
-    ezprinter,
-)
+from ...ui.common import ezprinter
 from ..dependencies.runtime_interface import (
     RuntimeInterface,
 )

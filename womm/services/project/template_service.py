@@ -22,7 +22,7 @@ from threading import Lock
 from typing import ClassVar
 
 # Local imports
-from ...shared.results.project_results import TemplateResult
+from ...shared.results import TemplateResult
 from ...utils.project import (
     generate_cross_platform_template,
     replace_platform_placeholders,

@@ -24,7 +24,7 @@ from pathlib import Path
 
 # Local imports
 from ...exceptions.project import ProjectServiceError
-from ...shared.configs.project.project_structure_config import ProjectStructureConfig
+from ...shared.configs.project import ProjectStructureConfig
 
 # ///////////////////////////////////////////////////////////////
 # LOGGER SETUP

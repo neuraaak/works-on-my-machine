@@ -24,6 +24,53 @@ class SystemPackageManagerConfig:
     """Configuration for package manager installation commands."""
 
     # ///////////////////////////////////////////////////////////
+    # SYSTEM PACKAGE MANAGERS DEFINITIONS
+    # ///////////////////////////////////////////////////////////
+
+    SYSTEM_PACKAGE_MANAGERS: ClassVar[dict[str, dict[str, str | int]]] = {
+        "winget": {
+            "platform": "windows",
+            "command": "winget",
+            "priority": 1,
+        },
+        "chocolatey": {
+            "platform": "windows",
+            "command": "choco",
+            "priority": 2,
+        },
+        "scoop": {
+            "platform": "windows",
+            "command": "scoop",
+            "priority": 3,
+        },
+        "homebrew": {
+            "platform": "darwin",
+            "command": "brew",
+            "priority": 1,
+        },
+        "apt": {
+            "platform": "linux",
+            "command": "apt",
+            "priority": 1,
+        },
+        "dnf": {
+            "platform": "linux",
+            "command": "dnf",
+            "priority": 2,
+        },
+        "pacman": {
+            "platform": "linux",
+            "command": "pacman",
+            "priority": 3,
+        },
+        "zypper": {
+            "platform": "linux",
+            "command": "zypper",
+            "priority": 4,
+        },
+    }
+
+    # ///////////////////////////////////////////////////////////
     # INSTALL COMMAND TEMPLATES
     # ///////////////////////////////////////////////////////////
 

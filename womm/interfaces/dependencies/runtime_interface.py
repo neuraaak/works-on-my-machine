@@ -1,22 +1,34 @@
 #!/usr/bin/env python3
+# ///////////////////////////////////////////////////////////////
+# DEPEN - Context Menu Parameters Service
+# Project: works-on-my-machine
+# ///////////////////////////////////////////////////////////////
+
 """
 Runtime Manager for Works On My Machine.
 Manages runtime dependencies (Python, Node.js, Git).
 """
 
+from __future__ import annotations
+
+# ///////////////////////////////////////////////////////////////
+# IMPORTS
+# ///////////////////////////////////////////////////////////////
+# Standard library imports
 import logging
 import platform
 import shutil
 
+# Local imports
 from ...exceptions.common import ValidationServiceError
-from ...exceptions.dependencies import RuntimeManagerInterfaceError
+from ...exceptions.dependencies import RuntimeInterfaceError
 from ...exceptions.womm_deployment import (
     DependencyServiceError,
 )
 from ...services import CommandRunnerService, RuntimeService
-from ...shared.configs.dependencies.runtime_config import RuntimeConfig
-from ...shared.results.dependencies_results import RuntimeResult
-from ...ui.common.ezpl_bridge import ezprinter
+from ...shared.configs.dependencies import RuntimeConfig
+from ...shared.results import RuntimeResult
+from ...ui.common import ezprinter
 
 # ///////////////////////////////////////////////////////////////
 # LOGGER SETUP
@@ -29,7 +41,6 @@ logger = logging.getLogger(__name__)
 # RUNTIME DEFINITIONS
 # ///////////////////////////////////////////////////////////////
 
-# RUNTIMES moved to RuntimeConfig
 # Import from config instead of defining here
 RUNTIMES = RuntimeConfig.RUNTIMES
 
@@ -57,7 +68,7 @@ class RuntimeInterface:
 
         except Exception as e:
             logger.error(f"Failed to initialize RuntimeManager: {e}")
-            raise RuntimeManagerInterfaceError(
+            raise RuntimeInterfaceError(
                 message=f"Failed to initialize runtime manager: {e}",
                 runtime_name="runtime_manager",
                 operation="initialization",
@@ -168,13 +179,13 @@ class RuntimeInterface:
                     error=None if available else f"Runtime {runtime} not installed",
                 )
 
-        except (RuntimeManagerInterfaceError, ValidationServiceError):
+        except (RuntimeInterfaceError, ValidationServiceError):
             # Re-raise our custom exceptions
             raise
         except Exception as e:
             # Wrap unexpected external exceptions
             logger.error(f"Unexpected error in check_runtime: {e}")
-            raise RuntimeManagerInterfaceError(
+            raise RuntimeInterfaceError(
                 runtime_name=runtime,
                 operation="check",
                 reason=f"Failed to check runtime: {e}",
@@ -287,7 +298,7 @@ class RuntimeInterface:
                     )
 
         except (
-            RuntimeManagerInterfaceError,
+            RuntimeInterfaceError,
             DependencyServiceError,
             ValidationServiceError,
         ):
@@ -296,7 +307,7 @@ class RuntimeInterface:
         except Exception as e:
             # Wrap unexpected external exceptions
             logger.error(f"Unexpected error in install_runtime: {e}")
-            raise RuntimeManagerInterfaceError(
+            raise RuntimeInterfaceError(
                 runtime_name=runtime,
                 operation="installation",
                 reason=f"Failed to install runtime: {e}",
@@ -385,13 +396,13 @@ class RuntimeInterface:
 
             return results
 
-        except (RuntimeManagerInterfaceError, ValidationServiceError):
+        except (RuntimeInterfaceError, ValidationServiceError):
             # Re-raise our custom exceptions
             raise
         except Exception as e:
             # Wrap unexpected external exceptions
             logger.error(f"Unexpected error in check_and_install_runtimes: {e}")
-            raise RuntimeManagerInterfaceError(
+            raise RuntimeInterfaceError(
                 runtime_name="runtime_manager",
                 operation="check_and_install",
                 reason=f"Failed to check and install runtimes: {e}",
@@ -454,7 +465,7 @@ class RuntimeInterface:
 
         except Exception as e:
             logger.error(f"Unexpected error in get_installation_status: {e}")
-            raise RuntimeManagerInterfaceError(
+            raise RuntimeInterfaceError(
                 runtime_name="runtime_manager",
                 operation="get_status",
                 reason=f"Failed to get installation status: {e}",
@@ -497,7 +508,7 @@ class RuntimeInterface:
         except Exception as e:
             # Wrap unexpected external exceptions
             logger.error(f"Unexpected error in _check_runtime_installation: {e}")
-            raise RuntimeManagerInterfaceError(
+            raise RuntimeInterfaceError(
                 runtime_name=runtime,
                 operation="check_installation",
                 reason=f"Failed to check runtime installation: {e}",

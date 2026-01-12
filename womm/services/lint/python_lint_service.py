@@ -28,7 +28,7 @@ from ...exceptions.lint import (
     ToolAvailabilityServiceError,
     ToolExecutionServiceError,
 )
-from ...shared.configs.lint.python_linting_config import PythonLintingConfig
+from ...shared.configs.lint import PythonLintingConfig
 from ...shared.result_models import ToolResult
 from .core_service import LintService
 

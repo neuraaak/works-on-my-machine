@@ -20,7 +20,7 @@ from __future__ import annotations
 from typing import Any
 
 # Local imports
-from ...shared.configs.system.system_detector_config import SystemDetectorConfig
+from ...shared.configs.system import SystemDetectorConfig
 
 # ///////////////////////////////////////////////////////////////
 # VERSION PARSING FUNCTIONS

@@ -27,8 +27,8 @@ from ...exceptions.project import (
     ProjectDetectionServiceError,
     ProjectServiceError,
 )
-from ...shared.configs.project.project_config import ProjectConfig
-from ...shared.results.project_results import ProjectDetectionResult
+from ...shared.configs.project import ProjectConfig
+from ...shared.results import ProjectDetectionResult
 from ...utils.project import (
     analyze_csharp_config,
     analyze_go_config,

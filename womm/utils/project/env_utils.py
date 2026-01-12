@@ -28,7 +28,7 @@ from pathlib import Path
 from ...exceptions.common import ValidationServiceError
 from ...exceptions.project import ProjectServiceError
 from ...services.common import CommandRunnerService
-from ...shared.configs.project.python_project_config import PythonProjectConfig
+from ...shared.configs.project import PythonProjectConfig
 from .validation_utils import validate_project_path
 
 # ///////////////////////////////////////////////////////////////

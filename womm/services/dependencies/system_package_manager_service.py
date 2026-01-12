@@ -24,12 +24,9 @@ from typing import ClassVar
 
 # Local imports
 from ...exceptions.common import ValidationServiceError
-from ...exceptions.dependencies import PackageManagerServiceError
-from ...shared.configs.dependencies.system_package_manager_config import (
-    SystemPackageManagerConfig,
-)
-from ...shared.configs.system import PackageManagerConfig
-from ...shared.results.dependencies_results import (
+from ...exceptions.dependencies import SystemPkgManagerServiceError
+from ...shared.configs.dependencies import SystemPackageManagerConfig
+from ...shared.results import (
     PackageManagerAvailabilityResult,
     PackageManagerPlatformResult,
 )
@@ -73,7 +70,7 @@ class SystemPackageManagerService:
 
         except Exception as e:
             logger.error(f"Failed to initialize PackageManagerService: {e}")
-            raise PackageManagerServiceError(
+            raise SystemPkgManagerServiceError(
                 manager_name="package_manager",
                 operation="initialization",
                 reason=f"Failed to initialize package manager service: {e}",
@@ -122,7 +119,9 @@ class SystemPackageManagerService:
                 )
 
             # Get the actual command to check (e.g., "choco" for chocolatey)
-            config = PackageManagerConfig.SYSTEM_PACKAGE_MANAGERS.get(manager_name)
+            config = SystemPackageManagerConfig.SYSTEM_PACKAGE_MANAGERS.get(
+                manager_name
+            )
             if not config:
                 self.cache[manager_name] = (False, None)
                 return PackageManagerAvailabilityResult(
@@ -244,7 +243,7 @@ class SystemPackageManagerService:
                     details="Manager name parameter must be a non-empty string",
                 )
 
-            if manager_name not in PackageManagerConfig.SYSTEM_PACKAGE_MANAGERS:
+            if manager_name not in SystemPackageManagerConfig.SYSTEM_PACKAGE_MANAGERS:
                 return PackageManagerPlatformResult(
                     success=False,
                     message=f"Manager {manager_name} not found in configuration",
@@ -253,7 +252,7 @@ class SystemPackageManagerService:
                     current_platform=self.system,
                 )
 
-            config = PackageManagerConfig.SYSTEM_PACKAGE_MANAGERS[manager_name]
+            config = SystemPackageManagerConfig.SYSTEM_PACKAGE_MANAGERS[manager_name]
             manager_platform = config.get("platform", "").lower()
 
             platform_map = {
@@ -299,7 +298,7 @@ class SystemPackageManagerService:
         Returns:
             dict | None: Manager configuration or None if not found
         """
-        return PackageManagerConfig.SYSTEM_PACKAGE_MANAGERS.get(manager_name)
+        return SystemPackageManagerConfig.SYSTEM_PACKAGE_MANAGERS.get(manager_name)
 
     def get_available_managers_for_platform(self) -> list[str]:
         """
@@ -313,7 +312,7 @@ class SystemPackageManagerService:
         """
         try:
             available_managers = []
-            for name in PackageManagerConfig.SYSTEM_PACKAGE_MANAGERS:
+            for name in SystemPackageManagerConfig.SYSTEM_PACKAGE_MANAGERS:
                 result = self.is_manager_for_current_platform(name)
                 if result.success and result.is_for_current_platform:
                     available_managers.append(name)
@@ -327,7 +326,7 @@ class SystemPackageManagerService:
             logger.error(
                 f"Unexpected error in get_available_managers_for_platform: {e}"
             )
-            raise PackageManagerServiceError(
+            raise SystemPkgManagerServiceError(
                 manager_name="all_managers",
                 operation="get_available_managers_for_platform",
                 reason=f"Failed to retrieve available managers: {e}",
@@ -373,7 +372,7 @@ class SystemPackageManagerService:
             # Check if manager is available
             availability_result = self.check_manager_availability(manager_name)
             if not availability_result.is_available:
-                raise PackageManagerServiceError(
+                raise SystemPkgManagerServiceError(
                     manager_name=manager_name,
                     operation="install_package",
                     reason=f"Package manager {manager_name} is not available",
@@ -386,7 +385,7 @@ class SystemPackageManagerService:
             )
 
             if not install_cmd:
-                raise PackageManagerServiceError(
+                raise SystemPkgManagerServiceError(
                     manager_name=manager_name,
                     operation="install_package",
                     reason=f"No install command configured for {manager_name}",
@@ -411,11 +410,11 @@ class SystemPackageManagerService:
 
         except ValidationServiceError:
             raise
-        except PackageManagerServiceError:
+        except SystemPkgManagerServiceError:
             raise
         except Exception as e:
             logger.error(f"Unexpected error in install_package: {e}")
-            raise PackageManagerServiceError(
+            raise SystemPkgManagerServiceError(
                 manager_name=manager_name,
                 operation="install_package",
                 reason=f"Failed to install package: {e}",

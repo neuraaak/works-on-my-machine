@@ -28,14 +28,13 @@ from ...exceptions.system import (
     SystemDetectionServiceError,
 )
 from ...services import SystemDetectorService
-from ...shared.results.system_results import (
-    SystemDetectionResult,
-)
-from ...ui.common.ezpl_bridge import (
+from ...shared.results import SystemDetectionResult
+from ...ui.common import (
     ezlogger,
     ezpl_bridge,
     ezprinter,
 )
+from ...ui.system import display_system_detection_results
 
 # ///////////////////////////////////////////////////////////////
 # MAIN CLASS
@@ -76,8 +75,6 @@ class SystemDetectorInterface:
             SystemDetectorInterfaceError: If system detection fails
         """
         try:
-            ezprinter.print_header("WOMM System Detection")
-
             with ezprinter.create_spinner_with_status(
                 "Detecting system information..."
             ) as (
@@ -121,7 +118,8 @@ class SystemDetectorInterface:
                 progress.update(task, status="Detection complete!")
 
             if data:
-                self._display_system_data(data)
+                print()
+                display_system_detection_results(data)
                 return SystemDetectionResult(
                     success=True,
                     message="System detection completed successfully",
@@ -145,87 +143,5 @@ class SystemDetectorInterface:
             raise DetectorInterfaceError(
                 message=f"System detection failed: {e}",
                 operation="detect_system",
-                details=f"Exception type: {type(e).__name__}",
-            ) from e
-
-    # ///////////////////////////////////////////////////////////////
-    # PRIVATE METHODS
-    # ///////////////////////////////////////////////////////////////
-
-    def _display_system_data(self, data: dict) -> None:
-        """
-        Display system data in a Rich panel.
-
-        Args:
-            data: System data to display
-
-        Raises:
-            SystemDetectorInterfaceError: If data display fails
-        """
-        try:
-            # Validate data structure
-            if not isinstance(data, dict):
-                raise DetectorInterfaceError(
-                    message="Invalid data format: expected dictionary",
-                    operation="display_system_data",
-                    details=f"Received type: {type(data).__name__}",
-                )
-
-            system_info = data.get("system_info", {})
-            package_managers = data.get("package_managers", {})
-            dev_environments = data.get("dev_environments", {})
-            recommendations = data.get("recommendations", {})
-
-            # Format the data nicely
-            content = []
-            content.append("[bold blue]System Information[/bold blue]")
-            content.append(
-                f"OS: {system_info.get('platform', 'unknown')} {system_info.get('platform_release', '')}"
-            )
-            content.append(
-                f"Architecture: {system_info.get('architecture', 'unknown')}"
-            )
-            content.append(f"Python: {system_info.get('python_version', 'unknown')}")
-            content.append(f"Shell: {system_info.get('shell', 'unknown')}")
-
-            content.append(
-                f"\n[bold green]Package Managers[/bold green] ({len(package_managers)} available)"
-            )
-            for name, info in package_managers.items():
-                if info.get("available"):
-                    content.append(
-                        f"✓ {name}: {info.get('version', 'unknown')} - {info.get('description', '')}"
-                    )
-
-            content.append(
-                f"\n[bold yellow]Development Environments[/bold yellow] ({len(dev_environments)} detected)"
-            )
-            for _, info in dev_environments.items():
-                if info.get("available"):
-                    content.append(
-                        f"✓ {info.get('name', 'unknown')}: {info.get('version', 'unknown')}"
-                    )
-
-            content.append("\n[bold magenta]Recommendations[/bold magenta]")
-            for category, recommendation in recommendations.items():
-                content.append(f"- {category}: {recommendation}")
-
-            # Add a blank line before the panel for better spacing
-            ezpl_bridge.console.print()
-            panel = ezprinter.create_panel(
-                "\n".join(content),
-                title="System Detection Results",
-                border_style="dim white",
-            )
-            ezpl_bridge.console.print(panel)
-
-        except DetectorInterfaceError:
-            raise
-        except Exception as e:
-            # Wrap unexpected external exceptions
-            ezlogger.error(f"Unexpected error displaying system data: {e}")
-            raise DetectorInterfaceError(
-                message=f"Failed to display system data: {e}",
-                operation="display_system_data",
                 details=f"Exception type: {type(e).__name__}",
             ) from e

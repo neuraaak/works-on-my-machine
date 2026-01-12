@@ -1,14 +1,13 @@
 #!/usr/bin/env python3
 # ///////////////////////////////////////////////////////////////
-# COMMANDS - CLI Commands Package
+# COMMANDS TOOLS - Tools CLI Commands Package
 # Project: works-on-my-machine
 # ///////////////////////////////////////////////////////////////
 
 """
-WOMM CLI Commands Package.
+Tools WOMM CLI Commands Package.
 
-This package contains all command modules for the WOMM CLI interface.
-Each module represents a specific command group with related functionality.
+This package contains development tools command modules for WOMM.
 """
 
 from __future__ import annotations
@@ -17,11 +16,14 @@ from __future__ import annotations
 # IMPORTS
 # ///////////////////////////////////////////////////////////////
 # Local imports
-# Note: Imports are done lazily in cli.py to avoid loading all modules at startup
-# This prevents import errors when modules have dependencies that aren't yet migrated
+from .cspell import cspell_group
+from .lint import lint_group
 
 # ///////////////////////////////////////////////////////////////
 # PUBLIC API
 # ///////////////////////////////////////////////////////////////
 
-__all__: list[str] = []
+__all__ = [
+    "cspell_group",
+    "lint_group",
+]

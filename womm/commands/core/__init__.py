@@ -1,14 +1,13 @@
 #!/usr/bin/env python3
 # ///////////////////////////////////////////////////////////////
-# COMMANDS - CLI Commands Package
+# COMMANDS CORE - Core CLI Commands Package
 # Project: works-on-my-machine
 # ///////////////////////////////////////////////////////////////
 
 """
-WOMM CLI Commands Package.
+Core WOMM CLI Commands Package.
 
-This package contains all command modules for the WOMM CLI interface.
-Each module represents a specific command group with related functionality.
+This package contains core command modules for WOMM installation and setup.
 """
 
 from __future__ import annotations
@@ -17,11 +16,14 @@ from __future__ import annotations
 # IMPORTS
 # ///////////////////////////////////////////////////////////////
 # Local imports
-# Note: Imports are done lazily in cli.py to avoid loading all modules at startup
-# This prevents import errors when modules have dependencies that aren't yet migrated
+from .womm_setup import install, path_cmd, uninstall
 
 # ///////////////////////////////////////////////////////////////
 # PUBLIC API
 # ///////////////////////////////////////////////////////////////
 
-__all__: list[str] = []
+__all__ = [
+    "install",
+    "path_cmd",
+    "uninstall",
+]

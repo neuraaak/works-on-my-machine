@@ -22,7 +22,7 @@ import json
 from pathlib import Path
 
 # Local imports
-from ...shared.configs.project.variant_mappings_config import VariantMappingsConfig
+from ...shared.configs.project import VariantMappingsConfig
 
 # ///////////////////////////////////////////////////////////////
 # VARIANT DETECTION CLASS

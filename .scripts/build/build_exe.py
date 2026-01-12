@@ -83,7 +83,7 @@ hiddenimports = [
 ]
 
 a = Analysis(
-    ['exe_script.py'],
+    ['exe_entry.py'],
     pathex=[],
     binaries=[],
     datas=datas,

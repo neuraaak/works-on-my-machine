@@ -21,21 +21,18 @@ from __future__ import annotations
 import logging
 import os
 import platform
+from dataclasses import dataclass
 
 # Local imports
 from ...exceptions.common import ValidationServiceError
-from ...exceptions.dependencies import PackageManagerInterfaceError
+from ...exceptions.dependencies import SystemPkgManagerInterfaceError
 from ...exceptions.womm_deployment import (
     DependencyServiceError,
 )
 from ...services import CommandRunnerService, SystemPackageManagerService
-from ...shared.configs.dependencies.system_package_manager_config import (
-    SystemPackageManagerConfig,
-)
-from ...shared.configs.system import PackageManagerConfig
-from ...shared.results import BaseResult
-from ...shared.results.dependencies_results import PackageManagerResult
-from ...ui.common.ezpl_bridge import ezconsole, ezprinter
+from ...shared.configs.dependencies import SystemPackageManagerConfig
+from ...shared.results import BaseResult, PackageManagerResult
+from ...ui.common import ezconsole, ezprinter
 
 # ///////////////////////////////////////////////////////////////
 # LOGGER SETUP
@@ -45,12 +42,24 @@ logger = logging.getLogger(__name__)
 
 
 # ///////////////////////////////////////////////////////////////
+# MODELS
+# ///////////////////////////////////////////////////////////////
+
+
+@dataclass
+class BestManagerInfo:
+    """Information about the best available package manager."""
+
+    manager_name: str
+    version: str | None = None
+
+
+# ///////////////////////////////////////////////////////////////
 # PACKAGE MANAGER DEFINITIONS
 # ///////////////////////////////////////////////////////////////
 
-# SYSTEM_PACKAGE_MANAGERS moved to PackageManagerConfig
 # Import from config instead of defining here
-SYSTEM_PACKAGE_MANAGERS = PackageManagerConfig.SYSTEM_PACKAGE_MANAGERS
+SYSTEM_PACKAGE_MANAGERS = SystemPackageManagerConfig.SYSTEM_PACKAGE_MANAGERS
 
 
 # ///////////////////////////////////////////////////////////////
@@ -76,7 +85,7 @@ class SystemPackageManagerInterface:
 
         except Exception as e:
             logger.error(f"Failed to initialize PackageManager: {e}")
-            raise PackageManagerInterfaceError(
+            raise SystemPkgManagerInterfaceError(
                 message=f"Failed to initialize package manager: {e}",
                 manager_name="package_manager",
                 operation="initialization",
@@ -105,9 +114,14 @@ class SystemPackageManagerInterface:
     # PUBLIC METHODS
     # ///////////////////////////////////////////////////////////////
 
-    def detect_available_managers(self) -> dict[str, PackageManagerResult]:
+    def detect_available_managers(
+        self, show_ui: bool = True
+    ) -> dict[str, PackageManagerResult]:
         """
         Detect all available package managers for the current system.
+
+        Args:
+            show_ui: Whether to show UI spinner
 
         Returns:
             dict[str, PackageManagerResult]: Results for each package manager
@@ -118,44 +132,75 @@ class SystemPackageManagerInterface:
         try:
             results = {}
 
-            for manager_name, _config in SYSTEM_PACKAGE_MANAGERS.items():
-                platform_result = (
-                    self.package_manager_service.is_manager_for_current_platform(
-                        manager_name
+            if show_ui:
+                with ezprinter.create_spinner(
+                    "Checking system package managers..."
+                ) as (_progress, _task):
+                    for manager_name, _config in SYSTEM_PACKAGE_MANAGERS.items():
+                        platform_result = self.package_manager_service.is_manager_for_current_platform(
+                            manager_name
+                        )
+                        if platform_result.is_for_current_platform:
+                            try:
+                                result = self._check_package_manager_internal(
+                                    manager_name, None, None
+                                )
+                                results[manager_name] = result
+                            except Exception as e:
+                                logger.warning(
+                                    f"Failed to check package manager {manager_name}: {e}"
+                                )
+                                results[manager_name] = PackageManagerResult(
+                                    success=False,
+                                    package_manager_name=manager_name,
+                                    message=f"Failed to check package manager {manager_name}",
+                                    error=str(e),
+                                )
+            else:
+                # No UI version
+                for manager_name, _config in SYSTEM_PACKAGE_MANAGERS.items():
+                    platform_result = (
+                        self.package_manager_service.is_manager_for_current_platform(
+                            manager_name
+                        )
                     )
-                )
-                if platform_result.is_for_current_platform:
-                    try:
-                        result = self.check_package_manager(manager_name)
-                        results[manager_name] = result
-                    except Exception as e:
-                        logger.warning(
-                            f"Failed to check package manager {manager_name}: {e}"
-                        )
-                        results[manager_name] = PackageManagerResult(
-                            success=False,
-                            package_manager_name=manager_name,
-                            message=f"Failed to check package manager {manager_name}",
-                            error=str(e),
-                        )
+                    if platform_result.is_for_current_platform:
+                        try:
+                            result = self._check_package_manager_internal(
+                                manager_name, None, None
+                            )
+                            results[manager_name] = result
+                        except Exception as e:
+                            logger.warning(
+                                f"Failed to check package manager {manager_name}: {e}"
+                            )
+                            results[manager_name] = PackageManagerResult(
+                                success=False,
+                                package_manager_name=manager_name,
+                                message=f"Failed to check package manager {manager_name}",
+                                error=str(e),
+                            )
 
             return results
 
         except Exception as e:
             logger.error(f"Unexpected error in detect_available_managers: {e}")
-            raise PackageManagerInterfaceError(
+            raise SystemPkgManagerInterfaceError(
                 manager_name="package_manager",
                 operation="detect_available_managers",
                 message=f"Failed to detect available managers: {e}",
                 details=f"Exception type: {type(e).__name__}",
             ) from e
 
-    def check_package_manager(self, manager_name: str) -> PackageManagerResult:
+    def check_package_manager(
+        self, manager_name: str, show_ui: bool = True
+    ) -> PackageManagerResult:
         """
         Check if a package manager is available.
 
         Args:
             manager_name: Name of the package manager to check
+            show_ui: Whether to show spinner UI
 
         Returns:
             PackageManagerResult: Result of the check operation
@@ -174,94 +219,104 @@ class SystemPackageManagerInterface:
                     details="Manager name parameter must be a non-empty string",
                 )
 
-            with ezprinter.create_spinner(f"Checking {manager_name}...") as (
-                progress,
-                task,
-            ):
-                if manager_name not in SYSTEM_PACKAGE_MANAGERS:
-                    progress.update(
-                        task,
-                        description=f"Package manager {manager_name} not supported",
-                    )
-                    return PackageManagerResult(
-                        success=False,
-                        package_manager_name=manager_name,
-                        message=f"Package manager {manager_name} not supported",
-                        error=f"Package manager {manager_name} not supported",
-                    )
-
-                # Check cache first
-                if manager_name in self.cache:
-                    available, version = self.cache[manager_name]
-                    config = SYSTEM_PACKAGE_MANAGERS[manager_name]
-                    progress.update(
-                        task,
-                        description=f"Package manager {manager_name} {'available' if available else 'not found'}",
-                    )
-                    return PackageManagerResult(
-                        success=available,
-                        package_manager_name=manager_name,
-                        version=version,
-                        platform=config["platform"],
-                        priority=config["priority"],
-                        message=f"Package manager {manager_name} {'available' if available else 'not found'}",
-                        error=(
-                            None
-                            if available
-                            else f"Package manager {manager_name} not installed"
-                        ),
-                    )
-
-                # Check if manager is available
-                try:
-                    avail_result = (
-                        self.package_manager_service.check_manager_availability(
-                            manager_name
-                        )
-                    )
-                    available = avail_result.is_available
-                    version = avail_result.version
-                except Exception as e:
-                    logger.warning(
-                        f"Failed to check availability for {manager_name}: {e}"
-                    )
-                    available, version = False, None
-
-                self.cache[manager_name] = (available, version)
-
-                config = SYSTEM_PACKAGE_MANAGERS[manager_name]
-                progress.update(
+            if show_ui:
+                with ezprinter.create_spinner(f"Checking {manager_name}...") as (
+                    progress,
                     task,
-                    description=f"Package manager {manager_name} {'available' if available else 'not found'}",
-                )
-                return PackageManagerResult(
-                    success=available,
-                    package_manager_name=manager_name,
-                    version=version,
-                    platform=config["platform"],
-                    priority=config["priority"],
-                    message=f"Package manager {manager_name} {'available' if available else 'not found'}",
-                    error=(
-                        None
-                        if available
-                        else f"Package manager {manager_name} not installed"
-                    ),
-                )
+                ):
+                    return self._check_package_manager_internal(
+                        manager_name, progress, task
+                    )
+            else:
+                return self._check_package_manager_internal(manager_name, None, None)
 
-        except (PackageManagerInterfaceError, ValidationServiceError):
+        except (SystemPkgManagerInterfaceError, ValidationServiceError):
             # Re-raise our custom exceptions
             raise
         except Exception as e:
             # Wrap unexpected external exceptions
             logger.error(f"Unexpected error in check_package_manager: {e}")
-            raise PackageManagerInterfaceError(
+            raise SystemPkgManagerInterfaceError(
                 manager_name=manager_name,
                 operation="check",
                 message=f"Failed to check package manager: {e}",
                 details=f"Exception type: {type(e).__name__}",
             ) from e
 
-    def get_best_available_manager(self, show_ui: bool = True) -> str | None:
+    def _check_package_manager_internal(
+        self, manager_name: str, progress, task
+    ) -> PackageManagerResult:
+        """Internal method to check package manager without UI."""
+        if manager_name not in SYSTEM_PACKAGE_MANAGERS:
+            if progress:
+                progress.update(
+                    task,
+                    description=f"Package manager {manager_name} not supported",
+                )
+            return PackageManagerResult(
+                success=False,
+                package_manager_name=manager_name,
+                message=f"Package manager {manager_name} not supported",
+                error=f"Package manager {manager_name} not supported",
+            )
+
+        # Check cache first
+        if manager_name in self.cache:
+            available, version = self.cache[manager_name]
+            config = SYSTEM_PACKAGE_MANAGERS[manager_name]
+            if progress:
+                progress.update(
+                    task,
+                    description=f"Package manager {manager_name} {'available' if available else 'not found'}",
+                )
+            return PackageManagerResult(
+                success=available,
+                package_manager_name=manager_name,
+                version=version,
+                platform=config["platform"],
+                priority=config["priority"],
+                message=f"Package manager {manager_name} {'available' if available else 'not found'}",
+                error=(
+                    None
+                    if available
+                    else f"Package manager {manager_name} not installed"
+                ),
+            )
+
+        # Check if manager is available
+        try:
+            avail_result = self.package_manager_service.check_manager_availability(
+                manager_name
+            )
+            available = avail_result.is_available
+            version = avail_result.version
+        except Exception as e:
+            logger.warning(f"Failed to check availability for {manager_name}: {e}")
+            available, version = False, None
+
+        self.cache[manager_name] = (available, version)
+
+        config = SYSTEM_PACKAGE_MANAGERS[manager_name]
+        if progress:
+            progress.update(
+                task,
+                description=f"Package manager {manager_name} {'available' if available else 'not found'}",
+            )
+        return PackageManagerResult(
+            success=available,
+            package_manager_name=manager_name,
+            version=version,
+            platform=config["platform"],
+            priority=config["priority"],
+            message=f"Package manager {manager_name} {'available' if available else 'not found'}",
+            error=(
+                None if available else f"Package manager {manager_name} not installed"
+            ),
+        )
+
+    def get_best_available_manager(
+        self, show_ui: bool = True
+    ) -> BestManagerInfo | None:
         """
         Get the best available package manager for the current system.
 
@@ -269,7 +324,7 @@ class SystemPackageManagerInterface:
             show_ui: Whether to show UI (spinner and table)
 
         Returns:
-            str | None: Name of the best available package manager, or None if none available
+            BestManagerInfo | None: Best manager info with name and version, or None if none available
 
         Raises:
             PackageManagerError: If package manager detection fails
@@ -285,9 +340,9 @@ class SystemPackageManagerInterface:
 
             # Check availability with spinner
             if show_ui:
-                with ezprinter.create_spinner_with_status(
+                with ezprinter.create_spinner(
                     "Checking system package managers..."
-                ) as (progress, task):
+                ) as (_progress, _task):
                     for manager_name, config in SYSTEM_PACKAGE_MANAGERS.items():
                         platform_result = self.package_manager_service.is_manager_for_current_platform(
                             manager_name
@@ -308,11 +363,7 @@ class SystemPackageManagerInterface:
                                 logger.warning(
                                     f"Failed to check availability for {manager_name}: {e}"
                                 )
-
-                    progress.update(
-                        task,
-                        description=f"Found {len(available_managers)} available manager(s)",
-                    )
+                # Exit spinner context before displaying table
             else:
                 # No UI version
                 for manager_name, config in SYSTEM_PACKAGE_MANAGERS.items():
@@ -340,7 +391,7 @@ class SystemPackageManagerInterface:
                                 f"Failed to check availability for {manager_name}: {e}"
                             )
 
-            # Display table if UI enabled
+            # Display table AFTER spinner exits
             if show_ui and available_managers_dict:
                 ezconsole.print()
                 table = ezprinter.create_dependency_table(available_managers_dict)
@@ -350,13 +401,15 @@ class SystemPackageManagerInterface:
             if available_managers:
                 # Sort by priority (lower number = higher priority)
                 available_managers.sort(key=lambda x: x[1])
-                return available_managers[0][0]
+                best_manager = available_managers[0][0]
+                best_version = available_managers_dict.get(best_manager, "unknown")
+                return BestManagerInfo(manager_name=best_manager, version=best_version)
 
             return None
 
         except Exception as e:
             logger.error(f"Unexpected error in get_best_available_manager: {e}")
-            raise PackageManagerInterfaceError(
+            raise SystemPkgManagerInterfaceError(
                 manager_name="package_manager",
                 operation="get_best_available",
                 message=f"Failed to get best available manager: {e}",
@@ -455,13 +508,13 @@ class SystemPackageManagerInterface:
                 panel=panel,
             )
 
-        except (PackageManagerInterfaceError, ValidationServiceError):
+        except (SystemPkgManagerInterfaceError, ValidationServiceError):
             # Re-raise our custom exceptions
             raise
         except Exception as e:
             # Wrap unexpected external exceptions
             logger.error(f"Unexpected error in ensure_manager: {e}")
-            raise PackageManagerInterfaceError(
+            raise SystemPkgManagerInterfaceError(
                 manager_name="package_manager",
                 operation="ensure",
                 message=f"Failed to ensure package manager: {e}",
@@ -543,13 +596,13 @@ class SystemPackageManagerInterface:
                 border_style="yellow",
             )
 
-        except (PackageManagerInterfaceError, ValidationServiceError):
+        except (SystemPkgManagerInterfaceError, ValidationServiceError):
             # Re-raise our custom exceptions
             raise
         except Exception as e:
             # Wrap unexpected external exceptions
             logger.error(f"Unexpected error in _build_no_pm_panel: {e}")
-            raise PackageManagerInterfaceError(
+            raise SystemPkgManagerInterfaceError(
                 manager_name="package_manager",
                 operation="build_panel",
                 message=f"Failed to build no PM panel: {e}",
@@ -591,7 +644,12 @@ class SystemPackageManagerInterface:
             # DRY-RUN: skip real installation when WOMM_DRY_RUN is enabled
             if os.environ.get("WOMM_DRY_RUN", "").lower() in ("1", "true", "yes"):
                 try:
-                    selected_manager = manager_name or self.get_best_available_manager()
+                    best_info = (
+                        self.get_best_available_manager() if not manager_name else None
+                    )
+                    selected_manager = manager_name or (
+                        best_info.manager_name if best_info else None
+                    )
                 except Exception as e:
                     logger.warning(
                         f"Failed to get best available manager for dry-run: {e}"
@@ -618,7 +676,8 @@ class SystemPackageManagerInterface:
 
             if manager_name is None:
                 try:
-                    manager_name = self.get_best_available_manager()
+                    best_info = self.get_best_available_manager()
+                    manager_name = best_info.manager_name if best_info else None
                 except Exception as e:
                     logger.error(f"Failed to get best available manager: {e}")
                     return PackageManagerResult(
@@ -701,7 +760,7 @@ class SystemPackageManagerInterface:
                 )
 
         except (
-            PackageManagerInterfaceError,
+            SystemPkgManagerInterfaceError,
             DependencyServiceError,
             ValidationServiceError,
         ):
@@ -710,7 +769,7 @@ class SystemPackageManagerInterface:
         except Exception as e:
             # Wrap unexpected external exceptions
             logger.error(f"Unexpected error in install_package: {e}")
-            raise PackageManagerInterfaceError(
+            raise SystemPkgManagerInterfaceError(
                 manager_name=manager_name or "unknown",
                 operation="install_package",
                 message=f"Failed to install package: {e}",
@@ -746,7 +805,8 @@ class SystemPackageManagerInterface:
 
             if manager_name is None:
                 try:
-                    manager_name = self.get_best_available_manager()
+                    best_info = self.get_best_available_manager()
+                    manager_name = best_info.manager_name if best_info else None
                 except Exception as e:
                     logger.error(f"Failed to get best available manager: {e}")
                     return PackageManagerResult(
@@ -830,13 +890,13 @@ class SystemPackageManagerInterface:
                     error=result.stderr,
                 )
 
-        except (PackageManagerInterfaceError, ValidationServiceError):
+        except (SystemPkgManagerInterfaceError, ValidationServiceError):
             # Re-raise our custom exceptions
             raise
         except Exception as e:
             # Wrap unexpected external exceptions
             logger.error(f"Unexpected error in search_package: {e}")
-            raise PackageManagerInterfaceError(
+            raise SystemPkgManagerInterfaceError(
                 manager_name=manager_name or "unknown",
                 operation="search_package",
                 message=f"Failed to search package: {e}",
@@ -875,7 +935,7 @@ class SystemPackageManagerInterface:
                         "version": version,
                         "platform": config["platform"],
                         "priority": config["priority"],
-                        "description": config["description"],
+                        "description": config.get("description", ""),
                         "supported_on_current_platform": platform_result.is_for_current_platform,
                     }
                 except Exception as e:
@@ -885,7 +945,7 @@ class SystemPackageManagerInterface:
                         "version": None,
                         "platform": config["platform"],
                         "priority": config["priority"],
-                        "description": config["description"],
+                        "description": config.get("description", ""),
                         "supported_on_current_platform": self._is_manager_for_current_platform(
                             config
                         ),
@@ -895,7 +955,7 @@ class SystemPackageManagerInterface:
 
         except Exception as e:
             logger.error(f"Unexpected error in get_installation_status: {e}")
-            raise PackageManagerInterfaceError(
+            raise SystemPkgManagerInterfaceError(
                 manager_name="package_manager",
                 operation="get_status",
                 message=f"Failed to get installation status: {e}",
@@ -1065,20 +1125,20 @@ class SystemPackageManagerInterface:
                 logger.error(
                     f"Failed to execute search command for {package_name}: {e}"
                 )
-                raise PackageManagerInterfaceError(
+                raise SystemPkgManagerInterfaceError(
                     manager_name=manager_name,
                     operation="execute_search",
                     message=f"Failed to execute search command: {e}",
                     details=f"Command: {' '.join(search_commands[manager_name])}",
                 ) from e
 
-        except (PackageManagerInterfaceError, ValidationServiceError):
+        except (SystemPkgManagerInterfaceError, ValidationServiceError):
             # Re-raise our custom exceptions
             raise
         except Exception as e:
             # Wrap unexpected external exceptions
             logger.error(f"Unexpected error in _search_package_via_manager: {e}")
-            raise PackageManagerInterfaceError(
+            raise SystemPkgManagerInterfaceError(
                 manager_name=manager_name,
                 operation="search_via_manager",
                 message=f"Failed to search package via manager: {e}",

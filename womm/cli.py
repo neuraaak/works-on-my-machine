@@ -28,13 +28,13 @@ from . import (
     HAS_PROOF_FILE,
     __version__,
 )
-from .ui.common.ezpl_bridge import ezlogger  # noqa: F401
-from .ui.common.ezpl_bridge import (
+from .ui.common import ezlogger  # noqa: F401
+from .ui.common import (
     ezpl_bridge,
     ezprinter,
 )
 from .utils.common import is_pip_installation
-from .utils.womm_setup.common_utils import is_valid_womm_installation
+from .utils.womm_setup import is_valid_womm_installation
 
 # ///////////////////////////////////////////////////////////////
 # CONSTANTS
@@ -45,6 +45,8 @@ from .utils.womm_setup.common_utils import is_valid_womm_installation
 if sys.platform == "win32":
     # Set environment variables for UTF-8
     os.environ["PYTHONIOENCODING"] = "utf-8"
+
+HAS_PROOF_FILE = True  # noqa: F811
 
 # ///////////////////////////////////////////////////////////////
 # MAIN CLI FUNCTION
@@ -185,7 +187,7 @@ Features:
 
 # Register core command groups (lazy imports to avoid loading all modules)
 try:
-    from .commands.core.womm_setup import install, path_cmd, uninstall
+    from .commands.core import install, path_cmd, uninstall
 
     # Only register path_cmd and uninstall if proof file exists
     if not HAS_PROOF_FILE:
@@ -202,61 +204,61 @@ except ImportError:
 # Only register project commands if proof file exists
 if HAS_PROOF_FILE:
     try:
-        from .commands.project import create
+        from .commands.project import create_group
 
-        womm.add_command(create.create_group)
+        womm.add_command(create_group)
     except ImportError:
         pass
 
     try:
-        from .commands.tools import lint
+        from .commands.tools import lint_group
 
-        womm.add_command(lint.lint_group)
+        womm.add_command(lint_group)
     except ImportError:
         pass
 
     try:
-        from .commands.tools import cspell
+        from .commands.tools import cspell_group
 
-        womm.add_command(cspell.cspell_group)
+        womm.add_command(cspell_group)
     except ImportError:
         pass
 
 # System commands are always available
 try:
-    from .commands.system import system
+    from .commands.system import system_group
 
-    womm.add_command(system.system_group)
+    womm.add_command(system_group)
 except ImportError:
     pass
 
 # Only register context commands if proof file exists
 if HAS_PROOF_FILE:
     try:
-        from .commands.system import context
+        from .commands.system import context_group
 
-        womm.add_command(context.context_group)
+        womm.add_command(context_group)
     except ImportError:
         pass
 
     try:
-        from .commands.project import setup
+        from .commands.project import setup_group
 
-        womm.add_command(setup.setup_group)
+        womm.add_command(setup_group)
     except ImportError:
         pass
 
     try:
-        from .commands.project import template
+        from .commands.project import template_group
 
-        womm.add_command(template.template_group)
+        womm.add_command(template_group)
     except ImportError:
         pass
 
     try:
-        from .commands.system import deps
+        from .commands.system import deps_group
 
-        womm.add_command(deps.deps_group)
+        womm.add_command(deps_group)
     except ImportError:
         pass
 

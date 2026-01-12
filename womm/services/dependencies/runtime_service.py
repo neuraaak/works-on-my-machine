@@ -25,10 +25,10 @@ from typing import ClassVar
 
 # Local imports
 from ...exceptions.common import ValidationServiceError
-from ...exceptions.dependencies import RuntimeManagerServiceError
+from ...exceptions.dependencies import RuntimeServiceError
+from ...shared.configs.dependencies import RuntimeConfig
 from ...shared.configs.dependencies.dependencies_hierarchy import DependenciesHierarchy
-from ...shared.configs.dependencies.runtime_config import RuntimeConfig
-from ...shared.results.dependencies_results import RuntimeInstallationResult
+from ...shared.results import RuntimeInstallationResult
 from ..common.command_runner_service import CommandRunnerService
 
 # ///////////////////////////////////////////////////////////////
@@ -69,7 +69,7 @@ class RuntimeService:
 
         except Exception as e:
             logger.error(f"Failed to initialize RuntimeManagerService: {e}")
-            raise RuntimeManagerServiceError(
+            raise RuntimeServiceError(
                 runtime_name="runtime_manager",
                 operation="initialization",
                 reason=f"Failed to initialize runtime manager service: {e}",
@@ -148,7 +148,7 @@ class RuntimeService:
         except Exception as e:
             # Wrap unexpected external exceptions
             logger.error(f"Unexpected error in check_runtime_installation: {e}")
-            raise RuntimeManagerServiceError(
+            raise RuntimeServiceError(
                 runtime_name=runtime,
                 operation="check_installation",
                 reason=f"Failed to check runtime installation: {e}",
@@ -289,7 +289,7 @@ class RuntimeService:
             # Get best system package manager for this platform
             best_manager = DependenciesHierarchy.get_best_system_package_manager()
             if not best_manager:
-                raise RuntimeManagerServiceError(
+                raise RuntimeServiceError(
                     runtime_name=runtime,
                     operation="install",
                     reason="No suitable system package manager found for this platform",
@@ -302,7 +302,7 @@ class RuntimeService:
             runtime_config = RuntimeConfig.RUNTIMES[runtime]
             package_names = runtime_config.get("package_names", {})
             if not isinstance(package_names, dict):
-                raise RuntimeManagerServiceError(
+                raise RuntimeServiceError(
                     runtime_name=runtime,
                     operation="install",
                     reason=f"Invalid package_names configuration for {runtime}",
@@ -311,7 +311,7 @@ class RuntimeService:
 
             package_id = package_names.get(best_manager)
             if not package_id:
-                raise RuntimeManagerServiceError(
+                raise RuntimeServiceError(
                     runtime_name=runtime,
                     operation="install",
                     reason=f"No package ID configured for {runtime} on {best_manager}",
@@ -331,7 +331,7 @@ class RuntimeService:
             )
 
             if not success:
-                raise RuntimeManagerServiceError(
+                raise RuntimeServiceError(
                     runtime_name=runtime,
                     operation="install",
                     reason=f"Installation via {best_manager} failed",
@@ -351,7 +351,7 @@ class RuntimeService:
             raise
         except Exception as e:
             logger.error(f"Unexpected error in install_runtime: {e}")
-            raise RuntimeManagerServiceError(
+            raise RuntimeServiceError(
                 runtime_name=runtime,
                 operation="install",
                 reason=f"Failed to install runtime: {e}",

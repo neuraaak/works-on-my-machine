@@ -18,10 +18,8 @@ from ...exceptions.context import (
     MenuInterfaceError,
     ValidationInterfaceError,
 )
-from ...shared.configs.context.context_types_config import ContextTypesConfig
-from ...shared.configs.womm_setup.womm_deployment_config import (
-    WOMMDeploymentConfig,
-)
+from ...shared.configs.context import ContextTypesConfig
+from ...shared.configs.womm_setup import WOMMDeploymentConfig
 from ..womm_setup.installer_interface import get_default_womm_path
 
 # ///////////////////////////////////////////////////////////////

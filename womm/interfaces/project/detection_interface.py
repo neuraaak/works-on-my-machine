@@ -30,8 +30,8 @@ from ...exceptions.project import (
     ProjectServiceError,
 )
 from ...services import ProjectDetectionService
-from ...shared.results.project_results import ProjectDetectionResult
-from ...ui.common.ezpl_bridge import ezprinter
+from ...shared.results import ProjectDetectionResult
+from ...ui.common import ezprinter
 
 # ///////////////////////////////////////////////////////////////
 # LOGGER SETUP

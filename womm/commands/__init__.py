@@ -17,11 +17,15 @@ from __future__ import annotations
 # IMPORTS
 # ///////////////////////////////////////////////////////////////
 # Local imports
-# Note: Imports are done lazily in cli.py to avoid loading all modules at startup
-# This prevents import errors when modules have dependencies that aren't yet migrated
+from . import core, project, system, tools
 
 # ///////////////////////////////////////////////////////////////
 # PUBLIC API
 # ///////////////////////////////////////////////////////////////
 
-__all__: list[str] = []
+__all__ = [
+    "core",
+    "project",
+    "system",
+    "tools",
+]

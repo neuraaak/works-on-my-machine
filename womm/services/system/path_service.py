@@ -32,8 +32,8 @@ from ...exceptions.system import (
     RegistryServiceError,
     UserPathServiceError,
 )
+from ...shared.results import PathOperationResult
 from ...shared.results.base import CommandResult
-from ...shared.results.system_results import PathOperationResult
 from ...utils.system import (
     deduplicate_path_entries,
     extract_path_from_reg_output,

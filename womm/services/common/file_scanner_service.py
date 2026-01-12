@@ -33,7 +33,7 @@ from ...exceptions.common import (
 )
 from ...shared.configs.security import FileScannerConfig
 from ...shared.result_models import FileScanResult
-from ...shared.results.file_results import FileSearchResult
+from ...shared.results import FileSearchResult
 from ...utils.common import (
     contains_security_sensitive_pattern,
     is_python_file,

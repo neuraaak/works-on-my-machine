@@ -28,7 +28,7 @@ from ...exceptions.common import ValidationServiceError
 from ...exceptions.project import (
     ProjectServiceError,
 )
-from ...shared.configs.project.project_config import ProjectConfig
+from ...shared.configs.project import ProjectConfig
 
 # ///////////////////////////////////////////////////////////////
 # VALIDATION FUNCTIONS

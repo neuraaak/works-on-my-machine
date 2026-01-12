@@ -24,8 +24,8 @@ from typing import ClassVar
 
 # Local imports
 from ...exceptions.common import ValidationServiceError
-from ...exceptions.project.project_service import ProjectServiceError
-from ...shared.configs.project.project_config import ProjectConfig
+from ...exceptions.project import ProjectServiceError
+from ...shared.configs.project import ProjectConfig
 from ...utils.project import suggest_project_name
 
 # ///////////////////////////////////////////////////////////////

@@ -26,7 +26,7 @@ from pathlib import Path
 
 # Local imports
 from ...exceptions.project import ProjectServiceError
-from ...shared.configs.project.project_variant_config import ProjectVariantConfig
+from ...shared.configs.project import ProjectVariantConfig
 from ..common.path_resolver_utils import get_assets_module_path
 
 # ///////////////////////////////////////////////////////////////

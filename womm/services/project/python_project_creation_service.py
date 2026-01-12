@@ -32,8 +32,8 @@ from ...exceptions.project import (
     ProjectServiceError,
     TemplateServiceError,
 )
-from ...shared.configs.project.python_project_config import PythonProjectConfig
-from ...shared.results.project_results import ProjectCreationResult
+from ...shared.configs.project import PythonProjectConfig
+from ...shared.results import ProjectCreationResult
 from ...utils.common import get_assets_module_path
 from ...utils.project import (
     create_python_dev_config_files,

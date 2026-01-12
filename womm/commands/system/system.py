@@ -32,7 +32,7 @@ from ...interfaces import (
     SystemDetectorInterface,
     SystemEnvironmentInterface,
 )
-from ...ui.common.ezpl_bridge import ezpl_bridge, ezprinter
+from ...ui.common import ezpl_bridge, ezprinter
 
 # ///////////////////////////////////////////////////////////////
 # COMMAND GROUPS
@@ -40,23 +40,11 @@ from ...ui.common.ezpl_bridge import ezpl_bridge, ezprinter
 
 
 @click.group(invoke_without_command=True)
-@click.help_option("-h", "--help")
-@click.option(
-    "-v",
-    "--verbose",
-    is_flag=True,
-    help="Enable verbose output (DEBUG level)",
-)
 @click.pass_context
-def system_group(_ctx: click.Context, verbose: bool) -> None:
+def system_group(ctx: click.Context) -> None:
     """System detection and prerequisites."""
-    # Configure verbose mode if requested
-    if verbose:
-        ezpl_bridge.set_level(LogLevel.DEBUG.label)
-
-    # If no subcommand is provided, show help
-    if _ctx.invoked_subcommand is None:
-        ezprinter.info(_ctx.get_help())
+    if ctx.invoked_subcommand is None:
+        click.echo(ctx.get_help())
 
 
 # ///////////////////////////////////////////////////////////////
@@ -72,21 +60,18 @@ def system_group(_ctx: click.Context, verbose: bool) -> None:
     is_flag=True,
     help="Enable verbose output (DEBUG level)",
 )
-@click.pass_context
-def system_detect(_ctx: click.Context, verbose: bool) -> None:
+def system_detect(verbose: bool) -> None:
     """Detect system information and available tools."""
-    # Configure verbose mode if requested
     if verbose:
         ezpl_bridge.set_level(LogLevel.DEBUG.label)
+
+    # Print header
+    ezprinter.print_header("System Detection")
 
     try:
         system_detector = SystemDetectorInterface()
         result = system_detector.detect_system()
-        if not result.success:
-            ezprinter.error(
-                f"System detection failed: {result.error or result.message}"
-            )
-            sys.exit(1)
+        sys.exit(0 if result.success else 1)
     except DetectorInterfaceError as e:
         ezprinter.error(f"System detection failed: {e}")
         sys.exit(1)
@@ -108,27 +93,18 @@ def system_detect(_ctx: click.Context, verbose: bool) -> None:
     is_flag=True,
     help="Enable verbose output (DEBUG level)",
 )
-@click.pass_context
-def system_refresh_env(_ctx: click.Context, verbose: bool) -> None:
+def system_refresh_env(verbose: bool) -> None:
     """Refresh environment variables (Windows only)."""
-    # Configure verbose mode if requested
     if verbose:
         ezpl_bridge.set_level(LogLevel.DEBUG.label)
 
+    # Print header
+    ezprinter.print_header("Environment Refresh")
+
     try:
-        # Check platform (Windows only)
-        import platform
-
-        if platform.system().lower() != "windows":
-            ezprinter.info("Environment refresh is only available on Windows")
-            sys.exit(0)
-
         environment_manager = SystemEnvironmentInterface()
-        success = environment_manager.refresh_environment_with_ui()
-
-        if not success:
-            sys.exit(1)
-
+        result = environment_manager.refresh_environment_with_ui()
+        sys.exit(0 if result else 1)
     except EnvironmentInterfaceError as e:
         ezprinter.error(f"Environment refresh failed: {e}")
         sys.exit(1)

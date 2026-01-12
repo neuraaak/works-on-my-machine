@@ -32,7 +32,7 @@ from typing import ClassVar
 
 # Local imports
 from ...exceptions.system import EnvironmentServiceError
-from ...shared.configs.system.system_environment_config import SystemEnvironmentConfig
+from ...shared.configs.system import SystemEnvironmentConfig
 from ...shared.results.system_results import (
     EnvironmentRefreshResult,
     EnvironmentVerificationResult,

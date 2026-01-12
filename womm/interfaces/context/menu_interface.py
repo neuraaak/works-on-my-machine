@@ -35,7 +35,7 @@ from ...services import (
     ContextType,
     ContextValidationService,
 )
-from ...shared.configs.context.context_types_config import ContextTypesConfig
+from ...shared.configs.context import ContextTypesConfig
 from ...shared.result_models import ContextValidationResult
 from .icon_interface import ContextIconInterface
 from .registry_interface import ContextRegistryInterface

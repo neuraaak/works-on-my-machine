@@ -27,7 +27,7 @@ from typing import ClassVar
 # Local imports
 from ...exceptions.common import ValidationServiceError
 from ...exceptions.context import ContextUtilityError
-from ...shared.configs.context.context_config import ContextConfig
+from ...shared.configs.context import ContextConfig
 from ...shared.result_models import ContextValidationResult
 from ...utils.context import (
     sanitize_label,

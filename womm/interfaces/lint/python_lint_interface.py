@@ -34,7 +34,7 @@ from ...services import FileScannerService, PythonLintService
 from ...shared.results.lint_results import LintSummaryResult, ToolStatusResult
 
 # Local imports
-from ...ui.common.ezpl_bridge import ezprinter
+from ...ui.common import ezprinter
 from ...utils.lint import export_lint_results_to_json
 
 # ///////////////////////////////////////////////////////////////

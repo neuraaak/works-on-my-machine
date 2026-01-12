@@ -93,7 +93,7 @@ class DevToolsServiceError(DependenciesServiceError):
         self.reason = reason
 
 
-class PackageManagerServiceError(DependenciesServiceError):
+class SystemPkgManagerServiceError(DependenciesServiceError):
     """Exception raised when package manager operations fail."""
 
     def __init__(
@@ -116,7 +116,7 @@ class PackageManagerServiceError(DependenciesServiceError):
         )
 
 
-class RuntimeManagerServiceError(DependenciesServiceError):
+class RuntimeServiceError(DependenciesServiceError):
     """Exception raised when runtime manager operations fail."""
 
     def __init__(

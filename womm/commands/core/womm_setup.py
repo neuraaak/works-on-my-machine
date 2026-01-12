@@ -39,7 +39,7 @@ from ...interfaces import (
     WommUninstallerInterface,
 )
 from ...services import SecurityValidatorService
-from ...ui.common.ezpl_bridge import ezpl_bridge, ezprinter
+from ...ui.common import ezpl_bridge, ezprinter
 
 # ///////////////////////////////////////////////////////////////
 # INSTALLATION COMMANDS

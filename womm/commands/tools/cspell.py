@@ -33,8 +33,7 @@ from ...interfaces import (
     CSpellCheckerInterface,
     CSpellDictionaryInterface,
 )
-from ...ui.common.ezpl_bridge import ezpl_bridge, ezprinter
-from ...utils.womm_setup import get_default_womm_path
+from ...ui.common import ezpl_bridge, ezprinter
 
 # ///////////////////////////////////////////////////////////////
 # COMMAND GROUPS
@@ -42,20 +41,25 @@ from ...utils.womm_setup import get_default_womm_path
 
 
 @click.group(invoke_without_command=True)
-@click.help_option("-h", "--help")
-@click.option(
-    "-v",
-    "--verbose",
-    is_flag=True,
-    help="Enable verbose output (DEBUG level)",
-)
 @click.pass_context
-def cspell_group(ctx: click.Context, verbose: bool) -> None:
+def cspell_group(ctx: click.Context) -> None:
     """📝 CSpell checking with CSpell."""
-    # Configure verbose mode if requested
-    if verbose:
-        ezpl_bridge.set_level(LogLevel.DEBUG.label)
+    if ctx.invoked_subcommand is None:
+        click.echo(ctx.get_help())
 
+
+@cspell_group.group(invoke_without_command=True)
+@click.pass_context
+def dict(ctx: click.Context) -> None:
+    """📚 Manage dictionaries in .cspell-dict/."""
+    if ctx.invoked_subcommand is None:
+        click.echo(ctx.get_help())
+
+
+@cspell_group.group(invoke_without_command=True)
+@click.pass_context
+def word(ctx: click.Context) -> None:
+    """📝 Manage words in CSpell configuration."""
     if ctx.invoked_subcommand is None:
         click.echo(ctx.get_help())
 
@@ -75,9 +79,11 @@ def cspell_group(ctx: click.Context, verbose: bool) -> None:
 )
 def spell_install(verbose: bool) -> None:
     """📦 Install CSpell and dictionaries globally."""
-    # Configure verbose mode if requested
     if verbose:
         ezpl_bridge.set_level(LogLevel.DEBUG.label)
+
+    # Print header
+    ezprinter.print_header("CSpell Installation")
 
     try:
         # Initialize interfaces (lazy loading)
@@ -100,41 +106,6 @@ def spell_install(verbose: bool) -> None:
         sys.exit(1)
 
 
-@cspell_group.command("setup")
-@click.help_option("-h", "--help")
-@click.argument("project_name")
-@click.option(
-    "-t",
-    "--type",
-    "project_type",
-    type=click.Choice(["python", "javascript"]),
-    help="Force project type",
-)
-@click.option(
-    "-v",
-    "--verbose",
-    is_flag=True,
-    help="Enable verbose output (DEBUG level)",
-)
-def spell_setup(project_name: str, project_type: str | None, verbose: bool) -> None:
-    """⚙️ Set CSpell for current project."""
-    # Configure verbose mode if requested
-    if verbose:
-        ezpl_bridge.set_level(LogLevel.DEBUG.label)
-
-    try:
-        # Initialize interface (lazy loading)
-        checker = CSpellCheckerInterface()
-        result = checker.perform_setup_project(project_name, project_type)
-        sys.exit(0 if result.success else 1)
-    except CSpellInterfaceError as e:
-        ezprinter.error(f"Project setup failed: {e}")
-        sys.exit(1)
-    except Exception as e:
-        ezprinter.error(f"Unexpected error during project setup: {e}")
-        sys.exit(1)
-
-
 # ///////////////////////////////////////////////////////////////
 # STATUS AND INFORMATION COMMANDS
 # ///////////////////////////////////////////////////////////////
@@ -142,8 +113,20 @@ def spell_setup(project_name: str, project_type: str | None, verbose: bool) -> N
 
 @cspell_group.command("status")
 @click.help_option("-h", "--help")
-def spell_status() -> None:
+@click.option(
+    "-v",
+    "--verbose",
+    is_flag=True,
+    help="Enable verbose output (DEBUG level)",
+)
+def spell_status(verbose: bool) -> None:
     """📊 Display CSpell project status."""
+    if verbose:
+        ezpl_bridge.set_level(LogLevel.DEBUG.label)
+
+    # Print header
+    ezprinter.print_header("CSpell Project Status")
+
     try:
         checker = CSpellCheckerInterface()
         result = checker.display_project_status()
@@ -161,7 +144,7 @@ def spell_status() -> None:
 # ///////////////////////////////////////////////////////////////
 
 
-@cspell_group.command("add")
+@word.command("add")
 @click.help_option("-h", "--help")
 @click.argument("words", nargs=-1, required=False)
 @click.option(
@@ -171,20 +154,31 @@ def spell_status() -> None:
     type=click.Path(exists=True),
     help="Add words from file",
 )
-@click.option("--interactive", is_flag=True, help="Interactive mode")
+@click.option(
+    "-I",
+    "--interactive",
+    is_flag=True,
+    help="Interactive mode",
+)
 @click.option(
     "-v",
     "--verbose",
     is_flag=True,
     help="Enable verbose output (DEBUG level)",
 )
-def spell_add(
+def word_add(
     words: tuple[str, ...],
     file_path: str | None,
     interactive: bool,
-    _verbose: bool,
+    verbose: bool,
 ) -> None:
     """➕ Add words to CSpell configuration."""  # noqa: RUF002
+    if verbose:
+        ezpl_bridge.set_level(LogLevel.DEBUG.label)
+
+    # Print header
+    ezprinter.print_header("Add Words to CSpell Configuration")
+
     try:
         dictionary = CSpellDictionaryInterface()
         result = dictionary.perform_add_words(
@@ -201,19 +195,39 @@ def spell_add(
         sys.exit(1)
 
 
-@cspell_group.command("add-all")
+@dict.command("add-all")
 @click.help_option("-h", "--help")
+@click.option(
+    "-d",
+    "--dir",
+    "dict_dir",
+    type=click.Path(exists=True, file_okay=False, dir_okay=True, path_type=Path),
+    default=None,
+    help="Directory containing dictionary files (default: .cspell-dict/)",
+)
 @click.option(
     "-f",
     "--force",
     is_flag=True,
     help="Skip confirmation prompt",
 )
-def spell_add_all(force: bool) -> None:
-    """📚 Add all dictionaries from .cspell-dict/ to CSpell configuration."""
+@click.option(
+    "-v",
+    "--verbose",
+    is_flag=True,
+    help="Enable verbose output (DEBUG level)",
+)
+def dict_add_all(dict_dir: Path | None, force: bool, verbose: bool) -> None:
+    """📚 Add all dictionaries to CSpell configuration (scans .cspell-dict/ by default)."""
+    if verbose:
+        ezpl_bridge.set_level(LogLevel.DEBUG.label)
+
+    # Print header
+    ezprinter.print_header("Add All Dictionaries")
+
     try:
         dictionary = CSpellDictionaryInterface()
-        result = dictionary.perform_add_all_dictionaries(force=force)
+        result = dictionary.perform_add_all_dictionaries(force=force, dict_dir=dict_dir)
         sys.exit(0 if result.success else 1)
     except CSpellDictionaryInterfaceError as e:
         ezprinter.error(f"Dictionary addition failed: {e}")
@@ -223,10 +237,22 @@ def spell_add_all(force: bool) -> None:
         sys.exit(1)
 
 
-@cspell_group.command("list-dicts")
+@dict.command("list")
 @click.help_option("-h", "--help")
-def spell_list_dicts() -> None:
+@click.option(
+    "-v",
+    "--verbose",
+    is_flag=True,
+    help="Enable verbose output (DEBUG level)",
+)
+def dict_list(verbose: bool) -> None:
     """📋 List available dictionaries in .cspell-dict/."""
+    if verbose:
+        ezpl_bridge.set_level(LogLevel.DEBUG.label)
+
+    # Print header
+    ezprinter.print_header("Available Dictionaries")
+
     try:
         dictionary = CSpellDictionaryInterface()
         result = dictionary.perform_list_dictionaries()
@@ -244,11 +270,10 @@ def spell_list_dicts() -> None:
 # ///////////////////////////////////////////////////////////////
 
 
-@cspell_group.command("check")
+@cspell_group.command("lint")
 @click.help_option("-h", "--help")
 @click.argument("path", type=click.Path(exists=True), default=".", required=False)
 @click.option(
-    "-j",
     "--json",
     "json_export",
     is_flag=True,
@@ -256,32 +281,48 @@ def spell_list_dicts() -> None:
     help="Export results to JSON file in ~/.womm/spell-results/",
 )
 @click.option(
-    "-d",
-    "--json-dir",
-    "json_output",
+    "-D",
+    "--dir",
+    "directory",
     type=click.Path(file_okay=False, dir_okay=True, path_type=Path),
     default=None,
     help="Export results to JSON file in specified directory",
 )
-def spell_check(path: str, json_export: bool, json_output: Path | None) -> None:
-    """🔍 Check spelling in files."""
-    try:
-        # Determine JSON export path
-        export_path = None
-        if json_export:
-            # Use default path ~/.womm/spell-results/
-            womm_path = get_default_womm_path()
-            export_path = womm_path / "spell-results"
-        elif json_output is not None:
-            # Use custom path specified
-            export_path = json_output
+@click.option(
+    "--add-words",
+    "add_words",
+    is_flag=True,
+    default=False,
+    help="Add detected unknown words to cspell.json",
+)
+@click.option(
+    "-v",
+    "--verbose",
+    is_flag=True,
+    help="Enable verbose output (DEBUG level)",
+)
+def spell_lint(
+    path: str, json_export: bool, directory: Path | None, add_words: bool, verbose: bool
+) -> None:
+    """🔍 Lint spelling in files."""
+    if verbose:
+        ezpl_bridge.set_level(LogLevel.DEBUG.label)
 
+    # Print header
+    ezprinter.print_header("CSpell Lint")
+
+    try:
         checker = CSpellCheckerInterface()
-        result = checker.perform_spell_check(path=Path(path), json_output=export_path)
+        result = checker.perform_cspell_lint(
+            path=Path(path),
+            json_export=json_export,
+            directory=directory,
+            add_words=add_words,
+        )
         sys.exit(0 if result.success else 1)
     except CSpellInterfaceError as e:
-        ezprinter.error(f"CSpell check failed: {e}")
+        ezprinter.error(f"CSpell lint failed: {e}")
         sys.exit(1)
     except Exception as e:
-        ezprinter.error(f"Unexpected error during spell check: {e}")
+        ezprinter.error(f"Unexpected error during spell lint: {e}")
         sys.exit(1)

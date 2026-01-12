@@ -17,14 +17,14 @@ This package exports all exceptions for dependency management operations.
 from .dependencies_interface import (
     DependenciesInterfaceError,
     DevToolsInterfaceError,
-    PackageManagerInterfaceError,
-    RuntimeManagerInterfaceError,
+    RuntimeInterfaceError,
+    SystemPkgManagerInterfaceError,
 )
 from .dependencies_service import (
     DependenciesServiceError,
     DevToolsServiceError,
-    PackageManagerServiceError,
-    RuntimeManagerServiceError,
+    RuntimeServiceError,
+    SystemPkgManagerServiceError,
 )
 
 # ///////////////////////////////////////////////////////////////
@@ -35,11 +35,11 @@ __all__ = [  # noqa: RUF022
     # dependencies_interface
     "DependenciesInterfaceError",
     "DevToolsInterfaceError",
-    "PackageManagerInterfaceError",
-    "RuntimeManagerInterfaceError",
+    "SystemPkgManagerInterfaceError",
+    "RuntimeInterfaceError",
     # dependencies_service
     "DependenciesServiceError",
     "DevToolsServiceError",
-    "PackageManagerServiceError",
-    "RuntimeManagerServiceError",
+    "SystemPkgManagerServiceError",
+    "RuntimeServiceError",
 ]

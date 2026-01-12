@@ -27,7 +27,7 @@ from ezpl.types import LogLevel
 
 # Local imports
 from ...interfaces import ProjectManagerInterface
-from ...ui.common.ezpl_bridge import ezpl_bridge, ezprinter
+from ...ui.common import ezpl_bridge, ezprinter
 from ...ui.project import (
     interactive_template_create,
     interactive_template_delete,

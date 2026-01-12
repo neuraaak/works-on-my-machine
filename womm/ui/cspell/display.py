@@ -102,13 +102,81 @@ def display_spell_summary(
 
 def display_spell_status_table(status: dict[str, str]) -> None:
     """
-    Display CSpell project status in table format.
+    Display CSpell project status in a formatted panel.
 
     Args:
         status: Status information about CSpell configuration
     """
-    # Cette fonction sera implémentée si nécessaire
-    # Pour l'instant, on garde l'affichage simple dans spell_manager
+    if not status.get("config_exists"):
+        ezprinter.error("❌ No CSpell configuration found")
+        ezprinter.system("💡 Run: womm spell setup <project_name>")
+        return
+
+    # Build status panel content
+    content_lines = []
+
+    # Configuration status
+    configured_text = "✅" if status.get("config_exists") else "❌"
+    content_lines.append(f"Configuration: {configured_text}")
+
+    # Config file path
+    if status.get("config_path"):
+        content_lines.append(f"Config file: {status['config_path']}")
+
+    # Words count
+    words_count = status.get("words_count", 0)
+    if words_count:
+        content_lines.append(f"Custom words: {words_count}")
+
+    # Project type
+    if status.get("project_type"):
+        content_lines.append(f"Project type: {status['project_type']}")
+
+    # Display in panel
+    panel_content = "\n".join(content_lines)
+    panel = ezprinter.create_panel(
+        panel_content,
+        title="CSpell Status",
+        border_style="cyan",
+    )
+    ezconsole.print(panel)
+
+
+def display_lint_summary(issues_by_file: dict[str, set[str]]) -> None:
+    """
+    Display spell lint summary with unknown words grouped by file.
+
+    Args:
+        issues_by_file: Dictionary mapping file paths to sets of unknown words
+    """
+    if not issues_by_file:
+        return
+
+    # Create a table for clearer display
+    table = Table(
+        title="Unknown Words by File",
+        show_header=True,
+        header_style="bold magenta",
+        border_style="blue",
+    )
+
+    table.add_column("File", style="cyan", width=35)
+    table.add_column("Unknown Words Count", style="yellow", justify="center", width=15)
+    table.add_column("Words", style="white", width=50)
+
+    # Add rows to table, sorted by file path
+    for file_path in sorted(issues_by_file.keys()):
+        words = sorted(issues_by_file[file_path])
+        word_count = len(words)
+
+        # Format words as comma-separated list, truncate if too long
+        words_text = ", ".join(f"'{w}'" for w in words[:5])
+        if len(words) > 5:
+            words_text += f", +{len(words) - 5} more"
+
+        table.add_row(str(file_path), str(word_count), words_text)
+
+    ezconsole.print(table)
 
 
 def create_spell_progress_table(files: list[str]) -> None:
@@ -128,6 +196,7 @@ def create_spell_progress_table(files: list[str]) -> None:
 
 __all__ = [
     "create_spell_progress_table",
+    "display_lint_summary",
     "display_spell_issues_table",
     "display_spell_status_table",
     "display_spell_summary",

@@ -47,11 +47,9 @@ from ...exceptions.womm_deployment import (
     WommInstallerError,
 )
 from ...services import CommandRunnerService, WommInstallerService
-from ...shared.configs.womm_setup.womm_deployment_config import (
-    WOMMDeploymentConfig,
-)
-from ...shared.results.installation_results import InstallationResult
-from ...ui.common.ezpl_bridge import ezprinter
+from ...shared.configs.womm_setup import WOMMDeploymentConfig
+from ...shared.results import InstallationResult
+from ...ui.common import ezprinter
 from ...utils.womm_setup import (
     create_installation_proof,
     create_womm_executable,

@@ -1082,6 +1082,7 @@ ezpl = _ezpl_instance
 # ///////////////////////////////////////////////////////////////
 
 __all__ = [
+    "DynamicLayeredProgress",
     "ExtendedPrinter",
     "EzplBridge",
     "ezconsole",

@@ -35,7 +35,7 @@ from ...exceptions.common import (
     TimeoutError,
 )
 from ...shared.result_models import CommandResult
-from ...shared.results.command_results import (
+from ...shared.results import (
     CommandAvailabilityResult,
     CommandVersionResult,
 )

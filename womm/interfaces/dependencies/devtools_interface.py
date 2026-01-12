@@ -22,12 +22,10 @@ from ...exceptions.womm_deployment import (
     DependencyServiceError,
 )
 from ...services import CommandRunnerService, DevToolsService
-from ...shared.configs.dependencies.devtools_config import DevToolsConfig
-from ...shared.results.dependencies_results import DevToolResult
-from ...ui.common.ezpl_bridge import (
-    ezconsole,
-    ezprinter,
-)
+from ...shared.configs.dependencies import DevToolsConfig
+from ...shared.results import DevToolResult
+from ...ui.common import ezprinter
+from ...ui.dependencies import display_devtools_status_table
 
 # ///////////////////////////////////////////////////////////////
 # LOGGER SETUP
@@ -516,7 +514,7 @@ class DevToolsInterface:
             # Display results in a table
             if status:
                 try:
-                    self._display_status_table(status)
+                    display_devtools_status_table(status)
                 except Exception as e:
                     logger.warning(f"Failed to display status table: {e}")
 
@@ -537,55 +535,7 @@ class DevToolsInterface:
 
     # ///////////////////////////////////////////////////////////////
     # PRIVATE METHODS
-    # ///////////////////////////////////////////////////////////////
-
-    def _display_status_table(self, status: dict[str, dict]) -> None:
-        """
-        Display development tools status in a formatted table.
-
-        Args:
-            status: Status information to display
-
-        Raises:
-            DevToolsError: If table display fails
-        """
-        try:
-            from rich.table import Table
-
-            table = Table(show_header=True, header_style="bold magenta")
-            table.add_column("Language", style="cyan")
-            table.add_column("Tool Type", style="blue")
-            table.add_column("Tool", style="white")
-            table.add_column("Status", justify="center")
-            table.add_column("Path", style="dim")
-
-            for language, lang_tools in status.items():
-                for tool_type, tools in lang_tools.items():
-                    for tool, info in tools.items():
-                        status_icon = "✅" if info["installed"] else "❌"
-                        status_text = "Installed" if info["installed"] else "Missing"
-                        path_text = info.get("path", "Not found") or "Not found"
-
-                        table.add_row(
-                            language,
-                            tool_type,
-                            tool,
-                            f"{status_icon} {status_text}",
-                            path_text,
-                        )
-
-            ezconsole.print("\n")
-            ezconsole.print(table)
-            ezconsole.print("\n")
-
-        except Exception as e:
-            logger.error(f"Failed to display status table: {e}")
-            raise DevToolsInterfaceError(
-                tool_name="dev_tools_manager",
-                operation="display_status_table",
-                message=f"Failed to display status table: {e}",
-                details=f"Exception type: {type(e).__name__}",
-            ) from e
+    # Display functions moved to ui.dependencies module
 
     # Methods _check_tool_availability and _get_installation_method
     # have been moved to DevToolsService

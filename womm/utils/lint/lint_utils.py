@@ -33,7 +33,7 @@ from ...exceptions.lint import (
     ToolExecutionServiceError,
 )
 from ...services import CommandRunnerService
-from ...shared.results.lint_results import ToolResult
+from ...shared.results import ToolResult
 
 # ///////////////////////////////////////////////////////////////
 # TOOL DETECTION FUNCTIONS

@@ -33,13 +33,14 @@ from ...exceptions.system import (
     UserPathServiceError,
 )
 from ...services import CommandRunnerService, SystemPathService
-from ...shared.results.system_results import PathOperationResult
-from ...ui.common.ezpl_bridge import (
+from ...shared.results import PathOperationResult
+from ...ui.common import (
+    InteractiveMenu,
     ezlogger,
     ezpl_bridge,
     ezprinter,
+    format_backup_item,
 )
-from ...ui.common.interactive_menu import InteractiveMenu, format_backup_item
 from ...utils.womm_setup import get_womm_installation_path
 
 # ///////////////////////////////////////////////////////////////

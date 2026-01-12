@@ -21,7 +21,7 @@ import re
 from pathlib import Path
 
 # Local imports
-from ...shared.configs.security.security_patterns_config import SecurityPatternsConfig
+from ...shared.configs.security import SecurityPatternsConfig
 
 # ///////////////////////////////////////////////////////////////
 # COMMAND VALIDATION FUNCTIONS
