@@ -29,6 +29,7 @@ from .cspell import CSpellCheckerInterface, CSpellDictionaryInterface
 
 # Local imports - Dependencies interfaces
 from .dependencies import (
+    DepsInterface,
     DevToolsInterface,
     RuntimeInterface,
     SystemPackageManagerInterface,
@@ -70,6 +71,7 @@ __all__ = [
     "ContextRegistryInterface",
     "ContextScriptDetectorInterface",
     # Dependencies interfaces
+    "DepsInterface",
     "DevToolsInterface",
     # Project interfaces
     "ProjectCreateInterface",

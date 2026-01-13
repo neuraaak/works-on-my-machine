@@ -17,6 +17,7 @@ from __future__ import annotations
 # IMPORTS
 # ///////////////////////////////////////////////////////////////
 # Local imports
+from .deps_interface import DepsInterface
 from .devtools_interface import DevToolsInterface
 from .runtime_interface import RuntimeInterface
 from .system_package_manager_interface import SystemPackageManagerInterface
@@ -26,6 +27,7 @@ from .system_package_manager_interface import SystemPackageManagerInterface
 # ///////////////////////////////////////////////////////////////
 
 __all__ = [
+    "DepsInterface",
     "DevToolsInterface",
     "RuntimeInterface",
     "SystemPackageManagerInterface",

@@ -133,7 +133,6 @@ def context_register(
 
     # Initialize manager
     manager = ContextMenuInterface()
-    ui = ContextMenuUI()
 
     if not manager.is_windows():
         ezprinter.info("Context menu management is Windows-specific")
@@ -166,54 +165,14 @@ def context_register(
         extensions=list(extensions) if extensions else None,
     )
 
-    # TODO: Migrate verbose output to interface method (display_registration_params)
-    if verbose:
-        ezprinter.info(f"Target: {target_path}")
-        ezprinter.info(f"Label: {label}")
-        ezprinter.info(f"Icon: {icon}")
-        ezprinter.info(f"Context: {context_params.get_description()}")
-
-    # TODO: Migrate entire registration flow to interface method
-    # (register_with_backup) that handles backup + registration + UI display
-    backup_dir = manager.get_backup_directory()
-    backup_file = str(backup_dir / "context_menu_backup_before_register.json")
-
-    with ezprinter.create_spinner_with_status(
-        "Creating backup before registration..."
-    ) as (
-        progress,
-        task,
-    ):
-        progress.update(task, status="Creating backup...")
-        backup_result = manager.backup_entries(backup_file)
-
-    if not backup_result["success"]:
-        ezprinter.error(f"Backup failed: {backup_result['error']}")
-        return
-
-    if verbose:
-        ezprinter.info(f"Backup created: {backup_file}")
-
-    with ezprinter.create_spinner_with_status(
-        "Registering script in context menu..."
-    ) as (
-        progress,
-        task,
-    ):
-        progress.update(task, status="Adding registry entries...")
-        result = manager.register_script(target_path, label, icon, context_params)
-
-    # TODO: Migrate result handling to UI module (show_register_result)
-    if result["success"]:
-        info = result["info"]
-        ui.show_register_success(label, info["registry_key"])
-    else:
-        ezprinter.error(f"Registration failed: {result['error']}")
-        if verbose and "info" in result:
-            info = result["info"]
-            ezprinter.info(f"Script path: {info.get('script_path')}")
-            ezprinter.info(f"Script type: {info.get('script_type')}")
-            ezprinter.info(f"Registry key: {info.get('registry_key')}")
+    # Perform registration with backup and UI display
+    manager.register_with_display(
+        script_path=target_path,
+        label=label,
+        icon=icon,
+        context_params=context_params,
+        verbose=verbose,
+    )
 
 
 # ///////////////////////////////////////////////////////////////
@@ -250,27 +209,8 @@ def context_unregister(remove_key: str, verbose: bool) -> None:
         ezprinter.info("Context menu management is Windows-specific")
         return
 
-    # TODO: Migrate verbose output to interface
-    if verbose:
-        ezprinter.info(f"Removing key: {remove_key}")
-
-    # TODO: Migrate unregistration flow to interface method that handles
-    # spinner + unregister + UI display
-    with ezprinter.create_spinner_with_status(
-        "Unregistering script from context menu..."
-    ) as (
-        progress,
-        task,
-    ):
-        progress.update(task, status="Removing registry entries...")
-        result = manager.unregister_script(remove_key)
-
-    # TODO: Migrate result handling to UI module (show_unregister_result)
-    if result["success"]:
-        ui = ContextMenuUI()
-        ui.show_unregister_success(remove_key)
-    else:
-        ezprinter.error(f"Unregistration failed: {result['error']}")
+    # Perform unregistration with UI display
+    manager.unregister_with_display(remove_key, verbose)
 
 
 # ///////////////////////////////////////////////////////////////

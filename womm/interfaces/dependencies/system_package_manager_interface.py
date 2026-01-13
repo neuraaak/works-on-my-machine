@@ -467,6 +467,55 @@ class SystemPackageManagerInterface:
                 details=f"Exception type: {type(e).__name__}",
             ) from e
 
+    def show_best_manager(self, verbose: bool = False) -> BestManagerInfo | None:
+        """
+        Get and display the best available package manager.
+
+        Args:
+            verbose: Whether to show additional details
+
+        Returns:
+            BestManagerInfo | None: Best manager info, or None if none available
+        """
+        from ...ui.system import display_best_manager
+
+        best = self.get_best_available_manager(show_ui=False)
+
+        # Get config for verbose display
+        platform_str = None
+        priority = None
+        if best:
+            config = self.package_manager_service.get_manager_config(best.manager_name)
+            if config:
+                platform_str = config.get("platform")
+                priority = config.get("priority")
+
+        display_best_manager(
+            manager_name=best.manager_name if best else None,
+            version=best.version if best else None,
+            platform=platform_str,
+            priority=priority,
+            verbose=verbose,
+        )
+
+        return best
+
+    def list_managers(self, verbose: bool = False) -> dict:
+        """
+        Get and display the list of all system package managers.
+
+        Args:
+            verbose: Whether to show additional details
+
+        Returns:
+            dict: Status dictionary of all managers
+        """
+        from ...ui.system import display_system_managers_list
+
+        status = self.get_installation_status()
+        display_system_managers_list(status, verbose)
+        return status
+
     def ensure_manager(
         self, preferred: list[str] | None = None
     ) -> PackageManagerResult:

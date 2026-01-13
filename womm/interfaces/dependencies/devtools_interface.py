@@ -365,6 +365,154 @@ class DevToolsInterface:
                 details=f"Exception type: {type(e).__name__}",
             ) from e
 
+    def show_tool_check(
+        self, language: str, tool_type: str, tool: str, verbose: bool = False
+    ) -> DevToolResult:
+        """
+        Check a tool and display the result.
+
+        Args:
+            language: Programming language
+            tool_type: Tool type category
+            tool: Tool name
+            verbose: Whether to show detailed information
+
+        Returns:
+            DevToolResult: Check result
+        """
+        from ...shared.configs.dependencies import DependenciesHierarchy
+        from ...ui.common import ezprinter
+
+        result = self.check_dev_tool(language, tool_type, tool)
+
+        if result.success:
+            msg = f"{tool} is available"
+            if result.path:
+                msg += f" ({result.path})"
+            ezprinter.success(msg)
+
+            if verbose:
+                try:
+                    chain = DependenciesHierarchy.get_devtool_chain(tool)
+                    ezprinter.info(
+                        f"Dependencies: {chain['runtime_package_manager']} → {chain['runtime']}"
+                    )
+                except Exception as e:
+                    logger.debug(f"Could not resolve dependency chain for {tool}: {e}")
+        else:
+            ezprinter.warning(f"{tool} is not available")
+
+            if verbose:
+                ezprinter.info("Use 'womm deps tool install' to install it")
+
+        return result
+
+    def show_tool_install(
+        self, language: str, tool_type: str, tool: str, verbose: bool = False
+    ) -> DevToolResult:
+        """
+        Install a tool and display the result.
+
+        Args:
+            language: Programming language
+            tool_type: Tool type category
+            tool: Tool name
+            verbose: Whether to show detailed information
+
+        Returns:
+            DevToolResult: Installation result
+        """
+        from ...shared.configs.dependencies import DependenciesHierarchy
+        from ...ui.common import ezprinter
+
+        if verbose:
+            ezprinter.info(f"Installing {tool}...")
+            try:
+                chain = DependenciesHierarchy.get_devtool_chain(tool)
+                ezprinter.info(
+                    f"Dependency chain: {tool} → {chain['runtime_package_manager']} → {chain['runtime']}"
+                )
+            except Exception as e:
+                logger.debug(f"Could not resolve dependency chain: {e}")
+
+        result = self.install_dev_tool(language, tool_type, tool)
+
+        if result.success:
+            msg = f"{tool} installed successfully"
+            if result.path:
+                msg += f" → {result.path}"
+            ezprinter.success(msg)
+        else:
+            ezprinter.error(f"Failed to install {tool}")
+            if result.error:
+                ezprinter.error(f"Error: {result.error}")
+
+        return result
+
+    def show_tools_list(
+        self, category: str | None = None, verbose: bool = False
+    ) -> None:
+        """
+        Display the list of available development tools.
+
+        Args:
+            category: Optional category to filter by
+            verbose: Whether to show detailed information
+        """
+        from ...shared.configs.dependencies import DevToolsConfig
+        from ...ui.common import ezconsole, ezprinter
+
+        tools_config = DevToolsConfig.DEVTOOLS_DEPENDENCIES
+
+        if category and category in tools_config:
+            # Show specific category
+            table = ezprinter.create_table(
+                title=f"{category.capitalize()} Development Tools",
+                columns=[
+                    ("Category", "cyan", False),
+                    ("Tools", "white", False),
+                ]
+                + ([("Package Manager", "yellow", False)] if verbose else []),
+                rows=[
+                    [subcat, ", ".join(tools)]
+                    + (
+                        [
+                            DevToolsConfig.DEFAULT_RUNTIME_PACKAGE_MANAGER.get(
+                                category, "N/A"
+                            )
+                        ]
+                        if verbose
+                        else []
+                    )
+                    for subcat, tools in tools_config[category].items()
+                ],
+            )
+        else:
+            # Show all categories
+            rows = []
+            for lang, categories in tools_config.items():
+                for subcat, tools in categories.items():
+                    row = [lang, subcat, ", ".join(tools)]
+                    if verbose:
+                        pm = DevToolsConfig.DEFAULT_RUNTIME_PACKAGE_MANAGER.get(
+                            lang, "N/A"
+                        )
+                        row.append(pm)
+                    rows.append(row)
+
+            table = ezprinter.create_table(
+                title="All Development Tools",
+                columns=[
+                    ("Language", "cyan", False),
+                    ("Category", "yellow", False),
+                    ("Tools", "white", False),
+                ]
+                + ([("Package Manager", "magenta", False)] if verbose else []),
+                rows=rows,
+            )
+
+        ezconsole.print(table)
+
     def check_and_install_dev_tools(self, language: str) -> dict[str, DevToolResult]:
         """
         Check and install all dev tools for a language with integrated UI.

@@ -31,24 +31,8 @@ from ...interfaces import (
     RuntimeInterface,
     SystemPackageManagerInterface,
 )
-from ...shared.configs.dependencies import (
-    DependenciesHierarchy,
-    DevToolsConfig,
-    RuntimeConfig,
-)
-from ...ui.common import ezconsole, ezpl_bridge, ezprinter
-from ...ui.dependencies import (
-    display_runtime_check_specific,
-    display_runtime_install_result,
-    display_runtimes_list,
-)
-from ...ui.system import (
-    display_best_manager,
-    display_deps_check_results,
-    display_deps_status_table,
-    display_deps_validation_results,
-    display_system_managers_list,
-)
+from ...shared.configs.dependencies import DevToolsConfig
+from ...ui.common import ezpl_bridge, ezprinter
 
 # ///////////////////////////////////////////////////////////////
 # LOGGER SETUP
@@ -212,10 +196,8 @@ def system_list(verbose: bool) -> None:
     ezprinter.print_header("System Package Manager List")
 
     try:
-        # TODO: Migrate to interface method that handles data retrieval + UI display
         interface = SystemPackageManagerInterface()
-        status = interface.get_installation_status()
-        display_system_managers_list(status, verbose)
+        interface.list_managers(verbose)
 
     except Exception as e:
         logger.error(f"Failed to list system package managers: {e}")
@@ -250,10 +232,8 @@ def system_best(verbose: bool) -> None:
     ezprinter.print_header("Best System Package Manager")
 
     try:
-        # TODO: Migrate to interface method that handles data retrieval + UI display
         interface = SystemPackageManagerInterface()
-        best = interface.get_best_available_manager()
-        display_best_manager(best, interface, verbose)
+        interface.show_best_manager(verbose)
 
     except Exception as e:
         logger.error(f"Failed to get best system package manager: {e}")
@@ -318,9 +298,7 @@ def runtime_check(runtime: str | None, verbose: bool) -> None:
         interface = RuntimeInterface()
 
         if runtime:
-            # TODO: Migrate to interface method that handles check + UI display
-            result = interface.check_runtime(runtime)
-            display_runtime_check_specific(result, runtime, verbose)
+            interface.show_runtime_check(runtime, verbose)
         else:
             # Check all runtimes - interface handles spinner + UI
             interface.check_all_runtimes()
@@ -345,7 +323,7 @@ def runtime_check(runtime: str | None, verbose: bool) -> None:
     is_flag=True,
     help="Show detailed installation progress.",
 )
-def runtime_install(runtime: str, manager: str | None, verbose: bool) -> None:
+def runtime_install(runtime: str, _manager: str | None, verbose: bool) -> None:
     """
     Install a runtime.
 
@@ -370,17 +348,7 @@ def runtime_install(runtime: str, manager: str | None, verbose: bool) -> None:
     try:
         interface = RuntimeInterface()
 
-        # TODO: Migrate verbose output to interface
-        if verbose:
-            ezprinter.info(f"Installing {runtime}...")
-            if manager:
-                ezprinter.info(f"Using specified manager: {manager}")
-            else:
-                ezprinter.info("Auto-selecting best system package manager...")
-
-        # TODO: Migrate to interface method that handles install + UI display
-        result = interface.install_runtime(runtime)
-        display_runtime_install_result(result, runtime, verbose)
+        interface.show_runtime_install(runtime, verbose)
 
     except Exception as e:
         logger.error(f"Failed to install runtime {runtime}: {e}")
@@ -415,7 +383,8 @@ def runtime_list(verbose: bool) -> None:
     ezprinter.print_header("Runtime List")
 
     try:
-        display_runtimes_list(verbose)
+        interface = RuntimeInterface()
+        interface.show_runtimes_list(verbose)
 
     except Exception as e:
         logger.error(f"Failed to list runtimes: {e}")
@@ -480,37 +449,13 @@ def tool_check(tool: str | None, verbose: bool) -> None:
         interface = DevToolsInterface()
 
         if tool:
-            # TODO: Migrate specific tool check to interface method with UI display
             tool_info = _find_tool_info(tool)
             if not tool_info:
                 ezprinter.error(f"Unknown tool: {tool}")
                 raise click.Abort()
 
             language, tool_type = tool_info
-            result = interface.check_dev_tool(language, tool_type, tool)
-
-            # TODO: Migrate result display to UI module (display_tool_check_specific)
-            if result.success:
-                msg = f"{tool} is available"
-                if result.path:
-                    msg += f" ({result.path})"
-                ezprinter.success(msg)
-
-                if verbose:
-                    try:
-                        chain = DependenciesHierarchy.get_devtool_chain(tool)
-                        ezprinter.info(
-                            f"Dependencies: {chain['runtime_package_manager']} → {chain['runtime']}"
-                        )
-                    except Exception as e:
-                        logger.debug(
-                            f"Could not resolve dependency chain for {tool}: {e}"
-                        )
-            else:
-                ezprinter.warning(f"{tool} is not available")
-
-                if verbose:
-                    ezprinter.info("Use 'womm deps tool install' to install it")
+            interface.show_tool_check(language, tool_type, tool, verbose)
         else:
             # Check all tools - interface handles spinner + UI
             interface.check_all_tools()
@@ -561,19 +506,7 @@ def tool_install(tool: str, force: bool, verbose: bool) -> None:
     try:
         interface = DevToolsInterface()
 
-        # TODO: Migrate verbose output and dependency chain display to interface/UI
-        if verbose:
-            ezprinter.info(f"Installing {tool}...")
-
-            try:
-                chain = DependenciesHierarchy.get_devtool_chain(tool)
-                ezprinter.info(
-                    f"Dependency chain: {tool} → {chain['runtime_package_manager']} → {chain['runtime']}"
-                )
-            except Exception as e:
-                logger.debug(f"Could not resolve dependency chain: {e}")
-
-        # TODO: Migrate installation logic and result display to interface/UI
+        # Check if already installed (unless force)
         if not force:
             tool_info = _find_tool_info(tool)
             if not tool_info:
@@ -593,18 +526,7 @@ def tool_install(tool: str, force: bool, verbose: bool) -> None:
             raise click.Abort()
 
         language, tool_type = tool_info
-        result = interface.install_dev_tool(language, tool_type, tool)
-
-        # TODO: Migrate result display to UI module (display_tool_install_result)
-        if result.success:
-            msg = f"{tool} installed successfully"
-            if result.path:
-                msg += f" → {result.path}"
-            ezprinter.success(msg)
-        else:
-            ezprinter.error(f"Failed to install {tool}")
-            if result.error:
-                ezprinter.error(f"Error: {result.error}")
+        interface.show_tool_install(language, tool_type, tool, verbose)
 
     except Exception as e:
         logger.error(f"Failed to install tool {tool}: {e}")
@@ -641,55 +563,8 @@ def tool_list(category: str | None, verbose: bool) -> None:
     ezprinter.print_header("Dev Tool List")
 
     try:
-        # TODO: Migrate entire tool list display to UI module (display_devtools_list)
-        from rich.table import Table
-
-        tools_config = DevToolsConfig.DEVTOOLS_DEPENDENCIES
-
-        if category and category in tools_config:
-            # Show specific category
-            table = Table(
-                title=f"{category.capitalize()} Development Tools", show_header=True
-            )
-            table.add_column("Category", style="cyan")
-            table.add_column("Tools", style="white")
-
-            if verbose:
-                table.add_column("Package Manager", style="yellow")
-
-            for subcat, tools in tools_config[category].items():
-                row = [subcat, ", ".join(tools)]
-
-                if verbose:
-                    pm = DevToolsConfig.DEFAULT_RUNTIME_PACKAGE_MANAGER.get(
-                        category, "N/A"
-                    )
-                    row.append(pm)
-
-                table.add_row(*row)
-        else:
-            # Show all categories
-            table = Table(title="All Development Tools", show_header=True)
-            table.add_column("Language", style="cyan", no_wrap=True)
-            table.add_column("Category", style="yellow", no_wrap=True)
-            table.add_column("Tools", style="white")
-
-            if verbose:
-                table.add_column("Package Manager", style="magenta")
-
-            for lang, categories in tools_config.items():
-                for subcat, tools in categories.items():
-                    row = [lang, subcat, ", ".join(tools)]
-
-                    if verbose:
-                        pm = DevToolsConfig.DEFAULT_RUNTIME_PACKAGE_MANAGER.get(
-                            lang, "N/A"
-                        )
-                        row.append(pm)
-
-                    table.add_row(*row)
-
-        ezconsole.print(table)
+        interface = DevToolsInterface()
+        interface.show_tools_list(category, verbose)
 
     except Exception as e:
         logger.error(f"Failed to list tools: {e}")
@@ -734,28 +609,10 @@ def deps_check(verbose: bool) -> None:
     ezprinter.print_header("Dependencies Check")
 
     try:
-        system_interface = SystemPackageManagerInterface()
-        runtime_interface = RuntimeInterface()
-        tool_interface = DevToolsInterface()
+        from ...interfaces import DepsInterface
 
-        # Collect all results
-        system_results = system_interface.detect_available_managers()
-        runtime_results = {
-            rt: runtime_interface.check_runtime(rt) for rt in RuntimeConfig.RUNTIMES
-        }
-
-        # Tool results
-        tool_results = {}
-        for category, tools in DevToolsConfig.DEVTOOLS_DEPENDENCIES.items():
-            for subcategory, tool_list in tools.items():
-                for tool in tool_list:
-                    result = tool_interface.check_dev_tool(category, subcategory, tool)
-                    tool_results[tool] = result
-
-        # Display via UI function (to be created)
-        display_deps_check_results(
-            system_results, runtime_results, tool_results, verbose
-        )
+        interface = DepsInterface()
+        interface.check_all(verbose)
 
     except Exception as e:
         logger.error(f"Failed to check dependencies: {e}")
@@ -793,30 +650,10 @@ def deps_status(verbose: bool) -> None:
     ezprinter.print_header("Dependency Status")
 
     try:
-        system_interface = SystemPackageManagerInterface()
-        runtime_interface = RuntimeInterface()
-        tool_interface = DevToolsInterface()
+        from ...interfaces import DepsInterface
 
-        # Collect data
-        system_status = system_interface.get_installation_status()
-        runtime_results = {
-            rt: runtime_interface.check_runtime(rt) for rt in RuntimeConfig.RUNTIMES
-        }
-
-        sample_tools = ["cspell", "ruff", "pytest", "eslint"]
-        tool_results = {}
-        for tool in sample_tools:
-            try:
-                tool_info = _find_tool_info(tool)
-                if tool_info:
-                    language, tool_type = tool_info
-                    result = tool_interface.check_dev_tool(language, tool_type, tool)
-                    tool_results[tool] = result
-            except Exception as e:
-                logger.debug(f"Could not check tool {tool}: {e}")
-
-        # Display via UI function (to be created)
-        display_deps_status_table(system_status, runtime_results, tool_results, verbose)
+        interface = DepsInterface()
+        interface.show_status(verbose)
 
     except Exception as e:
         logger.error(f"Failed to generate status report: {e}")
@@ -852,28 +689,10 @@ def deps_validate(verbose: bool) -> None:
     ezprinter.print_header("Dependency Validation")
 
     try:
-        # Collect validation results
-        issues = []
-        valid_count = 0
+        from ...interfaces import DepsInterface
 
-        # Check each devtool's chain
-        for _category, tools in DevToolsConfig.DEVTOOLS_DEPENDENCIES.items():
-            for _subcategory, tool_list in tools.items():
-                for tool in tool_list:
-                    try:
-                        chain = DependenciesHierarchy.get_devtool_chain(tool)
-
-                        if not chain.get("runtime_package_manager"):
-                            issues.append(f"❌ {tool}: Missing runtime_package_manager")
-                        elif not chain.get("runtime"):
-                            issues.append(f"❌ {tool}: Missing runtime")
-                        else:
-                            valid_count += 1
-                    except Exception as e:
-                        issues.append(f"❌ {tool}: Invalid chain ({e})")
-
-        # Display via UI function (to be created)
-        display_deps_validation_results(issues, valid_count, verbose)
+        interface = DepsInterface()
+        interface.validate_chains(verbose)
 
     except Exception as e:
         logger.error(f"Failed to validate dependencies: {e}")

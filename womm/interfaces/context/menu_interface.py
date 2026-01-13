@@ -431,6 +431,126 @@ class ContextMenuInterface:
                 details=f"Key name: {key_name}",
             ) from e
 
+    def register_with_display(
+        self,
+        script_path: str,
+        label: str,
+        icon: str | None = None,
+        context_params: ContextParametersService | None = None,
+        verbose: bool = False,
+    ) -> dict[str, object]:
+        """
+        Register a script with backup and UI display.
+
+        Performs the complete registration flow:
+        1. Creates backup before registration
+        2. Registers the script
+        3. Displays appropriate success/error messages
+
+        Args:
+            script_path: Path to the script or executable
+            label: Display name in context menu
+            icon: Icon path or 'auto' for auto-detection
+            context_params: Context parameters for registration
+            verbose: Whether to show detailed information
+
+        Returns:
+            Dict containing operation result and details
+        """
+        from ...ui.common import ezprinter
+        from ...ui.context import ContextMenuUI
+
+        ui = ContextMenuUI()
+
+        # Show verbose params
+        if verbose:
+            ezprinter.info(f"Target: {script_path}")
+            ezprinter.info(f"Label: {label}")
+            ezprinter.info(f"Icon: {icon}")
+            if context_params:
+                ezprinter.info(f"Context: {context_params.get_description()}")
+
+        # Create backup before registration
+        backup_dir = self.get_backup_directory()
+        backup_file = str(backup_dir / "context_menu_backup_before_register.json")
+
+        with ezprinter.create_spinner_with_status(
+            "Creating backup before registration..."
+        ) as (progress, task):
+            progress.update(task, status="Creating backup...")
+            backup_result = self.backup_entries(backup_file)
+
+        if not backup_result["success"]:
+            ezprinter.error(f"Backup failed: {backup_result['error']}")
+            return {"success": False, "error": backup_result["error"]}
+
+        if verbose:
+            ezprinter.info(f"Backup created: {backup_file}")
+
+        # Perform registration
+        with ezprinter.create_spinner_with_status(
+            "Registering script in context menu..."
+        ) as (progress, task):
+            progress.update(task, status="Adding registry entries...")
+            result = self.register_script(
+                script_path, label, icon, False, context_params
+            )
+
+        # Display result
+        if result["success"]:
+            info = result["info"]
+            ui.show_register_success(label, info["registry_key"])
+        else:
+            ezprinter.error(f"Registration failed: {result['error']}")
+            if verbose and "info" in result:
+                info = result["info"]
+                ezprinter.info(f"Script path: {info.get('script_path')}")
+                ezprinter.info(f"Script type: {info.get('script_type')}")
+                ezprinter.info(f"Registry key: {info.get('registry_key')}")
+
+        return result
+
+    def unregister_with_display(
+        self, key_name: str, verbose: bool = False
+    ) -> dict[str, object]:
+        """
+        Unregister a script with UI display.
+
+        Performs the complete unregistration flow:
+        1. Shows verbose info if requested
+        2. Unregisters the script
+        3. Displays appropriate success/error messages
+
+        Args:
+            key_name: Registry key name to remove
+            verbose: Whether to show detailed information
+
+        Returns:
+            Dict containing operation result
+        """
+        from ...ui.common import ezprinter
+        from ...ui.context import ContextMenuUI
+
+        ui = ContextMenuUI()
+
+        if verbose:
+            ezprinter.info(f"Removing key: {key_name}")
+
+        # Perform unregistration
+        with ezprinter.create_spinner_with_status(
+            "Unregistering script from context menu..."
+        ) as (progress, task):
+            progress.update(task, status="Removing registry entries...")
+            result = self.unregister_script(key_name)
+
+        # Display result
+        if result["success"]:
+            ui.show_unregister_success(key_name)
+        else:
+            ezprinter.error(f"Unregistration failed: {result['error']}")
+
+        return result
+
     def list_entries(self) -> dict[str, object]:
         """
         List all registered context menu entries.

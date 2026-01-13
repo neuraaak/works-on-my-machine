@@ -370,6 +370,53 @@ class RuntimeInterface:
                 details=f"Exception type: {type(e).__name__}",
             ) from e
 
+    def show_runtime_check(self, runtime: str, verbose: bool = False) -> RuntimeResult:
+        """
+        Check a runtime and display the result.
+
+        Args:
+            runtime: Runtime name to check
+            verbose: Whether to show detailed information
+
+        Returns:
+            RuntimeResult: Check result
+        """
+        from ...ui.dependencies import display_runtime_check_specific
+
+        result = self.check_runtime(runtime)
+        display_runtime_check_specific(result, runtime, verbose)
+        return result
+
+    def show_runtime_install(
+        self, runtime: str, verbose: bool = False
+    ) -> RuntimeResult:
+        """
+        Install a runtime and display the result.
+
+        Args:
+            runtime: Runtime name to install
+            verbose: Whether to show detailed information
+
+        Returns:
+            RuntimeResult: Installation result
+        """
+        from ...ui.dependencies import display_runtime_install_result
+
+        result = self.install_runtime(runtime)
+        display_runtime_install_result(result, runtime, verbose)
+        return result
+
+    def show_runtimes_list(self, verbose: bool = False) -> None:
+        """
+        Display the list of available runtimes.
+
+        Args:
+            verbose: Whether to show detailed information
+        """
+        from ...ui.dependencies import display_runtimes_list
+
+        display_runtimes_list(verbose)
+
     def check_and_install_runtimes(
         self, runtimes: list[str]
     ) -> dict[str, RuntimeResult]:

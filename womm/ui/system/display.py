@@ -83,31 +83,33 @@ def display_available_managers(results: dict, verbose: bool = False) -> None:
 
 
 def display_best_manager(
-    best: object,
-    interface: object,
+    manager_name: str | None,
+    version: str | None = None,
+    platform: str | None = None,
+    priority: int | None = None,
     verbose: bool = False,
 ) -> None:
     """
     Display the best available package manager.
 
     Args:
-        best: BestManagerInfo object or None from get_best_available_manager()
-        interface: SystemPackageManagerInterface instance for config access
+        manager_name: Name of the best manager or None if not available
+        version: Manager version if available
+        platform: Platform the manager runs on
+        priority: Priority ranking of the manager
         verbose: Whether to show additional information about selection criteria
     """
-    if best:
-        msg = f"✨ Best manager: {best.manager_name}"
-        if best.version:
-            msg += f" (version {best.version})"
+    if manager_name:
+        msg = f"✨ Best manager: {manager_name}"
+        if version:
+            msg += f" (version {version})"
         ezprinter.tip(msg)
 
         if verbose:
-            config = interface.package_manager_service.get_manager_config(
-                best.manager_name
-            )
-            if config:
-                ezprinter.info(f"Platform: {config.get('platform', 'N/A')}")
-                ezprinter.info(f"Priority: {config.get('priority', 'N/A')}")
+            if platform:
+                ezprinter.info(f"Platform: {platform}")
+            if priority is not None:
+                ezprinter.info(f"Priority: {priority}")
             ezprinter.info(
                 "\nThis manager was selected based on:"
                 "\n  • Platform compatibility"
