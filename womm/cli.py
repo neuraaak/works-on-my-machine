@@ -26,7 +26,10 @@ import click
 # Local imports
 from . import HAS_PROOF_FILE, __version__
 from .ui.common import ezlogger  # noqa: F401
-from .ui.common import ezpl_bridge, ezprinter
+from .ui.common import (
+    ezpl_bridge,
+    ezprinter,
+)
 from .utils.common import is_pip_installation
 from .utils.womm_setup import is_valid_womm_installation
 

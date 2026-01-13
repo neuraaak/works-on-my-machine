@@ -408,7 +408,7 @@ class ContextMenuUI:
         Args:
             entries: Dictionary of entries by context type
         """
-        ezprinter.section("Context Menu Entries")
+        ezprinter.print_header("Context Menu Entries")
 
         for context_type in ["directory", "background"]:
             ezconsole.print(f"\n[bold]{context_type.upper()} CONTEXT:[/bold]")

@@ -247,15 +247,24 @@ class ContextValidationService:
             ValidationError: If label is invalid
             ContextUtilityError: For unexpected errors
         """
-        result = validate_label(label)
-        return ContextValidationResult(
-            success=result.get("valid", False),
-            message=result.get("message", ""),
-            error=result.get("error", ""),
-            input_type="label",
-            input_value=label,
-            label=result.get("label", label),
-        )
+        try:
+            # Utility function raises exception if invalid, returns None if valid
+            validate_label(label)
+            return ContextValidationResult(
+                success=True,
+                message="Label validation successful",
+                input_type="label",
+                input_value=label,
+                label=label,
+            )
+        except ValidationServiceError as e:
+            return ContextValidationResult(
+                success=False,
+                error=str(e),
+                input_type="label",
+                input_value=label,
+                label=label,
+            )
 
     @staticmethod
     def validate_registry_key(key_name: str) -> ContextValidationResult:
@@ -272,15 +281,24 @@ class ContextValidationService:
             ValidationError: If key_name is invalid
             ContextUtilityError: For unexpected errors
         """
-        result = validate_registry_key(key_name)
-        return ContextValidationResult(
-            success=result.get("valid", False),
-            message=result.get("message", ""),
-            error=result.get("error", ""),
-            input_type="registry_key",
-            input_value=key_name,
-            registry_key=result.get("key", key_name),
-        )
+        try:
+            # Utility function raises exception if invalid, returns None if valid
+            validate_registry_key(key_name)
+            return ContextValidationResult(
+                success=True,
+                message="Registry key validation successful",
+                input_type="registry_key",
+                input_value=key_name,
+                registry_key=key_name,
+            )
+        except ValidationServiceError as e:
+            return ContextValidationResult(
+                success=False,
+                error=str(e),
+                input_type="registry_key",
+                input_value=key_name,
+                registry_key=key_name,
+            )
 
     def validate_icon_path(self, icon_path: str) -> ContextValidationResult:
         """
@@ -297,42 +315,55 @@ class ContextValidationService:
             ContextUtilityError: For unexpected errors
         """
         try:
-            # Use utility function for validation
-            result = validate_icon_path(icon_path)
+            # Utility function raises exception if invalid, returns None if valid
+            validate_icon_path(icon_path)
+
+            # Determine icon type
+            icon_type = "special" if icon_path == "auto" or not icon_path else "file"
 
             # Additional security validation for non-special values
-            if result.get("type") != "special":
+            if icon_type != "special":
                 try:
                     validation_result = self.security_validator.validate_file_path(
                         icon_path
                     )
                     if not validation_result.is_valid:
-                        raise ValidationServiceError(
-                            "icon_path",
-                            "icon_path",
-                            f"Security validation failed: {validation_result.validation_reason}",
+                        return ContextValidationResult(
+                            success=False,
+                            error=f"Security validation failed: {validation_result.validation_reason}",
+                            input_type="icon_path",
+                            input_value=icon_path,
+                            icon_path=icon_path,
+                            icon_type=icon_type,
                         )
-                except ValidationServiceError:
-                    raise
                 except Exception as e:
-                    raise ValidationServiceError(
-                        "icon_path",
-                        "icon_path",
-                        f"Security validation failed: {e}",
-                    ) from e
+                    return ContextValidationResult(
+                        success=False,
+                        error=f"Security validation failed: {e}",
+                        input_type="icon_path",
+                        input_value=icon_path,
+                        icon_path=icon_path,
+                        icon_type=icon_type,
+                    )
 
             return ContextValidationResult(
-                success=result.get("valid", False),
-                message=result.get("message", ""),
-                error=result.get("error", ""),
+                success=True,
+                message="Icon path validation successful",
                 input_type="icon_path",
                 input_value=icon_path,
                 icon_path=icon_path,
-                icon_type=result.get("type", ""),
+                icon_type=icon_type,
             )
 
-        except ValidationServiceError:
-            raise
+        except ValidationServiceError as e:
+            return ContextValidationResult(
+                success=False,
+                error=str(e),
+                input_type="icon_path",
+                input_value=icon_path,
+                icon_path=icon_path,
+                icon_type="",
+            )
         except Exception as e:
             raise ContextUtilityError(
                 f"Unexpected error validating icon path: {e}",
@@ -371,7 +402,14 @@ class ContextValidationService:
         try:
             # Check if running on Windows using SystemDetectorService
             system_info = self.system_detector.get_system_info()
-            platform_name = system_info.get("platform", "")
+            if not system_info.success:
+                return ContextValidationResult(
+                    success=False,
+                    error="Failed to get system information",
+                    input_type="permissions",
+                    has_permissions=False,
+                )
+            platform_name = system_info.platform or ""
 
             if platform_name != "Windows":
                 return ContextValidationResult(
@@ -432,7 +470,14 @@ class ContextValidationService:
         try:
             # Get system info using SystemDetectorService
             system_info = self.system_detector.get_system_info()
-            platform_name = system_info.get("platform", "")
+            if not system_info.success:
+                return ContextValidationResult(
+                    success=False,
+                    error="Failed to get system information",
+                    input_type="compatibility",
+                    compatible=False,
+                )
+            platform_name = system_info.platform or ""
 
             # Check OS
             if platform_name != "Windows":
@@ -446,7 +491,7 @@ class ContextValidationService:
             # Check Windows version
             platform_version = ""
             try:
-                platform_version = system_info.get("platform_version", "")
+                platform_version = system_info.platform_version or ""
                 if platform_version:
                     # Windows 7 and later are supported (version 6.0+)
                     major_version = int(platform_version.split(".")[0])

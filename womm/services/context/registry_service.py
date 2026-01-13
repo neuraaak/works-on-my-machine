@@ -226,16 +226,85 @@ class ContextRegistryService:
                 )
 
             try:
+                # First, try to delete all subkeys (like "command")
+                # Windows requires deleting subkeys before deleting the parent key
+                try:
+                    with winreg.OpenKey(
+                        winreg.HKEY_CURRENT_USER, registry_path, 0, winreg.KEY_READ
+                    ) as parent_key:
+                        # Get all subkeys
+                        subkeys = []
+                        i = 0
+                        while True:
+                            try:
+                                subkey_name = winreg.EnumKey(parent_key, i)
+                                subkeys.append(subkey_name)
+                                i += 1
+                            except OSError:
+                                break
+
+                        # Delete all subkeys first
+                        for subkey_name in subkeys:
+                            subkey_path = f"{registry_path}\\{subkey_name}"
+                            try:
+                                winreg.DeleteKey(winreg.HKEY_CURRENT_USER, subkey_path)
+                                self.logger.debug(f"Deleted subkey: {subkey_path}")
+                            except Exception as subkey_error:
+                                self.logger.warning(
+                                    f"Failed to delete subkey {subkey_path}: {subkey_error}"
+                                )
+                                # Continue with other subkeys even if one fails
+                except FileNotFoundError:
+                    # Parent key doesn't exist, which is fine
+                    pass
+                except OSError as e:
+                    # If we can't open the key, it might not exist or we don't have access
+                    if hasattr(e, "winerror") and e.winerror == 2:
+                        # Key doesn't exist
+                        return ContextRegistryResult(
+                            success=False,
+                            message=f"Context menu entry not found: {registry_path}",
+                            registry_path=registry_path,
+                            error=f"Entry not found: {e}",
+                        )
+
+                # Now delete the main key
                 winreg.DeleteKey(winreg.HKEY_CURRENT_USER, registry_path)
                 return ContextRegistryResult(
                     success=True,
                     message=f"Context menu entry removed successfully: {registry_path}",
                     registry_path=registry_path,
                 )
-            except (OSError, PermissionError) as e:
+            except PermissionError as e:
                 raise RegistryServiceError(
                     "remove", registry_path, f"Failed to remove registry entry: {e}"
                 ) from e
+            except FileNotFoundError as e:
+                # Entry doesn't exist - return result with success=False
+                return ContextRegistryResult(
+                    success=False,
+                    message=f"Context menu entry not found: {registry_path}",
+                    registry_path=registry_path,
+                    error=f"Entry not found: {e}",
+                )
+            except OSError as e:
+                # Check if it's a permission error (WinError 5)
+                if hasattr(e, "winerror") and e.winerror == 5:
+                    raise RegistryServiceError(
+                        "remove", registry_path, f"Failed to remove registry entry: {e}"
+                    ) from e
+                # Check if it's a "file not found" error (WinError 2)
+                elif hasattr(e, "winerror") and e.winerror == 2:
+                    return ContextRegistryResult(
+                        success=False,
+                        message=f"Context menu entry not found: {registry_path}",
+                        registry_path=registry_path,
+                        error=f"Entry not found: {e}",
+                    )
+                else:
+                    raise RegistryServiceError(
+                        "remove", registry_path, f"Failed to remove registry entry: {e}"
+                    ) from e
 
         except (ValidationServiceError, RegistryServiceError):
             raise

@@ -244,14 +244,15 @@ class SystemPackageManagerInterface:
         return results
 
     def check_package_manager(
-        self, manager_name: str, show_ui: bool = True
+        self, manager_name: str, show_ui: bool = True, verbose: bool = False
     ) -> PackageManagerResult:
         """
-        Check if a package manager is available.
+        Check if a package manager is available and display the result.
 
         Args:
             manager_name: Name of the package manager to check
             show_ui: Whether to show spinner UI
+            verbose: Whether to show detailed information
 
         Returns:
             PackageManagerResult: Result of the check operation
@@ -275,11 +276,30 @@ class SystemPackageManagerInterface:
                     progress,
                     task,
                 ):
-                    return self._check_package_manager_internal(
+                    result = self._check_package_manager_internal(
                         manager_name, progress, task
                     )
             else:
-                return self._check_package_manager_internal(manager_name, None, None)
+                result = self._check_package_manager_internal(manager_name, None, None)
+
+            # Display result
+            if result.success:
+                msg = f"{manager_name} is available"
+                if result.version:
+                    msg += f" (version {result.version})"
+                ezprinter.success(msg)
+
+                if verbose:
+                    if result.platform:
+                        ezprinter.info(f"Platform: {result.platform}")
+                    if result.priority is not None:
+                        ezprinter.info(f"Priority: {result.priority}")
+            else:
+                ezprinter.error(f"{manager_name} is not available")
+                if verbose and result.error:
+                    ezprinter.info(f"Error: {result.error}")
+
+            return result
 
         except (SystemPkgManagerInterfaceError, ValidationServiceError):
             # Re-raise our custom exceptions

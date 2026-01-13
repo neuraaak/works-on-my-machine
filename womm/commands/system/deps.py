@@ -20,6 +20,7 @@ from __future__ import annotations
 # ///////////////////////////////////////////////////////////////
 # Standard library imports
 import logging
+import sys
 
 # Third-party imports
 import click
@@ -144,24 +145,17 @@ def system_check(manager: str | None, verbose: bool) -> None:
         interface = SystemPackageManagerInterface()
 
         if manager:
-            # Check specific manager
-            result = interface.check_package_manager(manager)
-            if result.success:
-                msg = f"{manager} is available"
-                if result.version:
-                    msg += f" (version {result.version})"
-                ezprinter.success(msg)
-
-                if verbose:
-                    ezprinter.info(f"Platform: {result.platform}")
-                    ezprinter.info(f"Priority: {result.priority}")
-            else:
-                ezprinter.error(f"{manager} is not available")
-                if verbose:
-                    ezprinter.info(f"Error: {result.error}")
+            # Check specific manager - interface handles display
+            result = interface.check_package_manager(
+                manager, show_ui=True, verbose=verbose
+            )
+            # Exit with appropriate code
+            sys.exit(0 if result.success else 1)
         else:
             # Check all managers - interface handles spinner + UI
-            interface.check_all_managers()
+            summary = interface.check_all_managers()
+            # Exit with appropriate code
+            sys.exit(0 if summary.success else 1)
 
     except Exception as e:
         logger.error(f"Failed to check system package managers: {e}")
@@ -197,7 +191,9 @@ def system_list(verbose: bool) -> None:
 
     try:
         interface = SystemPackageManagerInterface()
-        interface.list_managers(verbose)
+        result = interface.list_managers(verbose)
+        # Exit with appropriate code
+        sys.exit(0 if result.available else 1)
 
     except Exception as e:
         logger.error(f"Failed to list system package managers: {e}")
@@ -233,7 +229,9 @@ def system_best(verbose: bool) -> None:
 
     try:
         interface = SystemPackageManagerInterface()
-        interface.show_best_manager(verbose)
+        result = interface.show_best_manager(verbose)
+        # Exit with appropriate code
+        sys.exit(0 if result else 1)
 
     except Exception as e:
         logger.error(f"Failed to get best system package manager: {e}")
@@ -298,10 +296,15 @@ def runtime_check(runtime: str | None, verbose: bool) -> None:
         interface = RuntimeInterface()
 
         if runtime:
-            interface.show_runtime_check(runtime, verbose)
+            result = interface.show_runtime_check(runtime, verbose)
+            # Exit with appropriate code
+            sys.exit(0 if result.success else 1)
         else:
             # Check all runtimes - interface handles spinner + UI
-            interface.check_all_runtimes()
+            results = interface.check_all_runtimes()
+            # Exit with appropriate code (success if all are successful)
+            all_success = all(r.success for r in results.values())
+            sys.exit(0 if all_success else 1)
 
     except Exception as e:
         logger.error(f"Failed to check runtime: {e}")
@@ -348,7 +351,9 @@ def runtime_install(runtime: str, _manager: str | None, verbose: bool) -> None:
     try:
         interface = RuntimeInterface()
 
-        interface.show_runtime_install(runtime, verbose)
+        result = interface.show_runtime_install(runtime, verbose)
+        # Exit with appropriate code
+        sys.exit(0 if result.success else 1)
 
     except Exception as e:
         logger.error(f"Failed to install runtime {runtime}: {e}")
@@ -385,6 +390,8 @@ def runtime_list(verbose: bool) -> None:
     try:
         interface = RuntimeInterface()
         interface.show_runtimes_list(verbose)
+        # Exit with success (list is informational)
+        sys.exit(0)
 
     except Exception as e:
         logger.error(f"Failed to list runtimes: {e}")
@@ -452,13 +459,18 @@ def tool_check(tool: str | None, verbose: bool) -> None:
             tool_info = _find_tool_info(tool)
             if not tool_info:
                 ezprinter.error(f"Unknown tool: {tool}")
-                raise click.Abort()
+                sys.exit(1)
 
             language, tool_type = tool_info
-            interface.show_tool_check(language, tool_type, tool, verbose)
+            result = interface.show_tool_check(language, tool_type, tool, verbose)
+            # Exit with appropriate code
+            sys.exit(0 if result.success else 1)
         else:
             # Check all tools - interface handles spinner + UI
-            interface.check_all_tools()
+            results = interface.check_all_tools()
+            # Exit with appropriate code (success if all are successful)
+            all_success = all(r.success for r in results.values())
+            sys.exit(0 if all_success else 1)
 
     except Exception as e:
         logger.error(f"Failed to check tool: {e}")
@@ -526,7 +538,9 @@ def tool_install(tool: str, force: bool, verbose: bool) -> None:
             raise click.Abort()
 
         language, tool_type = tool_info
-        interface.show_tool_install(language, tool_type, tool, verbose)
+        result = interface.show_tool_install(language, tool_type, tool, verbose)
+        # Exit with appropriate code
+        sys.exit(0 if result.success else 1)
 
     except Exception as e:
         logger.error(f"Failed to install tool {tool}: {e}")
@@ -565,6 +579,8 @@ def tool_list(category: str | None, verbose: bool) -> None:
     try:
         interface = DevToolsInterface()
         interface.show_tools_list(category, verbose)
+        # Exit with success (list is informational)
+        sys.exit(0)
 
     except Exception as e:
         logger.error(f"Failed to list tools: {e}")
@@ -612,7 +628,15 @@ def deps_check(verbose: bool) -> None:
         from ...interfaces import DepsInterface
 
         interface = DepsInterface()
-        interface.check_all(verbose)
+        results = interface.check_all(verbose)
+        # Exit with appropriate code (success if all strata have successful results)
+        system_ok = any(
+            r.get("available", False) for r in results.get("system", {}).values()
+        )
+        runtime_ok = all(r.success for r in results.get("runtime", {}).values())
+        tools_ok = all(r.success for r in results.get("tools", {}).values())
+        all_ok = system_ok and runtime_ok and tools_ok
+        sys.exit(0 if all_ok else 1)
 
     except Exception as e:
         logger.error(f"Failed to check dependencies: {e}")
@@ -654,6 +678,8 @@ def deps_status(verbose: bool) -> None:
 
         interface = DepsInterface()
         interface.show_status(verbose)
+        # Exit with success (status is informational)
+        sys.exit(0)
 
     except Exception as e:
         logger.error(f"Failed to generate status report: {e}")
@@ -692,7 +718,9 @@ def deps_validate(verbose: bool) -> None:
         from ...interfaces import DepsInterface
 
         interface = DepsInterface()
-        interface.validate_chains(verbose)
+        result = interface.validate_chains(verbose)
+        # Exit with appropriate code (success if no issues)
+        sys.exit(0 if len(result.get("issues", [])) == 0 else 1)
 
     except Exception as e:
         logger.error(f"Failed to validate dependencies: {e}")

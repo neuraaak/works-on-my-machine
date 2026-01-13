@@ -172,10 +172,39 @@ def is_system_directory(path: Path) -> bool:
     """
     try:
         path_str = str(path.resolve())
-        return any(
-            path_str.startswith(system_dir)
-            for system_dir in SecurityPatternsConfig.SYSTEM_DIRECTORIES
-        )
+        path_normalized = path_str.replace("\\", "/")
+
+        for system_dir in SecurityPatternsConfig.SYSTEM_DIRECTORIES:
+            system_dir_normalized = system_dir.replace("\\", "/")
+
+            # For root directories like "C:\\" or "/", check that the path
+            # is actually in a system subdirectory, not just on the same drive
+            if system_dir_normalized in ("C:/", "/"):
+                # Only match if path is exactly the root or in a known system subdirectory
+                if path_normalized == system_dir_normalized.rstrip("/"):
+                    return True
+                # Check for known system subdirectories
+                system_subdirs = [
+                    "Windows",
+                    "System32",
+                    "Program Files",
+                    "Program Files (x86)",
+                ]
+                if any(
+                    path_normalized.startswith(
+                        (
+                            f"{system_dir_normalized.rstrip('/')}/{subdir}/",
+                            f"{system_dir_normalized.rstrip('/')}\\{subdir}\\",
+                        )
+                    )
+                    for subdir in system_subdirs
+                ):
+                    return True
+            # For specific system directories, use startswith
+            elif path_normalized.startswith(system_dir_normalized):
+                return True
+
+        return False
     except Exception:
         # If path resolution fails, be conservative
         return True
