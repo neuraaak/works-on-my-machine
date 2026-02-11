@@ -391,14 +391,14 @@ def pytest_configure(config: pytest.Config) -> None:
 
 
 def pytest_collection_modifyitems(
-    _config: pytest.Config,
-    items: list[pytest.Item],  # noqa: ARG001
+    config: pytest.Config,  # noqa: ARG001
+    items: list[pytest.Item],
 ) -> None:
     """
     Modify test collection to add markers based on test names.
 
     Args:
-        _config: Pytest configuration object (required by pytest hook signature)
+        config: Pytest configuration object (required by pytest hook signature)
         items: List of collected test items
     """
     for item in items:
