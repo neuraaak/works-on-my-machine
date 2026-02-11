@@ -33,8 +33,6 @@ from ...utils.project import (
     analyze_javascript_config,
     analyze_python_config,
     analyze_rust_config,
-    categorize_directory,
-    matches_project_type,
 )
 
 # ///////////////////////////////////////////////////////////////
@@ -125,10 +123,29 @@ class ProjectDetectionService:
 
             # Check each project type
             detected_type = None
+            detected_files_by_type: dict[str, list[str]] = {}
+            file_names = [item.name for item in project_files]
+            dir_names = [item.name for item in project_dirs]
+
             for project_type, indicators in ProjectConfig.PROJECT_INDICATORS.items():
-                if matches_project_type(project_files, project_dirs, indicators):
-                    detected_type = project_type
-                    break
+                matches: list[str] = []
+
+                for marker in indicators.get("files", []):
+                    if marker in file_names:
+                        matches.append(marker)
+
+                for marker in indicators.get("dirs", []):
+                    if marker in dir_names:
+                        matches.append(marker)
+
+                for ext in indicators.get("extensions", []):
+                    if any(f.suffix == ext for f in project_files):
+                        matches.append(ext)
+
+                if matches:
+                    detected_files_by_type[project_type] = matches
+                    if detected_type is None:
+                        detected_type = project_type
 
             # Build result
             return ProjectDetectionResult(
@@ -136,7 +153,7 @@ class ProjectDetectionService:
                 message="Project type detection completed",
                 project_type=detected_type or "unknown",
                 confidence=100.0 if detected_type else 0.0,
-                detected_files=[f.name for f in project_files],
+                detected_files=detected_files_by_type.get(detected_type or "", []),
                 configuration_files={},
             )
 
@@ -300,28 +317,46 @@ class ProjectDetectionService:
                     details=f"Path {project_path} is not a directory",
                 )
 
-            structure: dict[str, str | bool | int | list[str]] = {
-                "source_dirs": [],
-                "test_dirs": [],
-                "config_dirs": [],
-                "build_dirs": [],
-                "documentation_dirs": [],
-                "total_files": 0,
-                "total_dirs": 0,
-            }
+            source_dirs: list[str] = []
+            test_dirs: list[str] = []
+            config_dirs: list[str] = []
+            build_dirs: list[str] = []
+            documentation_dirs: list[str] = []
+            total_files = 0
+            total_dirs = 0
 
             try:
                 # Walk through project structure
                 for item in project_path.rglob("*"):
                     if item.is_file():
-                        structure["total_files"] = int(structure["total_files"]) + 1
+                        total_files += 1
                     elif item.is_dir():
-                        structure["total_dirs"] = int(structure["total_dirs"]) + 1
-                        categorize_directory(item, structure, project_path)
+                        total_dirs += 1
+                        name = item.name.lower()
+                        if name in {"src", "lib", "app", "source"}:
+                            source_dirs.append(str(item))
+                        elif name in {"tests", "test", "__tests__"}:
+                            test_dirs.append(str(item))
+                        elif name in {"config", ".config", "configs"}:
+                            config_dirs.append(str(item))
+                        elif name in {"build", "dist", "target", "out"}:
+                            build_dirs.append(str(item))
+                        elif name in {"docs", "doc", "documentation"}:
+                            documentation_dirs.append(str(item))
 
             except (PermissionError, OSError) as e:
                 logger.warning(f"Permission or OS error during structure analysis: {e}")
                 # Continue with partial results
+
+            structure = {
+                "source_dirs": ", ".join(source_dirs),
+                "test_dirs": ", ".join(test_dirs),
+                "config_dirs": ", ".join(config_dirs),
+                "build_dirs": ", ".join(build_dirs),
+                "documentation_dirs": ", ".join(documentation_dirs),
+                "total_files": str(total_files),
+                "total_dirs": str(total_dirs),
+            }
 
             return ProjectDetectionResult(
                 success=True,

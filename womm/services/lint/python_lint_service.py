@@ -161,13 +161,19 @@ class PythonLintService:
                     continue
 
                 config = PythonLintingConfig.TOOLS_CONFIG[tool_name]
+                check_args = config.get("check_args", [])
+                if not isinstance(check_args, list):
+                    check_args = []
+                json_support = config.get("json_support", False)
+                if not isinstance(json_support, bool):
+                    json_support = False
                 try:
                     result = self.lint_service.run_tool_check(
                         tool_name=tool_name,
-                        args=config["check_args"],
+                        args=check_args,
                         target_dirs=target_dirs,
                         cwd=cwd,
-                        json_output=config["json_support"],
+                        json_output=json_support,
                     )
                     results[tool_name] = result
                     self.logger.debug(f"✓ {tool_name} check completed")
@@ -260,7 +266,9 @@ class PythonLintService:
                     continue
 
                 config = PythonLintingConfig.TOOLS_CONFIG[tool_name]
-                fix_args = config["fix_args"]
+                fix_args = config.get("fix_args", [])
+                if not isinstance(fix_args, list):
+                    fix_args = []
 
                 # For tools that fix by default (black, isort), use empty args
                 if not fix_args and tool_name in PythonLintingConfig.FIXABLE_TOOLS:

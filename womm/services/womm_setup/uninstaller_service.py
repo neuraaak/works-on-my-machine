@@ -136,8 +136,8 @@ class WommUninstallerService:
             logger.error(f"verify_uninstallation_complete failed: {e}")
             # Wrap unexpected external exceptions
             raise VerificationServiceError(
+                message=f"Uninstallation verification error: {e}",
                 verification_type="unexpected_error",
                 target_path=str(target_path),
-                reason=f"Uninstallation verification error: {e}",
                 details=f"Exception type: {type(e).__name__}",
             ) from e

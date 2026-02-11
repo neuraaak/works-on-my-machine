@@ -18,6 +18,7 @@ from __future__ import annotations
 # IMPORTS
 # ///////////////////////////////////////////////////////////////
 # Standard library imports
+import importlib
 import json
 from pathlib import Path
 
@@ -183,21 +184,22 @@ class VariantDetectionUtils:
             bool: True if Django is found in dependencies
         """
         try:
-            # Try tomllib first (Python 3.11+ stdlib)
+            toml_loader = None
             try:
-                import tomllib  # Python 3.11+ stdlib
-            except ImportError:
-                # Fallback to tomli for older Python versions
+                toml_loader = importlib.import_module("tomllib")
+            except ModuleNotFoundError:
                 try:
-                    import tomli as tomllib  # type: ignore[import-untyped]
-                except ImportError:
-                    # Final fallback: simple string search
-                    with open(pyproject_path, encoding="utf-8") as f:
-                        content = f.read().lower()
-                        return "django" in content
+                    toml_loader = importlib.import_module("tomli")
+                except ModuleNotFoundError:
+                    toml_loader = None
+
+            if toml_loader is None:
+                with open(pyproject_path, encoding="utf-8") as f:
+                    content = f.read().lower()
+                    return "django" in content
 
             with open(pyproject_path, "rb") as f:
-                pyproject_data = tomllib.load(f)
+                pyproject_data = toml_loader.load(f)
 
             dependencies = pyproject_data.get("project", {}).get("dependencies", [])
             return any("django" in dep.lower() for dep in dependencies)

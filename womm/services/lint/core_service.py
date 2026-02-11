@@ -236,11 +236,11 @@ class LintService:
 
                     except json.JSONDecodeError as e:
                         raise ValidationServiceError(
-                            message=f"Failed to parse {tool_name} JSON output: {e}",
-                            validation_type="json_parsing",
-                            file_path=str(cwd),
+                            operation="run_tool_check",
+                            field="tool_output",
                             reason=f"Failed to parse {tool_name} JSON output: {e}",
                             details=f"Raw output: {result.stdout[:200]}...",
+                            file_path=str(cwd),
                         ) from e
                 elif json_output and not result.stdout:
                     # No output means no issues found (common with bandit)

@@ -2,3 +2,4 @@ click>=8.0.0
 rich>=13.0.0
 InquirerPy>=0.3.4
 ezplog>=1.0.0
+tomli>=2.0.1; python_version < "3.11"

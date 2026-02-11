@@ -77,7 +77,7 @@ def create_package_manager_entry(
     version: str,
     metadata: dict[str, str | int],
     available: bool = True,
-) -> dict[str, str | bool | None]:
+) -> dict[str, str | bool | int | None]:
     """
     Create a standardized package manager entry dictionary.
 

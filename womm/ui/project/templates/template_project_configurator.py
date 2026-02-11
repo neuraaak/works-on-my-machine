@@ -62,7 +62,7 @@ def _configure_common_options() -> dict[str, str]:
 
     if INQUIRERPY_AVAILABLE:
         options["author_name"] = (
-            inquirer.text(
+            inquirer.text(  # pyright: ignore[reportPrivateImportUsage]
                 message="Author name:",
                 default="Your Name",
             ).execute()
@@ -70,7 +70,7 @@ def _configure_common_options() -> dict[str, str]:
         )
 
         options["author_email"] = (
-            inquirer.text(
+            inquirer.text(  # pyright: ignore[reportPrivateImportUsage]
                 message="Author email:",
                 default="your.email@example.com",
             ).execute()
@@ -78,7 +78,7 @@ def _configure_common_options() -> dict[str, str]:
         )
 
         options["project_description"] = (
-            inquirer.text(
+            inquirer.text(  # pyright: ignore[reportPrivateImportUsage]
                 message="Project description:",
                 default="A new project created with WOMM CLI",
             ).execute()
@@ -86,21 +86,21 @@ def _configure_common_options() -> dict[str, str]:
         )
 
         options["project_url"] = (
-            inquirer.text(
+            inquirer.text(  # pyright: ignore[reportPrivateImportUsage]
                 message="Project URL (optional):",
             ).execute()
             or ""
         )
 
         options["project_repository"] = (
-            inquirer.text(
+            inquirer.text(  # pyright: ignore[reportPrivateImportUsage]
                 message="Repository URL (optional):",
             ).execute()
             or ""
         )
 
         options["project_docs_url"] = (
-            inquirer.text(
+            inquirer.text(  # pyright: ignore[reportPrivateImportUsage]
                 message="Documentation URL (optional):",
             ).execute()
             or ""
@@ -108,7 +108,7 @@ def _configure_common_options() -> dict[str, str]:
 
         # Keywords
         keywords_input = (
-            inquirer.text(
+            inquirer.text(  # pyright: ignore[reportPrivateImportUsage]
                 message="Keywords (comma-separated):",
                 default="cli,utility",
             ).execute()
@@ -126,7 +126,7 @@ def _configure_common_options() -> dict[str, str]:
             Choice(value="BSD-3-Clause", name="BSD 3-Clause License"),
             Choice(value="custom", name="Custom license"),
         ]
-        selected_license = inquirer.select(
+        selected_license = inquirer.select(  # pyright: ignore[reportPrivateImportUsage]
             message="License:",
             choices=license_choices,
             pointer="→",
@@ -134,7 +134,7 @@ def _configure_common_options() -> dict[str, str]:
 
         if selected_license == "custom":
             options["license"] = (
-                inquirer.text(
+                inquirer.text(  # pyright: ignore[reportPrivateImportUsage]
                     message="Custom license name:",
                 ).execute()
                 or "MIT"
@@ -201,17 +201,21 @@ def _configure_python_options() -> dict[str, str | bool]:
             Choice(value="3.11", name="Python 3.11"),
             Choice(value="3.12", name="Python 3.12"),
         ]
-        options["python_version"] = inquirer.select(
-            message="Python version:",
-            choices=python_versions,
-            pointer="→",
-        ).execute()
+        options["python_version"] = (
+            inquirer.select(  # pyright: ignore[reportPrivateImportUsage]
+                message="Python version:",
+                choices=python_versions,
+                pointer="→",
+            ).execute()
+        )
 
         # Development tools
-        options["include_dev_tools"] = inquirer.confirm(
-            message="Include development tools (black, flake8, pytest, etc.)?",
-            default=True,
-        ).execute()
+        options["include_dev_tools"] = (
+            inquirer.confirm(  # pyright: ignore[reportPrivateImportUsage]
+                message="Include development tools (black, flake8, pytest, etc.)?",
+                default=True,
+            ).execute()
+        )
 
         if options["include_dev_tools"]:
             dev_tools = [
@@ -222,23 +226,29 @@ def _configure_python_options() -> dict[str, str | bool]:
                 Choice(value="pytest", name="pytest (testing)"),
                 Choice(value="pre-commit", name="pre-commit (git hooks)"),
             ]
-            selected_tools = inquirer.checkbox(
-                message="Select development tools:",
-                choices=dev_tools,
-                pointer="→",
-            ).execute()
+            selected_tools = (
+                inquirer.checkbox(  # pyright: ignore[reportPrivateImportUsage]
+                    message="Select development tools:",
+                    choices=dev_tools,
+                    pointer="→",
+                ).execute()
+            )
             options["dev_tools"] = selected_tools
 
         # Project structure
-        options["create_src_layout"] = inquirer.confirm(
-            message="Use src/ layout (recommended for packages)?",
-            default=True,
-        ).execute()
+        options["create_src_layout"] = (
+            inquirer.confirm(  # pyright: ignore[reportPrivateImportUsage]
+                message="Use src/ layout (recommended for packages)?",
+                default=True,
+            ).execute()
+        )
 
-        options["include_docs"] = inquirer.confirm(
-            message="Include documentation setup (Sphinx)?",
-            default=False,
-        ).execute()
+        options["include_docs"] = (
+            inquirer.confirm(  # pyright: ignore[reportPrivateImportUsage]
+                message="Include documentation setup (Sphinx)?",
+                default=False,
+            ).execute()
+        )
 
     else:
         # Fallback to simple input
@@ -297,11 +307,13 @@ def _configure_javascript_options(project_type: str) -> dict[str, str | bool]:
                 Choice(value="library", name="JavaScript library"),
                 Choice(value="cli", name="CLI application"),
             ]
-            options["js_project_type"] = inquirer.select(
-                message="JavaScript project type:",
-                choices=js_types,
-                pointer="→",
-            ).execute()
+            options["js_project_type"] = (
+                inquirer.select(  # pyright: ignore[reportPrivateImportUsage]
+                    message="JavaScript project type:",
+                    choices=js_types,
+                    pointer="→",
+                ).execute()
+            )
 
         # Package manager
         package_managers = [
@@ -309,29 +321,37 @@ def _configure_javascript_options(project_type: str) -> dict[str, str | bool]:
             Choice(value="yarn", name="Yarn"),
             Choice(value="pnpm", name="pnpm"),
         ]
-        options["package_manager"] = inquirer.select(
-            message="Package manager:",
-            choices=package_managers,
-            pointer="→",
-        ).execute()
+        options["package_manager"] = (
+            inquirer.select(  # pyright: ignore[reportPrivateImportUsage]
+                message="Package manager:",
+                choices=package_managers,
+                pointer="→",
+            ).execute()
+        )
 
         # TypeScript
         if project_type in ["react", "vue"]:
-            options["use_typescript"] = inquirer.confirm(
-                message="Use TypeScript?",
-                default=True,
-            ).execute()
+            options["use_typescript"] = (
+                inquirer.confirm(  # pyright: ignore[reportPrivateImportUsage]
+                    message="Use TypeScript?",
+                    default=True,
+                ).execute()
+            )
         else:
-            options["use_typescript"] = inquirer.confirm(
-                message="Use TypeScript?",
-                default=False,
-            ).execute()
+            options["use_typescript"] = (
+                inquirer.confirm(  # pyright: ignore[reportPrivateImportUsage]
+                    message="Use TypeScript?",
+                    default=False,
+                ).execute()
+            )
 
         # Development tools
-        options["include_dev_tools"] = inquirer.confirm(
-            message="Include development tools (ESLint, Prettier, Jest, etc.)?",
-            default=True,
-        ).execute()
+        options["include_dev_tools"] = (
+            inquirer.confirm(  # pyright: ignore[reportPrivateImportUsage]
+                message="Include development tools (ESLint, Prettier, Jest, etc.)?",
+                default=True,
+            ).execute()
+        )
 
         if options["include_dev_tools"]:
             dev_tools = [
@@ -341,29 +361,35 @@ def _configure_javascript_options(project_type: str) -> dict[str, str | bool]:
                 Choice(value="husky", name="Husky (git hooks)"),
                 Choice(value="lint-staged", name="lint-staged (pre-commit linting)"),
             ]
-            selected_tools = inquirer.checkbox(
-                message="Select development tools:",
-                choices=dev_tools,
-                pointer="→",
-            ).execute()
+            selected_tools = (
+                inquirer.checkbox(  # pyright: ignore[reportPrivateImportUsage]
+                    message="Select development tools:",
+                    choices=dev_tools,
+                    pointer="→",
+                ).execute()
+            )
             options["dev_tools"] = selected_tools
 
         # Framework-specific options
         if project_type == "react":
-            options["use_jsx"] = inquirer.confirm(
-                message="Use JSX syntax?",
-                default=True,
-            ).execute()
+            options["use_jsx"] = (
+                inquirer.confirm(  # pyright: ignore[reportPrivateImportUsage]
+                    message="Use JSX syntax?",
+                    default=True,
+                ).execute()
+            )
 
         elif project_type == "vue":
-            options["vue_version"] = inquirer.select(
-                message="Vue.js version:",
-                choices=[
-                    Choice(value="3", name="Vue 3 (Composition API)"),
-                    Choice(value="2", name="Vue 2 (Options API)"),
-                ],
-                pointer="→",
-            ).execute()
+            options["vue_version"] = (
+                inquirer.select(  # pyright: ignore[reportPrivateImportUsage]
+                    message="Vue.js version:",
+                    choices=[
+                        Choice(value="3", name="Vue 3 (Composition API)"),
+                        Choice(value="2", name="Vue 2 (Options API)"),
+                    ],
+                    pointer="→",
+                ).execute()
+            )
 
     else:
         # Fallback to simple input

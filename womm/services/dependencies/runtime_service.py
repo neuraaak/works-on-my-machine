@@ -70,9 +70,8 @@ class RuntimeService:
         except Exception as e:
             logger.error(f"Failed to initialize RuntimeManagerService: {e}")
             raise RuntimeServiceError(
-                runtime_name="runtime_manager",
+                message=f"Failed to initialize runtime manager service: {e}",
                 operation="initialization",
-                reason=f"Failed to initialize runtime manager service: {e}",
                 details=f"Exception type: {type(e).__name__}",
             ) from e
 
@@ -98,18 +97,20 @@ class RuntimeService:
             # Input validation
             if not runtime:
                 raise ValidationServiceError(
-                    component="check_runtime_installation",
-                    validation_type="input_validation",
+                    operation="check_runtime_installation",
+                    field="runtime",
                     reason="Runtime name must not be empty",
                     details="Runtime name parameter must be a non-empty string",
+                    value=runtime or "None",
                 )
 
             if runtime not in RuntimeConfig.RUNTIMES:
                 raise ValidationServiceError(
-                    component="check_runtime_installation",
-                    validation_type="input_validation",
+                    operation="check_runtime_installation",
+                    field="runtime",
                     reason=f"Runtime {runtime} is not supported",
                     details=f"Supported runtimes: {list(RuntimeConfig.RUNTIMES.keys())}",
+                    value=runtime,
                 )
 
             # Check cache first
@@ -149,9 +150,8 @@ class RuntimeService:
             # Wrap unexpected external exceptions
             logger.error(f"Unexpected error in check_runtime_installation: {e}")
             raise RuntimeServiceError(
-                runtime_name=runtime,
+                message=f"Failed to check runtime installation for {runtime}: {e}",
                 operation="check_installation",
-                reason=f"Failed to check runtime installation: {e}",
                 details=f"Exception type: {type(e).__name__}",
             ) from e
 
@@ -264,18 +264,20 @@ class RuntimeService:
             # Input validation
             if not runtime:
                 raise ValidationServiceError(
-                    component="install_runtime",
-                    validation_type="input_validation",
+                    operation="install_runtime",
+                    field="runtime",
                     reason="Runtime name must not be empty",
                     details="Runtime name parameter must be a non-empty string",
+                    value=runtime or "None",
                 )
 
             if runtime not in RuntimeConfig.RUNTIMES:
                 raise ValidationServiceError(
-                    component="install_runtime",
-                    validation_type="input_validation",
+                    operation="install_runtime",
+                    field="runtime",
                     reason=f"Runtime {runtime} is not supported",
                     details=f"Supported runtimes: {list(RuntimeConfig.RUNTIMES.keys())}",
+                    value=runtime,
                 )
 
             # Check if already installed
@@ -287,12 +289,27 @@ class RuntimeService:
                 return check_result
 
             # Get best system package manager for this platform
-            best_manager = DependenciesHierarchy.get_best_system_package_manager()
+            platform_name = self.system.lower()
+            available_managers = (
+                DependenciesHierarchy.get_available_system_package_managers(
+                    platform_name
+                )
+            )
+            runtime_installers = DependenciesHierarchy.get_runtime_installers(runtime)
+            best_manager = next(
+                (
+                    manager
+                    for manager in runtime_installers
+                    if manager in available_managers
+                ),
+                None,
+            )
             if not best_manager:
                 raise RuntimeServiceError(
-                    runtime_name=runtime,
+                    message=(
+                        "No suitable system package manager found for this platform"
+                    ),
                     operation="install",
-                    reason="No suitable system package manager found for this platform",
                     details=f"Platform: {self.system}",
                 )
 
@@ -303,18 +320,16 @@ class RuntimeService:
             package_names = runtime_config.get("package_names", {})
             if not isinstance(package_names, dict):
                 raise RuntimeServiceError(
-                    runtime_name=runtime,
+                    message=f"Invalid package_names configuration for {runtime}",
                     operation="install",
-                    reason=f"Invalid package_names configuration for {runtime}",
                     details=f"Expected dict, got {type(package_names)}",
                 )
 
             package_id = package_names.get(best_manager)
             if not package_id:
                 raise RuntimeServiceError(
-                    runtime_name=runtime,
+                    message=f"No package ID configured for {runtime} on {best_manager}",
                     operation="install",
-                    reason=f"No package ID configured for {runtime} on {best_manager}",
                     details=f"Available managers: {list(package_names.keys())}",
                 )
 
@@ -332,9 +347,8 @@ class RuntimeService:
 
             if not success:
                 raise RuntimeServiceError(
-                    runtime_name=runtime,
+                    message=f"Installation via {best_manager} failed",
                     operation="install",
-                    reason=f"Installation via {best_manager} failed",
                     details=f"Package: {package_id}",
                 )
 
@@ -352,9 +366,8 @@ class RuntimeService:
         except Exception as e:
             logger.error(f"Unexpected error in install_runtime: {e}")
             raise RuntimeServiceError(
-                runtime_name=runtime,
+                message=f"Failed to install runtime {runtime}: {e}",
                 operation="install",
-                reason=f"Failed to install runtime: {e}",
                 details=f"Exception type: {type(e).__name__}",
             ) from e
 
@@ -378,20 +391,25 @@ class RuntimeService:
             # Input validation
             if not rpm_name:
                 raise ValidationServiceError(
-                    component="ensure_runtime_package_manager",
-                    validation_type="input_validation",
+                    operation="ensure_runtime_package_manager",
+                    field="rpm_name",
                     reason="Runtime package manager name must not be empty",
                     details="rpm_name parameter must be a non-empty string",
+                    value=rpm_name or "None",
                 )
 
             # Get the runtime required for this package manager
             runtime = DependenciesHierarchy.get_runtime_from_package_manager(rpm_name)
             if not runtime:
                 raise ValidationServiceError(
-                    component="ensure_runtime_package_manager",
-                    validation_type="input_validation",
+                    operation="ensure_runtime_package_manager",
+                    field="rpm_name",
                     reason=f"Unknown runtime package manager: {rpm_name}",
-                    details=f"Known managers: {list(DependenciesHierarchy.RUNTIME_PACKAGE_MANAGERS.keys())}",
+                    details=(
+                        "Known managers: "
+                        f"{list(DependenciesHierarchy.RUNTIME_PACKAGE_MANAGERS.keys())}"
+                    ),
+                    value=rpm_name,
                 )
 
             # Check if runtime is installed

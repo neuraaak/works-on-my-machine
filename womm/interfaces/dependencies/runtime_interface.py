@@ -19,6 +19,9 @@ import logging
 import platform
 import shutil
 
+# Third-party imports
+from rich.progress import TaskID
+
 # Local imports
 from ...exceptions.common import ValidationServiceError
 from ...exceptions.dependencies import RuntimeInterfaceError
@@ -114,9 +117,9 @@ class RuntimeInterface:
             # Input validation
             if not runtime:
                 raise ValidationServiceError(
-                    component="runtime_check",
-                    validation_type="input_validation",
                     reason="Runtime name must not be empty",
+                    operation="check_runtime",
+                    field="runtime",
                     details="Runtime parameter must be a non-empty string",
                 )
 
@@ -124,9 +127,10 @@ class RuntimeInterface:
                 progress,
                 task,
             ):
+                task_id = TaskID(task)
                 if runtime not in RUNTIMES:
                     progress.update(
-                        task, description=f"Runtime {runtime} not supported"
+                        task_id, description=f"Runtime {runtime} not supported"
                     )
                     return RuntimeResult(
                         success=False,
@@ -139,7 +143,7 @@ class RuntimeInterface:
                 if runtime in self.cache:
                     available, version = self.cache[runtime]
                     progress.update(
-                        task, description=f"Runtime {runtime} already installed"
+                        task_id, description=f"Runtime {runtime} already installed"
                     )
                     return RuntimeResult(
                         success=available,
@@ -147,7 +151,7 @@ class RuntimeInterface:
                         version=version,
                         path=shutil.which(runtime) if available else None,
                         message=f"Runtime {runtime} {'available' if available else 'not found'}",
-                        error=None if available else f"Runtime {runtime} not installed",
+                        error="" if available else f"Runtime {runtime} not installed",
                     )
 
                 # Check runtime
@@ -166,7 +170,7 @@ class RuntimeInterface:
                 self.cache[runtime] = (available, version)
 
                 progress.update(
-                    task,
+                    task_id,
                     description=f"Runtime {runtime} {'available' if available else 'not found'}",
                 )
                 return RuntimeResult(
@@ -175,7 +179,7 @@ class RuntimeInterface:
                     version=version,
                     path=shutil.which(runtime) if available else None,
                     message=f"Runtime {runtime} {'available' if available else 'not found'}",
-                    error=None if available else f"Runtime {runtime} not installed",
+                    error="" if available else f"Runtime {runtime} not installed",
                 )
 
         except (RuntimeInterfaceError, ValidationServiceError):
@@ -185,9 +189,9 @@ class RuntimeInterface:
             # Wrap unexpected external exceptions
             logger.error(f"Unexpected error in check_runtime: {e}")
             raise RuntimeInterfaceError(
+                message=f"Failed to check runtime: {e}",
                 runtime_name=runtime,
                 operation="check",
-                reason=f"Failed to check runtime: {e}",
                 details=f"Exception type: {type(e).__name__}",
             ) from e
 
@@ -207,10 +211,11 @@ class RuntimeInterface:
         with ezprinter.create_spinner_with_status(
             "Checking runtime availability..."
         ) as (progress, task):
-            progress.update(task, status="Initializing...")
+            task_id = TaskID(task)
+            progress.update(task_id, status="Initializing...")
 
             for runtime in runtimes:
-                progress.update(task, status=f"Checking {runtime}")
+                progress.update(task_id, status=f"Checking {runtime}")
 
                 try:
                     # Call service directly (no spinner)
@@ -229,7 +234,7 @@ class RuntimeInterface:
                         version=version,
                         path=shutil.which(runtime) if available else None,
                         message=f"Runtime {runtime} {'available' if available else 'not found'}",
-                        error=None if available else f"Runtime {runtime} not installed",
+                        error="" if available else f"Runtime {runtime} not installed",
                     )
                 except Exception as e:
                     logger.warning(f"Failed to check runtime {runtime}: {e}")
@@ -240,7 +245,7 @@ class RuntimeInterface:
                         error=str(e),
                     )
 
-            progress.update(task, status="Check completed")
+            progress.update(task_id, status="Check completed")
 
         # Display results table via UI
         print()
@@ -271,9 +276,9 @@ class RuntimeInterface:
             # Input validation
             if not runtime:
                 raise ValidationServiceError(
-                    component="runtime_installation",
-                    validation_type="input_validation",
                     reason="Runtime name must not be empty",
+                    operation="install_runtime",
+                    field="runtime",
                     details="Runtime parameter must be a non-empty string",
                 )
 
@@ -281,6 +286,7 @@ class RuntimeInterface:
                 progress,
                 task,
             ):
+                task_id = TaskID(task)
                 if runtime not in RUNTIMES:
                     ezprinter.error(f"Runtime {runtime} not supported")
                     return RuntimeResult(
@@ -291,14 +297,14 @@ class RuntimeInterface:
                     )
 
                 # Check if already installed
-                progress.update(task, status="Checking current installation...")
+                progress.update(task_id, status="Checking current installation...")
                 try:
                     result = self.runtime_manager_service.check_runtime_installation(
                         runtime
                     )
                     if result.is_installed:
                         progress.update(
-                            task,
+                            task_id,
                             status=f"Already installed (version {result.version})",
                         )
                         ezprinter.success(
@@ -317,11 +323,13 @@ class RuntimeInterface:
                     )
 
                 # Delegate to service - it handles system package manager resolution
-                progress.update(task, status="Finding best system package manager...")
+                progress.update(
+                    task_id, status="Finding best system package manager..."
+                )
                 try:
                     result = self.runtime_manager_service.install_runtime(runtime)
                 except Exception as e:
-                    progress.update(task, status="Installation failed")
+                    progress.update(task_id, status="Installation failed")
                     logger.error(f"Failed to install runtime {runtime}: {e}")
                     ezprinter.error(f"Failed to install runtime {runtime}: {e}")
                     return RuntimeResult(
@@ -334,7 +342,9 @@ class RuntimeInterface:
                 # Update cache
                 if result.is_installed:
                     self.cache[runtime] = (result.is_installed, result.version)
-                    progress.update(task, status="Installation completed successfully!")
+                    progress.update(
+                        task_id, status="Installation completed successfully!"
+                    )
                     ezprinter.success(f"Runtime {runtime} installed successfully")
                     return RuntimeResult(
                         success=True,
@@ -344,7 +354,7 @@ class RuntimeInterface:
                         message=f"Runtime {runtime} installed successfully",
                     )
                 else:
-                    progress.update(task, status="Installation failed")
+                    progress.update(task_id, status="Installation failed")
                     ezprinter.error(f"Failed to install runtime {runtime}")
                     return RuntimeResult(
                         success=False,
@@ -364,9 +374,9 @@ class RuntimeInterface:
             # Wrap unexpected external exceptions
             logger.error(f"Unexpected error in install_runtime: {e}")
             raise RuntimeInterfaceError(
+                message=f"Failed to install runtime: {e}",
                 runtime_name=runtime,
                 operation="installation",
-                reason=f"Failed to install runtime: {e}",
                 details=f"Exception type: {type(e).__name__}",
             ) from e
 
@@ -437,17 +447,17 @@ class RuntimeInterface:
             # Input validation
             if not runtimes:
                 raise ValidationServiceError(
-                    component="check_and_install_runtimes",
-                    validation_type="input_validation",
                     reason="Runtimes list must not be empty",
+                    operation="check_and_install_runtimes",
+                    field="runtimes",
                     details="Runtimes parameter must be a non-empty list",
                 )
 
             if not isinstance(runtimes, list):
                 raise ValidationServiceError(
-                    component="check_and_install_runtimes",
-                    validation_type="input_validation",
                     reason="Runtimes must be a list",
+                    operation="check_and_install_runtimes",
+                    field="runtimes",
                     details="Runtimes parameter must be a list of strings",
                 )
 
@@ -506,9 +516,9 @@ class RuntimeInterface:
             # Wrap unexpected external exceptions
             logger.error(f"Unexpected error in check_and_install_runtimes: {e}")
             raise RuntimeInterfaceError(
+                message=f"Failed to check and install runtimes: {e}",
                 runtime_name="runtime_manager",
                 operation="check_and_install",
-                reason=f"Failed to check and install runtimes: {e}",
                 details=f"Exception type: {type(e).__name__}",
             ) from e
 
@@ -537,6 +547,7 @@ class RuntimeInterface:
                     progress,
                     task,
                 ):
+                    task_id = TaskID(task)
                     try:
                         result = (
                             self.runtime_manager_service.check_runtime_installation(
@@ -552,7 +563,7 @@ class RuntimeInterface:
                             "supported": runtime in RUNTIMES,
                         }
                         progress.update(
-                            task,
+                            task_id,
                             description=f"Runtime {runtime} {'available' if result.is_installed else 'not found'}",
                         )
                     except Exception as e:
@@ -569,9 +580,9 @@ class RuntimeInterface:
         except Exception as e:
             logger.error(f"Unexpected error in get_installation_status: {e}")
             raise RuntimeInterfaceError(
+                message=f"Failed to get installation status: {e}",
                 runtime_name="runtime_manager",
                 operation="get_status",
-                reason=f"Failed to get installation status: {e}",
                 details=f"Exception type: {type(e).__name__}",
             ) from e
 
@@ -595,9 +606,9 @@ class RuntimeInterface:
             # Input validation
             if not runtime:
                 raise ValidationServiceError(
-                    component="check_runtime_installation",
-                    validation_type="input_validation",
                     reason="Runtime name must not be empty",
+                    operation="check_runtime_installation",
+                    field="runtime",
                     details="Runtime parameter must be a non-empty string",
                 )
 
@@ -612,8 +623,8 @@ class RuntimeInterface:
             # Wrap unexpected external exceptions
             logger.error(f"Unexpected error in _check_runtime_installation: {e}")
             raise RuntimeInterfaceError(
+                message=f"Failed to check runtime installation: {e}",
                 runtime_name=runtime,
                 operation="check_installation",
-                reason=f"Failed to check runtime installation: {e}",
                 details=f"Exception type: {type(e).__name__}",
             ) from e

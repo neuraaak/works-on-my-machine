@@ -23,6 +23,9 @@ from __future__ import annotations
 import platform
 from time import sleep
 
+# Third-party imports
+from rich.progress import TaskID
+
 # Local imports
 from ...exceptions.system import EnvironmentInterfaceError, EnvironmentServiceError
 from ...services import SystemEnvironmentService
@@ -132,21 +135,25 @@ class SystemEnvironmentInterface:
         with ezprinter.create_spinner_with_status(
             "Refreshing environment variables..."
         ) as (progress, task):
+            task_id = TaskID(task)
             progress.update(
-                task,
+                task_id,
                 description="Refreshing environment variables...",
                 status="Initializing...",
             )
             sleep(1)
-            progress.update(task, status="Reading registry/system configuration...")
+            progress.update(task_id, status="Reading registry/system configuration...")
             sleep(2)
             try:
-                success = self.refresh_environment()
+                result = self.refresh_environment()
+                success = result.success
                 if success:
-                    progress.update(task, status="Environment refreshed successfully!")
+                    progress.update(
+                        task_id, status="Environment refreshed successfully!"
+                    )
             except EnvironmentInterfaceError as e:
                 ezlogger.error(f"Environment refresh failed: {e}")
-                progress.update(task, status="Environment refresh failed.")
+                progress.update(task_id, status="Environment refresh failed.")
                 success = False
 
         if success:

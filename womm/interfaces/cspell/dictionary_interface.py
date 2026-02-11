@@ -23,6 +23,9 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
+# Third-party imports
+from rich.progress import TaskID
+
 # Local imports
 from ...exceptions.cspell import (
     CSpellDictionaryInterfaceError,
@@ -90,7 +93,8 @@ class CSpellDictionaryInterface:
                 progress,
                 task,
             ):
-                progress.update(task, status="Installing dictionaries...")
+                task_id = TaskID(task)
+                progress.update(task_id, status="Installing dictionaries...")
 
                 try:
                     from ..dependencies.devtools_interface import DevToolsInterface
@@ -102,7 +106,9 @@ class CSpellDictionaryInterface:
                     )
 
                     if not dict_success:
-                        progress.update(task, status="Dictionary installation failed")
+                        progress.update(
+                            task_id, status="Dictionary installation failed"
+                        )
                         ezprinter.error("❌ Failed to install dictionaries")
                         return DictionarySetupResult(
                             success=False,
@@ -113,7 +119,9 @@ class CSpellDictionaryInterface:
                             setup_time=0.0,
                         )
 
-                    progress.update(task, status="Dictionaries installed successfully!")
+                    progress.update(
+                        task_id, status="Dictionaries installed successfully!"
+                    )
                     ezprinter.success("✅ Dictionaries installed successfully")
                     return DictionarySetupResult(
                         success=True,
@@ -169,11 +177,12 @@ class CSpellDictionaryInterface:
                 progress,
                 task,
             ):
-                progress.update(task, status="Validating configuration...")
+                task_id = TaskID(task)
+                progress.update(task_id, status="Validating configuration...")
 
                 # Use CSpellDictionaryService for the actual operation
                 try:
-                    progress.update(task, status="Adding words...")
+                    progress.update(task_id, status="Adding words...")
                     result = self._dictionary_service.add_words_to_config(
                         project_path, words
                     )
@@ -196,7 +205,7 @@ class CSpellDictionaryInterface:
                     ) from e
 
                 if success:
-                    progress.update(task, status="Words added successfully!")
+                    progress.update(task_id, status="Words added successfully!")
                     ezprinter.success("✅ Added words to CSpell configuration")
                     return AddWordsResult(
                         success=True,
@@ -207,7 +216,7 @@ class CSpellDictionaryInterface:
                         addition_time=0.0,
                     )
                 else:
-                    progress.update(task, status="Failed to add words")
+                    progress.update(task_id, status="Failed to add words")
                     ezprinter.error("❌ Failed to add words to configuration")
                     return AddWordsResult(
                         success=False,

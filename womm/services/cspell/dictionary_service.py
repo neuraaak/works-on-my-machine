@@ -110,20 +110,28 @@ class CSpellDictionaryService:
     @staticmethod
     def _get_config_words_count(config: dict[str, object]) -> int:
         """Get words count from configuration."""
-        return len(config.get("words", []))
+        words = config.get("words", [])
+        if not isinstance(words, list):
+            return 0
+        return len(words)
 
     @staticmethod
     def _add_words_to_config_data(
         config: dict[str, object], words: list[str]
     ) -> tuple[dict[str, object], int]:
         """Add words to configuration data (in-memory)."""
-        if "words" not in config:
-            config["words"] = []
+        current_words_raw = config.get("words")
+        current_words: list[str] = []
+        if isinstance(current_words_raw, list):
+            current_words = [
+                item for item in current_words_raw if isinstance(item, str)
+            ]
+        config["words"] = current_words
 
         added_count = 0
         for word in words:
-            if word not in config["words"]:
-                config["words"].append(word)
+            if word not in current_words:
+                current_words.append(word)
                 added_count += 1
 
         return config, added_count

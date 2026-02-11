@@ -170,7 +170,7 @@ def export_spell_results_to_json(
         export_file = export_dir / filename
 
         # Prepare export data
-        export_data = {
+        export_data: dict[str, Any] = {
             "metadata": {
                 "timestamp": datetime.now().isoformat(),
                 "path": str(path),
@@ -179,7 +179,6 @@ def export_spell_results_to_json(
             },
             "summary": summary,
             "issues": issues,
-            "files_analysis": {},
         }
 
         # Add file-by-file analysis
@@ -190,11 +189,14 @@ def export_spell_results_to_json(
                 files_issues[file_path] = []
             files_issues[file_path].append(issue)
 
+        files_analysis: dict[str, dict[str, Any]] = {}
         for file_path, file_issues_list in files_issues.items():
-            export_data["files_analysis"][file_path] = {
+            files_analysis[file_path] = {
                 "total_issues": len(file_issues_list),
                 "issues": file_issues_list,
             }
+
+        export_data["files_analysis"] = files_analysis
 
         # Write JSON file
         with open(export_file, "w", encoding="utf-8") as f:

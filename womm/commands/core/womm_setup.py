@@ -103,7 +103,7 @@ def install(
         sys.exit(1)
     except FileSystemServiceError as e:
         ezprinter.error(
-            f"PATH utility error: File {e.operation} failed for {e.file_path}: {e.reason}"
+            f"PATH utility error: File {e.operation} failed for {e.path}: {e.reason}"
         )
         if e.details:
             ezprinter.error(f"Details: {e.details}")
@@ -155,7 +155,7 @@ def uninstall(force: bool, target: str | None, verbose: bool) -> None:
 
     try:
         # Use UninstallationManager for uninstallation with integrated UI
-        manager = WommUninstallerInterface(target=target)
+        manager = WommUninstallerInterface(target)
         manager.uninstall(force=force)
 
     except WommUninstallerError as e:

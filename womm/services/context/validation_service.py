@@ -373,7 +373,7 @@ class ContextValidationService:
     @staticmethod
     def validate_backup_data(
         data: dict[str, str | bool | int | list | dict],
-    ) -> dict[str, str | bool | int | list]:
+    ) -> dict[str, str | bool | int | list | dict]:
         """
         Validate backup data structure.
 
@@ -387,7 +387,8 @@ class ContextValidationService:
             ValidationError: If data is invalid
             ContextUtilityError: For unexpected errors
         """
-        return validate_backup_data(data)
+        validate_backup_data(data)
+        return data
 
     def check_permissions(self) -> ContextValidationResult:
         """

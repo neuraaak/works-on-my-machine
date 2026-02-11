@@ -44,7 +44,8 @@ def display_lint_summary(summary: LintSummaryResult, mode: str = "check") -> Non
 
     # Display tool results
     print()
-    _display_tool_results(summary.tool_results, mode)
+    if summary.tool_results:
+        _display_tool_results(summary.tool_results, mode)
 
     # Display overall summary
     print()

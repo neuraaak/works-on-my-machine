@@ -158,7 +158,9 @@ class SystemDetectorService:
                 details=f"Exception type: {type(e).__name__}",
             ) from e
 
-    def detect_package_managers(self) -> dict[str, dict[str, str | bool]]:
+    def detect_package_managers(
+        self,
+    ) -> dict[str, dict[str, str | bool | int | None]]:
         """
         Detects all available package managers.
 
@@ -169,7 +171,7 @@ class SystemDetectorService:
             PackageManagerDetectionError: If package manager detection fails
         """
         try:
-            managers: dict[str, dict[str, str | bool]] = {}
+            managers: dict[str, dict[str, str | bool | int | None]] = {}
 
             # Windows
             if self.system_info["platform"] == "Windows":
@@ -201,7 +203,9 @@ class SystemDetectorService:
     # PRIVATE METHODS
     # ///////////////////////////////////////////////////////////////
 
-    def _detect_windows_managers(self) -> dict[str, dict[str, str | bool]]:
+    def _detect_windows_managers(
+        self,
+    ) -> dict[str, dict[str, str | bool | int | None]]:
         """
         Detects Windows package managers.
 
@@ -212,13 +216,19 @@ class SystemDetectorService:
             PackageManagerDetectionError: If Windows package manager detection fails
         """
         try:
-            managers: dict[str, dict[str, str | bool]] = {}
+            managers: dict[str, dict[str, str | bool | int | None]] = {}
 
             for (
                 manager_name,
                 metadata,
             ) in SystemDetectorConfig.get_windows_package_managers().items():
-                command = metadata["command"]
+                command = metadata.get("command")
+                if not isinstance(command, str):
+                    logger.warning(
+                        f"Invalid command value for {manager_name}: {command}"
+                    )
+                    continue
+
                 availability_result = _command_runner.check_command_available(command)
                 if availability_result.is_available:
                     try:
@@ -245,7 +255,9 @@ class SystemDetectorService:
                 details=f"Exception type: {type(e).__name__}",
             ) from e
 
-    def _detect_macos_managers(self) -> dict[str, dict[str, str | bool]]:
+    def _detect_macos_managers(
+        self,
+    ) -> dict[str, dict[str, str | bool | int | None]]:
         """
         Detects macOS package managers.
 
@@ -256,13 +268,18 @@ class SystemDetectorService:
             PackageManagerDetectionError: If macOS package manager detection fails
         """
         try:
-            managers: dict[str, dict[str, str | bool]] = {}
+            managers: dict[str, dict[str, str | bool | int | None]] = {}
 
             for (
                 manager_name,
                 metadata,
-            ) in SystemDetectorConfig.MACOS_PACKAGE_MANAGERS.items():
-                command = metadata["command"]
+            ) in SystemDetectorConfig.get_macos_package_managers().items():
+                command = metadata.get("command")
+                if not isinstance(command, str):
+                    logger.warning(
+                        f"Invalid command value for {manager_name}: {command}"
+                    )
+                    continue
                 # Homebrew uses check_command_available, MacPorts uses shutil.which
                 availability_result = (
                     _command_runner.check_command_available(command)
@@ -309,7 +326,9 @@ class SystemDetectorService:
                 details=f"Exception type: {type(e).__name__}",
             ) from e
 
-    def _detect_linux_managers(self) -> dict[str, dict[str, str | bool]]:
+    def _detect_linux_managers(
+        self,
+    ) -> dict[str, dict[str, str | bool | int | None]]:
         """
         Detects Linux package managers.
 
@@ -320,13 +339,18 @@ class SystemDetectorService:
             PackageManagerDetectionError: If Linux package manager detection fails
         """
         try:
-            managers: dict[str, dict[str, str | bool]] = {}
+            managers: dict[str, dict[str, str | bool | int | None]] = {}
 
             for (
                 manager_name,
                 metadata,
-            ) in SystemDetectorConfig.LINUX_PACKAGE_MANAGERS.items():
-                command = metadata["command"]
+            ) in SystemDetectorConfig.get_linux_package_managers().items():
+                command = metadata.get("command")
+                if not isinstance(command, str):
+                    logger.warning(
+                        f"Invalid command value for {manager_name}: {command}"
+                    )
+                    continue
                 # APT uses check_command_available, others use shutil.which
                 availability_result = (
                     _command_runner.check_command_available(command)
@@ -364,7 +388,9 @@ class SystemDetectorService:
                 details=f"Exception type: {type(e).__name__}",
             ) from e
 
-    def detect_development_environments(self) -> dict[str, dict[str, str | bool]]:
+    def detect_development_environments(
+        self,
+    ) -> dict[str, dict[str, str | bool]]:
         """
         Detects development environments.
 
@@ -591,9 +617,8 @@ class SystemDetectorService:
             if output_path is not None and not isinstance(output_path, Path):
                 raise ReportGenerationServiceError(
                     operation="validation",
-                    file_path=str(output_path),
                     reason="Output path must be a Path object",
-                    details="Invalid output_path type provided",
+                    details=f"Invalid output_path type: {type(output_path)}",
                 )
 
             report = {
@@ -612,16 +637,14 @@ class SystemDetectorService:
             except (PermissionError, OSError) as e:
                 raise ReportGenerationServiceError(
                     operation="write",
-                    file_path=str(output_path),
                     reason="Cannot write report file",
-                    details=f"Error: {e}",
+                    details=f"File: {output_path} | Error: {e}",
                 ) from e
             except (TypeError, ValueError) as e:
                 raise ReportGenerationServiceError(
                     operation="serialization",
-                    file_path=str(output_path),
                     reason="Cannot serialize report data",
-                    details=f"Error: {e}",
+                    details=f"File: {output_path} | Error: {e}",
                 ) from e
 
             return output_path
@@ -633,9 +656,11 @@ class SystemDetectorService:
             # Wrap unexpected external exceptions
             raise ReportGenerationServiceError(
                 operation="generation",
-                file_path=str(output_path) if output_path else "unknown",
                 reason=f"Failed to generate system report: {e}",
-                details=f"Exception type: {type(e).__name__}",
+                details=(
+                    f"File: {output_path if output_path else 'unknown'} | "
+                    f"Exception type: {type(e).__name__}"
+                ),
             ) from e
 
     def get_recommendations(self) -> dict[str, str]:
@@ -666,7 +691,7 @@ class SystemDetectorService:
                 details=f"Exception type: {type(e).__name__}",
             ) from e
 
-    def get_system_data(self) -> dict[str, str | bool | int | dict[str, str | bool]]:
+    def get_system_data(self) -> dict[str, object]:
         """
         Returns complete system data without any display logic.
 

@@ -257,7 +257,10 @@ def get_registry_entry_info(
     try:
         full_path = f"{base_path}\\{key_name}"
         with winreg.OpenKey(winreg.HKEY_CURRENT_USER, full_path) as key:
-            info = {"key_name": key_name, "registry_path": full_path}
+            info: dict[str, str | None] = {
+                "key_name": key_name,
+                "registry_path": full_path,
+            }
 
             # Get MUIVerb (display name)
             try:

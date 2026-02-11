@@ -112,15 +112,17 @@ class ContextMenuWizard:
                     return result
 
             # Use InquirerPy file browser
-            script_path = inquirer.filepath(
-                message="Select script file:",
-                default=str(Path.cwd()),
-                validate=ScriptFileValidator(),
-                only_files=True,
-                only_directories=False,
-                transformer=lambda result: str(Path(result).resolve()),
-                filter=lambda result: str(Path(result).resolve()),
-            ).execute()
+            script_path = (
+                inquirer.filepath(  # pyright: ignore[reportPrivateImportUsage]
+                    message="Select script file:",
+                    default=str(Path.cwd()),
+                    validate=ScriptFileValidator(),
+                    only_files=True,
+                    only_directories=False,
+                    transformer=lambda result: str(Path(result).resolve()),
+                    filter=lambda result: str(Path(result).resolve()),
+                ).execute()
+            )
 
             if script_path:
                 return script_path
@@ -141,13 +143,19 @@ class ContextMenuWizard:
             instruction="Choose how to specify the script file",
         )
 
-        options = ["Browse current directory", "Enter path manually", "Cancel"]
+        items = [
+            {"label": "Browse current directory", "value": "browse"},
+            {"label": "Enter path manually", "value": "manual"},
+            {"label": "Cancel", "value": "cancel"},
+        ]
 
-        choice = menu.select_from_list(options)
+        selected = menu.select_from_list(items, display_func=lambda item: item["label"])
+        if not selected:
+            return None
 
-        if choice == 0:  # Browse
+        if selected["value"] == "browse":
             return ContextMenuWizard._browse_for_script()
-        elif choice == 1:  # Manual
+        elif selected["value"] == "manual":
             ezprinter.info("Enter the full path to your script:")
             path = input("> ").strip()
             if path and Path(path).exists():
@@ -188,32 +196,33 @@ class ContextMenuWizard:
             instruction=f"Found {len(script_files)} script files in {current_dir.name}",
         )
 
-        # Add file options
-        file_options = []
+        items = []
         for file in script_files:
             file_info = f"{file.name} ({file.suffix.upper()})"
-            file_options.append(file_info)
+            items.append({"label": file_info, "type": "file", "path": file})
 
-        # Add navigation options
-        file_options.extend(["📁 Browse parent directory", "❌ Cancel"])
+        items.append(
+            {
+                "label": "📁 Browse parent directory",
+                "type": "parent",
+                "path": current_dir.parent,
+            }
+        )
+        items.append({"label": "❌ Cancel", "type": "cancel", "path": None})
 
-        choice = menu.select_from_list(file_options)
+        selected = menu.select_from_list(items, display_func=lambda item: item["label"])
+        if not selected or selected["type"] == "cancel":
+            return None
 
-        if choice < len(script_files):
-            # File selected
-            selected_file = script_files[choice]
-            return str(selected_file.resolve())
-        elif choice == len(script_files):
-            # Browse parent directory
-            parent_dir = current_dir.parent
+        if selected["type"] == "file":
+            return str(selected["path"].resolve())
+        if selected["type"] == "parent":
+            parent_dir = selected["path"]
             if parent_dir != current_dir:  # Not at root
                 return ContextMenuWizard._browse_directory(parent_dir)
-            else:
-                ezprinter.error("Already at root directory")
-                return None
-        else:
-            # Cancel
+            ezprinter.error("Already at root directory")
             return None
+        return None
 
     @staticmethod
     def _browse_directory(directory: Path) -> str | None:
@@ -244,27 +253,34 @@ class ContextMenuWizard:
         script_files.sort(key=lambda x: x.name.lower())
 
         # Create options list
-        options = []
-        all_items = []
+        items = []
 
         # Add parent directory option (if not at root)
         if directory.parent != directory:
-            options.append("📁 .. (Parent directory)")
-            all_items.append(("parent", directory.parent))
+            items.append(
+                {
+                    "label": "📁 .. (Parent directory)",
+                    "type": "parent",
+                    "path": directory.parent,
+                }
+            )
 
         # Add subdirectories
         for subdir in subdirs:
-            options.append(f"📁 {subdir.name}/")
-            all_items.append(("dir", subdir))
+            items.append({"label": f"📁 {subdir.name}/", "type": "dir", "path": subdir})
 
         # Add script files
         for file in script_files:
-            options.append(f"📄 {file.name} ({file.suffix.upper()})")
-            all_items.append(("file", file))
+            items.append(
+                {
+                    "label": f"📄 {file.name} ({file.suffix.upper()})",
+                    "type": "file",
+                    "path": file,
+                }
+            )
 
         # Add cancel option
-        options.append("❌ Cancel")
-        all_items.append(("cancel", None))
+        items.append({"label": "❌ Cancel", "type": "cancel", "path": None})
 
         if not script_files and not subdirs:
             ezprinter.error(f"No script files or subdirectories found in {directory}")
@@ -276,19 +292,15 @@ class ContextMenuWizard:
             instruction=f"Current: {directory} | Files: {len(script_files)} | Dirs: {len(subdirs)}",
         )
 
-        choice = menu.select_from_list(options)
-
-        if choice >= len(all_items):
+        selected = menu.select_from_list(items, display_func=lambda item: item["label"])
+        if not selected or selected["type"] == "cancel":
             return None
 
-        item_type, item_path = all_items[choice]
-
-        if item_type == "file":
-            return str(item_path.resolve())
-        elif item_type in {"dir", "parent"}:
-            return ContextMenuWizard._browse_directory(item_path)
-        else:  # cancel
-            return None
+        if selected["type"] == "file":
+            return str(selected["path"].resolve())
+        if selected["type"] in {"dir", "parent"}:
+            return ContextMenuWizard._browse_directory(selected["path"])
+        return None
 
     @staticmethod
     def _get_label() -> str | None:
@@ -302,7 +314,7 @@ class ContextMenuWizard:
     def _get_label_with_inquirer() -> str | None:
         """Get label using InquirerPy."""
         try:
-            label = inquirer.text(
+            label = inquirer.text(  # pyright: ignore[reportPrivateImportUsage]
                 message="Enter the label to display in the context menu:",
                 validate=lambda result: len(result.strip()) > 0 if result else False,
                 invalid_message="Label cannot be empty",
@@ -340,7 +352,7 @@ class ContextMenuWizard:
         """Select icon using InquirerPy."""
         try:
             # First, ask for icon type
-            icon_type = inquirer.select(
+            icon_type = inquirer.select(  # pyright: ignore[reportPrivateImportUsage]
                 message="Choose icon type:",
                 choices=[
                     {"name": "Auto-detect (recommended)", "value": "auto"},
@@ -387,19 +399,21 @@ class ContextMenuWizard:
                                 )
                         return result
 
-                icon_path = inquirer.filepath(
-                    message="Select icon file:",
-                    default=str(Path.cwd()),
-                    validate=IconFileValidator(),
-                    only_files=True,
-                    only_directories=False,
-                    transformer=lambda result: str(Path(result).resolve()),
-                    filter=lambda result: str(Path(result).resolve()),
-                ).execute()
+                icon_path = (
+                    inquirer.filepath(  # pyright: ignore[reportPrivateImportUsage]
+                        message="Select icon file:",
+                        default=str(Path.cwd()),
+                        validate=IconFileValidator(),
+                        only_files=True,
+                        only_directories=False,
+                        transformer=lambda result: str(Path(result).resolve()),
+                        filter=lambda result: str(Path(result).resolve()),
+                    ).execute()
+                )
 
                 return icon_path if icon_path else "auto"
             else:  # manual
-                icon_path = inquirer.text(
+                icon_path = inquirer.text(  # pyright: ignore[reportPrivateImportUsage]
                     message="Enter icon file path:",
                     validate=lambda result: Path(result).exists() if result else True,
                 ).execute()
@@ -418,20 +432,22 @@ class ContextMenuWizard:
             title="Select Icon", instruction="Choose icon for the context menu entry"
         )
 
-        options = [
-            "Auto-detect (recommended)",
-            "Use script's own icon",
-            "Enter custom icon path",
-            "No icon",
+        items = [
+            {"label": "Auto-detect (recommended)", "value": "auto"},
+            {"label": "Use script's own icon", "value": "script"},
+            {"label": "Enter custom icon path", "value": "manual"},
+            {"label": "No icon", "value": "none"},
         ]
 
-        choice = menu.select_from_list(options)
+        selected = menu.select_from_list(items, display_func=lambda item: item["label"])
+        if not selected:
+            return None
 
-        if choice == 0:
+        if selected["value"] == "auto":
             return "auto"
-        elif choice == 1:
+        elif selected["value"] == "script":
             return "script"
-        elif choice == 2:
+        elif selected["value"] == "manual":
             ezprinter.info("Enter the path to your icon file (.ico, .exe, etc.):")
             icon_path = input("> ").strip()
             return icon_path if icon_path else "auto"
@@ -447,17 +463,24 @@ class ContextMenuWizard:
         )
 
         context_options = [
-            "Directory + Background (default)",
-            "Files only",
-            "Directories only",
-            "Background only",
-            "Root directories (drives)",
-            "Custom file types",
+            {"label": "Directory + Background (default)", "value": 0},
+            {"label": "Files only", "value": 1},
+            {"label": "Directories only", "value": 2},
+            {"label": "Background only", "value": 3},
+            {"label": "Root directories (drives)", "value": 4},
+            {"label": "Custom file types", "value": 5},
         ]
 
-        choice = menu.select_from_list(context_options)
+        selected = menu.select_from_list(
+            context_options, display_func=lambda item: item["label"]
+        )
 
         context_params = ContextParametersService()
+
+        if not selected:
+            return context_params
+
+        choice = selected["value"]
 
         if choice == 0:  # Default
             context_params.add_context_type(ContextType.DIRECTORY)
@@ -484,30 +507,37 @@ class ContextMenuWizard:
         )
 
         file_type_options = [
-            "Images (.jpg, .png, .gif, etc.)",
-            "Text files (.txt, .md, .py, etc.)",
-            "Archives (.zip, .rar, .7z, etc.)",
-            "Documents (.pdf, .doc, .xls, etc.)",
-            "Media files (.mp3, .mp4, .avi, etc.)",
-            "Code files (.py, .js, .java, etc.)",
-            "Custom extensions",
+            {"label": "Images (.jpg, .png, .gif, etc.)", "value": "image"},
+            {"label": "Text files (.txt, .md, .py, etc.)", "value": "text"},
+            {"label": "Archives (.zip, .rar, .7z, etc.)", "value": "archive"},
+            {"label": "Documents (.pdf, .doc, .xls, etc.)", "value": "document"},
+            {"label": "Media files (.mp3, .mp4, .avi, etc.)", "value": "media"},
+            {"label": "Code files (.py, .js, .java, etc.)", "value": "code"},
+            {"label": "Custom extensions", "value": "custom"},
         ]
 
-        choice = menu.select_from_list(file_type_options)
+        selected = menu.select_from_list(
+            file_type_options, display_func=lambda item: item["label"]
+        )
 
-        if choice == 0:
+        if not selected:
+            return
+
+        choice = selected["value"]
+
+        if choice == "image":
             context_params.add_file_type("image")
-        elif choice == 1:
+        elif choice == "text":
             context_params.add_file_type("text")
-        elif choice == 2:
+        elif choice == "archive":
             context_params.add_file_type("archive")
-        elif choice == 3:
+        elif choice == "document":
             context_params.add_file_type("document")
-        elif choice == 4:
+        elif choice == "media":
             context_params.add_file_type("media")
-        elif choice == 5:
+        elif choice == "code":
             context_params.add_file_type("code")
-        elif choice == 6:
+        elif choice == "custom":
             ezprinter.info("Enter custom extensions (e.g., .py .js .txt):")
             extensions = input("> ").strip().split()
             for ext in extensions:

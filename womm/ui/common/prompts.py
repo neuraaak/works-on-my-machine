@@ -17,7 +17,7 @@ from __future__ import annotations
 # IMPORTS
 # ///////////////////////////////////////////////////////////////
 # Third-party imports
-from InquirerPy import inquirer
+from InquirerPy import inquirer  # pyright: ignore[reportPrivateImportUsage]
 from InquirerPy.base.control import Choice
 from rich.prompt import Confirm, Prompt
 
@@ -74,7 +74,7 @@ def prompt_choice(message: str, choices: list[str], **kwargs) -> str:
         raise ValueError("Choices list cannot be empty")
 
     choice_objects = [Choice(value=choice, name=choice) for choice in choices]
-    result = inquirer.select(
+    result = inquirer.select(  # pyright: ignore[reportPrivateImportUsage]
         message=message,
         choices=choice_objects,
         **kwargs,

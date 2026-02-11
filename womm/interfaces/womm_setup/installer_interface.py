@@ -29,6 +29,9 @@ from threading import Lock
 from time import sleep
 from typing import ClassVar
 
+# Third-party imports
+from rich.progress import TaskID
+
 # Local imports
 from ...exceptions.system import (
     FileSystemServiceError,
@@ -241,7 +244,8 @@ class WommInstallerInterface:
             with ezprinter.create_spinner_with_status(
                 "Pre-checking installation requirements..."
             ) as (progress, task):
-                progress.update(task, status="Verifying source structure...")
+                task_id = TaskID(task)
+                progress.update(task_id, status="Verifying source structure...")
                 # Pre-check will validate bin, assets, and project structure
                 precheck_result = self._precheck_source_files(verbose)
                 if not precheck_result:
@@ -250,7 +254,7 @@ class WommInstallerInterface:
                         operation="precheck",
                         details="womm/bin or womm/assets missing",
                     )
-                progress.update(task, status="Source structure verified")
+                progress.update(task_id, status="Source structure verified")
 
             ezprinter._console.print("")
 
@@ -270,7 +274,13 @@ class WommInstallerInterface:
                     f"Target directory: {self.target_path}\n"
                     "Use --force to overwrite existing installation"
                 )
-                return False
+                return InstallationResult(
+                    success=False,
+                    message="Installation directory already exists",
+                    error="Installation directory already exists",
+                    target_path=str(self.target_path),
+                    installation_location=str(self.target_path),
+                )
 
             # Only start progress spinner if checks passed
             with ezprinter.create_spinner_with_status(
@@ -279,7 +289,10 @@ class WommInstallerInterface:
                 progress,
                 task,
             ):
-                progress.update(task, status="Analyzing installation requirements...")
+                task_id = TaskID(task)
+                progress.update(
+                    task_id, status="Analyzing installation requirements..."
+                )
                 # Validation passed, ready to continue with installation
 
             # ============================================================================
@@ -292,7 +305,8 @@ class WommInstallerInterface:
                 progress,
                 task,
             ):
-                progress.update(task, status="Scanning source directory...")
+                task_id = TaskID(task)
+                progress.update(task_id, status="Scanning source directory...")
                 try:
                     files_to_copy = self._build_installation_file_list()
                 except Exception as e:
@@ -302,7 +316,7 @@ class WommInstallerInterface:
                     ) from e
 
                 progress.update(
-                    task, status=f"Found {len(files_to_copy)} files to copy"
+                    task_id, status=f"Found {len(files_to_copy)} files to copy"
                 )
 
             # Store files list for later verification
@@ -424,12 +438,16 @@ class WommInstallerInterface:
                         ) from e
 
                     if not executable_result["success"]:
+                        error_value = executable_result.get("error")
+                        error_message = (
+                            str(error_value) if error_value else "Unknown error"
+                        )
                         progress.emergency_stop(
-                            f"Failed to create executable: {executable_result.get('error')}"
+                            f"Failed to create executable: {error_message}"
                         )
                         raise ExeVerificationServiceError(
                             executable_name="womm",
-                            message=executable_result.get("error", "Unknown error"),
+                            message=error_message,
                             details="Failed to create WOMM executable",
                         )
 
@@ -645,6 +663,18 @@ class WommInstallerInterface:
             ezprinter._console.print("")
             ezprinter._console.print(completion_panel)
 
+            return InstallationResult(
+                success=True,
+                message="Installation completed successfully",
+                target_path=str(self.target_path),
+                installation_location=str(self.target_path),
+                files_copied=len(self._installed_files),
+                path_configured=True,
+                executable_created=True,
+                verification_passed=True,
+                details={"installed_files": list(self._installed_files)},
+            )
+
         except (
             WommInstallerError,
             DeploymentUtilityError,
@@ -719,6 +749,8 @@ class WommInstallerInterface:
                 if verbose:
                     # Silent mode during progress - details shown in progress bar
                     pass
+
+            return True
 
         except OSError as e:
             # Stop progress and raise specific exception
@@ -966,7 +998,7 @@ class WommInstallerInterface:
             sleep(0.5)
 
             if not result.success:
-                error_msg = result.reason or "Unknown error"
+                error_msg = result.error or result.message or "Unknown error"
                 ezprinter.error(f"PATH setup failed: {error_msg}")
                 logger.error(f"PATH setup returned failure: {result}")
 
@@ -1098,7 +1130,7 @@ class WommInstallerInterface:
                             test_result = self._command_runner.run_silent(
                                 ["womm", "--version"], capture_output=True
                             )
-                            if test_result.success:
+                            if bool(test_result):
                                 ezprinter.success(
                                     "Environment refresh verification successful - WOMM is accessible"
                                 )
@@ -1113,7 +1145,7 @@ class WommInstallerInterface:
                         test_result = self._command_runner.run_silent(
                             ["womm", "--version"], capture_output=True
                         )
-                        if test_result.success:
+                        if bool(test_result):
                             ezprinter.success(
                                 "Environment refresh verification successful - WOMM is accessible"
                             )
@@ -1295,17 +1327,18 @@ class WommInstallerInterface:
                         details=f"Exception type: {type(e).__name__}",
                     ) from e
 
-                if result.success:
+                if bool(result):
                     ezprinter.success("PATH successfully rolled back to previous state")
                     return True
                 else:
-                    ezprinter.error(f"PATH rollback failed: {result.stderr}")
+                    stderr = getattr(result, "stderr", "")
+                    ezprinter.error(f"PATH rollback failed: {stderr}")
 
                     raise PathServiceError(
                         operation="rollback",
                         path=str(self.target_path),
                         message="PATH rollback failed: Registry update failed",
-                        details=f"Windows registry update failed: {result.stderr}",
+                        details=f"Windows registry update failed: {stderr}",
                     )
             else:
                 # Unix rollback - update environment
@@ -1415,15 +1448,12 @@ class WommInstallerInterface:
                 result = self.installation_service.verify_commands_accessible(
                     str(self.target_path)
                 )
-                # Check result details
-                if isinstance(result, dict):
-                    if result.get("warning"):
-                        # Windows case: local works but global doesn't - this is expected
-                        pass
-                    elif result.get("path_status") == "enhanced_success":
-                        # Great! Global test succeeded with PATH enhancement
-                        pass
-                    # If we get here, verification passed
+                if not result.success:
+                    raise ExeVerificationServiceError(
+                        executable_name="womm",
+                        message=result.message or "Command verification failed",
+                        details=result.error or "",
+                    )
             except (ExeVerificationServiceError, DeploymentUtilityError):
                 # On Windows, be more tolerant of PATH timing issues
                 if self.platform == "Windows":
@@ -1503,7 +1533,7 @@ class WommInstallerInterface:
 
             raise VerificationServiceError(
                 verification_type="unexpected_error",
-                target=str(self.target_path),
+                target_path=str(self.target_path),
                 message=f"Unexpected error during verification: {e}",
                 details="This is an unexpected error that should be reported",
             ) from e
@@ -1607,7 +1637,7 @@ class WommInstallerInterface:
 
             raise VerificationServiceError(
                 verification_type="unexpected_error",
-                target=str(self.target_path),
+                target_path=str(self.target_path),
                 message=f"Unexpected error during verification: {e}",
                 details="This is an unexpected error that should be reported",
             ) from e

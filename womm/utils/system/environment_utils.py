@@ -43,7 +43,7 @@ def read_windows_registry_path() -> tuple[str | None, str | None]:
     if platform.system().lower() != "windows":
         raise EnvironmentServiceError(
             operation="registry_read",
-            message="Registry access is only available on Windows",
+            reason="Registry access is only available on Windows",
             details="Current platform is not Windows",
         )
 
@@ -75,7 +75,7 @@ def read_windows_registry_path() -> tuple[str | None, str | None]:
     except ImportError as e:
         raise EnvironmentServiceError(
             operation="registry_read",
-            message="winreg module not available",
+            reason="winreg module not available",
             details="Windows registry access requires winreg module",
         ) from e
 

@@ -691,12 +691,14 @@ class SystemPathInterface:
             FileSystemError: If file system operations fail
         """
         try:
+            backup_files: list[str] = []
+            errors: list[str] = []
             result = {
                 "success": False,
                 "target_path": str(self.target_path),
                 "backup_location": str(self.backup_dir),
-                "backup_files": [],
-                "errors": [],
+                "backup_files": backup_files,
+                "errors": errors,
             }
 
             # Create backup directory if it doesn't exist
@@ -719,14 +721,12 @@ class SystemPathInterface:
                 ValidationServiceError,
             ) as e:
                 ezlogger.warning(f"Service error in _backup_path: {e}")
-                result["errors"].append(str(e))
+                errors.append(str(e))
                 return result
 
             # Check result
             if not path_result.success:
-                result["errors"].append(
-                    path_result.message or "Failed to get current PATH"
-                )
+                errors.append(path_result.message or "Failed to get current PATH")
                 return result
 
             # Create JSON backup file with timestamp
@@ -776,10 +776,10 @@ class SystemPathInterface:
 
             # Get list of all backup files (JSON only)
             try:
-                backup_files = sorted(
+                backup_files_list = sorted(
                     self.backup_dir.glob(".path_*.json"), reverse=True
                 )
-                result["backup_files"] = [str(f.name) for f in backup_files]
+                backup_files.extend([str(f.name) for f in backup_files_list])
             except Exception as e:
                 ezlogger.warning(f"Failed to list backup files: {e}")
                 # Continue with empty backup files list
@@ -822,17 +822,19 @@ class SystemPathInterface:
             FileSystemError: If file system operations fail
         """
         try:
+            backups: list[dict[str, object]] = []
+            errors: list[str] = []
             result = {
                 "success": False,
                 "target_path": str(self.target_path),
                 "backup_location": str(self.backup_dir),
-                "backups": [],
+                "backups": backups,
                 "latest_backup": "",
-                "errors": [],
+                "errors": errors,
             }
 
             if not self.backup_dir.exists():
-                result["errors"].append("No backup directory found")
+                errors.append("No backup directory found")
                 return result
 
             # Get all backup files (JSON only)
@@ -847,7 +849,7 @@ class SystemPathInterface:
                 ) from e
 
             if not backup_files:
-                result["errors"].append("No PATH backups found")
+                errors.append("No PATH backups found")
                 return result
 
             # Sort by modification time (newest first)
@@ -877,14 +879,14 @@ class SystemPathInterface:
                         ),
                         "description": f"JSON backup ({data.get('timestamp', '')})",
                     }
-                    result["backups"].append(backup_info)
+                    backups.append(backup_info)
 
                     # Mark as latest if it's the most recent
                     if not result["latest_backup"]:
                         result["latest_backup"] = backup_file.name
 
                 except Exception as e:
-                    result["errors"].append(f"Error listing backups: {e}")
+                    errors.append(f"Error listing backups: {e}")
                     continue
 
             result["success"] = True

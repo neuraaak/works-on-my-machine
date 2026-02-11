@@ -356,7 +356,11 @@ class ContextIconInterface:
             ContextUtilityError: For unexpected errors
         """
         try:
-            return cls.SYSTEM_ICONS.copy()
+            return {
+                name: path
+                for name, path in cls.SYSTEM_ICONS.items()
+                if path is not None
+            }
         except Exception as e:
             raise IconInterfaceError(
                 message=f"Unexpected error getting available icons: {e}",

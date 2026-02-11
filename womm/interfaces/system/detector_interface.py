@@ -20,6 +20,9 @@ from __future__ import annotations
 # ///////////////////////////////////////////////////////////////
 # IMPORTS
 # ///////////////////////////////////////////////////////////////
+# Third-party imports
+from rich.progress import TaskID
+
 # Local imports
 from ...exceptions.system import (
     DetectorInterfaceError,
@@ -77,15 +80,16 @@ class SystemDetectorInterface:
                 progress,
                 task,
             ):
+                task_id = TaskID(task)
                 # Update description and status
                 progress.update(
-                    task,
+                    task_id,
                     description="🔍 Detecting system information...",
                     status="Initializing...",
                 )
 
                 # Update status during detection
-                progress.update(task, status="Scanning system...")
+                progress.update(task_id, status="Scanning system...")
                 try:
                     data = self.detector.get_system_data()
                 except (
@@ -111,7 +115,7 @@ class SystemDetectorInterface:
                     ) from e
 
                 # Final status update
-                progress.update(task, status="Detection complete!")
+                progress.update(task_id, status="Detection complete!")
 
             if data:
                 print()

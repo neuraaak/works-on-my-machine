@@ -61,7 +61,7 @@ class DevToolsConfig:
     }
 
     # Special tool configurations
-    TOOL_CONFIGS: ClassVar[dict[str, dict[str, str | list[str]]]] = {
+    TOOL_CONFIGS: ClassVar[dict[str, dict[str, str | list[str | list[str]]]]] = {
         "cspell": {
             "check_method": "npx",  # Can be checked via npx
             "runtime_package_manager": "npm",

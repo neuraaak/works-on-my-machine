@@ -205,9 +205,9 @@ def parse_lint_output(output: str, tool_name: str) -> dict[str, object]:
 
     except Exception as e:
         raise ValidationServiceError(
-            message=f"Failed to parse {tool_name} output: {e}",
-            validation_type="output_parsing",
-            file_path="output",
+            operation="parse_tool_output",
+            field=tool_name,
+            reason=f"Failed to parse output: {e}",
             details=f"Raw output: {output[:200]}...",
         ) from e
 
@@ -232,24 +232,24 @@ def validate_lint_result(result: ToolResult) -> bool:
     try:
         if not result:
             raise ValidationServiceError(
-                message="Tool result is None or empty",
-                validation_type="result_validation",
-                file_path="result",
+                operation="validate_lint_result",
+                field="result",
+                reason="Tool result is None or empty",
                 details="No result provided for validation",
             )
 
         if not hasattr(result, "tool_name") or not result.tool_name:
             raise ValidationServiceError(
-                message="Tool result missing tool name",
-                validation_type="result_validation",
-                file_path="result",
+                operation="validate_lint_result",
+                field="tool_name",
+                reason="Tool result missing tool name",
                 details="ToolResult must have a valid tool_name attribute",
             )
         if not hasattr(result, "success"):
             raise ValidationServiceError(
-                message="Tool result missing success status",
-                validation_type="result_validation",
-                file_path="result",
+                operation="validate_lint_result",
+                field="success",
+                reason="Tool result missing success status",
                 details="ToolResult must have a valid success attribute",
             )
         return True
@@ -258,9 +258,9 @@ def validate_lint_result(result: ToolResult) -> bool:
         raise
     except Exception as e:
         raise ValidationServiceError(
-            message=f"Unexpected error during result validation: {e}",
-            validation_type="result_validation",
-            file_path="result",
+            operation="validate_lint_result",
+            field="result",
+            reason=f"Unexpected error during validation: {e}",
             details=f"Exception type: {type(e).__name__}",
         ) from e
 

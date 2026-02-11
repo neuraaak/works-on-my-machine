@@ -19,7 +19,7 @@ from __future__ import annotations
 # Standard library imports
 import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 # Third-party imports
 import click
@@ -96,7 +96,9 @@ def setup_detect(
 
     try:
         # Detect project type using ProjectManagerInterface
-        detected_type, confidence = project_manager.detect_project_type(project_path)
+        detection_result = project_manager.detect_project_type(project_path)
+        detected_type = detection_result.project_type
+        confidence = detection_result.confidence
 
         if detected_type == "unknown" or not detected_type:
             ezprinter.error(
@@ -111,11 +113,21 @@ def setup_detect(
 
         # Interactive mode
         if interactive:
-            return _run_interactive_setup(project_manager, detected_type, project_path)
+            success = _run_interactive_setup(
+                project_manager, detected_type, project_path
+            )
+            if not success:
+                sys.exit(1)
+            return
 
         # Non-interactive mode
-        options = {}
-        return _run_direct_setup(project_manager, detected_type, project_path, options)
+        options: dict[str, Any] = {}
+        success = _run_direct_setup(
+            project_manager, detected_type, project_path, options
+        )
+        if not success:
+            sys.exit(1)
+        return
 
     except Exception as e:
         ezprinter.error(f"Error detecting project type: {e}")
@@ -189,7 +201,10 @@ def setup_python(
     try:
         # Interactive mode
         if interactive:
-            return _run_interactive_setup(project_manager, "python", project_path)
+            success = _run_interactive_setup(project_manager, "python", project_path)
+            if not success:
+                sys.exit(1)
+            return
 
         # Non-interactive mode
         options = {
@@ -198,7 +213,10 @@ def setup_python(
             "setup_dev_tools": setup_dev_tools,
             "setup_git_hooks": setup_git_hooks,
         }
-        return _run_direct_setup(project_manager, "python", project_path, options)
+        success = _run_direct_setup(project_manager, "python", project_path, options)
+        if not success:
+            sys.exit(1)
+        return
 
     except Exception as e:
         ezprinter.error(f"Error configuring Python project: {e}")
@@ -274,9 +292,9 @@ def setup_javascript(
     try:
         # Auto-detect type if not specified
         if not project_type:
-            detected_type, confidence = project_manager.detect_project_type(
-                project_path
-            )
+            detection_result = project_manager.detect_project_type(project_path)
+            detected_type = detection_result.project_type
+            confidence = detection_result.confidence
             if detected_type in ["javascript", "react", "vue"]:
                 project_type = detected_type
                 ezprinter.info(
@@ -287,9 +305,19 @@ def setup_javascript(
                 ezprinter.info("Please specify --type (javascript, react, vue)")
                 sys.exit(1)
 
+        if not project_type:
+            ezprinter.error("Project type is required for setup")
+            sys.exit(1)
+        project_type_value = cast(str, project_type)
+
         # Interactive mode
         if interactive:
-            return _run_interactive_setup(project_manager, project_type, project_path)
+            success = _run_interactive_setup(
+                project_manager, project_type_value, project_path
+            )
+            if not success:
+                sys.exit(1)
+            return
 
         # Non-interactive mode
         options = {
@@ -297,7 +325,12 @@ def setup_javascript(
             "setup_dev_tools": setup_dev_tools,
             "setup_git_hooks": setup_git_hooks,
         }
-        return _run_direct_setup(project_manager, project_type, project_path, options)
+        success = _run_direct_setup(
+            project_manager, project_type_value, project_path, options
+        )
+        if not success:
+            sys.exit(1)
+        return
 
     except Exception as e:
         ezprinter.error(f"Error configuring JavaScript project: {e}")
@@ -311,7 +344,7 @@ def setup_javascript(
 
 def _run_interactive_setup(
     project_manager: ProjectManagerInterface, project_type: str, project_path: Path
-) -> int:
+) -> bool:
     """Run interactive project setup."""
     # Get setup configuration
     config = ProjectWizard.run_interactive_setup_for_existing_project(
@@ -319,20 +352,37 @@ def _run_interactive_setup(
     )
     if not config:
         ezprinter.error("Project setup cancelled")
-        return 1
+        return False
 
     # Configure project
+    options = config.get("options", {})
+    if not isinstance(options, dict):
+        ezprinter.error("Invalid options returned by wizard")
+        return False
+
+    def _coerce_bool(value: object) -> bool:
+        if isinstance(value, str):
+            return value.strip().lower() in {"1", "true", "yes", "y", "on"}
+        return bool(value)
+
+    virtual_env = _coerce_bool(options.get("virtual_env", False))
+    install_deps = _coerce_bool(options.get("install_deps", False))
+    setup_dev_tools = _coerce_bool(options.get("setup_dev_tools", False))
+    setup_git_hooks = _coerce_bool(options.get("setup_git_hooks", False))
+
     success = project_manager.setup_project(
         project_type=project_type,
         project_path=project_path,
-        **config.get("options", {}),
+        virtual_env=virtual_env,
+        install_deps=install_deps,
+        setup_dev_tools=setup_dev_tools,
+        setup_git_hooks=setup_git_hooks,
     )
 
     if success:
-        return 0
-    else:
-        ezprinter.error(f"Failed to configure {project_type} project")
-        return 1
+        return True
+    ezprinter.error(f"Failed to configure {project_type} project")
+    return False
 
 
 # ///////////////////////////////////////////////////////////////
@@ -345,21 +395,33 @@ def _run_direct_setup(
     project_type: str,
     project_path: Path,
     options: dict[str, Any] | None = None,
-) -> int:
+) -> bool:
     """Run direct project setup."""
 
     if options is None:
         options = {}
 
+    def _coerce_bool(value: object) -> bool:
+        if isinstance(value, str):
+            return value.strip().lower() in {"1", "true", "yes", "y", "on"}
+        return bool(value)
+
+    virtual_env = _coerce_bool(options.get("virtual_env", False))
+    install_deps = _coerce_bool(options.get("install_deps", False))
+    setup_dev_tools = _coerce_bool(options.get("setup_dev_tools", False))
+    setup_git_hooks = _coerce_bool(options.get("setup_git_hooks", False))
+
     # Configure project
     success = project_manager.setup_project(
         project_type=project_type,
         project_path=project_path,
-        **options,
+        virtual_env=virtual_env,
+        install_deps=install_deps,
+        setup_dev_tools=setup_dev_tools,
+        setup_git_hooks=setup_git_hooks,
     )
 
     if success:
-        return 0
-    else:
-        ezprinter.error(f"Failed to configure {project_type} project")
-        return 1
+        return True
+    ezprinter.error(f"Failed to configure {project_type} project")
+    return False

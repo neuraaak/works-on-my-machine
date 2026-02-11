@@ -30,7 +30,7 @@ except ImportError:
     INQUIRERPY_AVAILABLE = False
 
 
-from ...shared.configs.project import ProjectVariantConfig
+from ...shared.configs.project import ProjectConfig, ProjectVariantConfig
 from ...utils.project import check_project_name, suggest_project_name
 from ..common.ezpl_bridge import ezconsole, ezprinter
 from ..common.interactive_menu import InteractiveMenu
@@ -88,7 +88,7 @@ class ProjectWizard:
         return {
             "project_type": project_type,
             "project_name": project_name,
-            "project_path": project_path,
+            "project_path": str(project_path),
             "current_dir": False,
             **project_options,
         }
@@ -96,7 +96,7 @@ class ProjectWizard:
     @staticmethod
     def run_interactive_setup_for_existing_project(
         project_type: str, project_path: Path
-    ) -> dict[str, str | bool | int] | None:
+    ) -> dict[str, str | bool | int | dict[str, str | bool]] | None:
         """
         Run interactive setup wizard for an existing project.
 
@@ -121,7 +121,7 @@ class ProjectWizard:
         # Return setup configuration
         return {
             "project_type": project_type,
-            "project_path": project_path,
+            "project_path": str(project_path),
             "options": setup_options,
         }
 
@@ -129,7 +129,7 @@ class ProjectWizard:
     def _select_project_type() -> str | None:
         """Interactive project type selection."""
         # Get project types directly from config (no need for interface)
-        project_types = ProjectVariantConfig.get_project_types_for_ui()
+        project_types = ProjectConfig.get_project_types_for_ui()
 
         if INQUIRERPY_AVAILABLE:
             choices = [Choice(value=ptype, name=desc) for ptype, desc in project_types]
@@ -399,9 +399,10 @@ class ProjectWizard:
         table.add_row("Project name", project_name)
         table.add_row("Project type", project_type)
         table.add_row("Location", str(project_path))
-        table.add_row("Author", options.get("author_name", "Your Name"))
+        table.add_row("Author", str(options.get("author_name", "Your Name")))
         table.add_row(
-            "Description", options.get("project_description", "No description")
+            "Description",
+            str(options.get("project_description", "No description")),
         )
 
         console.print("")

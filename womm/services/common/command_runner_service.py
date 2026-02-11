@@ -215,6 +215,11 @@ class CommandRunnerService:
                         raise last_error from e
 
             # This should never be reached, but just in case
+            if last_error is None:
+                raise CommandUtilityError(
+                    message="Command execution failed without exception context",
+                    details=f"Command: {command}",
+                )
             raise last_error
 
         except (
@@ -277,7 +282,7 @@ class CommandRunnerService:
                 )
 
             # Prepare subprocess arguments with explicit security settings
-            subprocess_args = {
+            subprocess_args: dict[str, Any] = {
                 "cwd": cwd,
                 "timeout": self.timeout,
                 "text": True,

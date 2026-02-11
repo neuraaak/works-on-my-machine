@@ -83,29 +83,29 @@ class BaseValidationService:
 
             if not path_obj.exists():
                 return ValidationResult(
-                    is_valid=False,
-                    error_message=f"{path_type.capitalize()} does not exist: {path}",
+                    success=False,
+                    error=f"{path_type.capitalize()} does not exist: {path}",
                 )
 
             if path_type == "file" and not path_obj.is_file():
                 return ValidationResult(
-                    is_valid=False,
-                    error_message=f"Path is not a file: {path}",
+                    success=False,
+                    error=f"Path is not a file: {path}",
                 )
 
             if path_type == "directory" and not path_obj.is_dir():
                 return ValidationResult(
-                    is_valid=False,
-                    error_message=f"Path is not a directory: {path}",
+                    success=False,
+                    error=f"Path is not a directory: {path}",
                 )
 
-            return ValidationResult(is_valid=True)
+            return ValidationResult(success=True)
 
         except Exception as e:
             logger.error(f"Error validating path existence: {e}")
             return ValidationResult(
-                is_valid=False,
-                error_message=f"Error validating path: {e!s}",
+                success=False,
+                error=f"Error validating path: {e!s}",
             )
 
     @staticmethod
@@ -124,29 +124,29 @@ class BaseValidationService:
 
             if not path_obj.exists():
                 return ValidationResult(
-                    is_valid=False,
-                    error_message=f"Path does not exist: {path}",
+                    success=False,
+                    error=f"Path does not exist: {path}",
                 )
 
             if not path_obj.is_file():
                 return ValidationResult(
-                    is_valid=False,
-                    error_message=f"Path is not a file: {path}",
+                    success=False,
+                    error=f"Path is not a file: {path}",
                 )
 
             if not path_obj.stat().st_mode & 0o400:
                 return ValidationResult(
-                    is_valid=False,
-                    error_message=f"Path is not readable: {path}",
+                    success=False,
+                    error=f"Path is not readable: {path}",
                 )
 
-            return ValidationResult(is_valid=True)
+            return ValidationResult(success=True)
 
         except Exception as e:
             logger.error(f"Error validating path readability: {e}")
             return ValidationResult(
-                is_valid=False,
-                error_message=f"Error validating path: {e!s}",
+                success=False,
+                error=f"Error validating path: {e!s}",
             )
 
     @staticmethod
@@ -166,23 +166,23 @@ class BaseValidationService:
 
             if not parent.exists():
                 return ValidationResult(
-                    is_valid=False,
-                    error_message=f"Parent directory does not exist: {parent}",
+                    success=False,
+                    error=f"Parent directory does not exist: {parent}",
                 )
 
             if not parent.stat().st_mode & 0o200:
                 return ValidationResult(
-                    is_valid=False,
-                    error_message=f"Parent directory is not writable: {parent}",
+                    success=False,
+                    error=f"Parent directory is not writable: {parent}",
                 )
 
-            return ValidationResult(is_valid=True)
+            return ValidationResult(success=True)
 
         except Exception as e:
             logger.error(f"Error validating path writeability: {e}")
             return ValidationResult(
-                is_valid=False,
-                error_message=f"Error validating path: {e!s}",
+                success=False,
+                error=f"Error validating path: {e!s}",
             )
 
     # ///////////////////////////////////////////////////////////////
@@ -205,17 +205,17 @@ class BaseValidationService:
         """
         if not isinstance(value, str):
             return ValidationResult(
-                is_valid=False,
-                error_message=f"{field_name} must be a string, got {type(value).__name__}",
+                success=False,
+                error=f"{field_name} must be a string, got {type(value).__name__}",
             )
 
         if not value or not value.strip():
             return ValidationResult(
-                is_valid=False,
-                error_message=f"{field_name} cannot be empty",
+                success=False,
+                error=f"{field_name} cannot be empty",
             )
 
-        return ValidationResult(is_valid=True)
+        return ValidationResult(success=True)
 
     @staticmethod
     def validate_string_pattern(
@@ -237,17 +237,17 @@ class BaseValidationService:
         try:
             if not re.match(pattern, value):
                 return ValidationResult(
-                    is_valid=False,
-                    error_message=f"{field_name} does not match required pattern",
+                    success=False,
+                    error=f"{field_name} does not match required pattern",
                 )
 
-            return ValidationResult(is_valid=True)
+            return ValidationResult(success=True)
 
         except Exception as e:
             logger.error(f"Error validating string pattern: {e}")
             return ValidationResult(
-                is_valid=False,
-                error_message=f"Error validating {field_name}: {e!s}",
+                success=False,
+                error=f"Error validating {field_name}: {e!s}",
             )
 
     # ///////////////////////////////////////////////////////////////
@@ -271,19 +271,19 @@ class BaseValidationService:
         """
         if not isinstance(data, dict):
             return ValidationResult(
-                is_valid=False,
-                error_message=f"{field_name} must be a dictionary",
+                success=False,
+                error=f"{field_name} must be a dictionary",
             )
 
         missing_keys = [key for key in required_keys if key not in data]
 
         if missing_keys:
             return ValidationResult(
-                is_valid=False,
-                error_message=f"Missing required keys in {field_name}: {', '.join(missing_keys)}",
+                success=False,
+                error=f"Missing required keys in {field_name}: {', '.join(missing_keys)}",
             )
 
-        return ValidationResult(is_valid=True)
+        return ValidationResult(success=True)
 
     @staticmethod
     def validate_dict_value_types(
@@ -306,8 +306,8 @@ class BaseValidationService:
         """
         if not isinstance(data, dict):
             return ValidationResult(
-                is_valid=False,
-                error_message=f"{field_name} must be a dictionary",
+                success=False,
+                error=f"{field_name} must be a dictionary",
             )
 
         for key, expected_type in type_schema.items():
@@ -317,11 +317,13 @@ class BaseValidationService:
                     actual_type = type(value).__name__
                     expected_name = expected_type.__name__
                     return ValidationResult(
-                        is_valid=False,
-                        error_message=f"Field '{key}' in {field_name} has type {actual_type}, expected {expected_name}",
+                        success=False,
+                        error=(
+                            f"Field '{key}' in {field_name} has type {actual_type}, expected {expected_name}"
+                        ),
                     )
 
-        return ValidationResult(is_valid=True)
+        return ValidationResult(success=True)
 
     # ///////////////////////////////////////////////////////////////
     # RANGE VALIDATION METHODS
@@ -348,17 +350,17 @@ class BaseValidationService:
         """
         if min_val is not None and value < min_val:
             return ValidationResult(
-                is_valid=False,
-                error_message=f"{field_name} must be >= {min_val}, got {value}",
+                success=False,
+                error=f"{field_name} must be >= {min_val}, got {value}",
             )
 
         if max_val is not None and value > max_val:
             return ValidationResult(
-                is_valid=False,
-                error_message=f"{field_name} must be <= {max_val}, got {value}",
+                success=False,
+                error=f"{field_name} must be <= {max_val}, got {value}",
             )
 
-        return ValidationResult(is_valid=True)
+        return ValidationResult(success=True)
 
     @staticmethod
     def validate_value_in_list(
@@ -377,11 +379,11 @@ class BaseValidationService:
         """
         if value not in allowed_values:
             return ValidationResult(
-                is_valid=False,
-                error_message=f"{field_name} must be one of {allowed_values}, got {value}",
+                success=False,
+                error=f"{field_name} must be one of {allowed_values}, got {value}",
             )
 
-        return ValidationResult(is_valid=True)
+        return ValidationResult(success=True)
 
     # ///////////////////////////////////////////////////////////////
     # COMBINATION VALIDATION METHODS
@@ -404,19 +406,17 @@ class BaseValidationService:
             Returns success only if ALL validations passed.
             Error messages are combined with newlines.
         """
-        failed_validations = [v for v in validations if not v.is_valid]
+        failed_validations = [v for v in validations if not v.success]
 
         if not failed_validations:
-            return ValidationResult(is_valid=True)
+            return ValidationResult(success=True)
 
-        error_messages = [
-            v.error_message for v in failed_validations if v.error_message
-        ]
+        error_messages = [v.error for v in failed_validations if v.error]
         combined_message = "\n".join(error_messages)
 
         return ValidationResult(
-            is_valid=False,
-            error_message=combined_message,
+            success=False,
+            error=combined_message,
         )
 
     @staticmethod
@@ -435,15 +435,15 @@ class BaseValidationService:
         Note:
             Returns success if ANY validation passed.
         """
-        passed_validations = [v for v in validations if v.is_valid]
+        passed_validations = [v for v in validations if v.success]
 
         if passed_validations:
-            return ValidationResult(is_valid=True)
+            return ValidationResult(success=True)
 
-        error_messages = [v.error_message for v in validations if v.error_message]
+        error_messages = [v.error for v in validations if v.error]
         combined_message = " OR ".join(error_messages)
 
         return ValidationResult(
-            is_valid=False,
-            error_message=combined_message,
+            success=False,
+            error=combined_message,
         )

@@ -268,7 +268,13 @@ class FileScannerService:
                 actual_path = python_files[0].parent if python_files else None
             elif target_path is not None:
                 # Need to scan
-                python_files = self.find_python_files(target_path)
+                search_result = self.find_python_files(target_path)
+                if search_result.success and isinstance(
+                    search_result.files_found, list
+                ):
+                    python_files = search_result.files_found
+                else:
+                    python_files = []
                 actual_path = target_path
             else:
                 # No path provided, return empty summary

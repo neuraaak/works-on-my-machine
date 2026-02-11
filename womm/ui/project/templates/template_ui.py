@@ -45,12 +45,17 @@ def print_template_list(templates: dict[str, list[str]]) -> None:
         for template_name in template_names:
             # Get template info for description
             template_info = _get_template_info(template_name)
-            description = (
+            desc_value = (
                 template_info.get("description", "No description")
                 if template_info
                 else "No description"
             )
-            file_count = len(template_info.get("files", [])) if template_info else 0
+            description = (
+                str(desc_value) if not isinstance(desc_value, str) else desc_value
+            )
+
+            files = template_info.get("files", []) if template_info else []
+            file_count = len(files) if isinstance(files, list) else 0
 
             table.add_row(project_type, template_name, description, str(file_count))
 
@@ -164,7 +169,7 @@ def interactive_template_create() -> dict[str, str] | None:
                     return path.exists() and path.is_dir()
                 return False
 
-        source_project = inquirer.filepath(
+        source_project = inquirer.filepath(  # pyright: ignore[reportPrivateImportUsage]
             message="Select the source project to create template from:",
             validate=DirectoryValidator(),
         ).execute()
@@ -173,13 +178,13 @@ def interactive_template_create() -> dict[str, str] | None:
             return None
 
         # Get template name
-        template_name = inquirer.text(
+        template_name = inquirer.text(  # pyright: ignore[reportPrivateImportUsage]
             message="Enter template name (leave empty for auto-generation):",
             default="",
         ).execute()
 
         # Get description
-        description = inquirer.text(
+        description = inquirer.text(  # pyright: ignore[reportPrivateImportUsage]
             message="Enter template description:",
             default="",
         ).execute()
@@ -237,7 +242,7 @@ def interactive_template_delete(templates: dict[str, list[str]]) -> list[str] | 
 
     try:
         # Select templates to delete
-        selected_items = inquirer.checkbox(
+        selected_items = inquirer.checkbox(  # pyright: ignore[reportPrivateImportUsage]
             message="Select templates to delete (use space to select/deselect):",
             choices=all_templates,
         ).execute()
@@ -246,7 +251,7 @@ def interactive_template_delete(templates: dict[str, list[str]]) -> list[str] | 
             return None
 
         # Confirm deletion
-        confirm = inquirer.confirm(
+        confirm = inquirer.confirm(  # pyright: ignore[reportPrivateImportUsage]
             message="Are you sure you want to delete the selected templates?",
             default=False,
         ).execute()

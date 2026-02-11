@@ -43,6 +43,7 @@ from ...utils.project import (
     validate_project_name,
     validate_project_path,
 )
+from ..common.command_runner_service import CommandRunnerService
 from .template_service import TemplateService
 
 # ///////////////////////////////////////////////////////////////
@@ -80,6 +81,7 @@ class PythonProjectCreationService:
             return
 
         self._template_service = TemplateService()
+        self._command_runner = CommandRunnerService()
         self._template_dir = (
             get_assets_module_path() / "languages" / "python" / "py" / "templates"
         )
@@ -318,12 +320,13 @@ class PythonProjectCreationService:
             ProjectServiceError: If Git setup fails
         """
         try:
-            self._validation_service.validate_project_path(project_path)
+            validate_project_path(project_path)
 
             # Check if git is available
             import shutil
 
-            if not shutil.which("git"):
+            git_path = shutil.which("git")
+            if not git_path:
                 logger.info("Git not found, skipping repository initialization")
                 return ProjectCreationResult(
                     success=True,
@@ -334,12 +337,13 @@ class PythonProjectCreationService:
                 )
 
             # Initialize git repository
-            result = self._command_runner.run_command(
-                ["git", "init"],
-                cwd=str(project_path),
+            result = self._command_runner.run(
+                [git_path, "init"],
+                description="Initialize Git repository",
+                cwd=project_path,
             )
 
-            if result.success:
+            if result.returncode == 0:
                 return ProjectCreationResult(
                     success=True,
                     message="Git repository initialized successfully",

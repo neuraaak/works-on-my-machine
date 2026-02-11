@@ -15,6 +15,9 @@ import shutil
 import sys
 from pathlib import Path
 
+# Third-party imports
+from rich.progress import TaskID
+
 # Local imports
 from ...exceptions.common import ValidationServiceError
 from ...exceptions.dependencies import DevToolsInterfaceError
@@ -135,7 +138,7 @@ class DevToolsInterface:
                     tool_type=tool_type,
                     path=shutil.which(tool) if available else None,
                     message=f"Dev tool {tool} {'available' if available else 'not found'}",
-                    error=None if available else f"Dev tool {tool} not installed",
+                    error="" if available else f"Dev tool {tool} not installed",
                 )
 
             # Check if tool is available
@@ -155,7 +158,7 @@ class DevToolsInterface:
                 tool_type=tool_type,
                 path=shutil.which(tool) if available else None,
                 message=f"Dev tool {tool} {'available' if available else 'not found'}",
-                error=None if available else f"Dev tool {tool} not installed",
+                error="" if available else f"Dev tool {tool} not installed",
             )
 
         except (DevToolsInterfaceError, ValidationServiceError):
@@ -193,10 +196,11 @@ class DevToolsInterface:
         with ezprinter.create_spinner_with_status(
             "Checking development tool availability..."
         ) as (progress, task):
-            progress.update(task, status="Initializing...")
+            task_id = TaskID(task)
+            progress.update(task_id, status="Initializing...")
 
             for category, subcategory, tool in tool_configs:
-                progress.update(task, status=f"Checking {tool}")
+                progress.update(task_id, status=f"Checking {tool}")
 
                 try:
                     # Direct service call (no UI)
@@ -214,7 +218,7 @@ class DevToolsInterface:
                         path=shutil.which(tool) if is_available else None,
                         message=f"Dev tool {tool} {'available' if is_available else 'not found'}",
                         error=(
-                            None if is_available else f"Dev tool {tool} not installed"
+                            "" if is_available else f"Dev tool {tool} not installed"
                         ),
                     )
                 except Exception as e:
@@ -226,7 +230,7 @@ class DevToolsInterface:
                         error=str(e),
                     )
 
-            progress.update(task, status="Check completed")
+            progress.update(task_id, status="Check completed")
 
         # Display results via UI
         print()
@@ -259,9 +263,9 @@ class DevToolsInterface:
             # Input validation
             if not language or not tool_type or not tool:
                 raise ValidationServiceError(
-                    component="dev_tool_installation",
-                    validation_type="input_validation",
-                    message="Language, tool_type, and tool must not be empty",
+                    operation="install_dev_tool",
+                    field="parameters",
+                    reason="Language, tool_type, and tool must not be empty",
                     details="All parameters must be non-empty strings",
                 )
 
@@ -269,12 +273,13 @@ class DevToolsInterface:
                 progress,
                 task,
             ):
+                task_id = TaskID(task)
                 # Check if already installed
-                progress.update(task, status="Checking current installation...")
+                progress.update(task_id, status="Checking current installation...")
                 try:
                     check_result = self.check_dev_tool(language, tool_type, tool)
                     if check_result.success:
-                        progress.update(task, status="Already installed")
+                        progress.update(task_id, status="Already installed")
                         ezprinter.success(f"Dev tool {tool} already installed")
                         return DevToolResult(
                             success=True,
@@ -291,12 +296,12 @@ class DevToolsInterface:
 
                 # Delegate to service - it handles full dependency chain
                 progress.update(
-                    task, status="Resolving dependencies via DependencyHierarchy..."
+                    task_id, status="Resolving dependencies via DependencyHierarchy..."
                 )
                 try:
                     result = self.dev_tools_service.install_devtool(tool)
                 except ValidationServiceError as e:
-                    progress.update(task, status="Validation failed")
+                    progress.update(task_id, status="Validation failed")
                     ezprinter.error(f"Invalid tool: {e.reason}")
                     return DevToolResult(
                         success=False,
@@ -307,7 +312,7 @@ class DevToolsInterface:
                         error=str(e),
                     )
                 except Exception as e:
-                    progress.update(task, status="Installation failed")
+                    progress.update(task_id, status="Installation failed")
                     logger.error(f"Failed to install tool {tool}: {e}")
                     ezprinter.error(f"Failed to install dev tool {tool}: {e}")
                     return DevToolResult(
@@ -326,7 +331,9 @@ class DevToolsInterface:
                     logger.warning(f"Failed to clear cache for {tool}: {e}")
 
                 if result.success and result.is_available:
-                    progress.update(task, status="Installation completed successfully!")
+                    progress.update(
+                        task_id, status="Installation completed successfully!"
+                    )
                     ezprinter.success(f"Dev tool {tool} installed successfully")
                     return DevToolResult(
                         success=True,
@@ -337,7 +344,7 @@ class DevToolsInterface:
                         message=f"Dev tool {tool} installed successfully",
                     )
                 else:
-                    progress.update(task, status="Installation failed")
+                    progress.update(task_id, status="Installation failed")
                     ezprinter.error(f"Failed to install dev tool {tool}")
                     return DevToolResult(
                         success=False,
@@ -531,9 +538,9 @@ class DevToolsInterface:
             # Input validation
             if not language:
                 raise ValidationServiceError(
-                    component="dev_tools_check_and_install",
-                    validation_type="input_validation",
-                    message="Language must not be empty",
+                    operation="check_and_install_dev_tools",
+                    field="language",
+                    reason="Language must not be empty",
                     details="Language parameter must be a non-empty string",
                 )
 
@@ -562,11 +569,12 @@ class DevToolsInterface:
                 progress,
                 task,
             ):
+                task_id = TaskID(task)
                 for tool_type, tools in DEV_TOOLS[language].items():
                     for tool in tools:
                         processed += 1
                         progress.update(
-                            task,
+                            task_id,
                             status=f"Processing {tool} ({processed}/{total_tools})...",
                         )
 
@@ -574,7 +582,7 @@ class DevToolsInterface:
                             result = self.check_dev_tool(language, tool_type, tool)
                             if not result.success:
                                 # Try to install the tool
-                                progress.update(task, status=f"Installing {tool}...")
+                                progress.update(task_id, status=f"Installing {tool}...")
                                 result = self.install_dev_tool(
                                     language, tool_type, tool
                                 )
@@ -599,7 +607,7 @@ class DevToolsInterface:
 
                         results[tool] = result
 
-                progress.update(task, status="All tools processed!")
+                progress.update(task_id, status="All tools processed!")
 
             # Summary
             successful = sum(1 for result in results.values() if result.success)
@@ -639,9 +647,9 @@ class DevToolsInterface:
             # Input validation
             if not language:
                 raise ValidationServiceError(
-                    component="get_required_tools",
-                    validation_type="input_validation",
-                    message="Language must not be empty",
+                    operation="get_required_tools",
+                    field="language",
+                    reason="Language must not be empty",
                     details="Language parameter must be a non-empty string",
                 )
 
@@ -661,9 +669,9 @@ class DevToolsInterface:
             # Wrap unexpected external exceptions
             logger.error(f"Unexpected error in get_required_tools: {e}")
             raise ValidationServiceError(
-                component="get_required_tools",
-                validation_type="unexpected_error",
-                message=f"Failed to get required tools: {e}",
+                operation="get_required_tools",
+                field="unexpected_error",
+                reason=f"Failed to get required tools: {e}",
                 details=f"Exception type: {type(e).__name__}",
             ) from e
 
@@ -689,12 +697,13 @@ class DevToolsInterface:
                 progress,
                 task,
             ):
+                task_id = TaskID(task)
                 for lang in languages_to_check:
                     if lang not in DEV_TOOLS:
                         continue
 
                     progress.update(
-                        task,
+                        task_id,
                         description=f"Checking {lang} tools...",
                     )
 
@@ -767,23 +776,22 @@ class DevToolsInterface:
             # Input validation
             if not tool:
                 raise ValidationServiceError(
-                    component="python_tool_installation",
-                    validation_type="input_validation",
-                    message="Tool name must not be empty",
+                    operation="install_python_tool",
+                    field="tool",
+                    reason="Tool name must not be empty",
                     details="Tool parameter must be a non-empty string",
                 )
 
             cmd = [sys.executable, "-m", "pip", "install", tool]
             try:
                 result = self.command_runner.run(cmd)
-                return result.success
+                return bool(result)
             except Exception as e:
                 logger.error(f"Failed to install Python tool {tool}: {e}")
                 raise DependencyServiceError(
-                    component=tool,
-                    operation="python_installation",
                     message=f"Failed to install Python tool: {e}",
-                    details=f"Command: {' '.join(cmd)}",
+                    operation="python_installation",
+                    details=f"Tool: {tool} | Command: {' '.join(cmd)}",
                 ) from e
 
         except (DependencyServiceError, ValidationServiceError):
@@ -793,10 +801,9 @@ class DevToolsInterface:
             # Wrap unexpected external exceptions
             logger.error(f"Unexpected error in _install_python_tool: {e}")
             raise DependencyServiceError(
-                component=tool,
-                operation="python_installation",
                 message=f"Failed to install Python tool: {e}",
-                details=f"Exception type: {type(e).__name__}",
+                operation="python_installation",
+                details=f"Tool: {tool} | Exception type: {type(e).__name__}",
             ) from e
 
     def _install_javascript_tool(self, tool: str) -> bool:
@@ -816,9 +823,9 @@ class DevToolsInterface:
             # Input validation
             if not tool:
                 raise ValidationServiceError(
-                    component="javascript_tool_installation",
-                    validation_type="input_validation",
-                    message="Tool name must not be empty",
+                    operation="install_javascript_tool",
+                    field="tool",
+                    reason="Tool name must not be empty",
                     details="Tool parameter must be a non-empty string",
                 )
             # Resolve npm executable robustly (handles .venv PATH issues on Windows)
@@ -838,9 +845,8 @@ class DevToolsInterface:
 
             if not npm_executable:
                 raise DependencyServiceError(
-                    component=tool,
-                    operation="javascript_installation",
                     message="npm not found in PATH or known locations",
+                    operation="javascript_installation",
                     details=(
                         "Ensure Node.js is installed and npm is accessible. "
                         "Tried PATH and common Windows locations."
@@ -850,14 +856,13 @@ class DevToolsInterface:
             cmd = [npm_executable, "install", "-g", tool]
             try:
                 result = self.command_runner.run(cmd)
-                return result.success
+                return bool(result)
             except Exception as e:
                 logger.error(f"Failed to install JavaScript tool {tool}: {e}")
                 raise DependencyServiceError(
-                    component=tool,
-                    operation="javascript_installation",
                     message=f"Failed to install JavaScript tool: {e}",
-                    details=f"Command: {' '.join(cmd)}",
+                    operation="javascript_installation",
+                    details=f"Tool: {tool} | Command: {' '.join(cmd)}",
                 ) from e
 
         except (DependencyServiceError, ValidationServiceError):
@@ -867,10 +872,9 @@ class DevToolsInterface:
             # Wrap unexpected external exceptions
             logger.error(f"Unexpected error in _install_javascript_tool: {e}")
             raise DependencyServiceError(
-                component=tool,
-                operation="javascript_installation",
                 message=f"Failed to install JavaScript tool: {e}",
-                details=f"Exception type: {type(e).__name__}",
+                operation="javascript_installation",
+                details=f"Tool: {tool} | Exception type: {type(e).__name__}",
             ) from e
 
     def _clear_tool_cache(self, language: str, tool_type: str, tool: str):
@@ -889,9 +893,9 @@ class DevToolsInterface:
             # Input validation
             if not language or not tool_type or not tool:
                 raise ValidationServiceError(
-                    component="clear_tool_cache",
-                    validation_type="input_validation",
-                    message="Language, tool_type, and tool must not be empty",
+                    operation="clear_tool_cache",
+                    field="parameters",
+                    reason="Language, tool_type, and tool must not be empty",
                     details="All parameters must be non-empty strings",
                 )
 
@@ -932,9 +936,9 @@ class DevToolsInterface:
             # Input validation
             if not install_method or not tool:
                 raise ValidationServiceError(
-                    component="ensure_required_runtime",
-                    validation_type="input_validation",
-                    message="Install_method and tool must not be empty",
+                    operation="ensure_required_runtime",
+                    field="parameters",
+                    reason="Install_method and tool must not be empty",
                     details="Both parameters must be non-empty strings",
                 )
 

@@ -23,6 +23,9 @@ import os
 import platform
 from dataclasses import dataclass
 
+# Third-party imports
+from rich.progress import TaskID
+
 # Local imports
 from ...exceptions.common import ValidationServiceError
 from ...exceptions.dependencies import SystemPkgManagerInterfaceError
@@ -112,6 +115,14 @@ class SystemPackageManagerInterface:
     # ///////////////////////////////////////////////////////////////
     # PUBLIC METHODS
     # ///////////////////////////////////////////////////////////////
+
+    def _normalize_config_fields(self, config: dict) -> tuple[str | None, int | None]:
+        """Normalize platform and priority fields from config."""
+        platform_val = config.get("platform") if isinstance(config, dict) else None
+        platform_str = platform_val if isinstance(platform_val, str) else None
+        priority_val = config.get("priority") if isinstance(config, dict) else None
+        priority_int = priority_val if isinstance(priority_val, int) else None
+        return platform_str, priority_int
 
     def detect_available_managers(
         self, show_ui: bool = True
@@ -205,7 +216,8 @@ class SystemPackageManagerInterface:
         with ezprinter.create_spinner_with_status(
             "Checking system package manager availability..."
         ) as (progress, task):
-            progress.update(task, status="Initializing...")
+            task_id = TaskID(task)
+            progress.update(task_id, status="Initializing...")
 
             # Get list of managers for current platform
             platform_managers = []
@@ -219,7 +231,7 @@ class SystemPackageManagerInterface:
                     platform_managers.append(manager_name)
 
             for manager_name in platform_managers:
-                progress.update(task, status=f"Checking {manager_name}")
+                progress.update(task_id, status=f"Checking {manager_name}")
 
                 try:
                     result = self._check_package_manager_internal(
@@ -235,7 +247,7 @@ class SystemPackageManagerInterface:
                         error=str(e),
                     )
 
-            progress.update(task, status="Check completed")
+            progress.update(task_id, status="Check completed")
 
         # Display results via UI
         print()
@@ -265,9 +277,9 @@ class SystemPackageManagerInterface:
             # Input validation
             if not manager_name:
                 raise ValidationServiceError(
-                    component="package_manager_check",
-                    validation_type="input_validation",
-                    message="Manager name must not be empty",
+                    operation="check_package_manager",
+                    field="manager_name",
+                    reason="Manager name must not be empty",
                     details="Manager name parameter must be a non-empty string",
                 )
 
@@ -276,8 +288,9 @@ class SystemPackageManagerInterface:
                     progress,
                     task,
                 ):
+                    task_id = TaskID(task)
                     result = self._check_package_manager_internal(
-                        manager_name, progress, task
+                        manager_name, progress, task_id
                     )
             else:
                 result = self._check_package_manager_internal(manager_name, None, None)
@@ -318,10 +331,11 @@ class SystemPackageManagerInterface:
         self, manager_name: str, progress, task
     ) -> PackageManagerResult:
         """Internal method to check package manager without UI."""
+        task_id = TaskID(task) if progress else None
         if manager_name not in SYSTEM_PACKAGE_MANAGERS:
-            if progress:
+            if progress and task_id is not None:
                 progress.update(
-                    task,
+                    task_id,
                     description=f"Package manager {manager_name} not supported",
                 )
             return PackageManagerResult(
@@ -335,22 +349,21 @@ class SystemPackageManagerInterface:
         if manager_name in self.cache:
             available, version = self.cache[manager_name]
             config = SYSTEM_PACKAGE_MANAGERS[manager_name]
-            if progress:
+            if progress and task_id is not None:
                 progress.update(
-                    task,
+                    task_id,
                     description=f"Package manager {manager_name} {'available' if available else 'not found'}",
                 )
+            platform_str, priority_int = self._normalize_config_fields(config)
             return PackageManagerResult(
                 success=available,
                 package_manager_name=manager_name,
                 version=version,
-                platform=config["platform"],
-                priority=config["priority"],
+                platform=platform_str,
+                priority=priority_int,
                 message=f"Package manager {manager_name} {'available' if available else 'not found'}",
                 error=(
-                    None
-                    if available
-                    else f"Package manager {manager_name} not installed"
+                    "" if available else f"Package manager {manager_name} not installed"
                 ),
             )
 
@@ -368,20 +381,21 @@ class SystemPackageManagerInterface:
         self.cache[manager_name] = (available, version)
 
         config = SYSTEM_PACKAGE_MANAGERS[manager_name]
-        if progress:
+        if progress and task_id is not None:
             progress.update(
-                task,
+                task_id,
                 description=f"Package manager {manager_name} {'available' if available else 'not found'}",
             )
+        platform_str, priority_int = self._normalize_config_fields(config)
         return PackageManagerResult(
             success=available,
             package_manager_name=manager_name,
             version=version,
-            platform=config["platform"],
-            priority=config["priority"],
+            platform=platform_str,
+            priority=priority_int,
             message=f"Package manager {manager_name} {'available' if available else 'not found'}",
             error=(
-                None if available else f"Package manager {manager_name} not installed"
+                "" if available else f"Package manager {manager_name} not installed"
             ),
         )
 
@@ -424,8 +438,14 @@ class SystemPackageManagerInterface:
                                     manager_name
                                 )
                                 if avail_result.is_available:
+                                    priority_val = config.get("priority")
+                                    priority_int = (
+                                        priority_val
+                                        if isinstance(priority_val, int)
+                                        else 999
+                                    )
                                     available_managers.append(
-                                        (manager_name, config["priority"])
+                                        (manager_name, priority_int)
                                     )
                                     available_managers_dict[manager_name] = (
                                         avail_result.version or "unknown"
@@ -451,9 +471,13 @@ class SystemPackageManagerInterface:
                                 )
                             )
                             if avail_result.is_available:
-                                available_managers.append(
-                                    (manager_name, config["priority"])
+                                priority_val = config.get("priority")
+                                priority_int = (
+                                    priority_val
+                                    if isinstance(priority_val, int)
+                                    else 999
                                 )
+                                available_managers.append((manager_name, priority_int))
                                 available_managers_dict[manager_name] = (
                                     avail_result.version or "unknown"
                                 )
@@ -507,8 +531,7 @@ class SystemPackageManagerInterface:
         if best:
             config = self.package_manager_service.get_manager_config(best.manager_name)
             if config:
-                platform_str = config.get("platform")
-                priority = config.get("priority")
+                platform_str, priority = self._normalize_config_fields(config)
 
         display_best_manager(
             manager_name=best.manager_name if best else None,
@@ -565,9 +588,9 @@ class SystemPackageManagerInterface:
                 # Input validation for preferred list
                 if not isinstance(preferred, list):
                     raise ValidationServiceError(
-                        component="ensure_manager",
-                        validation_type="input_validation",
-                        message="Preferred must be a list",
+                        operation="ensure_manager",
+                        field="preferred",
+                        reason="Preferred must be a list",
                         details="Preferred parameter must be a list of strings",
                     )
                 candidates = [m for m in preferred if is_supported(m)]
@@ -588,7 +611,11 @@ class SystemPackageManagerInterface:
                         self.package_manager_service.check_manager_availability(m)
                     )
                     if avail_result.is_available:
-                        available.append((m, SYSTEM_PACKAGE_MANAGERS[m]["priority"]))
+                        priority_val = SYSTEM_PACKAGE_MANAGERS[m].get("priority")
+                        priority_int = (
+                            priority_val if isinstance(priority_val, int) else 999
+                        )
+                        available.append((m, priority_int))
                 except Exception as e:
                     logger.warning(f"Failed to check availability for {m}: {e}")
 
@@ -608,8 +635,12 @@ class SystemPackageManagerInterface:
                     success=True,
                     package_manager_name=best,
                     version=ver,
-                    platform=SYSTEM_PACKAGE_MANAGERS[best]["platform"],
-                    priority=SYSTEM_PACKAGE_MANAGERS[best]["priority"],
+                    platform=self._normalize_config_fields(
+                        SYSTEM_PACKAGE_MANAGERS[best]
+                    )[0],
+                    priority=self._normalize_config_fields(
+                        SYSTEM_PACKAGE_MANAGERS[best]
+                    )[1],
                     message=f"Using package manager: {best}",
                 )
 
@@ -662,9 +693,9 @@ class SystemPackageManagerInterface:
             # Input validation
             if not isinstance(candidates, list):
                 raise ValidationServiceError(
-                    component="build_no_pm_panel",
-                    validation_type="input_validation",
-                    message="Candidates must be a list",
+                    operation="build_no_pm_panel",
+                    field="candidates",
+                    reason="Candidates must be a list",
                     details="Candidates parameter must be a list of strings",
                 )
 
@@ -755,9 +786,9 @@ class SystemPackageManagerInterface:
             # Input validation
             if not package_name:
                 raise ValidationServiceError(
-                    component="install_package",
-                    validation_type="input_validation",
-                    message="Package name must not be empty",
+                    operation="install_package",
+                    field="package_name",
+                    reason="Package name must not be empty",
                     details="Package name parameter must be a non-empty string",
                 )
 
@@ -784,13 +815,14 @@ class SystemPackageManagerInterface:
                         error="No package manager available",
                     )
                 cfg = SYSTEM_PACKAGE_MANAGERS.get(selected_manager, {})
+                platform_str, priority_int = self._normalize_config_fields(cfg)
                 args_desc = f" args={extra_args}" if extra_args else ""
                 return PackageManagerResult(
                     success=True,
                     package_manager_name=selected_manager,
                     version=None,
-                    platform=cfg.get("platform"),
-                    priority=cfg.get("priority"),
+                    platform=platform_str,
+                    priority=priority_int,
                     message=f"[dry-run] Would install {package_name} via {selected_manager}{args_desc}",
                 )
 
@@ -825,12 +857,11 @@ class SystemPackageManagerInterface:
 
             # Check if manager is available
             try:
-                (
-                    available,
-                    version,
-                ) = self.package_manager_service.check_manager_availability(
+                avail_result = self.package_manager_service.check_manager_availability(
                     manager_name
                 )
+                available = avail_result.is_available
+                version = avail_result.version or None
             except Exception as e:
                 logger.warning(f"Failed to check availability for {manager_name}: {e}")
                 available, version = False, None
@@ -853,20 +884,20 @@ class SystemPackageManagerInterface:
                     f"Failed to install package {package_name} via {manager_name}: {e}"
                 )
                 raise DependencyServiceError(
-                    component=package_name,
-                    operation="install",
                     message=f"Failed to install package via {manager_name}: {e}",
-                    details=f"Exception type: {type(e).__name__}",
+                    operation="install",
+                    details=f"Package: {package_name}, Exception: {type(e).__name__}",
                 ) from e
 
             config = SYSTEM_PACKAGE_MANAGERS[manager_name]
+            platform_str, priority_int = self._normalize_config_fields(config)
             if success:
                 return PackageManagerResult(
                     success=True,
                     package_manager_name=manager_name,
                     version=version,
-                    platform=config["platform"],
-                    priority=config["priority"],
+                    platform=platform_str,
+                    priority=priority_int,
                     message=f"Package {package_name} installed successfully via {manager_name}",
                 )
             else:
@@ -874,8 +905,8 @@ class SystemPackageManagerInterface:
                     success=False,
                     package_manager_name=manager_name,
                     version=version,
-                    platform=config["platform"],
-                    priority=config["priority"],
+                    platform=platform_str,
+                    priority=priority_int,
                     message=f"Failed to install package {package_name} via {manager_name}",
                     error="Installation failed",
                 )
@@ -918,9 +949,9 @@ class SystemPackageManagerInterface:
             # Input validation
             if not package_name:
                 raise ValidationServiceError(
-                    component="search_package",
-                    validation_type="input_validation",
-                    message="Package name must not be empty",
+                    operation="search_package",
+                    field="package_name",
+                    reason="Package name must not be empty",
                     details="Package name parameter must be a non-empty string",
                 )
 
@@ -955,12 +986,11 @@ class SystemPackageManagerInterface:
 
             # Check if manager is available
             try:
-                (
-                    available,
-                    version,
-                ) = self.package_manager_service.check_manager_availability(
+                avail_result = self.package_manager_service.check_manager_availability(
                     manager_name
                 )
+                available = avail_result.is_available
+                version = avail_result.version or None
             except Exception as e:
                 logger.warning(f"Failed to check availability for {manager_name}: {e}")
                 available, version = False, None
@@ -980,36 +1010,49 @@ class SystemPackageManagerInterface:
                 logger.error(
                     f"Failed to search package {package_name} via {manager_name}: {e}"
                 )
+                platform_str, priority_int = self._normalize_config_fields(
+                    SYSTEM_PACKAGE_MANAGERS[manager_name]
+                )
                 return PackageManagerResult(
                     success=False,
                     package_manager_name=manager_name,
                     version=version,
-                    platform=SYSTEM_PACKAGE_MANAGERS[manager_name]["platform"],
-                    priority=SYSTEM_PACKAGE_MANAGERS[manager_name]["priority"],
+                    platform=platform_str,
+                    priority=priority_int,
                     message=f"Failed to search for {package_name} via {manager_name}",
                     error=str(e),
                 )
 
             config = SYSTEM_PACKAGE_MANAGERS[manager_name]
-            if result.success:
+            platform_str, priority_int = self._normalize_config_fields(config)
+            result_success = (
+                result.success if hasattr(result, "success") else bool(result)
+            )
+            error_text = ""
+            if hasattr(result, "stderr"):
+                error_text = result.stderr
+            elif hasattr(result, "error"):
+                error_text = result.error
+
+            if result_success:
                 return PackageManagerResult(
                     success=True,
                     package_manager_name=manager_name,
                     version=version,
-                    platform=config["platform"],
-                    priority=config["priority"],
+                    platform=platform_str,
+                    priority=priority_int,
                     message=f"Search results for {package_name} via {manager_name}",
-                    error=None,
+                    error="",
                 )
             else:
                 return PackageManagerResult(
                     success=False,
                     package_manager_name=manager_name,
                     version=version,
-                    platform=config["platform"],
-                    priority=config["priority"],
+                    platform=platform_str,
+                    priority=priority_int,
                     message=f"Failed to search for {package_name} via {manager_name}",
-                    error=result.stderr,
+                    error=error_text or "Search failed",
                 )
 
         except (SystemPkgManagerInterfaceError, ValidationServiceError):
@@ -1052,21 +1095,23 @@ class SystemPackageManagerInterface:
                             manager_name
                         )
                     )
+                    platform_str, priority_int = self._normalize_config_fields(config)
                     status[manager_name] = {
                         "available": available,
                         "version": version,
-                        "platform": config["platform"],
-                        "priority": config["priority"],
+                        "platform": platform_str,
+                        "priority": priority_int,
                         "description": config.get("description", ""),
                         "supported_on_current_platform": platform_result.is_for_current_platform,
                     }
                 except Exception as e:
                     logger.warning(f"Failed to get status for {manager_name}: {e}")
+                    platform_str, priority_int = self._normalize_config_fields(config)
                     status[manager_name] = {
                         "available": False,
                         "version": None,
-                        "platform": config["platform"],
-                        "priority": config["priority"],
+                        "platform": platform_str,
+                        "priority": priority_int,
                         "description": config.get("description", ""),
                         "supported_on_current_platform": self._is_manager_for_current_platform(
                             config
@@ -1102,9 +1147,12 @@ class SystemPackageManagerInterface:
                 break
 
         if manager_name:
-            return self.package_manager_service.is_manager_for_current_platform(
-                manager_name
+            platform_result = (
+                self.package_manager_service.is_manager_for_current_platform(
+                    manager_name
+                )
             )
+            return platform_result.is_for_current_platform
 
         # Fallback to old logic if manager name not found
         try:
@@ -1160,9 +1208,9 @@ class SystemPackageManagerInterface:
             # Input validation
             if not manager_name or not package_name:
                 raise ValidationServiceError(
-                    component="install_package_via_manager",
-                    validation_type="input_validation",
-                    message="Manager name and package name must not be empty",
+                    operation="install_package_via_manager",
+                    field="package_name",
+                    reason="Manager name and package name must not be empty",
                     details="Both parameters must be non-empty strings",
                 )
 
@@ -1184,9 +1232,8 @@ class SystemPackageManagerInterface:
                     f"Failed to install package {package_name} via {manager_name}: {e}"
                 )
                 raise DependencyServiceError(
-                    component=package_name,
-                    operation="execute_install",
                     message=f"Failed to install package: {e}",
+                    operation="execute_install",
                     details=f"Manager: {manager_name}",
                 ) from e
 
@@ -1197,9 +1244,8 @@ class SystemPackageManagerInterface:
             # Wrap unexpected external exceptions
             logger.error(f"Unexpected error in _install_package_via_manager: {e}")
             raise DependencyServiceError(
-                component=package_name,
-                operation="install_via_manager",
                 message=f"Failed to install package via manager: {e}",
+                operation="install_via_manager",
                 details=f"Exception type: {type(e).__name__}",
             ) from e
 
@@ -1221,9 +1267,9 @@ class SystemPackageManagerInterface:
             # Input validation
             if not manager_name or not package_name:
                 raise ValidationServiceError(
-                    component="search_package_via_manager",
-                    validation_type="input_validation",
-                    message="Manager name and package name must not be empty",
+                    operation="search_package_via_manager",
+                    field="package_name",
+                    reason="Manager name and package name must not be empty",
                     details="Both parameters must be non-empty strings",
                 )
 
@@ -1239,7 +1285,11 @@ class SystemPackageManagerInterface:
             }
 
             if manager_name not in search_commands:
-                return BaseResult(success=False, stderr="Unsupported package manager")
+                return BaseResult(
+                    success=False,
+                    message="Unsupported package manager",
+                    error="Unsupported package manager",
+                )
 
             try:
                 return self.command_runner.run(search_commands[manager_name])

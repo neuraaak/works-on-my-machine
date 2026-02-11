@@ -22,13 +22,12 @@ from contextlib import contextmanager, suppress
 from typing import Any
 
 # Third-party imports
-from ezpl import EzLogger, Ezpl, LogLevel
-from ezpl.handlers.console import ConsolePrinter
+from ezpl import EzLogger, Ezpl, EzPrinter, LogLevel
 from ezpl.handlers.wizard.core import RichWizard
 from rich.align import Align
 from rich.console import Console
 from rich.panel import Panel
-from rich.progress import Progress
+from rich.progress import Progress, TaskID
 from rich.table import Table
 from rich.text import Text
 
@@ -40,11 +39,11 @@ from ...shared.configs.logging_config import LoggingConfig
 # ///////////////////////////////////////////////////////////////
 
 
-class ExtendedPrinter(ConsolePrinter):
+class ExtendedPrinter(EzPrinter):
     """
     Extended printer with additional utility methods for WOMM.
 
-    Inherits from ConsolePrinter and adds:
+    Inherits from EzPrinter and adds:
     - Header/separator utilities
     - Command/result display
     - Dry-run messages
@@ -889,7 +888,7 @@ class DynamicLayeredProgress:
         self.console = console
         self.stages = {stage["name"]: stage for stage in stages}
         self.progress = Progress(console=console)
-        self.task_ids: dict[str, int] = {}
+        self.task_ids: dict[str, TaskID] = {}
         self._completed_stages: set[str] = set()
 
     def __enter__(self) -> DynamicLayeredProgress:
@@ -997,12 +996,12 @@ class EzplBridge:
     @property
     def console(self) -> Console:
         """Get the Rich Console for direct access."""
-        return self._ezpl._printer._console  # type: ignore[attr-defined]
+        return self._ezpl._printer._console
 
     @property
     def wizard(self) -> RichWizard:
         """Get the wizard."""
-        return self._ezpl._printer._wizard  # type: ignore[attr-defined]
+        return self._ezpl._printer._wizard
 
     @property
     def printer(self) -> ExtendedPrinter:
@@ -1052,12 +1051,10 @@ if first_init:
             base_indent_symbol=current_base_indent_symbol,
         )
         # Update the wrapper to use the new printer
-        # The wrapper is created in ConsolePrinter.__init__, so we need to recreate it
-        from ezpl.handlers.console import ConsolePrinterWrapper
+        # The wrapper is created in EzPrinter.__init__, so we need to recreate it
+        from ezpl.handlers.console import EzPrinter
 
-        _ezpl_instance._printer._wrapper = ConsolePrinterWrapper(
-            _ezpl_instance._printer
-        )
+        _ezpl_instance._printer._wrapper = EzPrinter(_ezpl_instance._printer)
     # Lock configuration if method exists
     if hasattr(_ezpl_instance, "lock_config"):
         _ezpl_instance.lock_config()
@@ -1070,9 +1067,9 @@ ezpl_bridge = EzplBridge(_ezpl_instance)
 # Get printer and logger instances
 # After set_printer_class(), _printer is our ExtendedPrinter instance
 ezprinter: ExtendedPrinter = _ezpl_instance._printer  # type: ignore[assignment]
-ezlogger: EzLogger = _ezpl_instance.get_logger()  # type: ignore[attr-defined]
-ezconsole: Console = ezprinter._console  # type: ignore[attr-defined]
-ezwizard: RichWizard = ezprinter.wizard  # type: ignore[attr-defined]
+ezlogger: EzLogger = _ezpl_instance.get_logger()
+ezconsole: Console = ezprinter._console
+ezwizard: RichWizard = ezprinter.wizard
 
 # Export ezpl instance as 'ezpl' for backward compatibility
 ezpl = _ezpl_instance

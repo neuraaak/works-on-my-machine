@@ -109,11 +109,11 @@ def _upgrade_pip(project_path: Path, venv_path: Path) -> None:
 
         if python_exe and pip_exe:
             command_runner = CommandRunnerService()
-            result = command_runner.run_command(
+            result = command_runner.run(
                 [str(python_exe), "-m", "pip", "install", "--upgrade", "pip"],
                 cwd=str(project_path),
             )
-            if not result.success:
+            if not result:  # Uses __bool__() which checks returncode == 0
                 logger.warning(f"Failed to upgrade pip: {result.stderr}")
             else:
                 logger.debug("Successfully upgraded pip")
@@ -219,12 +219,12 @@ def install_python_dependencies(
 
         # Install dependencies
         command_runner = CommandRunnerService()
-        result = command_runner.run_command(
+        result = command_runner.run(
             [str(pip_exe), "install", "-r", requirements_file],
             cwd=str(project_path),
         )
 
-        if not result.success:
+        if not result:
             raise ProjectServiceError(
                 message=f"Failed to install dependencies: {result.stderr}",
                 operation="install_python_dependencies",
@@ -283,12 +283,12 @@ def install_npm_dependencies(project_path: Path) -> bool:
 
         # Install dependencies
         command_runner = CommandRunnerService()
-        result = command_runner.run_command(
+        result = command_runner.run(
             ["npm", "install"],
             cwd=str(project_path),
         )
 
-        if not result.success:
+        if not result:
             raise ProjectServiceError(
                 message=f"Failed to install dependencies: {result.stderr}",
                 operation="install_npm_dependencies",
@@ -338,12 +338,12 @@ def install_npm_dev_dependencies(project_path: Path, dependencies: list[str]) ->
 
         # Install dev dependencies
         command_runner = CommandRunnerService()
-        result = command_runner.run_command(
+        result = command_runner.run(
             ["npm", "install", "--save-dev", *dependencies],
             cwd=str(project_path),
         )
 
-        if not result.success:
+        if not result:
             raise ProjectServiceError(
                 message=f"Failed to install development tools: {result.stderr}",
                 operation="install_npm_dev_dependencies",

@@ -77,6 +77,7 @@ def get_current_womm_path() -> Path:
             logger.debug(f"Could not use project root method: {e}")
 
         # Second try: import womm.__main__ directly
+        import_error: Exception | None = None
         try:
             import womm.__main__
 
@@ -84,6 +85,7 @@ def get_current_womm_path() -> Path:
             womm_dir = __main__path.parent
             return womm_dir
         except ImportError as e:
+            import_error = e
             logger.warning(f"Failed to import womm.__main__: {e}")
             # Fallback: search in sys.path for __main__.py
             for path in sys.path:
@@ -92,8 +94,8 @@ def get_current_womm_path() -> Path:
                         potential_main = Path(path) / "womm" / "__main__.py"
                         if potential_main.exists():
                             return potential_main.parent
-                    except Exception as e:
-                        logger.warning(f"Failed to check path {path}: {e}")
+                    except Exception as search_e:
+                        logger.warning(f"Failed to check path {path}: {search_e}")
                         continue
 
             # Last resort: try to find from current file location
@@ -104,17 +106,17 @@ def get_current_womm_path() -> Path:
                     try:
                         if (parent / "__main__.py").exists():
                             return parent
-                    except Exception as e:
-                        logger.warning(f"Failed to check parent {parent}: {e}")
+                    except Exception as parent_e:
+                        logger.warning(f"Failed to check parent {parent}: {parent_e}")
                         continue
-            except Exception as e:
-                logger.warning(f"Failed to get current file path: {e}")
+            except Exception as file_e:
+                logger.warning(f"Failed to get current file path: {file_e}")
 
             # If all methods fail, raise the exception
             raise DeploymentUtilityError(
                 message="Could not find womm package directory (__main__.py not found)",
-                details=f"All search methods failed, Import error: {e}",
-            ) from e
+                details=f"All search methods failed, Import error: {import_error}",
+            ) from import_error
 
     except DeploymentUtilityError:
         # Re-raise specialized exceptions as-is

@@ -110,7 +110,7 @@ def check_pyproject_patterns(
             return check_default_patterns(file_path, source_path)
 
         try:
-            import tomllib  # Python 3.11+
+            import tomllib  # type: ignore[reportMissingImports]  # Python 3.11+
         except ImportError:
             import tomli as tomllib  # type: ignore[reportMissingImports]  # Python < 3.11
 
@@ -377,7 +377,7 @@ def create_womm_executable(target_path: Path) -> dict[str, str | bool]:
 
 def verify_files_copied(
     source_path: Path, target_path: Path, files_list: list[str] | None = None
-) -> dict[str, str | bool | int]:
+) -> dict[str, str | bool | int | list[str]]:
     """
     Verify that all required files were copied correctly.
 

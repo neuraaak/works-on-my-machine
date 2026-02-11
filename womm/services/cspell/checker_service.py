@@ -151,12 +151,18 @@ class CSpellCheckerService:
     @staticmethod
     def _get_config_words_count(config: dict[str, object]) -> int:
         """Get words count from configuration."""
-        return len(config.get("words", []))
+        words = config.get("words", [])
+        if not isinstance(words, list):
+            return 0
+        return len(words)
 
     @staticmethod
     def _get_config_dictionaries(config: dict[str, object]) -> list[str]:
         """Get dictionaries list from configuration."""
-        return config.get("dictionaries", [])
+        dictionaries = config.get("dictionaries", [])
+        if not isinstance(dictionaries, list):
+            return []
+        return [item for item in dictionaries if isinstance(item, str)]
 
     @staticmethod
     def _parse_config_from_content(config_content: str) -> dict[str, object]:
@@ -380,15 +386,28 @@ class CSpellCheckerService:
             # Build issues_by_file dict: file -> set of unknown words
             issues_by_file: dict[str, set[str]] = {}
             for issue in issues:
-                file_path = issue["file"]
-                word = issue.get("word", "")
-                if word:
-                    if file_path not in issues_by_file:
-                        issues_by_file[file_path] = set()
-                    issues_by_file[file_path].add(word)
+                file_path = issue.get("file")
+                word = issue.get("word")
+                if not isinstance(file_path, str):
+                    continue
+                if not isinstance(word, str) or not word:
+                    continue
+                if file_path not in issues_by_file:
+                    issues_by_file[file_path] = set()
+                issues_by_file[file_path].add(word)
 
             # Count files and issues
-            files_checked = len({issue["file"] for issue in issues}) if issues else 0
+            files_checked = (
+                len(
+                    {
+                        issue.get("file")
+                        for issue in issues
+                        if isinstance(issue.get("file"), str)
+                    }
+                )
+                if issues
+                else 0
+            )
             issues_found = len(issues)
 
             # CSpell returns code 1 when errors are found, which is normal

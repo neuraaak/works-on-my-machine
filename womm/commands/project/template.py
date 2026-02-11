@@ -20,6 +20,7 @@ from __future__ import annotations
 import re
 import sys
 from pathlib import Path
+from typing import cast
 
 # Third-party imports
 import click
@@ -84,7 +85,10 @@ def template_list(verbose: bool) -> None:
 
     try:
         ezprinter.print_header("📋 Template List")
-        return _list_templates(project_manager)
+        success = _list_templates(project_manager)
+        if not success:
+            sys.exit(1)
+        return
 
     except Exception as e:
         ezprinter.error(f"Error listing templates: {e}")
@@ -142,15 +146,21 @@ def template_create(
     try:
         if interactive:
             ezprinter.print_header("🚀 Interactive Template Creation")
-            return _create_template_interactive(project_manager)
+            success = _create_template_interactive(project_manager)
+            if not success:
+                sys.exit(1)
+            return
         else:
             ezprinter.print_header("🚀 Template Creation")
-            return _create_template_direct(
+            success = _create_template_direct(
                 project_manager,
                 template_name,
                 source_project_path,
                 description,
             )
+            if not success:
+                sys.exit(1)
+            return
 
     except Exception as e:
         ezprinter.error(f"Error creating template: {e}")
@@ -222,16 +232,15 @@ def template_use(
             template_vars["PROJECT_REPOSITORY"] = project_repository
 
         # Generate project from template
-        success = project_manager.template_manager.generate_from_template(
+        result = project_manager.template_manager.generate_from_template(
             template_name=template_name,
             target_path=target_path,
             template_vars=template_vars,
         )
 
-        if success:
-            return 0
-        else:
-            return 1
+        if not result.success:
+            sys.exit(1)
+        return
 
     except Exception as e:
         ezprinter.error(f"Error using template: {e}")
@@ -263,15 +272,22 @@ def template_delete(template_name: str | None, interactive: bool) -> None:
     try:
         if interactive:
             ezprinter.print_header("🗑️ Interactive Template Deletion")
-            return _delete_template_interactive(project_manager)
+            success = _delete_template_interactive(project_manager)
+            if not success:
+                sys.exit(1)
+            return
         else:
             ezprinter.print_header("🗑️ Template Deletion")
             if not template_name:
                 ezprinter.error(
                     "Template name is required when not using interactive mode"
                 )
-                return 1
-            return _delete_template(project_manager, template_name)
+                sys.exit(1)
+            template_name_value = cast(str, template_name)
+            success = _delete_template(project_manager, template_name_value)
+            if not success:
+                sys.exit(1)
+            return
 
     except Exception as e:
         ezprinter.error(f"Error deleting template: {e}")
@@ -289,7 +305,10 @@ def template_info(template_name: str) -> None:
 
     try:
         ezprinter.print_header(f"ℹ️ Template Info: {template_name}")
-        return _show_template_info(project_manager, template_name)
+        success = _show_template_info(project_manager, template_name)
+        if not success:
+            sys.exit(1)
+        return
 
     except Exception as e:
         ezprinter.error(f"Error getting template info: {e}")
@@ -323,9 +342,8 @@ def _generate_template_name(
     clean_name = clean_name.strip("-")  # Remove leading/trailing hyphens
 
     # Detect project type
-    project_type = project_manager.template_manager._detect_project_type(
-        source_project_path
-    )
+    detection_result = project_manager.detect_project_type(source_project_path)
+    project_type = detection_result.project_type
 
     # Generate template name
     if project_type != "unknown":
@@ -353,28 +371,28 @@ def _generate_template_name(
 # ///////////////////////////////////////////////////////////////
 
 
-def _list_templates(project_manager: ProjectManagerInterface) -> int:
+def _list_templates(project_manager: ProjectManagerInterface) -> bool:
     """List available templates."""
     all_templates = project_manager.template_manager.list_templates()
     print_template_list(all_templates)
-    return 0
+    return True
 
 
 def _show_template_info(
     project_manager: ProjectManagerInterface, template_name: str
-) -> int:
+) -> bool:
     """Show detailed information about a template."""
     template_info = project_manager.template_manager.get_template_info(template_name)
 
     if not template_info:
         ezprinter.error(f"Template '{template_name}' not found")
-        return 1
+        return False
 
     print_template_info(template_name, template_info)
-    return 0
+    return True
 
 
-def _create_template_interactive(project_manager: ProjectManagerInterface) -> int:
+def _create_template_interactive(project_manager: ProjectManagerInterface) -> bool:
     """Create template using interactive form."""
 
     # Get user input through interactive form
@@ -382,12 +400,12 @@ def _create_template_interactive(project_manager: ProjectManagerInterface) -> in
 
     if not answers:
         ezprinter.info("Template creation cancelled.")
-        return 0
+        return True
 
     # Validate template name
     if not answers["template_name"] or not answers["template_name"].strip():
         ezprinter.error("Template name cannot be empty")
-        return 1
+        return False
 
     # Create template from project
     success = project_manager.template_manager.create_template_from_project(
@@ -396,10 +414,7 @@ def _create_template_interactive(project_manager: ProjectManagerInterface) -> in
         description=answers["description"],
     )
 
-    if success:
-        return 0
-    else:
-        return 1
+    return bool(success)
 
 
 def _create_template_direct(
@@ -407,13 +422,13 @@ def _create_template_direct(
     template_name: str | None,
     source_project_path: Path | None,
     description: str | None,
-) -> int:
+) -> bool:
     """Create template using direct parameters."""
     if not source_project_path:
         ezprinter.error(
             "Source project path is required when not using interactive mode"
         )
-        return 1
+        return False
 
     # Generate template name if not provided
     if not template_name:
@@ -423,7 +438,7 @@ def _create_template_direct(
     # Validate template name
     if not template_name or not template_name.strip():
         ezprinter.error("Template name cannot be empty")
-        return 1
+        return False
 
     # Create template from project
     success = project_manager.template_manager.create_template_from_project(
@@ -432,13 +447,10 @@ def _create_template_direct(
         description=description,
     )
 
-    if success:
-        return 0
-    else:
-        return 1
+    return bool(success)
 
 
-def _delete_template_interactive(project_manager: ProjectManagerInterface) -> int:
+def _delete_template_interactive(project_manager: ProjectManagerInterface) -> bool:
     """Delete templates using interactive form."""
 
     # Get available templates
@@ -449,17 +461,15 @@ def _delete_template_interactive(project_manager: ProjectManagerInterface) -> in
 
     if not selected_templates:
         ezprinter.info("Template deletion cancelled.")
-        return 0
+        return True
 
     # Delete selected templates
     success_count = 0
     failed_templates = []
 
     for template_name in selected_templates:
-        success = project_manager.template_manager.delete_template(
-            template_name, show_summary=False
-        )
-        if success:
+        result = project_manager.template_manager.delete_template(template_name)
+        if result.success:
             success_count += 1
         else:
             failed_templates.append(template_name)
@@ -467,19 +477,12 @@ def _delete_template_interactive(project_manager: ProjectManagerInterface) -> in
     # Display summary using Rich panel
     print_template_deletion_summary_multiple(selected_templates, failed_templates)
 
-    if success_count == len(selected_templates):
-        return 0
-    else:
-        return 1
+    return success_count == len(selected_templates)
 
 
 def _delete_template(
     project_manager: ProjectManagerInterface, template_name: str
-) -> int:
+) -> bool:
     """Delete a single template."""
-    success = project_manager.template_manager.delete_template(template_name)
-
-    if success:
-        return 0
-    else:
-        return 1
+    result = project_manager.template_manager.delete_template(template_name)
+    return result.success

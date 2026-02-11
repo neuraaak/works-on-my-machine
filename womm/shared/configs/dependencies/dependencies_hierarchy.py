@@ -259,8 +259,14 @@ class DependenciesHierarchy:
                 "runtime": None,
             }
 
-        chain = cls.DEVTOOLS_DEPENDENCIES[devtool].copy()
-        chain["devtool"] = devtool
+        chain_data = cls.DEVTOOLS_DEPENDENCIES[devtool]
+        chain: dict[str, str | None] = {
+            "devtool": devtool,
+            "runtime_package_manager": chain_data.get("runtime_package_manager"),
+            "runtime": chain_data.get("runtime"),
+        }
+        if "check_method" in chain_data:
+            chain["check_method"] = chain_data["check_method"]
         return chain
 
     @classmethod
@@ -282,7 +288,9 @@ class DependenciesHierarchy:
         """
         pkg_info = cls.RUNTIME_PACKAGE_MANAGERS.get(runtime_package_manager)
         if pkg_info:
-            return pkg_info.get("runtime")
+            runtime = pkg_info.get("runtime")
+            if isinstance(runtime, str):
+                return runtime
         return None
 
     @classmethod
@@ -297,7 +305,8 @@ class DependenciesHierarchy:
             True if bundled (pip, npm), False if separate (uv, yarn)
         """
         pkg_info = cls.RUNTIME_PACKAGE_MANAGERS.get(runtime_package_manager, {})
-        return pkg_info.get("bundled", False)
+        bundled = pkg_info.get("bundled", False)
+        return isinstance(bundled, bool) and bundled
 
     @classmethod
     def get_package_manager_alternatives(
@@ -317,7 +326,10 @@ class DependenciesHierarchy:
             ["uv", "poetry", "pipenv"]
         """
         pkg_info = cls.RUNTIME_PACKAGE_MANAGERS.get(runtime_package_manager, {})
-        return pkg_info.get("alternatives", [])
+        alternatives = pkg_info.get("alternatives", [])
+        if isinstance(alternatives, list):
+            return alternatives
+        return []
 
     @classmethod
     def get_runtime_installers(cls, runtime: str) -> list[str]:
@@ -374,12 +386,14 @@ class DependenciesHierarchy:
         result: list[tuple[int, str]] = []
 
         # Add runtime (Strata 2a) if present
-        if chain.get("runtime"):
-            result.append((2, chain["runtime"]))
+        runtime = chain.get("runtime")
+        if runtime:
+            result.append((2, runtime))
 
         # Add runtime_package_manager (Strata 2b) if present
-        if chain.get("runtime_package_manager"):
-            result.append((2, chain["runtime_package_manager"]))
+        pkg_manager = chain.get("runtime_package_manager")
+        if pkg_manager:
+            result.append((2, pkg_manager))
 
         # Add devtool (Strata 3)
         result.append((3, devtool))
@@ -431,7 +445,9 @@ class DependenciesHierarchy:
         """
         strata_info = cls.STRATA.get(strata_number)
         if strata_info:
-            return strata_info.get("name")
+            name = strata_info.get("name")
+            if isinstance(name, str):
+                return name
         return None
 
     @classmethod
@@ -488,8 +504,16 @@ class DependenciesHierarchy:
         missing = []
         installation_path = []
 
-        required_pkg_manager = chain["runtime_package_manager"]
-        required_runtime = chain["runtime"]
+        required_pkg_manager = chain.get("runtime_package_manager")
+        required_runtime = chain.get("runtime")
+
+        # Ensure we have valid values
+        if not required_pkg_manager or not required_runtime:
+            return {
+                "can_install": False,
+                "missing": ["invalid_chain"],
+                "installation_path": [],
+            }
 
         # Check Strata 2b: runtime_package_manager
         if required_pkg_manager not in installed_runtime_pkg_managers:
@@ -519,10 +543,9 @@ class DependenciesHierarchy:
                         )
             else:
                 # Not bundled → need to install separately
-                install_method = cls.RUNTIME_PACKAGE_MANAGERS.get(
-                    required_pkg_manager, {}
-                ).get("install_method")
-                if install_method:
+                pkg_info = cls.RUNTIME_PACKAGE_MANAGERS.get(required_pkg_manager, {})
+                install_method = pkg_info.get("install_method")
+                if install_method and isinstance(install_method, str):
                     installation_path.append(
                         f"1. Install {required_pkg_manager} via {install_method}"
                     )

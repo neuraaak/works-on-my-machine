@@ -57,6 +57,8 @@ class ContextRegistryInterface:
             # Fallback to current directory
             return Path(".")
 
+        return Path(".")
+
     # ///////////////////////////////////////////////////////////////
     # PUBLIC METHODS
     # ///////////////////////////////////////////////////////////////
@@ -119,7 +121,7 @@ class ContextRegistryInterface:
                 raise MenuInterfaceError(
                     "create", str(filepath), f"Failed to write backup file: {e}"
                 ) from e
-            except json.JSONEncodeError as e:
+            except (TypeError, ValueError) as e:
                 raise MenuInterfaceError(
                     "create", str(filepath), f"Failed to serialize backup data: {e}"
                 ) from e
@@ -666,11 +668,12 @@ class ContextRegistryInterface:
                 )
 
             merged_entries = {ctx_type: [] for ctx_type in ContextTypesConfig.ALL_TYPES}
+            merged_from: list[str] = []
             merged_metadata = {
                 "version": self.BACKUP_VERSION,
                 "timestamp": datetime.now().isoformat(),
                 "platform": "Windows",
-                "merged_from": [],
+                "merged_from": merged_from,
                 "total_entries": 0,
             }
 
@@ -697,7 +700,7 @@ class ContextRegistryInterface:
                             existing_keys.add(key_name)
 
                 # Update metadata
-                merged_metadata["merged_from"].append(filepath)
+                merged_from.append(filepath)
 
             # Calculate total entries
             total_entries = sum(

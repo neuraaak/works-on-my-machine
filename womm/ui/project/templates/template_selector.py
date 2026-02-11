@@ -18,7 +18,7 @@ from __future__ import annotations
 # ///////////////////////////////////////////////////////////////
 # Third-party imports
 try:
-    from InquirerPy import inquirer
+    from InquirerPy import inquirer  # pyright: ignore[reportPrivateImportUsage]
     from InquirerPy.base.control import Choice
 
     INQUIRERPY_AVAILABLE = True
@@ -54,7 +54,7 @@ def display_template_selection(templates: list[str], project_type: str) -> str |
 
     if INQUIRERPY_AVAILABLE:
         choices = [Choice(value=template, name=template) for template in templates]
-        selected = inquirer.select(
+        selected = inquirer.select(  # pyright: ignore[reportPrivateImportUsage]
             message="Select a template:",
             choices=choices,
             pointer="→",

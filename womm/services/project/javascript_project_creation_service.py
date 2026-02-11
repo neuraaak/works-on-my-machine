@@ -107,9 +107,7 @@ class JavaScriptProjectCreationService:
             ProjectValidationError: If validation fails
         """
         try:
-            created_dirs = create_javascript_structure(
-                project_path, project_name, project_type
-            )
+            created_dirs = create_javascript_structure(project_path, project_name)
             return ProjectCreationResult(
                 success=True,
                 message="Project structure created successfully",
@@ -164,7 +162,7 @@ class JavaScriptProjectCreationService:
             package_result = self._create_package_json(
                 project_path, project_name, project_type, **kwargs
             )
-            if package_result.success:
+            if package_result.get("success"):
                 created_files.append("package.json")
 
             # Create source files based on project type (always created)
@@ -390,8 +388,9 @@ class JavaScriptProjectCreationService:
             ProjectServiceError: If Git setup fails
         """
         try:
-            # Check if git is available
-            if not shutil.which("git"):
+            # Initialize git repository using CommandRunnerService
+            git_path = shutil.which("git")
+            if not git_path:
                 logger.info("Git not found, skipping repository initialization")
                 return ProjectCreationResult(
                     success=True,
@@ -399,9 +398,6 @@ class JavaScriptProjectCreationService:
                     project_path=project_path,
                     warnings=["Git not found in system PATH"],
                 )
-
-            # Initialize git repository using CommandRunnerService
-            git_path = shutil.which("git")
             result = self._command_runner.run(
                 [git_path, "init"],
                 description="Initialize Git repository",
@@ -447,6 +443,14 @@ class JavaScriptProjectCreationService:
         try:
             # Initialize husky using CommandRunnerService
             npx_path = shutil.which("npx")
+            if not npx_path:
+                logger.warning("npx not found, skipping Git hooks setup")
+                return ProjectCreationResult(
+                    success=True,
+                    message="Git hooks setup skipped (npx not found)",
+                    project_path=project_path,
+                    warnings=["npx not found in system PATH"],
+                )
             result = self._command_runner.run(
                 [npx_path, "husky", "install"],
                 description="Install Husky Git hooks",
@@ -456,7 +460,6 @@ class JavaScriptProjectCreationService:
             if result.returncode == 0:
                 try:
                     # Add pre-commit hook using CommandRunnerService
-                    npx_path = shutil.which("npx")
                     self._command_runner.run(
                         [
                             npx_path,

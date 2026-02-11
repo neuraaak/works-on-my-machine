@@ -397,7 +397,7 @@ def fix_code(target_path: str | None = None) -> int:
     success = True
 
     # 0. Fix whitespace issues
-    fix_whitespace_issues(target_dir)
+    fix_whitespace_issues(str(target_dir))
 
     # 1. Format with black
     black_success = run_tool_fix(

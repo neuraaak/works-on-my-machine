@@ -422,26 +422,28 @@ class ContextRegistryService:
             if context_types is None:
                 context_types = ["directory", "background"]
 
+            context_types_data: dict[str, list[dict[str, str | None]]] = {}
             backup_data = {
                 "timestamp": None,
-                "context_types": {},
+                "context_types": context_types_data,
             }
 
             for context_type in context_types:
                 try:
                     entries_result = self.list_context_menu_entries(context_type)
                     if entries_result.success and entries_result.entries:
-                        backup_data["context_types"][
-                            context_type
-                        ] = entries_result.entries
+                        if isinstance(entries_result.entries, list):
+                            context_types_data[context_type] = entries_result.entries
+                        else:
+                            context_types_data[context_type] = []
                     else:
-                        backup_data["context_types"][context_type] = []
+                        context_types_data[context_type] = []
                 except Exception as e:
                     # Log warning but continue with other context types
                     logging.getLogger(__name__).warning(
                         f"Failed to backup context type {context_type}: {e}"
                     )
-                    backup_data["context_types"][context_type] = []
+                    context_types_data[context_type] = []
 
             return ContextRegistryResult(
                 success=True,
@@ -492,9 +494,10 @@ class ContextRegistryService:
 
             restored_count = 0
             try:
-                for _context_type, entries in backup_data.get(
-                    "context_types", {}
-                ).items():
+                context_types_data = backup_data.get("context_types")
+                if not isinstance(context_types_data, dict):
+                    context_types_data = {}
+                for _context_type, entries in context_types_data.items():
                     for entry in entries:
                         registry_path = entry.get("registry_path")
                         command = entry.get("command")

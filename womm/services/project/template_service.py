@@ -121,7 +121,7 @@ class TemplateService:
                 success=True,
                 message="Template validation completed successfully",
                 template_path=template_path,
-                validation_stats=stats,
+                metadata={"validation_stats": stats},
             )
         except Exception as e:
             logger.error(f"validate_template failed: {e}")

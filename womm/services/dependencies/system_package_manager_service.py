@@ -71,9 +71,8 @@ class SystemPackageManagerService:
         except Exception as e:
             logger.error(f"Failed to initialize PackageManagerService: {e}")
             raise SystemPkgManagerServiceError(
-                manager_name="package_manager",
+                message=f"Failed to initialize package manager service: {e}",
                 operation="initialization",
-                reason=f"Failed to initialize package manager service: {e}",
                 details=f"Exception type: {type(e).__name__}",
             ) from e
 
@@ -101,10 +100,11 @@ class SystemPackageManagerService:
             # Input validation
             if not manager_name:
                 raise ValidationServiceError(
-                    component="check_manager_availability",
-                    validation_type="input_validation",
+                    operation="check_manager_availability",
+                    field="manager_name",
                     reason="Manager name must not be empty",
                     details="Manager name parameter must be a non-empty string",
+                    value=manager_name or "None",
                 )
 
             # Check cache first
@@ -133,6 +133,9 @@ class SystemPackageManagerService:
                 )
 
             command = config.get("command", manager_name)
+            if not isinstance(command, str):
+                logger.warning(f"Invalid command value for {manager_name}: {command}")
+                command = manager_name
 
             try:
                 availability_result = self._command_runner.check_command_available(
@@ -255,10 +258,11 @@ class SystemPackageManagerService:
             # Input validation
             if not manager_name:
                 raise ValidationServiceError(
-                    component="is_manager_for_current_platform",
-                    validation_type="input_validation",
+                    operation="is_manager_for_current_platform",
+                    field="manager_name",
                     reason="Manager name must not be empty",
                     details="Manager name parameter must be a non-empty string",
+                    value=manager_name or "None",
                 )
 
             if manager_name not in SystemPackageManagerConfig.SYSTEM_PACKAGE_MANAGERS:
@@ -271,7 +275,10 @@ class SystemPackageManagerService:
                 )
 
             config = SystemPackageManagerConfig.SYSTEM_PACKAGE_MANAGERS[manager_name]
-            manager_platform = config.get("platform", "").lower()
+            platform_value = config.get("platform", "")
+            manager_platform = (
+                platform_value.lower() if isinstance(platform_value, str) else ""
+            )
 
             platform_map = {
                 "windows": "windows",
@@ -345,9 +352,8 @@ class SystemPackageManagerService:
                 f"Unexpected error in get_available_managers_for_platform: {e}"
             )
             raise SystemPkgManagerServiceError(
-                manager_name="all_managers",
+                message=f"Failed to retrieve available managers: {e}",
                 operation="get_available_managers_for_platform",
-                reason=f"Failed to retrieve available managers: {e}",
                 details=f"Exception type: {type(e).__name__}",
             ) from e
 
@@ -373,27 +379,28 @@ class SystemPackageManagerService:
             # Input validation
             if not manager_name:
                 raise ValidationServiceError(
-                    component="install_package",
-                    validation_type="input_validation",
+                    operation="install_package",
+                    field="manager_name",
                     reason="Manager name must not be empty",
                     details="manager_name parameter must be a non-empty string",
+                    value=manager_name or "None",
                 )
 
             if not package_name:
                 raise ValidationServiceError(
-                    component="install_package",
-                    validation_type="input_validation",
+                    operation="install_package",
+                    field="package_name",
                     reason="Package name must not be empty",
                     details="package_name parameter must be a non-empty string",
+                    value=package_name or "None",
                 )
 
             # Check if manager is available
             availability_result = self.check_manager_availability(manager_name)
             if not availability_result.is_available:
                 raise SystemPkgManagerServiceError(
-                    manager_name=manager_name,
+                    message=f"Package manager {manager_name} is not available",
                     operation="install_package",
-                    reason=f"Package manager {manager_name} is not available",
                     details="Manager must be installed before installing packages",
                 )
 
@@ -404,9 +411,8 @@ class SystemPackageManagerService:
 
             if not install_cmd:
                 raise SystemPkgManagerServiceError(
-                    manager_name=manager_name,
+                    message=f"No install command configured for {manager_name}",
                     operation="install_package",
-                    reason=f"No install command configured for {manager_name}",
                     details=f"Package: {package_name}",
                 )
 
@@ -415,7 +421,7 @@ class SystemPackageManagerService:
             )
 
             # Execute installation command
-            result = self._command_runner.run_command(install_cmd)
+            result = self._command_runner.run(install_cmd)
 
             if result.returncode == 0:
                 logger.info(f"Successfully installed {package_name}")
@@ -433,8 +439,7 @@ class SystemPackageManagerService:
         except Exception as e:
             logger.error(f"Unexpected error in install_package: {e}")
             raise SystemPkgManagerServiceError(
-                manager_name=manager_name,
+                message=f"Failed to install package: {e}",
                 operation="install_package",
-                reason=f"Failed to install package: {e}",
                 details=f"Package: {package_name}, Exception: {type(e).__name__}",
             ) from e

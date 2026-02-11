@@ -23,6 +23,9 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
+# Third-party imports
+from rich.progress import TaskID
+
 # Local imports
 from ...exceptions.common import ValidationServiceError
 from ...exceptions.project import (
@@ -165,9 +168,7 @@ class ProjectCreateInterface:
         except ValidationServiceError as e:
             logger.error(f"Validation error in create_project: {e}", exc_info=True)
             # Extract meaningful error message
-            error_message = (
-                e.message or e.reason or str(e) or "Project validation failed"
-            )
+            error_message = e.reason or str(e) or "Project validation failed"
             raise CreateInterfaceError(
                 message=f"Project validation failed: {error_message}",
                 operation="create_project",
@@ -269,11 +270,12 @@ class ProjectCreateInterface:
             # Create project structure
             with ezprinter.create_spinner_with_status(
                 "Creating project structure..."
-            ) as spinner:
+            ) as (progress, task):
+                task_id = TaskID(task)
                 structure_result = self._python_service.create_project_structure(
                     project_path, project_name
                 )
-                if not structure_result.get("success"):
+                if not structure_result.success:
                     raise CreateInterfaceError(
                         message="Failed to create project structure",
                         operation="create_python_project",
@@ -281,16 +283,18 @@ class ProjectCreateInterface:
                         project_type="python",
                         details="Structure creation returned failure",
                     )
-                spinner.update_status("Project structure created")
+                progress.update(task_id, status="Project structure created")
 
             # Create project files
-            with ezprinter.create_spinner_with_status(
-                "Creating Python files..."
-            ) as spinner:
+            with ezprinter.create_spinner_with_status("Creating Python files...") as (
+                progress,
+                task,
+            ):
+                task_id = TaskID(task)
                 files_result = self._python_service.create_project_files(
                     project_path, project_name, **kwargs
                 )
-                if not files_result.get("success"):
+                if not files_result.success:
                     raise CreateInterfaceError(
                         message="Failed to create project files",
                         operation="create_python_project",
@@ -298,18 +302,19 @@ class ProjectCreateInterface:
                         project_type="python",
                         details="File creation returned failure",
                     )
-                spinner.update_status("Python files created")
+                progress.update(task_id, status="Python files created")
 
             # Skip environment setup, dependencies, and tools in minimal mode
             if not minimal:
                 # Setup virtual environment
                 with ezprinter.create_spinner_with_status(
                     "Setting up virtual environment..."
-                ) as spinner:
+                ) as (progress, task):
+                    task_id = TaskID(task)
                     venv_result = self._python_service.setup_virtual_environment(
                         project_path
                     )
-                    if not venv_result.get("success"):
+                    if not venv_result.success:
                         raise CreateInterfaceError(
                             message="Failed to setup virtual environment",
                             operation="create_python_project",
@@ -317,16 +322,17 @@ class ProjectCreateInterface:
                             project_type="python",
                             details="Venv setup returned failure",
                         )
-                    spinner.update_status("Virtual environment ready")
+                    progress.update(task_id, status="Virtual environment ready")
 
                 # Install development dependencies
                 with ezprinter.create_spinner_with_status(
                     "Installing development dependencies..."
-                ) as spinner:
+                ) as (progress, task):
+                    task_id = TaskID(task)
                     deps_result = self._python_service.install_dev_dependencies(
                         project_path
                     )
-                    if not deps_result.get("success"):
+                    if not deps_result.success:
                         raise CreateInterfaceError(
                             message="Failed to install development dependencies",
                             operation="create_python_project",
@@ -334,14 +340,15 @@ class ProjectCreateInterface:
                             project_type="python",
                             details="Dependency installation returned failure",
                         )
-                    spinner.update_status("Dependencies installed")
+                    progress.update(task_id, status="Dependencies installed")
 
                 # Setup development tools
                 with ezprinter.create_spinner_with_status(
                     "Configuring development tools..."
-                ) as spinner:
+                ) as (progress, task):
+                    task_id = TaskID(task)
                     tools_result = self._python_service.setup_dev_tools(project_path)
-                    if not tools_result.get("success"):
+                    if not tools_result.success:
                         raise CreateInterfaceError(
                             message="Failed to setup development tools",
                             operation="create_python_project",
@@ -349,19 +356,20 @@ class ProjectCreateInterface:
                             project_type="python",
                             details="Dev tools setup returned failure",
                         )
-                    spinner.update_status("Development tools configured")
+                    progress.update(task_id, status="Development tools configured")
 
                 # Setup Git repository
                 with ezprinter.create_spinner_with_status(
                     "Setting up Git repository..."
-                ) as spinner:
+                ) as (progress, task):
+                    task_id = TaskID(task)
                     git_result = self._python_service.setup_git_repository(project_path)
-                    if git_result.get("skipped"):
-                        spinner.update_status("Git setup skipped")
+                    if git_result.warnings:
+                        progress.update(task_id, status="Git setup skipped")
                     else:
-                        spinner.update_status("Git repository initialized")
+                        progress.update(task_id, status="Git repository initialized")
 
-            files_created = files_result.get("files", [])
+            files_created = files_result.files_created or []
             tools_configured = (
                 self._get_configured_tools(project_path, "python")
                 if not minimal
@@ -433,11 +441,12 @@ class ProjectCreateInterface:
             # Create project structure
             with ezprinter.create_spinner_with_status(
                 "Creating project structure..."
-            ) as spinner:
+            ) as (progress, task):
+                task_id = TaskID(task)
                 structure_result = self._javascript_service.create_project_structure(
                     project_path, project_name
                 )
-                if not structure_result.get("success"):
+                if not structure_result.success:
                     raise CreateInterfaceError(
                         message="Failed to create project structure",
                         operation="create_javascript_project",
@@ -445,16 +454,17 @@ class ProjectCreateInterface:
                         project_type=project_type,
                         details="Structure creation returned failure",
                     )
-                spinner.update_status("Project structure created")
+                progress.update(task_id, status="Project structure created")
 
             # Create project files
             with ezprinter.create_spinner_with_status(
                 "Creating JavaScript files..."
-            ) as spinner:
+            ) as (progress, task):
+                task_id = TaskID(task)
                 files_result = self._javascript_service.create_project_files(
                     project_path, project_name, project_type, **kwargs
                 )
-                if not files_result.get("success"):
+                if not files_result.success:
                     raise CreateInterfaceError(
                         message="Failed to create project files",
                         operation="create_javascript_project",
@@ -462,18 +472,19 @@ class ProjectCreateInterface:
                         project_type=project_type,
                         details="File creation returned failure",
                     )
-                spinner.update_status("JavaScript files created")
+                progress.update(task_id, status="JavaScript files created")
 
             # Skip npm init, dependencies, and tools in minimal mode
             if not minimal:
                 # Initialize npm project
                 with ezprinter.create_spinner_with_status(
                     "Initializing npm project..."
-                ) as spinner:
+                ) as (progress, task):
+                    task_id = TaskID(task)
                     npm_result = self._javascript_service.initialize_npm_project(
                         project_path, project_name, **kwargs
                     )
-                    if not npm_result.get("success"):
+                    if not npm_result.success:
                         raise CreateInterfaceError(
                             message="Failed to initialize npm project",
                             operation="create_javascript_project",
@@ -481,16 +492,17 @@ class ProjectCreateInterface:
                             project_type=project_type,
                             details="npm initialization returned failure",
                         )
-                    spinner.update_status("npm project initialized")
+                    progress.update(task_id, status="npm project initialized")
 
                 # Install dependencies
                 with ezprinter.create_spinner_with_status(
                     "Installing dependencies..."
-                ) as spinner:
+                ) as (progress, task):
+                    task_id = TaskID(task)
                     deps_result = self._javascript_service.install_dependencies(
                         project_path, project_type
                     )
-                    if not deps_result.get("success"):
+                    if not deps_result.success:
                         raise CreateInterfaceError(
                             message="Failed to install dependencies",
                             operation="create_javascript_project",
@@ -498,16 +510,17 @@ class ProjectCreateInterface:
                             project_type=project_type,
                             details="Dependency installation returned failure",
                         )
-                    spinner.update_status("Dependencies installed")
+                    progress.update(task_id, status="Dependencies installed")
 
                 # Setup development tools
                 with ezprinter.create_spinner_with_status(
                     "Configuring development tools..."
-                ) as spinner:
+                ) as (progress, task):
+                    task_id = TaskID(task)
                     tools_result = self._javascript_service.setup_dev_tools(
                         project_path, project_type
                     )
-                    if not tools_result.get("success"):
+                    if not tools_result.success:
                         raise CreateInterfaceError(
                             message="Failed to setup development tools",
                             operation="create_javascript_project",
@@ -515,21 +528,22 @@ class ProjectCreateInterface:
                             project_type=project_type,
                             details="Dev tools setup returned failure",
                         )
-                    spinner.update_status("Development tools configured")
+                    progress.update(task_id, status="Development tools configured")
 
                 # Setup Git repository
                 with ezprinter.create_spinner_with_status(
                     "Setting up Git repository..."
-                ) as spinner:
+                ) as (progress, task):
+                    task_id = TaskID(task)
                     git_result = self._javascript_service.setup_git_repository(
                         project_path
                     )
-                    if git_result.get("skipped"):
-                        spinner.update_status("Git setup skipped")
+                    if git_result.warnings:
+                        progress.update(task_id, status="Git setup skipped")
                     else:
-                        spinner.update_status("Git repository initialized")
+                        progress.update(task_id, status="Git repository initialized")
 
-            files_created = files_result.get("files", [])
+            files_created = files_result.files_created or []
             tools_configured = (
                 self._get_configured_tools(project_path, "javascript")
                 if not minimal

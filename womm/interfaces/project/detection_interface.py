@@ -100,23 +100,26 @@ class ProjectDetectionInterface:
             ezprinter.info(f"Detecting project type at: {project_path}")
 
             # Call service to detect project type
-            detected_type = self._detection_service.detect_project_type(project_path)
+            type_result = self._detection_service.detect_project_type(project_path)
+            detected_type = (
+                type_result.project_type
+                if isinstance(type_result, ProjectDetectionResult)
+                else ""
+            )
 
             # Get additional configuration information
-            config_info = {}
-            detected_files = []
+            config_files: dict[str, str] = {}
+            detected_files: list[str] = []
             confidence = 0.0
 
-            if detected_type:
+            if detected_type and detected_type != "unknown":
                 try:
-                    config_info = self._detection_service.detect_project_config(
+                    config_result = self._detection_service.detect_project_config(
                         project_path
                     )
-                    # Extract detected files from config
-                    if isinstance(config_info, dict):
-                        config_files = config_info.get("config_files", {})
-                        if isinstance(config_files, dict):
-                            detected_files = list(config_files.keys())
+                    if isinstance(config_result, ProjectDetectionResult):
+                        config_files = config_result.configuration_files or {}
+                        detected_files = config_result.detected_files or []
                     confidence = 100.0  # High confidence when type is detected
                 except (ProjectServiceError, ProjectDetectionServiceError):
                     # If config detection fails, we still have the type
@@ -134,11 +137,7 @@ class ProjectDetectionInterface:
                 project_type=detected_type or "unknown",
                 confidence=confidence,
                 detected_files=detected_files,
-                configuration_files=(
-                    config_info.get("config_files", {})
-                    if isinstance(config_info, dict)
-                    else {}
-                ),
+                configuration_files=config_files,
             )
 
             if detected_type:
@@ -199,16 +198,22 @@ class ProjectDetectionInterface:
             ezprinter.info(f"Detecting project configuration at: {project_path}")
 
             # Call service to detect project configuration
-            config_info = self._detection_service.detect_project_config(project_path)
-
-            # Extract information from config
-            detected_type = config_info.get("project_type") if config_info else None
+            config_result = self._detection_service.detect_project_config(project_path)
+            detected_type = (
+                config_result.project_type
+                if isinstance(config_result, ProjectDetectionResult)
+                else ""
+            )
             config_files = (
-                config_info.get("config_files", {})
-                if isinstance(config_info, dict)
+                config_result.configuration_files
+                if isinstance(config_result, ProjectDetectionResult)
                 else {}
             )
-            detected_files = list(config_files.keys()) if config_files else []
+            detected_files = (
+                list(config_result.detected_files or [])
+                if isinstance(config_result, ProjectDetectionResult)
+                else []
+            )
 
             # Build result
             result = ProjectDetectionResult(
@@ -216,9 +221,7 @@ class ProjectDetectionInterface:
                 project_type=str(detected_type) if detected_type else "unknown",
                 confidence=100.0 if detected_type else 0.0,
                 detected_files=detected_files,
-                configuration_files=(
-                    config_files if isinstance(config_files, dict) else {}
-                ),
+                configuration_files=config_files,
             )
 
             if detected_type:

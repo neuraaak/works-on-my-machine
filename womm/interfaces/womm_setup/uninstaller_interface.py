@@ -22,6 +22,9 @@ from threading import Lock
 from time import sleep
 from typing import ClassVar
 
+# Third-party imports
+from rich.progress import TaskID
+
 # Local imports
 from ...exceptions.common import DirectoryAccessError, FileScanError
 from ...exceptions.system import (
@@ -38,6 +41,7 @@ from ...exceptions.womm_deployment import (
     WommUninstallerError,
 )
 from ...services import WommUninstallerService
+from ...services.system.path_service import SystemPathService
 from ...shared.results import UninstallationResult
 from ...ui.common import confirm, ezconsole, ezprinter
 from ...utils.womm_setup import (
@@ -106,6 +110,7 @@ class WommUninstallerInterface:
 
             self.platform = platform.system()
             self._uninstallation_service = WommUninstallerService()
+            self._path_service = SystemPathService()
             WommUninstallerInterface._initialized = True
 
         except UninstallerInterfaceError:
@@ -160,7 +165,8 @@ class WommUninstallerInterface:
             UninstallationVerificationInterfaceError: If verification fails
         """
         try:
-            ezprinter.header("W.O.M.M Uninstallation")
+            files_to_remove: list[str] = []
+            ezprinter.print_header("W.O.M.M Uninstallation")
 
             # Check target directory existence
             with ezprinter.create_spinner_with_status(
@@ -169,7 +175,10 @@ class WommUninstallerInterface:
                 progress,
                 task,
             ):
-                progress.update(task, status="Analyzing uninstallation requirements...")
+                task_id = TaskID(task)
+                progress.update(
+                    task_id, status="Analyzing uninstallation requirements..."
+                )
 
                 # Check if WOMM is installed
                 if not self.target_path.exists():
@@ -178,7 +187,7 @@ class WommUninstallerInterface:
                     warning_content = (
                         "WOMM not found.\n\n"
                         f"No installation found at: {self.target_path}\n"
-                        "WOMM may not be installed or may be in a different location",
+                        "WOMM may not be installed or may be in a different location"
                     )
                     warning_panel = ezprinter.create_panel(
                         warning_content,
@@ -189,10 +198,18 @@ class WommUninstallerInterface:
                     )
                     ezconsole.print("")
                     ezconsole.print(warning_panel)
-                    return False
+                    return UninstallationResult(
+                        success=False,
+                        error="WOMM installation not found",
+                        removed_path=str(self.target_path),
+                        files_removed=0,
+                        path_cleaned=False,
+                        verification_passed=False,
+                    )
                 else:
                     progress.update(
-                        task, status=f"Found installation at: {self.target_path}"
+                        task_id,
+                        status=f"Found installation at: {self.target_path}",
                     )
 
             # Check if force is required
@@ -202,14 +219,14 @@ class WommUninstallerInterface:
 
                 warning_content = (
                     f"This will completely remove WOMM from {self.target_path}.\n\n"
-                    "This action cannot be undone.",
+                    "This action cannot be undone."
                 )
                 warning_panel = ezprinter.create_warning_panel(
-                    warning_content,
                     title="Uninstallation Confirmation",
-                    style="bright_orange",
+                    content=warning_content,
                     border_style="bright_green",
                     padding=(1, 1),
+                    style="bright_orange",
                 )
                 ezconsole.print("")
                 ezconsole.print(warning_panel)
@@ -220,7 +237,14 @@ class WommUninstallerInterface:
                     default=False,
                 ):
                     ezconsole.print("❌ Uninstallation cancelled", style="red")
-                    return False
+                    return UninstallationResult(
+                        success=False,
+                        error="Uninstallation cancelled by user",
+                        removed_path=str(self.target_path),
+                        files_removed=0,
+                        path_cleaned=False,
+                        verification_passed=False,
+                    )
 
                 ezconsole.print("")
                 ezprinter.system("Proceeding with uninstallation...")
@@ -236,7 +260,8 @@ class WommUninstallerInterface:
                 progress,
                 task,
             ):
-                progress.update(task, status="Scanning installation directory...")
+                task_id = TaskID(task)
+                progress.update(task_id, status="Scanning installation directory...")
                 try:
                     files_to_remove = get_files_to_remove(self.target_path)
                 except (
@@ -254,7 +279,8 @@ class WommUninstallerInterface:
                     ) from e
 
                 progress.update(
-                    task, status=f"Found {len(files_to_remove)} files to remove"
+                    task_id,
+                    status=f"Found {len(files_to_remove)} files to remove",
                 )
 
             # Define uninstallation stages with DynamicLayeredProgress
@@ -335,10 +361,12 @@ class WommUninstallerInterface:
                         if not self._cleanup_path():
                             progress.emergency_stop("Failed to remove from PATH")
                             raise WommUninstallerError(
-                                operation="cleanup",
-                                path=str(self.target_path),
                                 message="Failed to remove from PATH",
-                                details="remove_from_path utility returned False",
+                                operation="cleanup",
+                                details=(
+                                    "remove_from_path utility returned False. "
+                                    f"Target: {self.target_path}"
+                                ),
                             )
                     except (WommUninstallerError, DeploymentUtilityError):
                         # Re-raise our custom exceptions
@@ -462,15 +490,22 @@ class WommUninstallerInterface:
             )
 
             completion_panel = ezprinter.create_success_panel(
-                completion_content,
                 title="Uninstallation Complete",
+                content=completion_content,
                 border_style="bright_green",
                 padding=(1, 1),
             )
             ezconsole.print("")
             ezconsole.print(completion_panel)
 
-            return True
+            return UninstallationResult(
+                success=True,
+                message="Uninstallation completed successfully",
+                removed_path=str(self.target_path),
+                files_removed=len(files_to_remove),
+                path_cleaned=True,
+                verification_passed=True,
+            )
 
         except (
             WommUninstallerError,
@@ -515,22 +550,23 @@ class WommUninstallerInterface:
             except Exception as e:
                 # Wrap unexpected external exceptions
                 raise WommUninstallerError(
-                    operation="cleanup",
-                    path=str(self.target_path),
                     message=f"remove_from_path utility failed: {e}",
+                    operation="cleanup",
                     details=f"Exception type: {type(e).__name__}",
                 ) from e
 
             sleep(0.5)
 
-            if not result or not result.get("success", False):
+            if not result.success:
                 ezprinter.error("PATH cleanup failed: remove_from_path returned False")
 
                 raise WommUninstallerError(
-                    operation="cleanup",
-                    path=str(self.target_path),
                     message="PATH cleanup failed",
-                    details="remove_from_path utility returned False",
+                    operation="cleanup",
+                    details=(
+                        "remove_from_path utility returned False. "
+                        f"Target: {self.target_path}"
+                    ),
                 )
 
             return True
@@ -546,9 +582,8 @@ class WommUninstallerInterface:
             ezprinter.error(f"Unexpected error during PATH cleanup: {e}")
 
             raise WommUninstallerError(
-                operation="cleanup",
-                path=str(self.target_path),
                 message=f"Unexpected error during PATH cleanup: {e}",
+                operation="cleanup",
                 details="This is an unexpected error that should be reported",
             ) from e
 
@@ -705,10 +740,13 @@ class WommUninstallerInterface:
             progress.update_layer("verification", 0, "Checking file removal...")
             if self.target_path.exists():
                 raise WommUninstallerError(
-                    verification_type="file_removal_check",
-                    target=str(self.target_path),
                     message=f"Installation directory still exists: {self.target_path}",
-                    details="The target directory was not removed during uninstallation",
+                    operation="verification",
+                    details=(
+                        "file_removal_check failed. "
+                        "The target directory was not removed during uninstallation. "
+                        f"Target: {self.target_path}"
+                    ),
                 )
             sleep(0.2)
 
@@ -729,18 +767,29 @@ class WommUninstallerInterface:
                 raise
             except Exception as e:
                 raise WommUninstallerError(
-                    verification_type="command_accessibility_test",
-                    target=str(self.target_path),
                     message=f"Verification utility failed: {e}",
-                    details="The verification utility function raised an exception",
+                    operation="verification",
+                    details=(
+                        "command_accessibility_test failed. "
+                        "The verification utility function raised an exception. "
+                        f"Target: {self.target_path}"
+                    ),
                 ) from e
 
-            if not verification_result["success"]:
+            if not verification_result.success:
+                failure_message = (
+                    verification_result.message
+                    or verification_result.error
+                    or "Unknown error"
+                )
                 raise WommUninstallerError(
-                    verification_type="command_accessibility_test",
-                    target=str(self.target_path),
-                    message=f"Verification failed: {verification_result.get('message', 'Unknown error')}",
-                    details="The verification utility returned a failure status",
+                    message=f"Verification failed: {failure_message}",
+                    operation="verification",
+                    details=(
+                        "command_accessibility_test failed. "
+                        "The verification utility returned a failure status. "
+                        f"Target: {self.target_path}"
+                    ),
                 )
             sleep(0.2)
 
@@ -752,8 +801,7 @@ class WommUninstallerInterface:
         except Exception as e:
             # Convert unexpected errors to our exception type
             raise WommUninstallerError(
-                verification_type="unexpected_error",
-                target=str(self.target_path),
                 message=f"Unexpected error during verification: {e}",
+                operation="verification",
                 details="This is an unexpected error that should be reported",
             ) from e

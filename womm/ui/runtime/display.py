@@ -15,12 +15,19 @@ from __future__ import annotations
 # ///////////////////////////////////////////////////////////////
 # IMPORTS
 # ///////////////////////////////////////////////////////////////
+# Standard library imports
+from typing import TYPE_CHECKING
+
 # Third-party imports
 from rich.table import Table
 
 # Local imports
 from ...shared.configs.dependencies import RuntimeConfig
+from ...shared.results import RuntimeResult
 from ..common import ezconsole, ezprinter
+
+if TYPE_CHECKING:
+    from ...interfaces.dependencies import RuntimeInterface
 
 # ///////////////////////////////////////////////////////////////
 # DISPLAY FUNCTIONS
@@ -28,7 +35,7 @@ from ..common import ezconsole, ezprinter
 
 
 def display_runtime_check_specific(
-    result: object, runtime: str, verbose: bool = False
+    result: RuntimeResult, runtime: str, verbose: bool = False
 ) -> None:
     """
     Display the result of checking a specific runtime.
@@ -55,7 +62,9 @@ def display_runtime_check_specific(
             ezprinter.info(f"Required version: {min_version}")
 
 
-def display_runtime_check_all(interface: object, verbose: bool = False) -> None:
+def display_runtime_check_all(
+    interface: RuntimeInterface, verbose: bool = False
+) -> None:
     """
     Display the result of checking all runtimes in a table.
 
@@ -94,7 +103,7 @@ def display_runtime_check_all(interface: object, verbose: bool = False) -> None:
 
 
 def display_runtime_install_result(
-    result: object,
+    result: RuntimeResult,
     runtime: str,
     verbose: bool = False,
 ) -> None:
@@ -138,12 +147,22 @@ def display_runtimes_list(verbose: bool = False) -> None:
     for name, config in RuntimeConfig.RUNTIMES.items():
         row = [
             name,
-            config.get("version", "Any"),
-            str(config.get("priority", "N/A")),
+            str(config.get("version", "Any")),
+            (
+                str(config.get("priority", "N/A"))
+                if not isinstance(config.get("priority"), dict)
+                else "N/A"
+            ),
         ]
 
         if verbose:
-            managers = config.get("package_managers", [])
+            managers_value = config.get("package_managers", [])
+            if isinstance(managers_value, list):
+                managers = [str(manager) for manager in managers_value]
+            elif isinstance(managers_value, str):
+                managers = [managers_value]
+            else:
+                managers = []
             row.append(", ".join(managers[:3]) + ("..." if len(managers) > 3 else ""))
 
         table.add_row(*row)

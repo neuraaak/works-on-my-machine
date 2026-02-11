@@ -81,56 +81,64 @@ class ProjectValidationService:
         try:
             if not project_name:
                 raise ValidationServiceError(
-                    message="Project name cannot be empty",
-                    validation_type="project_name",
-                    value=project_name or "None",
+                    operation="validate_project_name",
+                    field="project_name",
                     reason="Project name cannot be empty",
                     details="Empty or None project name provided",
+                    value=project_name or "None",
                 )
 
             if len(project_name) > ProjectConfig.MAX_PROJECT_NAME_LENGTH:
                 raise ValidationServiceError(
-                    message=f"Project name is too long (max {ProjectConfig.MAX_PROJECT_NAME_LENGTH} characters)",
-                    validation_type="project_name",
+                    operation="validate_project_name",
+                    field="project_name",
+                    reason=(
+                        f"Project name is too long (max {ProjectConfig.MAX_PROJECT_NAME_LENGTH} characters)"
+                    ),
+                    details=(
+                        f"Length: {len(project_name)}, Max: {ProjectConfig.MAX_PROJECT_NAME_LENGTH}"
+                    ),
                     value=project_name,
-                    reason=f"Project name is too long (max {ProjectConfig.MAX_PROJECT_NAME_LENGTH} characters)",
-                    details=f"Length: {len(project_name)}, Max: {ProjectConfig.MAX_PROJECT_NAME_LENGTH}",
                 )
 
             if project_name.startswith(".") or project_name.endswith("."):
                 raise ValidationServiceError(
-                    message="Project name cannot start or end with a dot",
-                    validation_type="project_name",
-                    value=project_name,
+                    operation="validate_project_name",
+                    field="project_name",
                     reason="Project name cannot start or end with a dot",
                     details="Project names must not begin or end with '.'",
+                    value=project_name,
                 )
 
             if re.search(ProjectConfig.INVALID_CHARS, project_name):
                 raise ValidationServiceError(
-                    message=f"Project name contains invalid characters: {ProjectConfig.INVALID_CHARS}",
-                    validation_type="project_name",
-                    value=project_name,
-                    reason=f"Project name contains invalid characters: {ProjectConfig.INVALID_CHARS}",
+                    operation="validate_project_name",
+                    field="project_name",
+                    reason=(
+                        f"Project name contains invalid characters: {ProjectConfig.INVALID_CHARS}"
+                    ),
                     details="Invalid characters detected in project name",
+                    value=project_name,
                 )
 
             if project_name.upper() in ProjectConfig.RESERVED_NAMES:
                 raise ValidationServiceError(
-                    message=f"Project name '{project_name}' is reserved on Windows",
-                    validation_type="project_name",
-                    value=project_name,
+                    operation="validate_project_name",
+                    field="project_name",
                     reason=f"Project name '{project_name}' is reserved on Windows",
                     details=f"Reserved name: {project_name.upper()}",
+                    value=project_name,
                 )
 
             if not re.match(r"^[a-zA-Z0-9._-]+$", project_name):
                 raise ValidationServiceError(
-                    message="Project name can only contain letters, numbers, dots, underscores, and hyphens",
-                    validation_type="project_name",
-                    value=project_name,
-                    reason="Project name can only contain letters, numbers, dots, underscores, and hyphens",
+                    operation="validate_project_name",
+                    field="project_name",
+                    reason=(
+                        "Project name can only contain letters, numbers, dots, underscores, and hyphens"
+                    ),
                     details="Invalid character pattern detected",
+                    value=project_name,
                 )
 
         except ValidationServiceError:
@@ -156,11 +164,11 @@ class ProjectValidationService:
         try:
             if not project_path:
                 raise ValidationServiceError(
-                    message="Project path cannot be None",
-                    validation_type="project_path",
-                    value="None",
+                    operation="validate_project_path",
+                    field="project_path",
                     reason="Project path cannot be None",
                     details="Empty or None project path provided",
+                    value="None",
                 )
 
             # Check if path is absolute
@@ -171,20 +179,20 @@ class ProjectValidationService:
             parent_dir = project_path.parent
             if not parent_dir.exists():
                 raise ValidationServiceError(
-                    message="Parent directory does not exist",
-                    validation_type="project_path",
-                    value=str(project_path),
+                    operation="validate_project_path",
+                    field="project_path",
                     reason="Parent directory does not exist",
                     details=f"Parent directory: {parent_dir}",
+                    value=str(project_path),
                 )
 
             if not parent_dir.is_dir():
                 raise ValidationServiceError(
-                    message="Parent path is not a directory",
-                    validation_type="project_path",
-                    value=str(project_path),
+                    operation="validate_project_path",
+                    field="project_path",
                     reason="Parent path is not a directory",
                     details=f"Parent path: {parent_dir}",
+                    value=str(project_path),
                 )
 
             # Check if we can write to parent directory
@@ -194,41 +202,41 @@ class ProjectValidationService:
                 test_file.unlink()
             except (PermissionError, OSError) as e:
                 raise ValidationServiceError(
-                    message="Cannot write to directory",
-                    validation_type="project_path",
-                    value=str(project_path),
+                    operation="validate_project_path",
+                    field="project_path",
                     reason="Cannot write to directory",
                     details=f"Parent directory: {parent_dir}, Error: {e}",
+                    value=str(project_path),
                 ) from e
 
             # Check if project directory already exists
             if project_path.exists():
                 if not project_path.is_dir():
                     raise ValidationServiceError(
-                        message="Path exists but is not a directory",
-                        validation_type="project_path",
-                        value=str(project_path),
+                        operation="validate_project_path",
+                        field="project_path",
                         reason="Path exists but is not a directory",
                         details=f"Path: {project_path}",
+                        value=str(project_path),
                     )
 
                 # Check if directory is empty
                 try:
                     if any(project_path.iterdir()):
                         raise ValidationServiceError(
-                            message="Directory is not empty",
-                            validation_type="project_path",
-                            value=str(project_path),
+                            operation="validate_project_path",
+                            field="project_path",
                             reason="Directory is not empty",
                             details=f"Directory: {project_path}",
+                            value=str(project_path),
                         )
                 except PermissionError as e:
                     raise ValidationServiceError(
-                        message="Cannot access directory",
-                        validation_type="project_path",
-                        value=str(project_path),
+                        operation="validate_project_path",
+                        field="project_path",
                         reason="Cannot access directory",
                         details=f"Directory: {project_path}, Error: {e}",
+                        value=str(project_path),
                     ) from e
 
         except (ValidationServiceError, ProjectServiceError):
@@ -254,20 +262,22 @@ class ProjectValidationService:
         try:
             if not project_type:
                 raise ValidationServiceError(
-                    message="Project type cannot be empty",
-                    validation_type="project_type",
-                    value=project_type or "None",
+                    operation="validate_project_type",
+                    field="project_type",
                     reason="Project type cannot be empty",
                     details="Empty or None project type provided",
+                    value=project_type or "None",
                 )
 
             if project_type not in ProjectConfig.SUPPORTED_PROJECT_TYPES:
                 raise ValidationServiceError(
-                    message=f"Unsupported project type: {project_type}",
-                    validation_type="project_type",
-                    value=project_type,
+                    operation="validate_project_type",
+                    field="project_type",
                     reason=f"Unsupported project type: {project_type}",
-                    details=f"Supported types: {', '.join(ProjectConfig.SUPPORTED_PROJECT_TYPES)}",
+                    details=(
+                        f"Supported types: {', '.join(ProjectConfig.SUPPORTED_PROJECT_TYPES)}"
+                    ),
+                    value=project_type,
                 )
 
         except ValidationServiceError:
@@ -293,11 +303,11 @@ class ProjectValidationService:
         try:
             if not config:
                 raise ValidationServiceError(
-                    message="Project configuration cannot be None",
-                    validation_type="project_config",
-                    value="None",
+                    operation="validate_project_config",
+                    field="project_config",
                     reason="Project configuration cannot be None",
                     details="Empty or None configuration provided",
+                    value="None",
                 )
 
             required_fields = ["project_name", "project_type"]
@@ -305,11 +315,11 @@ class ProjectValidationService:
             for field in required_fields:
                 if field not in config:
                     raise ValidationServiceError(
-                        message=f"Missing required field: {field}",
-                        validation_type="project_config",
-                        value=str(config),
+                        operation="validate_project_config",
+                        field=field,
                         reason=f"Missing required field: {field}",
                         details=f"Required fields: {', '.join(required_fields)}",
+                        value=str(config),
                     )
 
             # Validate individual fields

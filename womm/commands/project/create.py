@@ -20,6 +20,7 @@ from __future__ import annotations
 # Standard library imports
 import sys
 from pathlib import Path
+from typing import Any
 
 # Third-party imports
 import click
@@ -54,7 +55,9 @@ def create_group(ctx: click.Context, verbose: bool) -> None:
         # Auto-detect project type if no subcommand specified
         try:
             project_manager = ProjectManagerInterface()
-            detected_type, confidence = project_manager.detect_project_type(Path.cwd())
+            detection_result = project_manager.detect_project_type(Path.cwd())
+            detected_type = detection_result.project_type
+            confidence = detection_result.confidence
             if detected_type and detected_type != "unknown":
                 ezprinter.success(
                     f"Detected project type: {detected_type} (confidence: {confidence}%)"
@@ -155,10 +158,13 @@ def create_python(
     try:
         # Interactive mode
         if interactive:
-            return _run_interactive_python_setup(project_manager, minimal)
+            success = _run_interactive_python_setup(project_manager, minimal)
+            if not success:
+                sys.exit(1)
+            return
 
         # Non-interactive mode
-        return _run_direct_python_setup(
+        success = _run_direct_python_setup(
             project_manager,
             project_name,
             current_dir,
@@ -171,6 +177,9 @@ def create_python(
             force,
             minimal,
         )
+        if not success:
+            sys.exit(1)
+        return
 
     except Exception as e:
         # Extract error message from exception
@@ -265,14 +274,17 @@ def create_javascript(
     try:
         # Interactive mode
         if interactive:
-            return _run_interactive_javascript_setup(project_manager, minimal)
+            success = _run_interactive_javascript_setup(project_manager, minimal)
+            if not success:
+                sys.exit(1)
+            return
 
         # Non-interactive mode
         # Map "node" to "js" for backward compatibility
         if project_type == "node":
             project_type = "js"
 
-        return _run_direct_javascript_setup(
+        success = _run_direct_javascript_setup(
             project_manager,
             project_name,
             current_dir,
@@ -285,6 +297,9 @@ def create_javascript(
             force,
             minimal,
         )
+        if not success:
+            sys.exit(1)
+        return
 
     except Exception as e:
         ezprinter.error(f"Error creating JavaScript project: {e}")
@@ -298,7 +313,7 @@ def create_javascript(
 
 def _run_interactive_python_setup(
     project_manager: ProjectManagerInterface, minimal: bool
-) -> int:
+) -> bool:
     """Run interactive Python project setup."""
     ezprinter.print_header("🐍 Interactive Python Project Setup")
 
@@ -306,27 +321,38 @@ def _run_interactive_python_setup(
     config = ProjectWizard.run_interactive_setup()
     if not config:
         ezprinter.error("Project setup cancelled")
-        return 1
+        return False
+
+    project_path = config.get("project_path")
+    if not isinstance(project_path, Path):
+        ezprinter.error("Invalid project path returned by wizard")
+        return False
+
+    project_name = config.get("project_name")
+    if project_name is not None and not isinstance(project_name, str):
+        ezprinter.error("Invalid project name returned by wizard")
+        return False
 
     # Create project
-    options = config.get("options", {})
+    options: dict[str, Any] = {
+        key: value
+        for key, value in config.items()
+        if key not in {"project_type", "project_name", "project_path", "current_dir"}
+    }
     options["minimal"] = minimal
     success = project_manager.create_project(
         project_type="python",
-        project_name=config.get("project_name"),
-        target=str(config.get("project_path").parent),
+        project_name=project_name,
+        target=str(project_path.parent),
         **options,
     )
 
-    if success:
-        return 0
-    else:
-        return 1
+    return bool(success)
 
 
 def _run_interactive_javascript_setup(
     project_manager: ProjectManagerInterface, minimal: bool
-) -> int:
+) -> bool:
     """Run interactive JavaScript project setup."""
     ezprinter.print_header("🟨 Interactive JavaScript Project Setup")
 
@@ -334,10 +360,22 @@ def _run_interactive_javascript_setup(
     config = ProjectWizard.run_interactive_setup()
     if not config:
         ezprinter.error("Project setup cancelled")
-        return 1
+        return False
+
+    project_path = config.get("project_path")
+    if not isinstance(project_path, Path):
+        ezprinter.error("Invalid project path returned by wizard")
+        return False
+
+    project_name = config.get("project_name")
+    if project_name is not None and not isinstance(project_name, str):
+        ezprinter.error("Invalid project name returned by wizard")
+        return False
 
     # Determine the project type based on configuration
     js_project_type = config.get("project_type", "node")
+    if not isinstance(js_project_type, str):
+        js_project_type = "node"
 
     # Map the project type to the correct project type
     if js_project_type in ["react", "vue"]:
@@ -346,7 +384,11 @@ def _run_interactive_javascript_setup(
         pm_project_type = "javascript"  # Use "javascript" for node, library, cli
 
     # Prepare options
-    options = config.get("options", {})
+    options: dict[str, Any] = {
+        key: value
+        for key, value in config.items()
+        if key not in {"project_type", "project_name", "project_path", "current_dir"}
+    }
 
     # Map js_project_type to type for JavaScript projects
     if pm_project_type == "javascript":
@@ -362,21 +404,17 @@ def _run_interactive_javascript_setup(
         options["type"] = project_type
 
     # Remove project_type from options to avoid conflict with create_project parameter
-    options.pop("project_type", None)
     options["minimal"] = minimal
 
     # Create project
     success = project_manager.create_project(
         project_type=pm_project_type,
-        project_name=config.get("project_name"),
-        target=str(config.get("project_path").parent),
+        project_name=project_name,
+        target=str(project_path.parent),
         **options,
     )
 
-    if success:
-        return 0
-    else:
-        return 1
+    return bool(success)
 
 
 # ///////////////////////////////////////////////////////////////
@@ -397,13 +435,13 @@ def _run_direct_python_setup(
     force: bool,
     dry_run: bool = False,
     minimal: bool = False,
-) -> int:
+) -> bool:
     """Run direct Python project setup."""
 
     # Validate project name if provided
     if project_name and not current_dir and not project_name.strip():
         ezprinter.error("Project name cannot be empty")
-        return 1
+        return False
 
     # Prepare options
     options = {}
@@ -431,10 +469,7 @@ def _run_direct_python_setup(
         **options,
     )
 
-    if success:
-        return 0
-    else:
-        return 1
+    return bool(success)
 
 
 def _run_direct_javascript_setup(
@@ -450,13 +485,13 @@ def _run_direct_javascript_setup(
     force: bool,
     dry_run: bool = False,
     minimal: bool = False,
-) -> int:
+) -> bool:
     """Run direct JavaScript project setup."""
 
     # Validate project name if provided
     if project_name and not current_dir and not project_name.strip():
         ezprinter.error("Project name cannot be empty")
-        return 1
+        return False
 
     # Prepare options
     options = {}
@@ -485,7 +520,4 @@ def _run_direct_javascript_setup(
         **options,
     )
 
-    if success:
-        return 0
-    else:
-        return 1
+    return bool(success)

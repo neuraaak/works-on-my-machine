@@ -21,6 +21,10 @@ from __future__ import annotations
 import logging
 from datetime import datetime
 from pathlib import Path
+from typing import Any, cast
+
+# Third-party imports
+from rich.progress import TaskID
 
 # Local imports
 from ...exceptions.context import (
@@ -207,11 +211,7 @@ class ContextMenuInterface:
             # Use context parameters if provided, otherwise use defaults
             if context_params is None:
                 try:
-                    context_params = (
-                        self.registry_service.from_flags()
-                        if hasattr(self.registry_service, "from_flags")
-                        else ContextParametersService()
-                    )
+                    context_params = ContextParametersService.from_flags()
                 except Exception as e:
                     raise ContextUtilityError(
                         f"Failed to create default context parameters: {e}",
@@ -232,17 +232,20 @@ class ContextMenuInterface:
 
             try:
                 validation = context_params.validate_parameters()
-                if not validation["valid"]:
+                is_valid = cast(bool, validation.get("valid", False))
+                if not is_valid:
+                    errors = cast(list[str], validation.get("errors", []))
                     raise ValidationInterfaceError(
-                        f"Context parameter validation failed: {'; '.join(validation['errors'])}",
+                        f"Context parameter validation failed: {'; '.join(errors)}",
                         operation="context_parameters",
                         field="validation",
                     )
 
                 # Show warnings if any
-                if validation["warnings"]:
+                warnings = cast(list[str], validation.get("warnings", []))
+                if warnings:
                     self.logger.warning(
-                        f"Context parameter warnings: {'; '.join(validation['warnings'])}"
+                        f"Context parameter warnings: {'; '.join(warnings)}"
                     )
             except ValidationInterfaceError:
                 raise
@@ -527,7 +530,7 @@ class ContextMenuInterface:
         with ezprinter.create_spinner_with_status(
             "Creating backup before registration..."
         ) as (progress, task):
-            progress.update(task, status="Creating backup...")
+            progress.update(cast(TaskID, task), status="Creating backup...")
             backup_result = self.backup_entries(backup_file)
 
         if not backup_result["success"]:
@@ -542,21 +545,21 @@ class ContextMenuInterface:
             with ezprinter.create_spinner_with_status(
                 "Registering script in context menu..."
             ) as (progress, task):
-                progress.update(task, status="Adding registry entries...")
+                progress.update(cast(TaskID, task), status="Adding registry entries...")
                 result = self.register_script(
                     script_path, label, icon, False, context_params
                 )
 
             # Display result
             if result["success"]:
-                info = result["info"]
-                ui.show_register_success(label, info["registry_key"])
+                info = cast(dict[str, Any], result["info"])
+                ui.show_register_success(label, cast(str, info["registry_key"]))
             else:
                 ezprinter.error(
                     f"Registration failed: {result.get('error', 'Unknown error')}"
                 )
                 if verbose and "info" in result:
-                    info = result["info"]
+                    info = cast(dict[str, Any], result["info"])
                     ezprinter.info(f"Script path: {info.get('script_path')}")
                     ezprinter.info(f"Script type: {info.get('script_type')}")
                     ezprinter.info(f"Registry key: {info.get('registry_key')}")
@@ -613,9 +616,16 @@ class ContextMenuInterface:
 
         # Interactive wizard
         if interactive:
-            target_path, label, icon, context_params = ContextMenuWizard.run_setup()
-            if not target_path:
+            wizard_target, wizard_label, wizard_icon, context_params = (
+                ContextMenuWizard.run_setup()
+            )
+            if not wizard_target or not wizard_label:
                 return {"success": False, "error": "cancelled"}
+            target_path = wizard_target
+            label = wizard_label
+            icon_value: str = (
+                wizard_icon if isinstance(wizard_icon, str) and wizard_icon else "auto"
+            )
         else:
             # Validate required parameters in non-interactive mode
             if not target_path:
@@ -635,12 +645,16 @@ class ContextMenuInterface:
                 file_types=list(file_types) if file_types else None,
                 extensions=list(extensions) if extensions else None,
             )
+            icon_value = icon if isinstance(icon, str) and icon else "auto"
+
+        target_path_value = cast(str, target_path)
+        label_value = cast(str, label)
 
         # Perform registration with backup and UI display
         return self.register_with_display(
-            script_path=target_path,
-            label=label,
-            icon=icon,
+            script_path=target_path_value,
+            label=label_value,
+            icon=icon_value,
             context_params=context_params,
             verbose=verbose,
         )
@@ -659,12 +673,13 @@ class ContextMenuInterface:
         with ezprinter.create_spinner_with_status(
             "Retrieving context menu entries..."
         ) as (progress, task):
-            progress.update(task, status="Reading registry entries...")
+            progress.update(cast(TaskID, task), status="Reading registry entries...")
             result = self.list_entries()
 
         if result["success"]:
             ui = ContextMenuUI()
-            ui.show_context_entries(result["entries"])
+            entries = cast(dict[str, Any], result["entries"])
+            ui.show_context_entries(entries)
             ui.show_list_commands()
         else:
             ezprinter.error(
@@ -687,11 +702,13 @@ class ContextMenuInterface:
         with ezprinter.create_spinner_with_status(
             "Checking context menu registration status..."
         ) as (progress, task):
-            progress.update(task, status="Retrieving context menu entries...")
+            progress.update(
+                cast(TaskID, task), status="Retrieving context menu entries..."
+            )
             result = self.list_entries()
 
         if result["success"]:
-            entries = result["entries"]
+            entries = cast(dict[str, list[dict[str, Any]]], result["entries"])
             total_entries = sum(
                 len(entries.get(context_type, []))
                 for context_type in ["directory", "background"]
@@ -763,7 +780,7 @@ class ContextMenuInterface:
         ) as (progress, task):
             for i, tool in enumerate(tools, 1):
                 progress.update(
-                    task,
+                    cast(TaskID, task),
                     status=f"Registering {tool['description']} ({i}/{total_tools})...",
                 )
                 if verbose:
@@ -831,11 +848,15 @@ class ContextMenuInterface:
         with ezprinter.create_spinner_with_status(
             "Creating context menu backup..."
         ) as (progress, task):
-            progress.update(task, status="Reading registry entries...")
+            progress.update(cast(TaskID, task), status="Reading registry entries...")
             result = self.backup_entries(target_backup)
 
         if result["success"]:
-            ContextMenuUI().show_backup_success(target_backup, result["entry_count"])
+            entry_count = result.get("entry_count", 0)
+            ContextMenuUI().show_backup_success(
+                target_backup,
+                int(entry_count) if isinstance(entry_count, int) else 0,
+            )
         else:
             ezprinter.error(f"Backup failed: {result['error']}")
 
@@ -875,11 +896,15 @@ class ContextMenuInterface:
         with ezprinter.create_spinner_with_status(
             "Restoring context menu from backup..."
         ) as (progress, task):
-            progress.update(task, status="Restoring from backup...")
+            progress.update(cast(TaskID, task), status="Restoring from backup...")
             result = self.restore_entries(str(selected_file))
 
         if result["success"]:
-            ui.show_restore_success(selected_file, result["entry_count"])
+            entry_count = result.get("entry_count", 0)
+            ui.show_restore_success(
+                selected_file,
+                int(entry_count) if isinstance(entry_count, int) else 0,
+            )
         else:
             ezprinter.error(f"Restore failed: {result['error']}")
 
@@ -909,7 +934,9 @@ class ContextMenuInterface:
                 progress,
                 task,
             ):
-                progress.update(task, status="Collecting context menu entries...")
+                progress.update(
+                    cast(TaskID, task), status="Collecting context menu entries..."
+                )
                 all_entries = self.collect_entries_from_backups()
 
             if not all_entries:
@@ -978,7 +1005,7 @@ class ContextMenuInterface:
         with ezprinter.create_spinner_with_status(
             "Unregistering script from context menu..."
         ) as (progress, task):
-            progress.update(task, status="Removing registry entries...")
+            progress.update(cast(TaskID, task), status="Removing registry entries...")
             result = self.unregister_script(key_name)
 
         # Display result
@@ -1054,7 +1081,10 @@ class ContextMenuInterface:
             # Get current entries
             try:
                 entries_result = self.list_entries()
-                entries = entries_result["entries"]
+                entries = cast(
+                    dict[str, list[dict[str, str | None]]],
+                    entries_result.get("entries", {}),
+                )
             except Exception as e:
                 raise MenuInterfaceError(
                     "backup", "entries", f"Failed to get current entries: {e}"
@@ -1248,7 +1278,7 @@ class ContextMenuInterface:
                 validation_result = self.validation_service.validate_script_path(
                     script_path
                 )
-                if not validation_result.is_valid:
+                if not validation_result.success:
                     raise ValidationInterfaceError(
                         "script_validation",
                         "script_path",
@@ -1299,9 +1329,9 @@ class ContextMenuInterface:
                 )
             except Exception as e:
                 self.logger.warning(f"Failed to check permissions/compatibility: {e}")
-                permission_check = ContextValidationResult(is_valid=False, error=str(e))
+                permission_check = ContextValidationResult(success=False, error=str(e))
                 compatibility_check = ContextValidationResult(
-                    is_valid=False, error=str(e)
+                    success=False, error=str(e)
                 )
 
             return {
@@ -1418,7 +1448,7 @@ class ContextMenuInterface:
         try:
             result = self.list_entries()
             if result["success"]:
-                entries = result["entries"]
+                entries = cast(dict[str, list[dict[str, Any]]], result["entries"])
                 current_keys = set()
                 for context_type in ["directory", "background"]:
                     for entry in entries.get(context_type, []):
@@ -1461,11 +1491,16 @@ class ContextMenuInterface:
         Returns:
             Dict mapping key names to success status
         """
-        results = {}
+        results: dict[str, bool] = {}
 
         for entry in selected_entries:
-            key_name = entry.get("key_name")
-            properties = entry.get("properties", {})
+            entry_data = cast(dict[str, Any], entry)
+            key_name = entry_data.get("key_name")
+            if not isinstance(key_name, str) or not key_name:
+                self.logger.warning("Skipping entry with missing key_name")
+                continue
+
+            properties = cast(dict[str, Any], entry_data.get("properties", {}))
             command = properties.get("Command", "")
             muiverb = properties.get("MUIVerb")
             icon = properties.get("Icon")
@@ -1490,9 +1525,11 @@ class ContextMenuInterface:
                 continue
 
             # Execute registration
-            result = self.register_script(
-                script_path, muiverb or key_name, icon or "auto"
+            muiverb_value = (
+                muiverb if isinstance(muiverb, str) and muiverb else key_name
             )
-            results[key_name] = result.get("success", False)
+            icon_value = icon if isinstance(icon, str) and icon else "auto"
+            result = self.register_script(script_path, muiverb_value, icon_value)
+            results[key_name] = bool(result.get("success", False))
 
         return results

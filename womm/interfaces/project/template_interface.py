@@ -30,7 +30,7 @@ from pathlib import Path
 from ...exceptions.common import ValidationServiceError
 from ...exceptions.project import TemplateInterfaceError, TemplateServiceError
 from ...services import ProjectDetectionService, TemplateService
-from ...shared.results import TemplateResult
+from ...shared.results import ProjectDetectionResult, TemplateResult
 from ...ui.common import ezprinter
 from ...utils.womm_setup import get_womm_installation_path
 
@@ -160,9 +160,13 @@ class TemplateInterface:
             template_dir.mkdir(parents=True, exist_ok=True)
 
             # Detect project type using ProjectDetectionService
+            type_result = self._detection_service.detect_project_type(
+                source_project_path
+            )
             project_type = (
-                self._detection_service.detect_project_type(source_project_path)
-                or "unknown"
+                type_result.project_type
+                if isinstance(type_result, ProjectDetectionResult)
+                else "unknown"
             )
 
             # Scan and generalize the project

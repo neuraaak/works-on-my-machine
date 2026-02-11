@@ -161,8 +161,9 @@ class SystemPathService:
             self._validate_entry(entry_path, "Windows PATH setup")
             if not original_path:
                 raise ValidationServiceError(
-                    message="Original path cannot be empty",
                     operation="setup_windows_path",
+                    field="original_path",
+                    reason="Original path cannot be empty",
                     details="Empty original path provided for Windows PATH setup",
                 )
 
@@ -320,8 +321,9 @@ class SystemPathService:
             self._validate_entry(entry_path, "Unix PATH setup")
             if not original_path:
                 raise ValidationServiceError(
-                    message="Original path cannot be empty",
                     operation="setup_unix_path",
+                    field="original_path",
+                    reason="Original path cannot be empty",
                     details="Empty original path provided for Unix PATH setup",
                 )
 
@@ -359,8 +361,8 @@ class SystemPathService:
             except (PermissionError, OSError) as e:
                 # Critical file system error - raise exception
                 raise FileSystemServiceError(
-                    file_path=str(target_rc),
                     operation="write",
+                    path=str(target_rc),
                     reason="Cannot write to shell configuration file",
                     details=f"Error: {e}",
                 ) from e
@@ -428,8 +430,8 @@ class SystemPathService:
                 except (PermissionError, OSError) as e:
                     # Critical file system error - raise exception
                     raise FileSystemServiceError(
-                        file_path=str(rc_file),
                         operation="read",
+                        path=str(rc_file),
                         reason="Cannot read shell configuration file",
                         details=f"Error: {e}",
                     ) from e
@@ -465,8 +467,8 @@ class SystemPathService:
                     except (PermissionError, OSError) as e:
                         # Critical file system error - raise exception
                         raise FileSystemServiceError(
-                            file_path=str(rc_file),
                             operation="write",
+                            path=str(rc_file),
                             reason="Cannot write to shell configuration file",
                             details=f"Error: {e}",
                         ) from e
@@ -642,7 +644,8 @@ class SystemPathService:
         """
         if not entry_path:
             raise ValidationServiceError(
-                message="Entry path cannot be empty",
                 operation=context,
+                field="entry_path",
+                reason="Entry path cannot be empty",
                 details=f"Empty entry path provided for {context}",
             )

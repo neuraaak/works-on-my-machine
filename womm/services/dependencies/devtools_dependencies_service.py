@@ -96,8 +96,8 @@ class DevToolsService:
             # Input validation
             if not tool:
                 raise ValidationServiceError(
-                    component="check_tool_availability",
-                    validation_type="input_validation",
+                    operation="check_tool_availability",
+                    field="tool",
                     reason="Tool name must not be empty",
                     details="Tool name parameter must be a non-empty string",
                 )
@@ -128,7 +128,7 @@ class DevToolsService:
                         result = self._command_runner.run_silent(
                             ["npx", tool, "--version"]
                         )
-                        available = result.success
+                        available = bool(result)
                     except Exception as e:
                         logger.debug(f"Failed to check tool {tool} via npx: {e}")
                         available = False
@@ -188,7 +188,9 @@ class DevToolsService:
             return "auto"
         return DevToolsConfig.DEFAULT_RUNTIME_PACKAGE_MANAGER.get(language, "auto")
 
-    def get_tool_config(cls, tool: str) -> dict[str, str] | None:
+    def get_tool_config(
+        cls, tool: str
+    ) -> dict[str, str | list[str | list[str]]] | None:
         """
         Get special configuration for a tool.
 
@@ -223,8 +225,8 @@ class DevToolsService:
             # Input validation
             if not tool:
                 raise ValidationServiceError(
-                    component="install_devtool",
-                    validation_type="input_validation",
+                    operation="install_devtool",
+                    field="tool",
                     reason="Tool name must not be empty",
                     details="Tool name parameter must be a non-empty string",
                 )
@@ -240,8 +242,8 @@ class DevToolsService:
                 chain = DependenciesHierarchy.get_devtool_chain(tool)
             except ValueError as e:
                 raise ValidationServiceError(
-                    component="install_devtool",
-                    validation_type="tool_validation",
+                    operation="install_devtool",
+                    field="tool",
                     reason=f"Unknown development tool: {tool}",
                     details=str(e),
                 ) from e
@@ -301,7 +303,7 @@ class DevToolsService:
                 )
 
             logger.info(f"Installing {tool}: {' '.join(install_cmd)}")
-            result = self._command_runner.run_command(install_cmd)
+            result = self._command_runner.run(install_cmd)
 
             if result.returncode != 0:
                 raise DevToolsServiceError(

@@ -96,10 +96,10 @@ class ProjectManagerInterface:
             # Input validation
             if not project_type or not isinstance(project_type, str):
                 raise ValidationServiceError(
-                    message="Project type is required and must be a string",
-                    validation_type="project_type",
                     operation="project_creation",
+                    field="project_type",
                     reason="Project type is required and must be a string",
+                    details="Project type is required and must be a string",
                 )
 
             # Determine project path
@@ -115,19 +115,19 @@ class ProjectManagerInterface:
                     project_path = target_path / project_name
                 else:
                     raise ValidationServiceError(
-                        message="Project name is required when using target directory",
-                        validation_type="project_name",
                         operation="project_creation",
+                        field="project_name",
                         reason="Project name is required when using target directory",
+                        details="Project name is required when using target directory",
                     )
             elif project_name:
                 project_path = Path.cwd() / project_name
             else:
                 raise ValidationServiceError(
-                    message="Project name is required when not using current directory",
-                    validation_type="project_name",
                     operation="project_creation",
+                    field="project_name",
                     reason="Project name is required when not using current directory",
+                    details="Project name is required when not using current directory",
                 )
 
             # Validate project type
@@ -183,9 +183,10 @@ class ProjectManagerInterface:
             else:
                 js_type = project_type
 
+            resolved_project_name = project_name or project_path.name
             result = self._create_interface.create_project(
                 project_type=js_type,
-                project_name=project_name,
+                project_name=resolved_project_name,
                 project_path=project_path,
                 dry_run=dry_run,
                 force=kwargs.get("force", False),
@@ -245,10 +246,10 @@ class ProjectManagerInterface:
         supported_types = ["python", "javascript", "react", "vue"]
         if project_type not in supported_types:
             raise ValidationServiceError(
-                message=f"Unsupported project type: {project_type}",
-                validation_type="project_type",
                 operation="project_creation",
+                field="project_type",
                 reason=f"Unsupported project type: {project_type}",
+                details=f"Unsupported project type: {project_type}",
             )
         return True
 

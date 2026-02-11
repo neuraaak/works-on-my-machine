@@ -24,6 +24,9 @@ import logging
 import time
 from pathlib import Path
 
+# Third-party imports
+from rich.progress import TaskID
+
 # Local imports
 from ...exceptions.cspell import (
     CheckServiceError,
@@ -106,7 +109,6 @@ class CSpellCheckerInterface:
             logger.error(f"CSpell availability check service error: {e}", exc_info=True)
             raise CSpellInterfaceError(
                 f"CSpell availability check failed: {e.message}",
-                operation="check_availability",
                 details=str(e),
             ) from e
         except Exception as e:
@@ -115,7 +117,6 @@ class CSpellCheckerInterface:
             )
             raise CSpellInterfaceError(
                 f"An unexpected error occurred during CSpell availability check: {e}",
-                operation="check_availability",
                 details=str(e),
             ) from e
 
@@ -180,7 +181,6 @@ class CSpellCheckerInterface:
                     logger.error(f"Failed to install CSpell: {e}", exc_info=True)
                     raise CSpellInterfaceError(
                         f"Failed to install CSpell: {e}",
-                        operation="install_cspell",
                         details=str(e),
                     ) from e
 
@@ -197,7 +197,6 @@ class CSpellCheckerInterface:
             logger.error(f"Unexpected error in install_cspell: {e}", exc_info=True)
             raise CSpellInterfaceError(
                 f"CSpell installation failed: {e}",
-                operation="install_cspell",
                 details=str(e),
             ) from e
 
@@ -205,7 +204,7 @@ class CSpellCheckerInterface:
     # PRIVATE METHODS
     # ///////////////////////////////////////////////////////////////
 
-    def _ensure_cspell_available(self, _operation: str) -> CSpellInstallResult | None:
+    def _ensure_cspell_available(self, _operation: str) -> CSpellResult | None:
         """
         Ensure CSpell is available, return error result if not.
 
@@ -213,25 +212,22 @@ class CSpellCheckerInterface:
             operation: Name of operation that requires CSpell
 
         Returns:
-            CSpellInstallResult | None: Error result if not available, None if available
+            CSpellResult | None: Error result if not available, None if available
         """
         try:
             if not self.cspell_available:
                 ezprinter.error("❌ CSpell is not installed")
                 ezprinter.info('💡 Install using: "womm spell install"')
-                return CSpellInstallResult(
+                return CSpellResult(
                     success=False,
                     message="CSpell is not installed",
                     error="cspell_not_installed",
-                    cspell_installed=False,
-                    install_time=0.0,
                 )
             return None
         except CSpellInterfaceError as e:
             logger.error(f"CSpell availability check failed: {e}", exc_info=True)
             raise CSpellInterfaceError(
                 f"CSpell availability check failed: {e}",
-                operation="ensure_availability",
                 details=str(e),
             ) from e
 
@@ -262,7 +258,8 @@ class CSpellCheckerInterface:
                 progress,
                 task,
             ):
-                progress.update(task, status="Gathering project information...")
+                task_id = TaskID(task)
+                progress.update(task_id, status="Gathering project information...")
 
                 # Use CSpellCheckerService for the actual status gathering
                 try:
@@ -288,7 +285,6 @@ class CSpellCheckerInterface:
                     logger.error(f"Status check service error: {e}", exc_info=True)
                     raise CSpellInterfaceError(
                         f"Failed to get project status: {e.message}",
-                        operation="get_project_status",
                         details=str(e),
                     ) from e
                 except Exception as e:
@@ -297,16 +293,15 @@ class CSpellCheckerInterface:
                     )
                     raise CSpellInterfaceError(
                         f"An unexpected error occurred: {e}",
-                        operation="get_project_status",
                         details=str(e),
                     ) from e
 
-                progress.update(task, status="Analyzing configuration...")
+                progress.update(task_id, status="Analyzing configuration...")
 
                 # Format status with additional information
                 status = format_project_status(status)
 
-                progress.update(task, status="Status analysis complete!")
+                progress.update(task_id, status="Status analysis complete!")
 
             # Display results in panel (AFTER spinner closes)
             print("")
@@ -376,7 +371,8 @@ class CSpellCheckerInterface:
                 progress,
                 task,
             ):
-                progress.update(task, status="Linting files...")
+                task_id = TaskID(task)
+                progress.update(task_id, status="Linting files...")
 
                 try:
                     lint_result = self._checker_service.run_spellcheck(path)
@@ -384,7 +380,6 @@ class CSpellCheckerInterface:
                     logger.error(f"Spell lint service error: {e}", exc_info=True)
                     raise CSpellInterfaceError(
                         f"Failed to run spell lint: {e.message}",
-                        operation="run_spellcheck",
                         details=str(e),
                     ) from e
                 except Exception as e:
@@ -393,18 +388,16 @@ class CSpellCheckerInterface:
                     )
                     raise CSpellInterfaceError(
                         f"An unexpected error occurred: {e}",
-                        operation="run_spellcheck",
                         details=str(e),
                     ) from e
 
                 if not (lint_result.success or lint_result.issues_found > 0):
-                    progress.update(task, status="Spell lint failed")
+                    progress.update(task_id, status="Spell lint failed")
                     raise CSpellInterfaceError(
                         "Spell lint failed",
-                        operation="run_spellcheck",
                     )
 
-                progress.update(task, status="Spell lint completed!")
+                progress.update(task_id, status="Spell lint completed!")
 
             # Process results after spinner is complete
             # Convert to dict format for compatibility

@@ -155,7 +155,8 @@ def system_check(manager: str | None, verbose: bool) -> None:
             # Check all managers - interface handles spinner + UI
             summary = interface.check_all_managers()
             # Exit with appropriate code
-            sys.exit(0 if summary.success else 1)
+            all_success = all(result.success for result in summary.values())
+            sys.exit(0 if all_success else 1)
 
     except Exception as e:
         logger.error(f"Failed to check system package managers: {e}")
@@ -193,7 +194,12 @@ def system_list(verbose: bool) -> None:
         interface = SystemPackageManagerInterface()
         result = interface.list_managers(verbose)
         # Exit with appropriate code
-        sys.exit(0 if result.available else 1)
+        any_available = any(
+            manager_info.get("installed", False)
+            for manager_info in result.values()
+            if isinstance(manager_info, dict)
+        )
+        sys.exit(0 if any_available else 1)
 
     except Exception as e:
         logger.error(f"Failed to list system package managers: {e}")
@@ -457,10 +463,11 @@ def tool_check(tool: str | None, verbose: bool) -> None:
 
         if tool:
             tool_info = _find_tool_info(tool)
-            if not tool_info:
+            if tool_info is None:
                 ezprinter.error(f"Unknown tool: {tool}")
                 sys.exit(1)
 
+            assert tool_info is not None
             language, tool_type = tool_info
             result = interface.show_tool_check(language, tool_type, tool, verbose)
             # Exit with appropriate code
@@ -468,6 +475,9 @@ def tool_check(tool: str | None, verbose: bool) -> None:
         else:
             # Check all tools - interface handles spinner + UI
             results = interface.check_all_tools()
+            if results is None:
+                results = {}
+            assert results is not None
             # Exit with appropriate code (success if all are successful)
             all_success = all(r.success for r in results.values())
             sys.exit(0 if all_success else 1)

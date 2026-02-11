@@ -17,10 +17,10 @@ from __future__ import annotations
 # Standard library imports
 from collections.abc import Callable
 from datetime import datetime
-from typing import Any
+from typing import Any, cast
 
 # Third-party imports
-from InquirerPy import inquirer
+from InquirerPy import inquirer  # pyright: ignore[reportPrivateImportUsage]
 from InquirerPy.base.control import Choice
 from prompt_toolkit.styles import Style
 
@@ -89,14 +89,25 @@ class InteractiveMenu:
 
         try:
             # Use InquirerPy for selection
-            choices_objects = [Choice(value=choice, name=choice) for choice in choices]
-            selected_text = inquirer.select(
-                message=self.title,
-                choices=choices_objects,
-                pointer=self.pointer,
-                instruction=self.instruction,
-                style=self.style,
-            ).execute()
+            choices_objects: list[Choice] = [
+                Choice(value=choice, name=choice) for choice in choices
+            ]
+
+            if self.instruction is None:
+                selected_text = inquirer.select(
+                    message=self.title,
+                    choices=choices_objects,
+                    pointer=self.pointer,
+                    style=cast(Any, self.style),
+                ).execute()  # pyright: ignore[reportPrivateImportUsage]
+            else:
+                selected_text = inquirer.select(
+                    message=self.title,
+                    choices=choices_objects,
+                    pointer=self.pointer,
+                    instruction=self.instruction,
+                    style=cast(Any, self.style),
+                ).execute()  # pyright: ignore[reportPrivateImportUsage]
 
             if selected_text is None:
                 return None
@@ -152,13 +163,21 @@ class InteractiveMenu:
 
         try:
             # Use InquirerPy for multiple selection
-            selected_items = inquirer.checkbox(
-                message=self.title,
-                choices=choices,
-                pointer=self.pointer,
-                instruction=self.instruction,
-                style=self.style,
-            ).execute()
+            if self.instruction is None:
+                selected_items = inquirer.checkbox(
+                    message=self.title,
+                    choices=choices,
+                    pointer=self.pointer,
+                    style=cast(Any, self.style),
+                ).execute()  # pyright: ignore[reportPrivateImportUsage]
+            else:
+                selected_items = inquirer.checkbox(
+                    message=self.title,
+                    choices=choices,
+                    pointer=self.pointer,
+                    instruction=self.instruction,
+                    style=cast(Any, self.style),
+                ).execute()  # pyright: ignore[reportPrivateImportUsage]
 
             if selected_items is None:
                 return None
@@ -185,8 +204,8 @@ class InteractiveMenu:
             result = inquirer.confirm(
                 message=message,
                 default=default_yes,
-                style=self.style,
-            ).execute()
+                style=cast(Any, self.style),
+            ).execute()  # pyright: ignore[reportPrivateImportUsage]
 
             return result if result is not None else False
 

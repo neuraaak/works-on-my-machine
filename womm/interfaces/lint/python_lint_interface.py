@@ -23,6 +23,10 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
+# Third-party imports
+from rich.progress import TaskID
+
+# Local imports
 from ...exceptions.common import ValidationServiceError
 from ...exceptions.lint import (
     LintServiceError,
@@ -32,8 +36,6 @@ from ...exceptions.lint import (
 )
 from ...services import FileScannerService, PythonLintService
 from ...shared.results.lint_results import LintSummaryResult, ToolStatusResult
-
-# Local imports
 from ...ui.common import ezprinter
 from ...ui.lint import display_lint_summary, display_tool_status
 from ...utils.lint import export_lint_results_to_json
@@ -142,8 +144,9 @@ class PythonLintInterface:
             with ezprinter.create_spinner_with_status(
                 "Scanning project for Python files..."
             ) as (progress, task):
+                task_id = TaskID(task)
                 progress.update(
-                    task,
+                    task_id,
                     description="Scanning project for Python files...",
                     status="Initializing...",
                 )
@@ -160,7 +163,6 @@ class PythonLintInterface:
                     raise PythonLintInterfaceError(
                         message=f"Failed to get target files: {e}",
                         operation="check_python_code",
-                        target_path=str(self.project_root),
                         details=f"Service exception: {type(e).__name__}",
                     ) from e
                 except Exception as e:
@@ -168,17 +170,18 @@ class PythonLintInterface:
                     raise PythonLintInterfaceError(
                         message=f"Failed to get target files: {e}",
                         operation="check_python_code",
-                        target_path=str(self.project_root),
                         details=f"Exception type: {type(e).__name__}",
                     ) from e
 
                 if not python_files:
-                    progress.update(task, status="No Python files found to check")
+                    progress.update(task_id, status="No Python files found to check")
                     return LintSummaryResult(
                         success=False, message="No Python files found to check"
                     )
 
-                progress.update(task, status=f"Found {len(python_files)} Python files")
+                progress.update(
+                    task_id, status=f"Found {len(python_files)} Python files"
+                )
 
                 try:
                     scan_result = self.file_scanner.get_scan_summary(python_files)
@@ -198,7 +201,7 @@ class PythonLintInterface:
                     logger.warning(f"Failed to get scan summary: {e}")
                     scan_summary = {"total_files": len(python_files), "errors": []}
 
-                progress.update(task, status="Running linting tools...")
+                progress.update(task_id, status="Running linting tools...")
 
                 target_dirs = [str(f) for f in python_files]
 
@@ -216,7 +219,6 @@ class PythonLintInterface:
                     raise PythonLintInterfaceError(
                         message=f"Failed to execute Python linting tools: {e}",
                         operation="check_python_code",
-                        target_path=str(self.project_root),
                         details=f"Service exception: {type(e).__name__}",
                     ) from e
                 except Exception as e:
@@ -224,11 +226,10 @@ class PythonLintInterface:
                     raise PythonLintInterfaceError(
                         message=f"Failed to execute Python linting tools: {e}",
                         operation="check_python_code",
-                        target_path=str(self.project_root),
                         details=f"Exception type: {type(e).__name__}",
                     ) from e
 
-                progress.update(task, status="Analysis completed")
+                progress.update(task_id, status="Analysis completed")
 
             # Calculate totals
             total_issues = sum(result.issues_found for result in tool_results.values())
@@ -265,7 +266,6 @@ class PythonLintInterface:
             raise PythonLintInterfaceError(
                 message=f"Python code checking failed: {e}",
                 operation="check_python_code",
-                target_path=str(self.project_root),
                 details=f"Exception type: {type(e).__name__}",
             ) from e
 
@@ -293,8 +293,9 @@ class PythonLintInterface:
             with ezprinter.create_spinner_with_status(
                 "Scanning project for Python files..."
             ) as (progress, task):
+                task_id = TaskID(task)
                 progress.update(
-                    task,
+                    task_id,
                     description="Scanning project for Python files...",
                     status="Initializing...",
                 )
@@ -311,7 +312,6 @@ class PythonLintInterface:
                     raise PythonLintInterfaceError(
                         message=f"Failed to get target files: {e}",
                         operation="fix_python_code",
-                        target_path=str(self.project_root),
                         details=f"Service exception: {type(e).__name__}",
                     ) from e
                 except Exception as e:
@@ -319,17 +319,18 @@ class PythonLintInterface:
                     raise PythonLintInterfaceError(
                         message=f"Failed to get target files: {e}",
                         operation="fix_python_code",
-                        target_path=str(self.project_root),
                         details=f"Exception type: {type(e).__name__}",
                     ) from e
 
                 if not python_files:
-                    progress.update(task, status="No Python files found to fix")
+                    progress.update(task_id, status="No Python files found to fix")
                     return LintSummaryResult(
                         success=False, message="No Python files found to fix"
                     )
 
-                progress.update(task, status=f"Found {len(python_files)} Python files")
+                progress.update(
+                    task_id, status=f"Found {len(python_files)} Python files"
+                )
 
                 try:
                     scan_result = self.file_scanner.get_scan_summary(python_files)
@@ -349,7 +350,7 @@ class PythonLintInterface:
                     logger.warning(f"Failed to get scan summary: {e}")
                     scan_summary = {"total_files": len(python_files), "errors": []}
 
-                progress.update(task, status="Running fixing tools...")
+                progress.update(task_id, status="Running fixing tools...")
 
                 target_dirs = [str(f) for f in python_files]
 
@@ -367,7 +368,6 @@ class PythonLintInterface:
                     raise PythonLintInterfaceError(
                         message=f"Failed to execute Python fixing tools: {e}",
                         operation="fix_python_code",
-                        target_path=str(self.project_root),
                         details=f"Service exception: {type(e).__name__}",
                     ) from e
                 except Exception as e:
@@ -375,11 +375,10 @@ class PythonLintInterface:
                     raise PythonLintInterfaceError(
                         message=f"Failed to execute Python fixing tools: {e}",
                         operation="fix_python_code",
-                        target_path=str(self.project_root),
                         details=f"Exception type: {type(e).__name__}",
                     ) from e
 
-                progress.update(task, status="Analysis completed")
+                progress.update(task_id, status="Analysis completed")
 
             # Calculate totals
             total_fixed = sum(result.fixed_issues for result in tool_results.values())
@@ -416,7 +415,6 @@ class PythonLintInterface:
             raise PythonLintInterfaceError(
                 message=f"Python code fixing failed: {e}",
                 operation="fix_python_code",
-                target_path=str(self.project_root),
                 details=f"Exception type: {type(e).__name__}",
             ) from e
 
