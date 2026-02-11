@@ -8,9 +8,10 @@
 [![License](https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge)](LICENSE)
 [![Status](https://img.shields.io/badge/Status-Beta-yellow.svg?style=for-the-badge)](https://github.com/neuraaak/works-on-my-machine)
 [![Tests](https://img.shields.io/badge/Tests-TODO-orange.svg?style=for-the-badge)](https://github.com/neuraaak/works-on-my-machine)
+
 <!-- [![Coverage](https://img.shields.io/badge/Coverage-29%25-yellow.svg?style=for-the-badge)](https://github.com/neuraaak/works-on-my-machine) -->
 
-![WOMM Logo](assets/logo-min.png)
+![WOMM Logo](docs/assets/logo-min.png)
 
 > **Universal development environment manager for Python and JavaScript**  
 > 🚀 **One command to rule them all** - Automatic setup, cross-platform configuration, professional tooling
@@ -172,19 +173,26 @@ womm context list          # List registered entries
 
 ## 📚 Documentation
 
-### **📖 [Complete Documentation](docs/README.md)**
+### **📖 [Complete Documentation](docs/index.md)**
 
-- **📋 [CLI Commands](docs/cli/README.md)** - All available commands and options
-- **🐍 [Python Guide](docs/cli/NEW.md)** - Python project creation and setup
-- **🟨 [JavaScript Guide](docs/cli/SETUP.md)** - JavaScript project setup
-- **📦 [Templates](docs/cli/TEMPLATES.md)** - Template management system
-- **🔧 [Installation](docs/cli/INSTALL.md)** - Installation and configuration
-- **🛠️ [System Tools](docs/cli/SYSTEM.md)** - System detection and management
+- **📋 [CLI Overview](docs/cli/index.md)** - All available commands and options
+- **🔧 [Commands Reference](docs/cli/commands.md)** - Common commands quick reference
+- **🆕 [Project Creation](docs/cli/NEW.md)** - Create Python, JavaScript, React, and Vue projects
+- **⚙️ [Project Setup](docs/cli/setup.md)** - Configure existing projects with professional tooling
+- **🔍 [Linting](docs/cli/lint.md)** - Code quality and linting tools
+- **📝 [Spell Check](docs/cli/spell.md)** - Spell checking and dictionaries
+- **📦 [Templates](docs/cli/templates.md)** - Template management system
+- **🔧 [Installation](docs/cli/install.md)** - Installation and configuration
+- **🛠️ [System Tools](docs/cli/system.md)** - System detection and management
+- **🖱️ [Context Menu](docs/cli/context.md)** - Windows context menu integration
 
-### **🔌 [API Reference](docs/api/README.md)**
+### **🔌 [API Reference](docs/api/index.md)**
 
-- **🏗️ [Architecture](docs/api/ARCHITECTURE.md)** - Technical architecture overview
-- **📦 [Templates API](docs/api/TEMPLATES_REFERENCE.md)** - Template system reference
+- **🏗️ [Architecture](docs/api/architecture.md)** - Dependency management architecture
+- **⚡ [CLI Architecture](docs/api/cli-architecture.md)** - Unified CLI design
+- **📦 [Templates API](docs/api/templates.md)** - Template system reference
+- **⚠️ [Exceptions](docs/api/exceptions.md)** - Error handling architecture
+- **📊 [Logging](docs/api/logging.md)** - Normalized logging patterns
 
 ---
 
