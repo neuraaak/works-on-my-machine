@@ -28,10 +28,14 @@ try:
 except ImportError:
     INQUIRERPY_AVAILABLE = False
 
-
+# Local imports
 from ...services.context import ContextParametersService, ContextType
 from ..common.ezpl_bridge import ezconsole, ezprinter
 from ..common.interactive_menu import InteractiveMenu
+
+# ///////////////////////////////////////////////////////////////
+# CLASSES
+# ///////////////////////////////////////////////////////////////
 
 
 class ContextMenuWizard:

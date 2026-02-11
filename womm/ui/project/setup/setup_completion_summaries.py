@@ -19,9 +19,15 @@ from __future__ import annotations
 # Standard library imports
 from pathlib import Path
 
+# Third-party imports
 from rich.panel import Panel
 
+# Local imports
 from ...common.ezpl_bridge import ezconsole
+
+# ///////////////////////////////////////////////////////////////
+# FUNCTIONS
+# ///////////////////////////////////////////////////////////////
 
 
 def print_setup_completion_summary(

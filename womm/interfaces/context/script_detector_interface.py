@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+# ///////////////////////////////////////////////////////////////
+# SCRIPT DETECTOR INTERFACE - Context Script Detection
+# Project: works-on-my-machine
+# ///////////////////////////////////////////////////////////////
+
 """
 Script type detection and configuration for context menu entries.
 

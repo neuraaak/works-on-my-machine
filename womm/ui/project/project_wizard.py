@@ -29,11 +29,15 @@ try:
 except ImportError:
     INQUIRERPY_AVAILABLE = False
 
-
+# Local imports
 from ...shared.configs.project import ProjectConfig, ProjectVariantConfig
 from ...utils.project import check_project_name, suggest_project_name
 from ..common.ezpl_bridge import ezconsole, ezprinter
 from ..common.interactive_menu import InteractiveMenu
+
+# ///////////////////////////////////////////////////////////////
+# CLASSES
+# ///////////////////////////////////////////////////////////////
 
 
 class ProjectWizard:

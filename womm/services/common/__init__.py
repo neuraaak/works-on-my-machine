@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 # ///////////////////////////////////////////////////////////////
-# SERVICES SPELL - Spell Checking Services
+# SERVICES COMMON - Common Services
 # Project: works-on-my-machine
 # ///////////////////////////////////////////////////////////////
 
 """
-Spell checking services for Works On My Machine.
+Common services for Works On My Machine.
 
-This package contains services for spell checking operations and dictionary management.
+This package contains shared services used across the application.
 """
 
 from __future__ import annotations

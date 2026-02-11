@@ -19,7 +19,12 @@ from __future__ import annotations
 # Standard library imports
 from pathlib import Path
 
+# Local imports
 from ...common.ezpl_bridge import ezconsole, ezprinter
+
+# ///////////////////////////////////////////////////////////////
+# FUNCTIONS
+# ///////////////////////////////////////////////////////////////
 
 
 def print_new_project_summary(

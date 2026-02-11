@@ -24,10 +24,13 @@ from pathlib import Path
 # Third-party imports
 from rich.panel import Panel
 
-from ..common.ezpl_bridge import ezconsole, ezprinter
-
 # Local imports
+from ..common.ezpl_bridge import ezconsole, ezprinter
 from ..common.prompts import confirm, prompt_choice
+
+# ///////////////////////////////////////////////////////////////
+# CLASSES
+# ///////////////////////////////////////////////////////////////
 
 
 class ContextMenuUI:

@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+# ///////////////////////////////////////////////////////////////
+# DEVELOPMENT TOOLS INTERFACE - Development Tools Management
+# Project: works-on-my-machine
+# ///////////////////////////////////////////////////////////////
+
 """
 Development Tools Manager for Works On My Machine.
 Manages language-specific development tools (black, isort, eslint, etc.).

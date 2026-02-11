@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+# ///////////////////////////////////////////////////////////////
+# CONTEXT REGISTRY INTERFACE - Context Menu Backup Management
+# Project: works-on-my-machine
+# ///////////////////////////////////////////////////////////////
+
 """
 Backup manager for context menu operations.
 
@@ -7,12 +12,19 @@ for Windows context menu entries, including creation, validation,
 listing, and cleanup of backup files.
 """
 
+from __future__ import annotations
+
+# ///////////////////////////////////////////////////////////////
+# IMPORTS
+# ///////////////////////////////////////////////////////////////
+# Standard library imports
 import json
 import logging
 import shutil
 from datetime import datetime, timedelta
 from pathlib import Path
 
+# Local imports
 from ...exceptions.context import (
     ContextUtilityError,
     MenuInterfaceError,

@@ -185,25 +185,25 @@ jobs:
   # Each job runs in parallel after auto-tag completes.
   # The called workflows must define `on: workflow_call:` with matching inputs.
 
-  # trigger-publish:
-  #   name: Trigger Publish
-  #   needs: auto-tag
-  #   if: needs.auto-tag.outputs.new_tag == 'true'
-  #   uses: ./.github/workflows/publish-pypi.yml
-  #   secrets: inherit
-  #   with:
-  #     version: ${{ needs.auto-tag.outputs.version }}
-  #     tag: ${{ needs.auto-tag.outputs.tag_name }}
+  trigger-publish:
+    name: Trigger Publish
+    needs: auto-tag
+    if: needs.auto-tag.outputs.new_tag == 'true'
+    uses: ./.github/workflows/publish-pypi.yml
+    secrets: inherit
+    with:
+      version: ${{ needs.auto-tag.outputs.version }}
+      tag: ${{ needs.auto-tag.outputs.tag_name }}
 
-  # trigger-release:
-  #   name: Trigger Release
-  #   needs: auto-tag
-  #   if: needs.auto-tag.outputs.new_tag == 'true'
-  #   uses: ./.github/workflows/release.yml
-  #   secrets: inherit
-  #   with:
-  #     version: ${{ needs.auto-tag.outputs.version }}
-  #     tag: ${{ needs.auto-tag.outputs.tag_name }}
+  trigger-release:
+    name: Trigger Release
+    needs: auto-tag
+    if: needs.auto-tag.outputs.new_tag == 'true'
+    uses: ./.github/workflows/release.yml
+    secrets: inherit
+    with:
+      version: ${{ needs.auto-tag.outputs.version }}
+      tag: ${{ needs.auto-tag.outputs.tag_name }}
 
   trigger-deploy-docs:
     name: Trigger Deploy Docs

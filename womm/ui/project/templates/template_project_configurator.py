@@ -16,8 +16,7 @@ from __future__ import annotations
 # ///////////////////////////////////////////////////////////////
 # IMPORTS
 # ///////////////////////////////////////////////////////////////
-# Standard library imports
-
+# Third-party imports
 try:
     from InquirerPy import inquirer
     from InquirerPy.base.control import Choice
@@ -26,7 +25,12 @@ try:
 except ImportError:
     INQUIRERPY_AVAILABLE = False
 
+# Local imports
 from ...common.ezpl_bridge import ezprinter
+
+# ///////////////////////////////////////////////////////////////
+# FUNCTIONS
+# ///////////////////////////////////////////////////////////////
 
 
 def configure_project_options(project_type: str) -> dict[str, str | bool | int]:
