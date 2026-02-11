@@ -431,9 +431,9 @@ class ContextRegistryService:
                 try:
                     entries_result = self.list_context_menu_entries(context_type)
                     if entries_result.success and entries_result.entries:
-                        backup_data["context_types"][context_type] = (
-                            entries_result.entries
-                        )
+                        backup_data["context_types"][
+                            context_type
+                        ] = entries_result.entries
                     else:
                         backup_data["context_types"][context_type] = []
                 except Exception as e:

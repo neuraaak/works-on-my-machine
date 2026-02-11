@@ -14,13 +14,62 @@ Creates a standalone executable using PyInstaller.
 # IMPORTS
 # ///////////////////////////////////////////////////////////////
 # Standard library imports
+import io
+import shutil
 import subprocess
 import sys
 from pathlib import Path
 
+# Third-party imports
+from rich.console import Console
+from rich.panel import Panel
+from rich.text import Text
+
+# ///////////////////////////////////////////////////////////////
+# VARIABLES
+# ///////////////////////////////////////////////////////////////
+
+project_name = "womm"
+installer_name = "womm-installer"
+
+# ///////////////////////////////////////////////////////////////
+# GLOBAL CONSOLE
+# ///////////////////////////////////////////////////////////////
+
+# Configure console with UTF-8 encoding for Windows emoji support
+# Force UTF-8 encoding on Windows
+if sys.platform == "win32":
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+console = Console(legacy_windows=False)
+
 # ///////////////////////////////////////////////////////////////
 # FUNCTIONS
 # ///////////////////////////////////////////////////////////////
+
+
+def run_command(command: list[str], description: str = "") -> bool:
+    """Run a command and return success status.
+
+    Args:
+        command: Command to execute as list of strings
+        description: Optional description for the command
+
+    Returns:
+        bool: True if command succeeded, False otherwise
+    """
+    if description:
+        console.print(f"[cyan]🔄[/cyan] {description}...")
+
+    try:
+        result = subprocess.run(command, check=True, capture_output=True, text=True)
+        if result.stdout:
+            console.print(result.stdout)
+        return True
+    except subprocess.CalledProcessError as e:
+        console.print(f"[red]❌[/red] Error: {e}")
+        if e.stderr:
+            console.print(f"[red]Error output:[/red] {e.stderr}")
+        return False
 
 
 def check_pyinstaller() -> bool:
@@ -32,14 +81,42 @@ def check_pyinstaller() -> bool:
     try:
         import PyInstaller
 
-        print(f"PyInstaller version: {PyInstaller.__version__}")
-        return True
-    except ImportError:
-        print("PyInstaller not found. Installing...")
-        subprocess.run(
-            [sys.executable, "-m", "pip", "install", "pyinstaller"], check=False
+        console.print(
+            f"[green]✅[/green] PyInstaller version: {PyInstaller.__version__}"
         )
         return True
+    except ImportError:
+        console.print("[yellow]⚠️[/yellow] PyInstaller not found. Installing...")
+        return run_command(
+            [sys.executable, "-m", "pip", "install", "pyinstaller"],
+            "Installing PyInstaller",
+        )
+
+
+def clean_build() -> None:
+    """Clean previous build artifacts."""
+    console.print("[yellow]🧹[/yellow] Cleaning previous build artifacts...")
+
+    project_root = Path(__file__).resolve().parents[2]
+
+    # Remove build directories
+    paths_to_clean = [
+        project_root / "build",
+        project_root / "dist",
+    ]
+
+    # Find and remove spec files
+    for spec_file in project_root.glob("*.spec"):
+        paths_to_clean.append(spec_file)
+
+    for path in paths_to_clean:
+        if path.exists():
+            if path.is_dir():
+                shutil.rmtree(path)
+            else:
+                path.unlink()
+
+    console.print("[green]✅[/green] Build artifacts cleaned")
 
 
 def create_spec_file() -> Path:
@@ -48,6 +125,8 @@ def create_spec_file() -> Path:
     Returns:
         Path: Path to the created spec file
     """
+    console.print("[cyan]📝[/cyan] Creating PyInstaller spec file...")
+
     spec_content = """# -*- mode: python ; coding: utf-8 -*-
 
 block_cipher = None
@@ -127,6 +206,7 @@ exe = EXE(
     with open(spec_path, "w", encoding="utf-8") as f:
         f.write(spec_content)
 
+    console.print(f"[green]✅[/green] Spec file created: {spec_path}")
     return spec_path
 
 
@@ -136,57 +216,71 @@ def build_executable() -> bool:
     Returns:
         bool: True if build succeeded, False otherwise
     """
-    print("Building WOMM installer...")
+    console.print("[cyan]🔨[/cyan] Building WOMM installer executable...")
 
     spec_path = create_spec_file()
 
-    result = subprocess.run(
+    # Build using PyInstaller
+    if not run_command(
         [sys.executable, "-m", "PyInstaller", str(spec_path), "--clean"],
-        check=False,
-        capture_output=True,
-        text=True,
-    )
-
-    if result.returncode != 0:
-        print("Build failed:")
-        print(result.stderr)
+        "Running PyInstaller",
+    ):
+        console.print("[red]❌[/red] Build failed")
         return False
 
-    print("Build successful!")
+    console.print("[green]✅[/green] Build successful!")
 
-    # Clean up
-    spec_path.unlink()
+    # Clean up spec file
+    if spec_path.exists():
+        spec_path.unlink()
+        console.print(f"[yellow]🧹[/yellow] Cleaned up spec file: {spec_path}")
 
     return True
 
 
-def test_executable() -> bool:
-    """Test the executable.
+def verify_executable() -> bool:
+    """Verify the built executable.
 
     Returns:
-        bool: True if test passed, False otherwise
+        bool: True if verification passed, False otherwise
     """
-    exe_path = Path("dist") / "womm-installer.exe"
+    console.print("[cyan]🔍[/cyan] Verifying executable...")
+
+    exe_path = Path("dist") / f"{installer_name}.exe"
 
     if not exe_path.exists():
-        print(f"Executable not found at {exe_path}")
+        console.print(f"[red]❌[/red] Executable not found at {exe_path}")
         return False
 
-    print(f"Testing: {exe_path}")
     size_mb = exe_path.stat().st_size / (1024 * 1024)
-    print(f"Size: {size_mb:.1f} MB")
+    console.print(f"[green]✅[/green] Executable found: {exe_path}")
+    console.print(f"[cyan]📦[/cyan] Size: {size_mb:.2f} MB")
 
+    # Test if executable can start
+    console.print("[cyan]🧪[/cyan] Testing executable startup...")
     try:
-        subprocess.run(
-            [str(exe_path)], check=False, capture_output=True, text=True, timeout=10
+        result = subprocess.run(
+            [str(exe_path), "--version"],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=10,
         )
-        print("Executable runs!")
-        return True
+        if result.returncode == 0 or "womm" in result.stdout.lower():
+            console.print("[green]✅[/green] Executable runs successfully!")
+            return True
+        else:
+            console.print(
+                "[yellow]⚠️[/yellow] Executable started but returned unexpected output"
+            )
+            return True
     except subprocess.TimeoutExpired:
-        print("Executable started (timeout expected)")
+        console.print(
+            "[yellow]⚠️[/yellow] Executable started (timeout expected for interactive mode)"
+        )
         return True
     except Exception as e:
-        print(f"Test failed: {e}")
+        console.print(f"[red]❌[/red] Test failed: {e}")
         return False
 
 
@@ -195,28 +289,64 @@ def test_executable() -> bool:
 # ///////////////////////////////////////////////////////////////
 
 
+def build_installer() -> bool:
+    """Build the installer executable.
+
+    Returns:
+        bool: True if build succeeded, False otherwise
+    """
+    console.print(
+        Panel.fit(
+            Text(f"🔨 Building {project_name} installer", style="bold cyan"),
+            border_style="cyan",
+        )
+    )
+
+    # Clean previous builds
+    clean_build()
+
+    # Check PyInstaller
+    if not check_pyinstaller():
+        console.print("[red]❌[/red] Failed to verify PyInstaller")
+        return False
+
+    # Build the executable
+    if not build_executable():
+        return False
+
+    # Verify the executable
+    if not verify_executable():
+        return False
+
+    console.print(
+        Panel.fit(
+            Text("✅ Installer built successfully", style="bold green"),
+            border_style="green",
+        )
+    )
+
+    # Show final location
+    exe_path = Path("dist") / f"{installer_name}.exe"
+    console.print(f"\n[cyan]📦[/cyan] Installer location: [bold]{exe_path}[/bold]")
+
+    return True
+
+
 def main() -> None:
     """Main function."""
-    if len(sys.argv) > 1 and sys.argv[1] == "build":
-        print("WOMM Installer Builder")
-        print("=" * 30)
+    if len(sys.argv) < 2:
+        console.print("[yellow]Usage:[/yellow] python build_exe.py [build]")
+        console.print("  [cyan]build[/cyan]        - Build the installer executable")
+        return
 
-        if not check_pyinstaller():
-            print("Failed to install PyInstaller")
+    action = sys.argv[1]
+
+    if action == "build":
+        if not build_installer():
             sys.exit(1)
-
-        if not build_executable():
-            print("Build failed")
-            sys.exit(1)
-
-        if not test_executable():
-            print("Test failed")
-            sys.exit(1)
-
-        print("\nBuild completed!")
-        print(f"Installer: {Path('dist') / 'womm-installer.exe'}")
     else:
-        print("Usage: python build_exe.py build")
+        console.print(f"[red]❌[/red] Unknown action: [bold]{action}[/bold]")
+        sys.exit(1)
 
 
 if __name__ == "__main__":

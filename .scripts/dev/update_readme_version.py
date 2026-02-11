@@ -1,24 +1,45 @@
 #!/usr/bin/env python3
 # ///////////////////////////////////////////////////////////////
 # UPDATE_README_VERSION - Sync README badge and pyproject.toml with __init__.py version
-# Project: works-on-my-machine
 # ///////////////////////////////////////////////////////////////
 
-"""Update the version badge in README.md and pyproject.toml from womm/__init__.py.
+"""Update the version badge in README.md and pyproject.toml from your-project/__init__.py.
 
 This keeps the visible version in sync with the canonical __version__ value
-defined in womm/__init__.py, which is the single source of truth.
+defined in your-project/__init__.py, which is the single source of truth.
 """
+
+from __future__ import annotations
 
 # ///////////////////////////////////////////////////////////////
 # IMPORTS
 # ///////////////////////////////////////////////////////////////
 # Standard library imports
-
-from __future__ import annotations
-
+import io
 import re
+import sys
 from pathlib import Path
+
+# Third-party imports
+from rich.console import Console
+from rich.panel import Panel
+from rich.text import Text
+
+# ///////////////////////////////////////////////////////////////
+# VARIABLES
+# ///////////////////////////////////////////////////////////////
+
+project_name = "womm"
+
+# ///////////////////////////////////////////////////////////////
+# GLOBAL CONSOLE
+# ///////////////////////////////////////////////////////////////
+
+# Configure console with UTF-8 encoding for Windows emoji support
+# Force UTF-8 encoding on Windows
+if sys.platform == "win32":
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+console = Console(legacy_windows=False)
 
 # ///////////////////////////////////////////////////////////////
 # PUBLIC METHODS
@@ -26,21 +47,27 @@ from pathlib import Path
 
 
 def read_version() -> str:
-    """Read version from womm/__init__.py __version__.
+    """Read version from {project_name}/__init__.py __version__.
 
     This is the canonical source of truth for the package version.
     """
     # Project root is the parent of the .scripts/dev directory
     project_root = Path(__file__).resolve().parents[2]
-    womm_init_path = project_root / "womm" / "__init__.py"
-    content = womm_init_path.read_text(encoding="utf-8")
+    init_path = project_root / project_name.lower() / "__init__.py"
+    content = init_path.read_text(encoding="utf-8")
 
     # Match __version__ = "X.Y.Z"
     match = re.search(r'__version__\s*=\s*["\']([^"\']+)["\']', content)
     if match:
-        return match.group(1)
+        version = match.group(1)
+        console.print(
+            f"[cyan]📖[/cyan] Found version: [bold green]{version}[/bold green]"
+        )
+        return version
 
-    raise RuntimeError("Unable to find __version__ in womm/__init__.py")
+    error_msg = f"Unable to find __version__ in {project_name}/__init__.py"
+    console.print(f"[red]❌[/red] {error_msg}")
+    raise RuntimeError(error_msg)
 
 
 def update_pyproject(version: str) -> None:
@@ -84,7 +111,9 @@ def update_pyproject(version: str) -> None:
         new_lines.append(line)
 
     pyproject_path.write_text("\n".join(new_lines), encoding="utf-8")
-    print(f"[VERSION] Updated pyproject.toml version to {version}")
+    console.print(
+        f"[green]✓[/green] Updated [cyan]pyproject.toml[/cyan] version to [bold]{version}[/bold]"
+    )
 
 
 def update_readme(version: str) -> None:
@@ -94,6 +123,8 @@ def update_readme(version: str) -> None:
     content = readme_path.read_text(encoding="utf-8")
 
     # Match shields.io badge: Version-X.Y.Z-orange.svg?style=for-the-badge
+    # Format: [![Version](https://img.shields.io/badge/Version-3.1.0-orange.svg?style=for-the-badge)]
+    # Pattern matches: Version-<version>-orange.svg?style=for-the-badge)
     pattern = r"(Version-)(\d+\.\d+\.\d+)(-orange\.svg\?style=for-the-badge\))"
     new_content, count = re.subn(
         pattern,
@@ -103,17 +134,50 @@ def update_readme(version: str) -> None:
     )
 
     if count == 0:
-        raise RuntimeError("Version badge not found in README.md")
+        error_msg = "Version badge not found in README.md"
+        console.print(f"[red]❌[/red] {error_msg}")
+        console.print(
+            "[yellow]💡[/yellow] Expected format: "
+            "[![Version](.../Version-X.Y.Z-orange.svg?style=for-the-badge)]"
+        )
+        raise RuntimeError(error_msg)
 
     readme_path.write_text(new_content, encoding="utf-8")
-    print(f"[VERSION] Updated README.md badge to version {version}")
+    console.print(
+        f"[green]✓[/green] Updated [cyan]README.md[/cyan] badge to version [bold]{version}[/bold]"
+    )
 
 
 def main() -> None:
     """Entry point."""
-    version = read_version()
-    update_pyproject(version)
-    update_readme(version)
+    title = Text("🔄 Version Synchronization", style="bold cyan")
+    subtitle = Text(f"{project_name} Project", style="dim")
+    console.print(Panel.fit(title, subtitle=subtitle, border_style="cyan"))
+    console.print()
+
+    try:
+        version = read_version()
+        update_pyproject(version)
+        update_readme(version)
+
+        console.print()
+        console.print(
+            Panel.fit(
+                f"[bold green]✓ Version synchronization completed![/bold green]\n"
+                f"[dim]All files updated to version {version}[/dim]",
+                border_style="green",
+            )
+        )
+    except (RuntimeError, FileNotFoundError) as e:
+        console.print()
+        console.print(
+            Panel.fit(
+                f"[bold red]❌ Version synchronization failed![/bold red]\n"
+                f"[red]{e!s}[/red]",
+                border_style="red",
+            )
+        )
+        sys.exit(1)
 
 
 # ///////////////////////////////////////////////////////////////

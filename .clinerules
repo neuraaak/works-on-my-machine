@@ -1,0 +1,454 @@
+# WOMM Project - Claude Code Instructions
+
+**Project**: Works On My Machine (WOMM) v3.2.1
+**Target**: Python 3.10+, JavaScript/TypeScript
+**License**: MIT
+
+## Overview
+
+WOMM is a universal development tool for Python and JavaScript that automates project initialization, dependency management, linting, spell checking, and Windows context menu configuration.
+
+## Core Instructions
+
+This project uses a comprehensive set of instructions organized in two locations:
+
+1. **`.cursor/rules/`** - Cursor IDE specific rules (MDC format)
+2. **`.github/instructions/`** - GitHub Copilot compatible instructions (Markdown format)
+
+Both directories contain identical content in different formats for maximum compatibility.
+
+---
+
+## 📁 Instruction Files Reference
+
+### 🧠 Core Reasoning & Cognitive Model
+
+**Location**:
+
+- [.cursor/rules/core/advanced-cognitive-conduct.mdc](.cursor/rules/core/advanced-cognitive-conduct.mdc)
+- [.github/instructions/core/advanced-cognitive-conduct.md](.github/instructions/core/advanced-cognitive-conduct.md)
+
+**Purpose**: Professional reasoning framework for senior-level technical decision-making
+
+**Key Principles**:
+
+- Critical thinking and bias recognition (confirmation, complexity, anchoring)
+- Senior colleague approach with technical integrity
+- Mandatory challenge framework before agreeing with approaches
+- System-level context analysis and modular architecture
+- Evidence-based decision making
+
+**Apply**: Always - guides all technical decisions
+
+---
+
+### 🏗️ WOMM Architecture Standards
+
+**Location**:
+
+- [.cursor/rules/project/womm-architecture-standards.mdc](.cursor/rules/project/womm-architecture-standards.mdc)
+- [.github/instructions/project/womm-architecture-standards.md](.github/instructions/project/womm-architecture-standards.md)
+
+**Purpose**: Core three-layer architecture and fundamental design patterns
+
+**Key Principles**:
+
+- Three-layer architecture: Commands → Interfaces → Services
+- Separation of concerns (UI/orchestration/business logic)
+- Two-level exception hierarchy per domain
+- Security-first design with SecurityValidatorService
+- Click CLI standards (MANDATORY help option: `@click.help_option("-h", "--help")`)
+
+**Apply**: All Python files in `womm/**/*.py`
+
+---
+
+### 🔧 Services & Interfaces Patterns
+
+**Location**:
+
+- [.cursor/rules/project/womm-services-interfaces-patterns.mdc](.cursor/rules/project/womm-services-interfaces-patterns.mdc)
+- [.github/instructions/project/womm-services-interfaces-patterns.md](.github/instructions/project/womm-services-interfaces-patterns.md)
+
+**Purpose**: Detailed implementation patterns for services and interfaces
+
+**Key Principles**:
+
+- Stateless service design
+- Lazy service initialization with `@property`
+- Exception wrapping (service → interface → command)
+- Result model returns
+- Complete type hints and docstrings
+
+**Apply**: `womm/services/**/*.py` and `womm/interfaces/**/*.py`
+
+---
+
+### 🛡️ Exceptions & Security Patterns
+
+**Location**:
+
+- [.cursor/rules/project/womm-exceptions-security-patterns.mdc](.cursor/rules/project/womm-exceptions-security-patterns.mdc)
+- [.github/instructions/project/womm-exceptions-security-patterns.md](.github/instructions/project/womm-exceptions-security-patterns.md)
+
+**Purpose**: Exception hierarchy and security validation patterns
+
+**Key Principles**:
+
+- Two-level exceptions: ServiceError + InterfaceError per domain
+- Five-layer security validation (whitelist, patterns, arguments, paths, permissions)
+- Exception chaining with `from e`
+- Structured exception attributes (message, operation, details)
+
+**Apply**: `womm/exceptions/**/*.py`, security-related services
+
+---
+
+### 🖥️ CLI & UI Patterns
+
+**Location**:
+
+- [.cursor/rules/project/womm-cli-ui-patterns.mdc](.cursor/rules/project/womm-cli-ui-patterns.mdc)
+- [.github/instructions/project/womm-cli-ui-patterns.md](.github/instructions/project/womm-cli-ui-patterns.md)
+
+**Purpose**: Click CLI commands and UI component standards
+
+**Key Principles**:
+
+- MANDATORY help option on all commands: `@click.help_option("-h", "--help")`
+- Standard exit codes (0=success, 1=failure, 2=unexpected)
+- EZPrinter for output (success, error, info, warning)
+- InquirerPy for user prompts
+- No business logic in commands
+
+**Apply**: `womm/commands/**/*.py` and `womm/ui/**/*.py`
+
+---
+
+### 🐍 Python Development Standards
+
+**Location**:
+
+- [.cursor/rules/languages/python/python-development-standards.mdc](.cursor/rules/languages/python/python-development-standards.mdc)
+- [.github/instructions/languages/python/python-development-standards.md](.github/instructions/languages/python/python-development-standards.md)
+
+**Purpose**: Modern Python 3.10+ development practices
+
+**Key Principles**:
+
+- Use `.venv` virtual environment always
+- Native type annotations (`list[str]`, `dict[str, int]`)
+- Modern union syntax (`int | str`, not `Union[int, str]`)
+- `ruff` for formatting and linting
+- `mypy` or `pyright` for type checking
+- 80-90% test coverage with `pytest`
+
+**Apply**: All Python files
+
+---
+
+### 🎨 Python Formatting Standards
+
+**Location**:
+
+- [.cursor/rules/languages/python/python-formatting-standards.mdc](.cursor/rules/languages/python/python-formatting-standards.mdc)
+- [.github/instructions/languages/python/python-formatting-standards.md](.github/instructions/languages/python/python-formatting-standards.md)
+
+**Purpose**: Consistent code formatting and style
+
+**Key Principles**:
+
+- 88 character line length
+- Google-style docstrings
+- Alphabetical imports with isort groups
+- Type hints on all public methods
+- `from __future__ import annotations`
+
+**Apply**: All Python files
+
+---
+
+### 📜 JavaScript Development Standards
+
+**Location**:
+
+- [.cursor/rules/languages/javascript/javascript-development-standards.mdc](.cursor/rules/languages/javascript/javascript-development-standards.mdc)
+- [.github/instructions/languages/javascript/javascript-development-standards.md](.github/instructions/languages/javascript/javascript-development-standards.md)
+
+**Purpose**: Modern JavaScript/TypeScript practices
+
+**Key Principles**:
+
+- TypeScript strict mode
+- ESM modules
+- Modern async/await patterns
+- ESLint + Prettier
+- Vitest or Jest for testing
+
+**Apply**: All JavaScript/TypeScript files
+
+---
+
+### 🎨 JavaScript Formatting Standards
+
+**Location**:
+
+- [.cursor/rules/languages/javascript/javascript-formatting-standards.mdc](.cursor/rules/languages/javascript/javascript-formatting-standards.mdc)
+- [.github/instructions/languages/javascript/javascript-formatting-standards.md](.github/instructions/languages/javascript/javascript-formatting-standards.md)
+
+**Purpose**: Consistent JavaScript/TypeScript formatting
+
+**Key Principles**:
+
+- 100 character line length
+- Semicolons required
+- Single quotes for strings
+- Trailing commas in multiline
+
+**Apply**: All JavaScript/TypeScript files
+
+---
+
+## ⚡ Critical Requirements (MUST KNOW)
+
+### 1. MANDATORY Help Option on All Click Commands
+
+```python
+# ❌ WRONG
+@click.command()
+def my_command():
+    pass
+
+# ✅ RIGHT
+@click.command()
+@click.help_option("-h", "--help")  # ← REQUIRED!
+def my_command():
+    pass
+```
+
+### 2. Exception Pattern
+
+```python
+# Services raise service exceptions
+raise ProjectServiceError(
+    message="Operation failed",
+    operation="operation_name",
+    details="debug info"
+) from e
+
+# Interfaces wrap in interface exceptions
+raise ProjectInterfaceError(
+    message=f"Failed: {e}",
+    operation="operation",
+) from e
+```
+
+### 3. Type Hints (Python 3.10+ syntax)
+
+```python
+# ✅ CORRECT
+def process_data(self, data: str, count: int) -> ProcessResult:
+    """Process data and return result."""
+    ...
+
+# Use modern union syntax
+def get_value(self) -> str | None:
+    ...
+```
+
+### 4. Exit Codes
+
+```python
+sys.exit(0)  # Success
+sys.exit(1)  # Expected failure
+sys.exit(2)  # Unexpected error (optional)
+```
+
+---
+
+## 🎯 Quick Task Reference
+
+### Adding a New Service
+
+1. Read: [womm-services-interfaces-patterns.mdc](.cursor/rules/project/womm-services-interfaces-patterns.mdc)
+2. Create exceptions in `womm/exceptions/[domain]/`
+3. Create service in `womm/services/[domain]/`
+4. Follow stateless design pattern
+5. Raise domain-specific service exceptions
+
+### Adding a New Interface
+
+1. Read: [womm-services-interfaces-patterns.mdc](.cursor/rules/project/womm-services-interfaces-patterns.mdc)
+2. Create interface in `womm/interfaces/[domain]/`
+3. Lazy-load services with `@property`
+4. Wrap service exceptions in interface exceptions
+5. Return result models
+
+### Adding a New CLI Command
+
+1. Read: [womm-cli-ui-patterns.mdc](.cursor/rules/project/womm-cli-ui-patterns.mdc)
+2. Create command in `womm/commands/[domain]/`
+3. MUST include `@click.help_option("-h", "--help")`
+4. Use EZPrinter for output
+5. No business logic - delegate to interfaces
+
+### Fixing a Security Issue
+
+1. Read: [womm-exceptions-security-patterns.mdc](.cursor/rules/project/womm-exceptions-security-patterns.mdc)
+2. Review SecurityValidatorService usage
+3. Check five validation layers
+4. Use whitelist-based validation
+5. Test with security patterns
+
+---
+
+## 📚 Quick Links
+
+### Project Documentation
+
+- [Architecture Diagram](docs/diagrams/architecture-globale.md)
+- [Exception Architecture](docs/EXCEPTION_ARCHITECTURE.md)
+- [CLI Architecture](docs/api/CLI_ARCHITECTURE.md)
+- [Dependency Architecture](docs/api/ARCHITECTURE.md)
+
+### Rule Summaries (in .cursor/rules/project/)
+
+- [QUICKSTART.md](.cursor/rules/project/QUICKSTART.md) - 5-minute setup guide
+- [INDEX.md](.cursor/rules/project/INDEX.md) - Complete navigation index
+- [WOMM-RULES-SUMMARY.md](.cursor/rules/project/WOMM-RULES-SUMMARY.md) - Quick reference
+
+---
+
+## 🚀 Development Workflow
+
+### Before Starting
+
+1. Read relevant instruction files for your task
+2. Review existing code that follows patterns
+3. Understand the three-layer architecture
+4. Check exception domains for your feature
+
+### During Development
+
+1. Follow templates from instruction files
+2. Include complete type hints (Python 3.10+ syntax)
+3. Add comprehensive docstrings (Google-style)
+4. Preserve exception chains with `from e`
+5. Use domain-specific exceptions
+
+### Before Committing
+
+- [ ] All type hints present
+- [ ] All docstrings complete
+- [ ] Help option on all Click commands (if applicable)
+- [ ] Services raise service exceptions
+- [ ] Interfaces wrap in interface exceptions
+- [ ] Exception chains preserved (`from e`)
+- [ ] No business logic in commands
+- [ ] No UI code in services
+- [ ] Security validation for external commands
+- [ ] Tests written and passing
+
+---
+
+## 🔍 Common Patterns
+
+### Service Pattern
+
+```python
+class DomainService:
+    def __init__(self):
+        self.logger = logging.getLogger(__name__)
+
+    def operation(self, param: str) -> Result:
+        try:
+            result = self._do_work(param)
+            return Result(success=True, data=result)
+        except Exception as e:
+            raise DomainServiceError(
+                message=f"Operation failed: {e}",
+                operation="operation",
+                details=f"Exception: {type(e).__name__}",
+            ) from e
+```
+
+### Interface Pattern
+
+```python
+class DomainInterface:
+    def __init__(self):
+        self._service = None
+
+    @property
+    def service(self) -> DomainService:
+        if self._service is None:
+            self._service = DomainService()
+        return self._service
+
+    def operation(self, param: str) -> Result:
+        try:
+            return self.service.operation(param)
+        except DomainServiceError as e:
+            raise DomainInterfaceError(
+                message=f"Operation failed: {e}",
+                operation="operation",
+            ) from e
+```
+
+### Command Pattern
+
+```python
+@click.command()
+@click.help_option("-h", "--help")  # ← MANDATORY
+@click.argument("param")
+def command(param: str) -> None:
+    """Command description."""
+    try:
+        interface = DomainInterface()
+        result = interface.operation(param)
+        if result.success:
+            ezprinter.success(result.message)
+            sys.exit(0)
+        else:
+            ezprinter.error(result.message)
+            sys.exit(1)
+    except DomainInterfaceError as e:
+        ezprinter.error(f"Failed: {e}")
+        sys.exit(1)
+```
+
+---
+
+## 🚫 Anti-Patterns to Avoid
+
+- ❌ Business logic in commands
+- ❌ UI code in services
+- ❌ Skip help option on commands
+- ❌ Missing type hints
+- ❌ Generic `Exception` instead of domain exception
+- ❌ Not wrapping service exceptions in interfaces
+- ❌ Using `print()` instead of `ezprinter`
+- ❌ Not preserving exception chains (missing `from e`)
+- ❌ Old-style type hints (`Union[int, str]` instead of `int | str`)
+- ❌ Installing packages globally instead of in `.venv`
+
+---
+
+## 📞 Questions?
+
+For questions about specific topics, consult the relevant instruction file:
+
+| Topic                | File                                                                                                            |
+| -------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Architecture         | [womm-architecture-standards.mdc](.cursor/rules/project/womm-architecture-standards.mdc)                        |
+| Services/Interfaces  | [womm-services-interfaces-patterns.mdc](.cursor/rules/project/womm-services-interfaces-patterns.mdc)            |
+| Exceptions/Security  | [womm-exceptions-security-patterns.mdc](.cursor/rules/project/womm-exceptions-security-patterns.mdc)            |
+| CLI/UI               | [womm-cli-ui-patterns.mdc](.cursor/rules/project/womm-cli-ui-patterns.mdc)                                      |
+| Python Standards     | [python-development-standards.mdc](.cursor/rules/languages/python/python-development-standards.mdc)             |
+| JavaScript Standards | [javascript-development-standards.mdc](.cursor/rules/languages/javascript/javascript-development-standards.mdc) |
+
+---
+
+**Last Updated**: 2026-01-13
+**WOMM Version**: 3.2.1
+**Status**: ✅ All instructions consolidated and ready to use

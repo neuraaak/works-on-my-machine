@@ -1,36 +1,153 @@
 name: Build and Release
 
 on:
-  push:
-    tags:
-      - "v*-latest"
   workflow_dispatch:
     inputs:
-      tag:
-        description: "Tag name to release (e.g. v1-latest)"
+      skip_tests:
+        description: "Skip tests before releasing (not recommended)"
+        required: false
+        default: false
+        type: boolean
+  workflow_call:
+    inputs:
+      version:
         required: true
-        default: "v1-latest"
+        type: string
+      tag:
+        required: true
+        type: string
 
 permissions:
   contents: write
   packages: write
 
 env:
-  RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+  PACKAGE_NAME: works-on-my-machine
 
 jobs:
-  build-and-release:
+  # Job de validation et tests avant build
+  validate:
+    name: Validate Release
     runs-on: windows-latest
-    if: true
+    outputs:
+      version: ${{ steps.extract_pyproject_version.outputs.version }}
+      tag_name: ${{ steps.extract_tag.outputs.tag_name }}
+      tag_version: ${{ steps.extract_tag.outputs.tag_version }}
+      version_match: ${{ steps.check_version.outputs.match }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Nécessaire pour accéder aux tags
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Fetch all branches and tags
+        run: |
+          git fetch --all --tags --prune
+          echo "📋 Available tags:"
+          git tag -l
+
+      - name: Extract tag information
+        id: extract_tag
+        shell: bash
+        run: |
+          if [ -n "${{ inputs.tag }}" ]; then
+            # Appelé via workflow_call depuis auto-tag
+            TAG_NAME="${{ inputs.tag }}"
+            TAG_VERSION="${{ inputs.version }}"
+          else
+            # En mode manuel (workflow_dispatch), utiliser le dernier tag -latest ou pyproject.toml
+            TAG_NAME=$(git tag -l "v*-latest" --sort=-version:refname | head -n 1)
+            if [ -n "$TAG_NAME" ]; then
+              # Extraire la version du tag (ex: v1-latest -> utiliser pyproject.toml)
+              TAG_VERSION=$(grep -E '^version\s*=\s*"' pyproject.toml | head -1 | sed 's/.*version\s*=\s*"\([^"]*\)".*/\1/')
+            else
+              # Pas de tag -latest trouvé, utiliser pyproject.toml et créer un tag
+              TAG_VERSION=$(grep -E '^version\s*=\s*"' pyproject.toml | head -1 | sed 's/.*version\s*=\s*"\([^"]*\)".*/\1/')
+              TAG_NAME="v${TAG_VERSION%%.*}-latest"
+            fi
+          fi
+          echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
+          echo "tag_version=$TAG_VERSION" >> $GITHUB_OUTPUT
+          echo "📦 Tag name: $TAG_NAME"
+          echo "📦 Tag version: $TAG_VERSION"
+
+      - name: Extract version from pyproject.toml
+        id: extract_pyproject_version
+        shell: bash
+        run: |
+          VERSION=$(grep -E '^version\s*=\s*"' pyproject.toml | head -1 | sed 's/.*version\s*=\s*"\([^"]*\)".*/\1/')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "📋 pyproject.toml version: $VERSION"
+
+      - name: Check version consistency
+        id: check_version
+        shell: bash
+        run: |
+          TAG_VERSION="${{ steps.extract_tag.outputs.tag_version }}"
+          PYPROJECT_VERSION="${{ steps.extract_pyproject_version.outputs.version }}"
+
+          if [ "$TAG_VERSION" != "$PYPROJECT_VERSION" ]; then
+            echo "❌ Version mismatch!"
+            echo "   Tag version: $TAG_VERSION"
+            echo "   pyproject.toml version: $PYPROJECT_VERSION"
+            echo "match=false" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+          echo "✅ Version consistency check passed"
+          echo "match=true" >> $GITHUB_OUTPUT
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Run tests
+        if: github.event_name != 'workflow_dispatch' || !github.event.inputs.skip_tests
+        run: |
+          echo "🧪 Running test suite..."
+          pytest tests/ -v --tb=short
+
+      - name: Verify build script
+        run: |
+          echo "🔍 Verifying build script exists..."
+          if (Test-Path ".scripts/build/build_exe.py") {
+            echo "✅ Build script found"
+          } else {
+            echo "❌ Build script not found"
+            exit 1
+          }
+
+  # Job de build et release
+  build-and-release:
+    name: Build and Release
+    needs: validate
+    runs-on: windows-latest
+    if: needs.validate.outputs.version_match == 'true'
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          cache: "pip"
+
+      - name: Clean previous builds
+        run: |
+          echo "🧹 Cleaning previous build artifacts..."
+          if (Test-Path "build") { Remove-Item -Recurse -Force "build" }
+          if (Test-Path "dist") { Remove-Item -Recurse -Force "dist" }
+          Get-ChildItem -Filter "*.egg-info" -Recurse | Remove-Item -Recurse -Force
 
       - name: Install dependencies
         run: |
@@ -42,19 +159,36 @@ jobs:
 
       - name: Build executable
         run: |
+          echo "🔨 Building executable..."
           python .scripts/build/build_exe.py build
+          echo "📦 Build artifacts:"
+          Get-ChildItem -Path dist -Recurse
+
+      - name: Verify executable
+        run: |
+          echo "🔍 Verifying executable exists..."
+          if (Test-Path "dist/womm-installer.exe") {
+            $size = (Get-Item "dist/womm-installer.exe").Length / 1MB
+            echo "✅ Executable built successfully"
+            echo "📦 Size: $([math]::Round($size, 2)) MB"
+          } else {
+            echo "❌ Executable not found"
+            exit 1
+          }
 
       - name: Create or Update Release
         id: create_release
         uses: ncipollo/release-action@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          tag: ${{ env.RELEASE_TAG }}
-          name: WOMM ${{ env.RELEASE_TAG }} - Standalone Installer
+          tag: ${{ needs.validate.outputs.tag_name }}
+          name: WOMM ${{ needs.validate.outputs.tag_name }} - Standalone Installer
           body: |
             ## WOMM Standalone Installer
 
             This release includes the standalone installer executable for Windows.
+
+            **Version:** `${{ needs.validate.outputs.version }}`
 
             ### Download
             - **womm-installer.exe** - Windows installer (no Python required)
@@ -74,6 +208,9 @@ jobs:
             cd works-on-my-machine
             python womm.py install
             ```
+
+            ---
+            🤖 Generated automatically by GitHub Actions
           draft: false
           prerelease: false
           allowUpdates: true
@@ -84,5 +221,8 @@ jobs:
       - name: Show Release Info
         run: |
           echo "✅ Release created successfully!"
+          echo "📦 Package: ${{ env.PACKAGE_NAME }}"
+          echo "🏷️  Version: ${{ needs.validate.outputs.version }}"
+          echo "🏷️  Tag: ${{ needs.validate.outputs.tag_name }}"
           echo "📦 Asset uploaded: womm-installer.exe"
           echo "🔗 Release URL: ${{ steps.create_release.outputs.html_url }}"

@@ -1,37 +1,122 @@
+# ///////////////////////////////////////////////////////////////
+# CONFTEST - Pytest configuration and fixtures
+# Project: Works On My Machine
+# ///////////////////////////////////////////////////////////////
+
 """
 Pytest configuration and shared fixtures for Works On My Machine tests.
+
+This module provides common fixtures and pytest configuration used across
+all test suites (unit, integration) for consistent test execution.
 """
 
-import os
-import tempfile
-from pathlib import Path
-from unittest.mock import Mock, patch
+from __future__ import annotations
 
+# ///////////////////////////////////////////////////////////////
+# IMPORTS
+# ///////////////////////////////////////////////////////////////
+# Standard library imports
+import tempfile
+from collections.abc import Generator
+from pathlib import Path
+
+# Third-party imports
 import pytest
+
+# ///////////////////////////////////////////////////////////////
+# FIXTURES - TEMPORARY RESOURCES
+# ///////////////////////////////////////////////////////////////
+
+
+@pytest.fixture
+def temp_dir() -> Generator[Path, None, None]:
+    """
+    Create a temporary directory for tests.
+
+    Automatically creates and cleans up a temporary directory for each test,
+    ensuring isolation and cleanup between tests.
+
+    Yields:
+        Path: Temporary directory path (created and accessible during test)
+
+    Example:
+        >>> def test_with_temp_dir(temp_dir):
+        ...     test_file = temp_dir / "test.txt"
+        ...     test_file.write_text("content")
+        ...     assert test_file.exists()
+    """
+    with tempfile.TemporaryDirectory() as tmp:
+        yield Path(tmp)
+
+
+@pytest.fixture
+def temp_file(temp_dir: Path) -> Path:
+    """
+    Provide a temporary file path inside the temporary directory.
+
+    The file path is created but the file itself is not created automatically.
+    Tests can decide how to use the path (create the file, or just use the path).
+
+    Args:
+        temp_dir: Temporary directory fixture (injected by pytest)
+
+    Returns:
+        Path: Path to a temporary file (not yet created)
+
+    Example:
+        >>> def test_temp_file(temp_file):
+        ...     # File doesn't exist yet
+        ...     assert not temp_file.exists()
+        ...     # Test can create it
+        ...     temp_file.write_text("test")
+        ...     assert temp_file.exists()
+    """
+    return temp_dir / "temp_file"
+
+
+# ///////////////////////////////////////////////////////////////
+# FIXTURES - PROJECT RESOURCES
+# ///////////////////////////////////////////////////////////////
 
 
 @pytest.fixture(scope="session")
-def test_root():
-    """Root directory for all tests."""
+def test_root() -> Path:
+    """
+    Root directory for all tests.
+
+    Returns:
+        Path: Path to tests directory
+    """
     return Path(__file__).parent
 
 
 @pytest.fixture(scope="session")
-def project_root():
-    """Root directory of the project."""
+def project_root() -> Path:
+    """
+    Root directory of the project.
+
+    Returns:
+        Path: Path to project root directory
+    """
     return Path(__file__).parent.parent
 
 
 @pytest.fixture
-def temp_dir():
-    """Create a temporary directory for tests."""
-    with tempfile.TemporaryDirectory() as temp_dir:
-        yield Path(temp_dir)
+def temp_project_dir(temp_dir: Path) -> Generator[Path, None, None]:
+    """
+    Create a temporary project directory with basic structure.
 
+    Args:
+        temp_dir: Temporary directory fixture
 
-@pytest.fixture
-def temp_project_dir(temp_dir):
-    """Create a temporary project directory with basic structure."""
+    Yields:
+        Path: Temporary project directory path
+
+    Example:
+        >>> def test_project_structure(temp_project_dir):
+        ...     assert (temp_project_dir / "src").exists()
+        ...     assert (temp_project_dir / "tests").exists()
+    """
     project_dir = temp_dir / "test-project"
     project_dir.mkdir()
 
@@ -49,129 +134,26 @@ def temp_project_dir(temp_dir):
     yield project_dir
 
 
-@pytest.fixture
-def mock_cli_manager():
-    """Mock CLI manager for testing."""
-    with patch("shared.cli_manager.run_command") as mock_run:
-        mock_run.return_value = Mock(
-            success=True,
-            returncode=0,
-            stdout="Mock output",
-            stderr="",
-            command=["mock", "command"],
-        )
-        yield mock_run
+# ///////////////////////////////////////////////////////////////
+# FIXTURES - SAMPLE PROJECTS
+# ///////////////////////////////////////////////////////////////
 
 
 @pytest.fixture
-def mock_secure_cli_manager():
-    """Mock secure CLI manager for testing."""
-    with patch("shared.secure_cli_manager.run_secure_command") as mock_run:
-        mock_run.return_value = Mock(
-            success=True,
-            security_validated=True,
-            returncode=0,
-            stdout="Mock secure output",
-            stderr="",
-            command=["mock", "secure", "command"],
-            execution_time=0.1,
-        )
-        yield mock_run
+def sample_python_project(temp_dir: Path) -> Generator[Path, None, None]:
+    """
+    Create a sample Python project for testing.
 
+    Args:
+        temp_dir: Temporary directory fixture
 
-@pytest.fixture
-def mock_subprocess():
-    """Mock subprocess for testing command execution."""
-    with patch("subprocess.run") as mock_run:
-        mock_run.return_value = Mock(
-            returncode=0, stdout="Mock subprocess output", stderr=""
-        )
-        yield mock_run
+    Yields:
+        Path: Sample Python project directory
 
-
-@pytest.fixture
-def mock_platform():
-    """Mock platform for testing cross-platform functionality."""
-    with patch("platform.system") as mock_system:
-        mock_system.return_value = "Linux"
-        yield mock_system
-
-
-@pytest.fixture
-def mock_shutil():
-    """Mock shutil for testing file operations."""
-    with patch("shutil.which") as mock_which:
-        mock_which.return_value = "/usr/bin/mock"
-        yield mock_which
-
-
-@pytest.fixture
-def mock_pathlib():
-    """Mock pathlib for testing path operations."""
-    with patch("pathlib.Path") as mock_path:
-        mock_path.return_value = Mock(
-            exists=lambda: True,
-            is_file=lambda: True,
-            is_dir=lambda: False,
-            parent=Mock(),
-            name="mock_file.py",
-            suffix=".py",
-            resolve=lambda: Mock(),
-        )
-        yield mock_path
-
-
-@pytest.fixture
-def mock_click():
-    """Mock click for testing CLI commands."""
-    with patch("click.echo") as mock_echo, patch("click.Context") as mock_context:
-        mock_context.return_value = Mock()
-        yield mock_echo
-
-
-@pytest.fixture
-def mock_winreg():
-    """Mock winreg for testing Windows registry operations."""
-    with patch("winreg.CreateKey") as mock_create:
-        with patch("winreg.SetValueEx") as mock_set:
-            with patch("winreg.DeleteKey") as mock_delete:
-                mock_create.return_value = Mock()
-                mock_set.return_value = None
-                mock_delete.return_value = None
-                yield {"create": mock_create, "set": mock_set, "delete": mock_delete}
-
-
-@pytest.fixture
-def mock_urllib():
-    """Mock urllib for testing download operations."""
-    with patch("urllib.request.urlopen") as mock_urlopen:
-        mock_urlopen.return_value = Mock(
-            read=lambda: b"Mock downloaded content", close=lambda: None
-        )
-        yield mock_urlopen
-
-
-@pytest.fixture
-def mock_json():
-    """Mock json for testing JSON operations."""
-    with patch("json.dump") as mock_dump, patch("json.load") as mock_load:
-        mock_dump.return_value = None
-        mock_load.return_value = {"mock": "data"}
-        yield {"dump": mock_dump, "load": mock_load}
-
-
-@pytest.fixture
-def mock_logging():
-    """Mock logging for testing log operations."""
-    with patch("logging.getLogger") as mock_get_logger:
-        mock_logger = Mock()
-        mock_get_logger.return_value = mock_logger
-        yield mock_logger
-
-
-@pytest.fixture
-def sample_python_project(temp_dir):
-    """Create a sample Python project for testing."""
+    Example:
+        >>> def test_python_setup(sample_python_project):
+        ...     assert (sample_python_project / "pyproject.toml").exists()
+    """
     project_dir = temp_dir / "sample-python-project"
     project_dir.mkdir()
 
@@ -182,42 +164,48 @@ def sample_python_project(temp_dir):
 
     # Create Python files
     (project_dir / "src" / "__init__.py").touch()
-    (project_dir / "src" / "main.py").write_text(
-        """
+    (project_dir / "src" / "main.py").write_text("""
 def hello_world():
     return "Hello, World!"
 
 if __name__ == "__main__":
     print(hello_world())
-"""
-    )
+""")
 
     (project_dir / "tests" / "__init__.py").touch()
-    (project_dir / "tests" / "test_main.py").write_text(
-        """
+    (project_dir / "tests" / "test_main.py").write_text("""
 import pytest
 from src.main import hello_world
 
 def test_hello_world():
     assert hello_world() == "Hello, World!"
-"""
-    )
+""")
 
     # Create configuration files
-    (project_dir / "pyproject.toml").write_text(
-        """
+    (project_dir / "pyproject.toml").write_text("""
 [project]
 name = "sample-python-project"
 version = "0.1.0"
-"""
-    )
+""")
 
     yield project_dir
 
 
 @pytest.fixture
-def sample_javascript_project(temp_dir):
-    """Create a sample JavaScript project for testing."""
+def sample_javascript_project(temp_dir: Path) -> Generator[Path, None, None]:
+    """
+    Create a sample JavaScript project for testing.
+
+    Args:
+        temp_dir: Temporary directory fixture
+
+    Yields:
+        Path: Sample JavaScript project directory
+
+    Example:
+        >>> def test_js_setup(sample_javascript_project):
+        ...     assert (sample_javascript_project / "package.json").exists()
+    """
     project_dir = temp_dir / "sample-js-project"
     project_dir.mkdir()
 
@@ -226,29 +214,24 @@ def sample_javascript_project(temp_dir):
     (project_dir / "tests").mkdir()
 
     # Create JavaScript files
-    (project_dir / "src" / "index.js").write_text(
-        """
+    (project_dir / "src" / "index.js").write_text("""
 function helloWorld() {
     return "Hello, World!";
 }
 
 module.exports = { helloWorld };
-"""
-    )
+""")
 
-    (project_dir / "tests" / "index.test.js").write_text(
-        """
+    (project_dir / "tests" / "index.test.js").write_text("""
 const { helloWorld } = require('../src/index.js');
 
 test('helloWorld returns correct string', () => {
     expect(helloWorld()).toBe('Hello, World!');
 });
-"""
-    )
+""")
 
     # Create package.json
-    (project_dir / "package.json").write_text(
-        """
+    (project_dir / "package.json").write_text("""
 {
     "name": "sample-js-project",
     "version": "1.0.0",
@@ -257,127 +240,24 @@ test('helloWorld returns correct string', () => {
         "test": "jest"
     }
 }
-"""
-    )
+""")
 
     yield project_dir
 
 
-@pytest.fixture
-def mock_environment():
-    """Mock environment variables for testing."""
-    original_env = os.environ.copy()
-
-    # Set test environment variables
-    test_env = {
-        "HOME": "/home/testuser",
-        "USER": "testuser",
-        "PATH": "/usr/bin:/usr/local/bin",
-        "PYTHONPATH": "/usr/lib/python3.8",
-        "NODE_PATH": "/usr/lib/node_modules",
-    }
-
-    os.environ.update(test_env)
-
-    yield test_env
-
-    # Restore original environment
-    os.environ.clear()
-    os.environ.update(original_env)
+# ///////////////////////////////////////////////////////////////
+# FIXTURES - TEST DATA
+# ///////////////////////////////////////////////////////////////
 
 
 @pytest.fixture
-def mock_file_system(temp_dir):
-    """Mock file system operations for testing."""
-    with patch("pathlib.Path.exists") as mock_exists:
-        with patch("pathlib.Path.is_file") as mock_is_file:
-            with patch("pathlib.Path.is_dir") as mock_is_dir:
-                with patch("pathlib.Path.mkdir") as mock_mkdir:
-                    with patch("pathlib.Path.write_text") as mock_write:
-                        with patch("pathlib.Path.read_text") as mock_read:
-                            mock_exists.return_value = True
-                            mock_is_file.return_value = True
-                            mock_is_dir.return_value = False
-                            mock_mkdir.return_value = None
-                            mock_write.return_value = None
-                            mock_read.return_value = "Mock file content"
+def sample_project_names() -> list[str]:
+    """
+    Sample valid project names for testing validation.
 
-                            yield {
-                                "exists": mock_exists,
-                                "is_file": mock_is_file,
-                                "is_dir": mock_is_dir,
-                                "mkdir": mock_mkdir,
-                                "write_text": mock_write,
-                                "read_text": mock_read,
-                            }
-
-
-@pytest.fixture
-def mock_tools():
-    """Mock development tools for testing."""
-    tools = {
-        "python": "/usr/bin/python3",
-        "node": "/usr/bin/node",
-        "npm": "/usr/bin/npm",
-        "git": "/usr/bin/git",
-        "black": "/usr/local/bin/black",
-        "flake8": "/usr/local/bin/flake8",
-        "eslint": "/usr/local/bin/eslint",
-        "prettier": "/usr/local/bin/prettier",
-    }
-
-    with patch("shutil.which") as mock_which:
-
-        def which_side_effect(tool):
-            return tools.get(tool)
-
-        mock_which.side_effect = which_side_effect
-        yield tools
-
-
-@pytest.fixture
-def mock_versions():
-    """Mock tool versions for testing."""
-    versions = {
-        "python": "Python 3.8.10",
-        "node": "v16.14.0",
-        "npm": "8.3.1",
-        "git": "git version 2.34.1",
-        "black": "black, version 22.3.0",
-        "flake8": "4.0.1",
-        "eslint": "v8.15.0",
-        "prettier": "2.6.2",
-    }
-
-    yield versions
-
-
-@pytest.fixture
-def mock_package_managers():
-    """Mock package managers for testing."""
-    managers = {
-        "apt": "/usr/bin/apt",
-        "yum": "/usr/bin/yum",
-        "dnf": "/usr/bin/dnf",
-        "pacman": "/usr/bin/pacman",
-        "brew": "/usr/local/bin/brew",
-        "choco": "C:\\ProgramData\\chocolatey\\bin\\choco.exe",
-        "winget": "C:\\Program Files\\WindowsApps\\Microsoft.Winget.Source_8wekyb3d8bbwe\\winget.exe",
-    }
-
-    with patch("shutil.which") as mock_which:
-
-        def which_side_effect(manager):
-            return managers.get(manager)
-
-        mock_which.side_effect = which_side_effect
-        yield managers
-
-
-# Test data fixtures
-@pytest.fixture
-def sample_project_names():
-    """Sample project names for testing validation."""
+    Returns:
+        list[str]: List of valid project names
+    """
     return [
         "valid-project",
         "valid_project",
@@ -388,8 +268,13 @@ def sample_project_names():
 
 
 @pytest.fixture
-def invalid_project_names():
-    """Invalid project names for testing validation."""
+def invalid_project_names() -> list[str]:
+    """
+    Invalid project names for testing validation.
+
+    Returns:
+        list[str]: List of invalid project names
+    """
     return [
         "",  # Empty
         "a" * 51,  # Too long
@@ -405,8 +290,13 @@ def invalid_project_names():
 
 
 @pytest.fixture
-def sample_paths():
-    """Sample paths for testing validation."""
+def sample_paths() -> list[str]:
+    """
+    Sample paths for testing validation.
+
+    Returns:
+        list[str]: List of sample paths
+    """
     return [
         "/home/user/project",
         "C:\\Users\\user\\project",
@@ -418,8 +308,13 @@ def sample_paths():
 
 
 @pytest.fixture
-def dangerous_paths():
-    """Dangerous paths for testing validation."""
+def dangerous_paths() -> list[str]:
+    """
+    Dangerous paths for testing validation.
+
+    Returns:
+        list[str]: List of dangerous paths
+    """
     return [
         "path/../dangerous",
         "path\\..\\dangerous",
@@ -435,8 +330,13 @@ def dangerous_paths():
 
 
 @pytest.fixture
-def valid_commands():
-    """Valid commands for testing validation."""
+def valid_commands() -> list[list[str]]:
+    """
+    Valid commands for testing validation.
+
+    Returns:
+        list[list[str]]: List of valid commands
+    """
     return [
         ["python", "--version"],
         ["git", "status"],
@@ -449,8 +349,13 @@ def valid_commands():
 
 
 @pytest.fixture
-def dangerous_commands():
-    """Dangerous commands for testing validation."""
+def dangerous_commands() -> list[list[str]]:
+    """
+    Dangerous commands for testing validation.
+
+    Returns:
+        list[list[str]]: List of dangerous commands
+    """
     return [
         ["rm", "-rf", "/"],
         ["sudo", "rm", "-rf", "/"],
@@ -463,11 +368,21 @@ def dangerous_commands():
     ]
 
 
-# Configuration for pytest
-def pytest_configure(config):
-    """Configure pytest with custom markers."""
+# ///////////////////////////////////////////////////////////////
+# PYTEST HOOKS
+# ///////////////////////////////////////////////////////////////
+
+
+def pytest_configure(config: pytest.Config) -> None:
+    """
+    Configure pytest with custom markers.
+
+    Args:
+        config: Pytest configuration object
+    """
     config.addinivalue_line("markers", "unit: mark test as a unit test")
     config.addinivalue_line("markers", "integration: mark test as an integration test")
+    config.addinivalue_line("markers", "robustness: mark test as a robustness test")
     config.addinivalue_line("markers", "security: mark test as a security test")
     config.addinivalue_line("markers", "slow: mark test as slow running")
     config.addinivalue_line("markers", "windows: mark test as Windows specific")
@@ -475,8 +390,17 @@ def pytest_configure(config):
     config.addinivalue_line("markers", "macos: mark test as macOS specific")
 
 
-def pytest_collection_modifyitems(config, items):
-    """Modify test collection to add markers based on test names."""
+def pytest_collection_modifyitems(
+    _config: pytest.Config,
+    items: list[pytest.Item],  # noqa: ARG001
+) -> None:
+    """
+    Modify test collection to add markers based on test names.
+
+    Args:
+        _config: Pytest configuration object (required by pytest hook signature)
+        items: List of collected test items
+    """
     for item in items:
         # Add unit marker to tests in unit directory
         if "unit" in str(item.fspath):
@@ -485,6 +409,10 @@ def pytest_collection_modifyitems(config, items):
         # Add integration marker to tests in integration directory
         if "integration" in str(item.fspath):
             item.add_marker(pytest.mark.integration)
+
+        # Add robustness marker to tests in robustness directory
+        if "robustness" in str(item.fspath):
+            item.add_marker(pytest.mark.robustness)
 
         # Add security marker to security-related tests
         if "security" in item.name.lower():

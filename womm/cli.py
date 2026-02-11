@@ -25,8 +25,8 @@ import click
 
 # Local imports
 from . import HAS_PROOF_FILE, __version__
-from .ui.common import ezlogger  # noqa: F401
 from .ui.common import (
+    ezlogger,  # noqa: F401
     ezpl_bridge,
     ezprinter,
 )
@@ -128,8 +128,7 @@ def womm(
 
     # Show welcome message only when no subcommand is provided
     if ctx.invoked_subcommand is None:
-        ezpl_bridge.console.print(
-            r"""
+        ezpl_bridge.console.print(r"""
 ================================================================================
                     __      _____  __  __ __  __
                     \ \    / / _ \|  \/  |  \/  |
@@ -138,8 +137,7 @@ def womm(
 ================================================================================
 
 
-"""
-        )
+""")
 
         # Welcome message
         info_content = """

@@ -1,14 +1,16 @@
 # 🛠️ Works On My Machine (WOMM)
 
-[![Python](https://img.shields.io/badge/Python-3.8+-blue.svg?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
-[![License](https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-3.2.2-orange.svg?style=for-the-badge)](https://github.com/neuraaak/works-on-my-machine)
+[![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg?style=for-the-badge&logo=python)](https://www.python.org/)
 [![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg?style=for-the-badge)](https://github.com/neuraaak/works-on-my-machine)
+[![Version](https://img.shields.io/badge/Version-3.2.2-orange.svg?style=for-the-badge)](https://github.com/neuraaak/works-on-my-machine)
+[![PyPI](https://img.shields.io/badge/PyPI-works--on--my--machine-green.svg?style=for-the-badge&logo=pypi)](https://pypi.org/project/works-on-my-machine/)
+[![Docs](https://img.shields.io/badge/Docs-Online-blue.svg?style=for-the-badge&logo=readthedocs)](https://neuraaak.github.io/works-on-my-machine/)
+[![License](https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge)](LICENSE)
 [![Status](https://img.shields.io/badge/Status-Beta-yellow.svg?style=for-the-badge)](https://github.com/neuraaak/works-on-my-machine)
+[![Tests](https://img.shields.io/badge/Tests-TODO-orange.svg?style=for-the-badge)](https://github.com/neuraaak/works-on-my-machine)
+<!-- [![Coverage](https://img.shields.io/badge/Coverage-29%25-yellow.svg?style=for-the-badge)](https://github.com/neuraaak/works-on-my-machine) -->
 
-[![Tests](https://img.shields.io/badge/Tests-TODO-orange.svg?style=flat-square)](https://github.com/neuraaak/works-on-my-machine)
-[![Documentation](https://img.shields.io/badge/Documentation-Complete-blue.svg?style=flat-square)](docs/README.md)
-[![Maintenance](https://img.shields.io/badge/Maintenance-Active-brightgreen.svg?style=flat-square)](https://github.com/neuraaak/works-on-my-machine)
+![WOMM Logo](assets/logo-min.png)
 
 > **Universal development environment manager for Python and JavaScript**  
 > 🚀 **One command to rule them all** - Automatic setup, cross-platform configuration, professional tooling
@@ -270,17 +272,5 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **The Python and JavaScript communities** - For amazing development tools
 
 ---
-
-## 📊 Project Status
-
-- **Version**: 2.6.8
-- **Status**: Beta (actively maintained)
-- **Python Support**: 3.8+
-- **Platforms**: Windows, macOS, Linux
-- **Languages**: Python, JavaScript
-
----
-
-**Made with ❤️ by the WOMM Team**
 
 _"It works on my machine, and now it will work on yours too!"_ 🚀

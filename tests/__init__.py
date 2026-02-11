@@ -1,7 +1,13 @@
-"""
-Test suite for Works On My Machine.
-Comprehensive unit and integration tests for all functionality.
-"""
+# ///////////////////////////////////////////////////////////////
+# TESTS - WOMM test suite
+# Project: works-on-my-machine
+# ///////////////////////////////////////////////////////////////
 
-__version__ = "1.0.0"
-__author__ = "Works On My Machine Team"
+"""
+WOMM test suite package.
+
+Organizes tests into categories:
+- unit: Unit tests for individual components
+- integration: Integration tests for component interactions
+- robustness: Robustness and edge case tests
+"""
