@@ -38,9 +38,9 @@ class ContextMenuWizard:
     """Interactive wizard for context menu configuration."""
 
     @staticmethod
-    def run_setup() -> tuple[
-        str | None, str | None, str | None, ContextParametersService | None
-    ]:
+    def run_setup() -> (
+        tuple[str | None, str | None, str | None, ContextParametersService | None]
+    ):
         """
         Run the complete interactive setup wizard.
 

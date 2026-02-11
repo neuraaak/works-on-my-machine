@@ -1,14 +1,17 @@
 # 🛠️ Works On My Machine (WOMM)
 
-[![Python](https://img.shields.io/badge/Python-3.8+-blue.svg?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
-[![License](https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-3.2.2-orange.svg?style=for-the-badge)](https://github.com/neuraaak/works-on-my-machine)
+[![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg?style=for-the-badge&logo=python)](https://www.python.org/)
 [![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg?style=for-the-badge)](https://github.com/neuraaak/works-on-my-machine)
+[![Version](https://img.shields.io/badge/Version-3.2.2-orange.svg?style=for-the-badge)](https://github.com/neuraaak/works-on-my-machine)
+[![PyPI](https://img.shields.io/badge/PyPI-works--on--my--machine-green.svg?style=for-the-badge&logo=pypi)](https://pypi.org/project/works-on-my-machine/)
+[![Docs](https://img.shields.io/badge/Docs-Online-blue.svg?style=for-the-badge&logo=readthedocs)](https://neuraaak.github.io/works-on-my-machine/)
+[![License](https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge)](LICENSE)
 [![Status](https://img.shields.io/badge/Status-Beta-yellow.svg?style=for-the-badge)](https://github.com/neuraaak/works-on-my-machine)
+[![Tests](https://img.shields.io/badge/Tests-TODO-orange.svg?style=for-the-badge)](https://github.com/neuraaak/works-on-my-machine)
 
-[![Tests](https://img.shields.io/badge/Tests-TODO-orange.svg?style=flat-square)](https://github.com/neuraaak/works-on-my-machine)
-[![Documentation](https://img.shields.io/badge/Documentation-Complete-blue.svg?style=flat-square)](docs/README.md)
-[![Maintenance](https://img.shields.io/badge/Maintenance-Active-brightgreen.svg?style=flat-square)](https://github.com/neuraaak/works-on-my-machine)
+<!-- [![Coverage](https://img.shields.io/badge/Coverage-29%25-yellow.svg?style=for-the-badge)](https://github.com/neuraaak/works-on-my-machine) -->
+
+![WOMM Logo](docs/assets/logo-min.png)
 
 > **Universal development environment manager for Python and JavaScript**  
 > 🚀 **One command to rule them all** - Automatic setup, cross-platform configuration, professional tooling
@@ -170,19 +173,26 @@ womm context list          # List registered entries
 
 ## 📚 Documentation
 
-### **📖 [Complete Documentation](docs/README.md)**
+### **📖 [Complete Documentation](docs/index.md)**
 
-- **📋 [CLI Commands](docs/cli/README.md)** - All available commands and options
-- **🐍 [Python Guide](docs/cli/NEW.md)** - Python project creation and setup
-- **🟨 [JavaScript Guide](docs/cli/SETUP.md)** - JavaScript project setup
-- **📦 [Templates](docs/cli/TEMPLATES.md)** - Template management system
-- **🔧 [Installation](docs/cli/INSTALL.md)** - Installation and configuration
-- **🛠️ [System Tools](docs/cli/SYSTEM.md)** - System detection and management
+- **📋 [CLI Overview](docs/cli/index.md)** - All available commands and options
+- **🔧 [Commands Reference](docs/cli/commands.md)** - Common commands quick reference
+- **🆕 [Project Creation](docs/cli/NEW.md)** - Create Python, JavaScript, React, and Vue projects
+- **⚙️ [Project Setup](docs/cli/setup.md)** - Configure existing projects with professional tooling
+- **🔍 [Linting](docs/cli/lint.md)** - Code quality and linting tools
+- **📝 [Spell Check](docs/cli/spell.md)** - Spell checking and dictionaries
+- **📦 [Templates](docs/cli/templates.md)** - Template management system
+- **🔧 [Installation](docs/cli/install.md)** - Installation and configuration
+- **🛠️ [System Tools](docs/cli/system.md)** - System detection and management
+- **🖱️ [Context Menu](docs/cli/context.md)** - Windows context menu integration
 
-### **🔌 [API Reference](docs/api/README.md)**
+### **🔌 [API Reference](docs/api/index.md)**
 
-- **🏗️ [Architecture](docs/api/ARCHITECTURE.md)** - Technical architecture overview
-- **📦 [Templates API](docs/api/TEMPLATES_REFERENCE.md)** - Template system reference
+- **🏗️ [Architecture](docs/api/architecture.md)** - Dependency management architecture
+- **⚡ [CLI Architecture](docs/api/cli-architecture.md)** - Unified CLI design
+- **📦 [Templates API](docs/api/templates.md)** - Template system reference
+- **⚠️ [Exceptions](docs/api/exceptions.md)** - Error handling architecture
+- **📊 [Logging](docs/api/logging.md)** - Normalized logging patterns
 
 ---
 
@@ -270,17 +280,5 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **The Python and JavaScript communities** - For amazing development tools
 
 ---
-
-## 📊 Project Status
-
-- **Version**: 2.6.8
-- **Status**: Beta (actively maintained)
-- **Python Support**: 3.8+
-- **Platforms**: Windows, macOS, Linux
-- **Languages**: Python, JavaScript
-
----
-
-**Made with ❤️ by the WOMM Team**
 
 _"It works on my machine, and now it will work on yours too!"_ 🚀

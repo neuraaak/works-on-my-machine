@@ -1,22 +1,44 @@
 #!/usr/bin/env python3
 # ///////////////////////////////////////////////////////////////
 # BUILD_PACKAGE - PyPI Package Builder
-# Project: works-on-my-machine
 # ///////////////////////////////////////////////////////////////
 
 """
-Build script for WOMM PyPI package.
+Build script for PyPI package.
 
-This script builds the package and optionally uploads it to PyPI.
+This script builds the package and optionally checks it.
 """
 
 # ///////////////////////////////////////////////////////////////
 # IMPORTS
 # ///////////////////////////////////////////////////////////////
 # Standard library imports
-import os
+import io
+import shutil
 import subprocess
 import sys
+from pathlib import Path
+
+# Third-party imports
+from rich.console import Console
+from rich.panel import Panel
+from rich.text import Text
+
+# ///////////////////////////////////////////////////////////////
+# VARIABLES
+# ///////////////////////////////////////////////////////////////
+
+project_name = "womm"
+
+# ///////////////////////////////////////////////////////////////
+# GLOBAL CONSOLE
+# ///////////////////////////////////////////////////////////////
+
+# Configure console with UTF-8 encoding for Windows emoji support
+# Force UTF-8 encoding on Windows
+if sys.platform == "win32":
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+console = Console(legacy_windows=False)
 
 # ///////////////////////////////////////////////////////////////
 # FUNCTIONS
@@ -34,35 +56,44 @@ def run_command(command: list[str], description: str = "") -> bool:
         bool: True if command succeeded, False otherwise
     """
     if description:
-        print(f"🔄 {description}...")
+        console.print(f"[cyan]🔄[/cyan] {description}...")
 
     try:
         result = subprocess.run(command, check=True, capture_output=True, text=True)
         if result.stdout:
-            print(result.stdout)
+            console.print(result.stdout)
         return True
     except subprocess.CalledProcessError as e:
-        print(f"❌ Error: {e}")
+        console.print(f"[red]❌[/red] Error: {e}")
         if e.stderr:
-            print(f"Error output: {e.stderr}")
+            console.print(f"[red]Error output:[/red] {e.stderr}")
         return False
 
 
 def clean_build() -> None:
     """Clean previous build artifacts."""
-    print("🧹 Cleaning previous build artifacts...")
+    console.print("[yellow]🧹[/yellow] Cleaning previous build artifacts...")
+
+    project_root = Path(__file__).resolve().parents[2]
 
     # Remove build directories
-    for path in ["build", "dist", "*.egg-info"]:
-        if os.path.exists(path):
-            if os.path.isdir(path):
-                import shutil
+    paths_to_clean = [
+        project_root / "build",
+        project_root / "dist",
+    ]
 
+    # Find and remove egg-info directories
+    for egg_info in project_root.glob("*.egg-info"):
+        paths_to_clean.copy().append(egg_info)
+
+    for path in paths_to_clean:
+        if path.exists():
+            if path.is_dir():
                 shutil.rmtree(path)
             else:
-                os.remove(path)
+                path.unlink()
 
-    print("✅ Build artifacts cleaned")
+    console.print("[green]✅[/green] Build artifacts cleaned")
 
 
 def build_package() -> bool:
@@ -71,7 +102,12 @@ def build_package() -> bool:
     Returns:
         bool: True if build succeeded, False otherwise
     """
-    print("🔨 Building WOMM package...")
+    console.print(
+        Panel.fit(
+            Text(f"🔨 Building {project_name} package", style="bold cyan"),
+            border_style="cyan",
+        )
+    )
 
     # Clean previous builds
     clean_build()
@@ -86,7 +122,12 @@ def build_package() -> bool:
         if not run_command(command, "Building package"):
             return False
 
-    print("✅ Package built successfully")
+    console.print(
+        Panel.fit(
+            Text("✅ Package built successfully", style="bold green"),
+            border_style="green",
+        )
+    )
     return True
 
 
@@ -96,59 +137,26 @@ def check_package() -> bool:
     Returns:
         bool: True if check passed, False otherwise
     """
-    print("🔍 Checking package...")
+    console.print("[cyan]🔍[/cyan] Checking package...")
+
+    project_root = Path(__file__).resolve().parents[2]
+    dist_path = project_root / "dist"
+
+    # Find all distribution files
+    dist_files = list(dist_path.glob("*"))
+    if not dist_files:
+        console.print("[red]❌[/red] No distribution files found in dist/")
+        return False
 
     commands = [
-        [sys.executable, "-m", "twine", "check", "dist/*"],
+        [sys.executable, "-m", "twine", "check"] + [str(f) for f in dist_files],
     ]
 
     for command in commands:
         if not run_command(command, "Checking package"):
             return False
 
-    print("✅ Package check passed")
-    return True
-
-
-def upload_to_test_pypi() -> bool:
-    """Upload to Test PyPI.
-
-    Returns:
-        bool: True if upload succeeded, False otherwise
-    """
-    print("🚀 Uploading to Test PyPI...")
-
-    commands = [
-        [sys.executable, "-m", "twine", "upload", "--repository", "testpypi", "dist/*"],
-    ]
-
-    for command in commands:
-        if not run_command(command, "Uploading to Test PyPI"):
-            print("❌ Upload to Test PyPI failed:")
-            return False
-
-    print("✅ Upload to Test PyPI successful!")
-    return True
-
-
-def upload_to_pypi() -> bool:
-    """Upload to PyPI.
-
-    Returns:
-        bool: True if upload succeeded, False otherwise
-    """
-    print("🚀 Uploading to PyPI...")
-
-    commands = [
-        [sys.executable, "-m", "twine", "upload", "dist/*"],
-    ]
-
-    for command in commands:
-        if not run_command(command, "Uploading to PyPI"):
-            print("❌ Upload to PyPI failed:")
-            return False
-
-    print("✅ Upload to PyPI successful!")
+    console.print("[green]✅[/green] Package check passed")
     return True
 
 
@@ -160,11 +168,9 @@ def upload_to_pypi() -> bool:
 def main() -> None:
     """Main function."""
     if len(sys.argv) < 2:
-        print("Usage: python build_package.py [build|check|test-upload|upload]")
-        print("  build        - Build the package")
-        print("  check        - Check the built package")
-        print("  test-upload  - Upload to Test PyPI")
-        print("  upload       - Upload to PyPI")
+        console.print("[yellow]Usage:[/yellow] python build_package.py [build|check]")
+        console.print("  [cyan]build[/cyan]        - Build the package")
+        console.print("  [cyan]check[/cyan]        - Check the built package")
         return
 
     action = sys.argv[1]
@@ -179,20 +185,8 @@ def main() -> None:
         if not check_package():
             sys.exit(1)
 
-    elif action == "test-upload":
-        if not build_package():
-            sys.exit(1)
-        if not upload_to_test_pypi():
-            sys.exit(1)
-
-    elif action == "upload":
-        if not build_package():
-            sys.exit(1)
-        if not upload_to_pypi():
-            sys.exit(1)
-
     else:
-        print(f"❌ Unknown action: {action}")
+        console.print(f"[red]❌[/red] Unknown action: [bold]{action}[/bold]")
         sys.exit(1)
 
 

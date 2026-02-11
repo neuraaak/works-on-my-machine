@@ -1,51 +1,22 @@
-# 🚀 Project Creation Guide
+# Project Creation
 
-[🏠 Main](../../README.md) > [📚 Documentation](../README.md) > [🔧 CLI Documentation](README.md) > [🚀 Project Creation](NEW.md)
+Complete guide to creating new projects with WOMM. Create Python, JavaScript, React, and Vue projects with modern development setup.
 
-[← Back to CLI Documentation](README.md)
-
-> **Complete guide to creating new projects with WOMM**  
-> Create Python, JavaScript, React, and Vue projects with modern development setup
-
-## 📚 Documentation Navigation
-
-**🏠 [Main Documentation](../../README.md)**  
-**📚 [Documentation Index](../README.md)**  
-**🔧 [CLI Documentation](README.md)**  
-**🚀 [Project Creation](NEW.md)** (You are here)  
-**🔌 [API Documentation](../api/README.md)**
-
-## 📋 Table of Contents
-- [🎯 Overview](#-overview)
-- [🚀 Quick Start](#-quick-start)
-- [🐍 Python Projects](#-python-projects)
-- [🟨 JavaScript Projects](#-javascript-projects)
-- [⚛️ React Projects](#️-react-projects)
-- [💚 Vue Projects](#-vue-projects)
-- [🎨 Interactive Mode](#-interactive-mode)
-- [📁 Project Structure](#-project-structure)
-- [🔧 Configuration Options](#-configuration-options)
-- [💡 Best Practices](#-best-practices)
-- [🔍 Troubleshooting](#-troubleshooting)
-
-## 🎯 Overview
+## Overview
 
 WOMM provides comprehensive project creation for modern development workflows. Each project type comes with pre-configured development tools, testing setup, and best practices.
 
-### ✅ **Supported Project Types**
-- **🐍 Python** - Full Python development environment
-- **🟨 JavaScript** - Node.js projects with modern tooling
-- **⚛️ React** - React applications with Vite
-- **💚 Vue** - Vue.js applications with Vite
+### Supported Project Types
 
-### 🔄 **Project Creation Workflow**
-```
-Project Type Selection → Configuration → File Generation → Dependencies → Development Tools
-```
+- **Python** - Full Python development environment
+- **JavaScript** - Node.js projects with modern tooling
+- **React** - React applications with Vite
+- **Vue** - Vue.js applications with Vite
 
-## 🚀 Quick Start
+## Quick Start
 
-### **Basic Project Creation**
+### Basic Project Creation
+
 ```bash
 # Create Python project
 womm new python my-python-app
@@ -60,26 +31,37 @@ womm new react my-react-app
 womm new vue my-vue-app
 ```
 
-### **Interactive Mode**
+### Interactive Mode
+
 ```bash
 # Guided project creation
 womm new --interactive
 ```
 
-### **Custom Configuration**
+### Custom Configuration
+
 ```bash
 # Create with custom author and target directory
 womm new python my-app --target ./projects/ --author-name "John Doe" --author-email "john@example.com"
 ```
 
-## 🐍 Python Projects
+### Quick Interactive Creation
 
-### **Command Syntax**
+```bash
+# Guided project creation
+womm new --interactive
+```
+
+## Python Projects
+
+### Python Syntax
+
 ```bash
 womm new python [PROJECT_NAME] [OPTIONS]
 ```
 
-### **Options**
+### Python Options
+
 - `PROJECT_NAME` - Name of the project (optional in interactive mode)
 - `--current-dir` - Use current directory instead of creating new one
 - `--target <PATH>` - Target directory for project creation
@@ -89,7 +71,8 @@ womm new python [PROJECT_NAME] [OPTIONS]
 - `--project-url <URL>` - Project URL
 - `--project-repository <URL>` - Repository URL
 
-### **Examples**
+### Python Examples
+
 ```bash
 # Basic Python project
 womm new python my-python-app
@@ -104,8 +87,9 @@ womm new python my-app --author-name "John Doe" --author-email "john@example.com
 womm new python --interactive
 ```
 
-### **Python Project Structure**
-```
+### Python Structure
+
+```text
 my-python-app/
 ├── pyproject.toml          # Project configuration
 ├── src/
@@ -120,14 +104,16 @@ my-python-app/
 └── requirements.txt
 ```
 
-## 🟨 JavaScript Projects
+## JavaScript Projects
 
-### **Command Syntax**
+### JavaScript Syntax
+
 ```bash
 womm new javascript [PROJECT_NAME] [OPTIONS]
 ```
 
-### **Options**
+### JavaScript Options
+
 - `PROJECT_NAME` - Name of the project
 - `--target <PATH>` - Target directory
 - `--interactive` - Interactive mode
@@ -136,7 +122,8 @@ womm new javascript [PROJECT_NAME] [OPTIONS]
 - `--project-url <URL>` - Project URL
 - `--project-repository <URL>` - Repository URL
 
-### **Examples**
+### JavaScript Examples
+
 ```bash
 # Basic JavaScript project
 womm new javascript my-js-app
@@ -145,8 +132,9 @@ womm new javascript my-js-app
 womm new javascript my-app --author-name "Jane Smith" --project-url "https://myapp.com"
 ```
 
-### **JavaScript Project Structure**
-```
+### JavaScript Structure
+
+```text
 my-js-app/
 ├── package.json            # Node.js configuration
 ├── src/
@@ -158,14 +146,16 @@ my-js-app/
 └── .eslintrc.js
 ```
 
-## ⚛️ React Projects
+## React Projects
 
-### **Command Syntax**
+### React Syntax
+
 ```bash
 womm new react [PROJECT_NAME] [OPTIONS]
 ```
 
-### **Options**
+### React Options
+
 - `PROJECT_NAME` - Name of the React application
 - `--target <PATH>` - Target directory
 - `--interactive` - Interactive mode
@@ -174,7 +164,8 @@ womm new react [PROJECT_NAME] [OPTIONS]
 - `--project-url <URL>` - Project URL
 - `--project-repository <URL>` - Repository URL
 
-### **Examples**
+### React Examples
+
 ```bash
 # Basic React project
 womm new react my-react-app
@@ -183,8 +174,9 @@ womm new react my-react-app
 womm new react my-app --target ./react-projects/ --author-name "John Doe"
 ```
 
-### **React Project Structure**
-```
+### React Structure
+
+```text
 my-react-app/
 ├── package.json            # Dependencies and scripts
 ├── vite.config.js          # Vite configuration
@@ -198,14 +190,16 @@ my-react-app/
 └── README.md
 ```
 
-## 💚 Vue Projects
+## Vue Projects
 
-### **Command Syntax**
+### Vue Syntax
+
 ```bash
 womm new vue [PROJECT_NAME] [OPTIONS]
 ```
 
-### **Options**
+### Vue Options
+
 - `PROJECT_NAME` - Name of the Vue application
 - `--target <PATH>` - Target directory
 - `--interactive` - Interactive mode
@@ -214,7 +208,8 @@ womm new vue [PROJECT_NAME] [OPTIONS]
 - `--project-url <URL>` - Project URL
 - `--project-repository <URL>` - Repository URL
 
-### **Examples**
+### Vue Examples
+
 ```bash
 # Basic Vue project
 womm new vue my-vue-app
@@ -223,8 +218,9 @@ womm new vue my-vue-app
 womm new vue my-app --author-name "Jane Smith" --project-url "https://myvueapp.com"
 ```
 
-### **Vue Project Structure**
-```
+### Vue Structure
+
+```text
 my-vue-app/
 ├── package.json            # Dependencies and scripts
 ├── vite.config.js          # Vite configuration
@@ -238,9 +234,8 @@ my-vue-app/
 └── README.md
 ```
 
-## 🎨 Interactive Mode
+## Interactive Mode
 
-### **Interactive Project Creation**
 When using `--interactive`, WOMM guides you through:
 
 1. **Project Type Selection** - Choose Python, JavaScript, React, or Vue
@@ -250,8 +245,9 @@ When using `--interactive`, WOMM guides you through:
 5. **Project Details** - Enter project URL and repository
 6. **Configuration** - Customize project settings
 
-### **Example Interactive Flow**
-```
+### Example Interactive Flow
+
+```text
 🎯 Select project type: [Python/JavaScript/React/Vue]
 📝 Enter project name: my-awesome-app
 📁 Enter target directory (or press Enter for current): ./projects/
@@ -261,68 +257,37 @@ When using `--interactive`, WOMM guides you through:
 🔗 Enter repository URL (optional): https://github.com/john/my-app
 ```
 
-## 📁 Project Structure
+## Best Practices
 
-### **Common Files**
-All projects include:
-- **Configuration files** - Language-specific project config
-- **Source directory** - Main application code
-- **Test directory** - Unit and integration tests
-- **Documentation** - README and documentation files
-- **Git configuration** - .gitignore and version control setup
+### Project Naming
 
-### **Development Tools**
-Each project comes with:
-- **Linting** - Code quality tools
-- **Testing** - Test framework setup
-- **Formatting** - Code formatting tools
-- **Type checking** - Static analysis (where applicable)
-
-## 🔧 Configuration Options
-
-### **Project Metadata**
-- **Author Information** - Name and email for attribution
-- **Project URLs** - Website and repository links
-- **Version Control** - Git initialization and configuration
-
-### **Development Environment**
-- **Virtual Environments** - Python venv setup
-- **Package Management** - npm/yarn for JavaScript projects
-- **Build Tools** - Vite for React/Vue projects
-
-### **Code Quality**
-- **Linters** - ESLint, Pylint, etc.
-- **Formatters** - Prettier, Black, etc.
-- **Type Checkers** - TypeScript, mypy, etc.
-
-## 💡 Best Practices
-
-### **Project Naming**
 - Use descriptive, lowercase names
 - Separate words with hyphens or underscores
 - Avoid special characters and spaces
 
-### **Directory Structure**
+### Directory Structure
+
 - Keep source code in dedicated directories
 - Separate tests from main code
 - Use consistent naming conventions
 
-### **Configuration**
+### Configuration
+
 - Set up proper author information
 - Configure repository URLs early
 - Use meaningful project descriptions
 
-### **Development Workflow**
+### Development Workflow
+
 - Initialize git repository
 - Set up proper .gitignore
 - Configure development tools
 - Write initial documentation
 
-## 🔍 Troubleshooting
+## Troubleshooting
 
-### **Common Issues**
+### Permission Errors
 
-**Permission errors:**
 ```bash
 # Check directory permissions
 ls -la /target/directory
@@ -331,7 +296,8 @@ ls -la /target/directory
 chmod 755 /target/directory
 ```
 
-**Project name conflicts:**
+### Project Name Conflicts
+
 ```bash
 # Use different project name
 womm new python my-app-v2
@@ -340,7 +306,8 @@ womm new python my-app-v2
 womm new python my-app --target ./different-location/
 ```
 
-**Missing dependencies:**
+### Missing Dependencies
+
 ```bash
 # Install WOMM dependencies
 pip install works-on-my-machine
@@ -349,7 +316,8 @@ pip install works-on-my-machine
 pip install --upgrade works-on-my-machine
 ```
 
-### **Debug Mode**
+### Debug Mode
+
 Enable verbose output for troubleshooting:
 
 ```bash
@@ -360,6 +328,13 @@ export WOMM_DEBUG=1
 womm new python my-app
 ```
 
+## See Also
+
+- [Getting Started](../getting-started.md) - Installation and first steps
+- [CLI Reference](index.md) - Complete command documentation
+- [Configuration Guide](../guides/configuration.md) - Advanced configuration
+- [Examples](../examples/index.md) - Practical examples
+
 ---
 
-**🚀 This project creation guide provides everything you need to create modern, well-structured projects with WOMM.**
+This project creation guide provides everything you need to create modern, well-structured projects with WOMM.
