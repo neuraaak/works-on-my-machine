@@ -20,12 +20,7 @@ from __future__ import annotations
 # IMPORTS
 # ///////////////////////////////////////////////////////////////
 # Local imports
-from .lint_utils import (
-    export_lint_results_to_json,
-    get_tool_version,
-    parse_lint_output,
-    validate_lint_result,
-)
+from .lint_utils import export_lint_results_to_json, get_tool_version
 
 # ///////////////////////////////////////////////////////////////
 # PUBLIC API
@@ -34,6 +29,4 @@ from .lint_utils import (
 __all__ = [
     "export_lint_results_to_json",
     "get_tool_version",
-    "parse_lint_output",
-    "validate_lint_result",
 ]

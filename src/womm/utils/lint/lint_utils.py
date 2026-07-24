@@ -78,95 +78,6 @@ def get_tool_version(tool_name: str, command_runner: CommandRunnerService) -> st
 
 
 # ///////////////////////////////////////////////////////////////
-# OUTPUT PARSING FUNCTIONS
-# ///////////////////////////////////////////////////////////////
-
-
-def parse_lint_output(output: str, tool_name: str) -> dict[str, object]:
-    """Parse linting tool output into structured format.
-
-    Args:
-        output: Raw output from linting tool
-        tool_name: Name of the tool that generated the output
-
-    Returns:
-        dict: Parsed output with issues and metadata
-    """
-    if not output:
-        return {
-            "issues": [],
-            "metadata": {"tool": tool_name, "total_issues": 0},
-        }
-
-    # Try to parse as JSON first
-    try:
-        data = json.loads(output)
-    except json.JSONDecodeError:
-        pass
-    else:
-        if isinstance(data, list):
-            return {
-                "issues": data,
-                "metadata": {"tool": tool_name, "total_issues": len(data)},
-            }
-        if isinstance(data, dict):
-            issues = data.get("results", [])
-            return {
-                "issues": issues,
-                "metadata": {"tool": tool_name, "total_issues": len(issues)},
-            }
-
-    # Parse as text output
-    issues = []
-    for line in output.splitlines():
-        stripped_line = line.strip()
-        if stripped_line and ":" in stripped_line:
-            parts = stripped_line.split(":", 2)
-            if len(parts) >= 3:
-                issues.append(
-                    {
-                        "file": parts[0],
-                        "line": int(parts[1]) if parts[1].isdigit() else 0,
-                        "message": parts[2],
-                    }
-                )
-
-    return {
-        "issues": issues,
-        "metadata": {"tool": tool_name, "total_issues": len(issues)},
-    }
-
-
-# ///////////////////////////////////////////////////////////////
-# VALIDATION FUNCTIONS
-# ///////////////////////////////////////////////////////////////
-
-
-def validate_lint_result(result: ToolResult) -> bool:
-    """Validate a linting tool result.
-
-    Args:
-        result: ToolResult to validate
-
-    Returns:
-        bool: True if result is valid
-
-    Raises:
-        ValueError: If the result is missing or lacks a required attribute
-    """
-    if not result:
-        raise ValueError("Tool result is None or empty")
-
-    if not getattr(result, "tool_name", ""):
-        raise ValueError("Tool result is missing a tool name")
-
-    if not hasattr(result, "success"):
-        raise ValueError("Tool result is missing a success status")
-
-    return True
-
-
-# ///////////////////////////////////////////////////////////////
 # EXPORT FUNCTIONS
 # ///////////////////////////////////////////////////////////////
 
@@ -241,6 +152,4 @@ def export_lint_results_to_json(
 __all__ = [
     "export_lint_results_to_json",
     "get_tool_version",
-    "parse_lint_output",
-    "validate_lint_result",
 ]

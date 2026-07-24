@@ -33,7 +33,6 @@ from ...exceptions.lint import (
 )
 from ...shared.result_models import ToolResult
 from ...utils.lint import get_tool_version as get_tool_version_util
-from ...utils.lint import parse_lint_output, validate_lint_result
 from ..common.command_runner_service import CommandRunnerService
 
 # ///////////////////////////////////////////////////////////////
@@ -402,32 +401,3 @@ class LintService:
                 operation="run_tool_fix",
                 details=f"Exception type: {type(e).__name__}, Tool: {tool_name}",
             ) from e
-
-    def parse_output(self, output: str, tool_name: str) -> dict[str, object]:
-        """Parse linting tool output into structured format.
-
-        Args:
-            output: Raw output from linting tool
-            tool_name: Name of the tool that generated the output
-
-        Returns:
-            dict: Parsed output with issues and metadata
-
-        Raises:
-            LintValidationError: If output parsing fails
-        """
-        return parse_lint_output(output, tool_name)
-
-    def validate_result(self, result: ToolResult) -> bool:
-        """Validate a linting tool result.
-
-        Args:
-            result: ToolResult to validate
-
-        Returns:
-            bool: True if result is valid
-
-        Raises:
-            LintValidationError: If result validation fails
-        """
-        return validate_lint_result(result)
