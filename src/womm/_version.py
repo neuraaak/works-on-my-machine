@@ -1,0 +1,10 @@
+# ///////////////////////////////////////////////////////////////
+# VERSION - Package version metadata
+# Project: ezpl
+# ///////////////////////////////////////////////////////////////
+
+"""Centralized package version metadata."""
+
+from __future__ import annotations
+
+__version__ = "4.0.0"

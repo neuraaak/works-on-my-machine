@@ -29,7 +29,7 @@ import pytest
 
 
 @pytest.fixture
-def temp_dir() -> Generator[Path, None, None]:
+def temp_dir() -> Generator[Path]:
     """
     Create a temporary directory for tests.
 
@@ -102,7 +102,7 @@ def project_root() -> Path:
 
 
 @pytest.fixture
-def temp_project_dir(temp_dir: Path) -> Generator[Path, None, None]:
+def temp_project_dir(temp_dir: Path) -> Generator[Path]:
     """
     Create a temporary project directory with basic structure.
 
@@ -140,7 +140,7 @@ def temp_project_dir(temp_dir: Path) -> Generator[Path, None, None]:
 
 
 @pytest.fixture
-def sample_python_project(temp_dir: Path) -> Generator[Path, None, None]:
+def sample_python_project(temp_dir: Path) -> Generator[Path]:
     """
     Create a sample Python project for testing.
 
@@ -192,7 +192,7 @@ version = "0.1.0"
 
 
 @pytest.fixture
-def sample_javascript_project(temp_dir: Path) -> Generator[Path, None, None]:
+def sample_javascript_project(temp_dir: Path) -> Generator[Path]:
     """
     Create a sample JavaScript project for testing.
 

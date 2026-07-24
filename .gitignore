@@ -35,6 +35,7 @@ dist/
 *.egg-info/
 *.egg
 *.spec
+*.tar.gz
 
 # Packaging
 develop-eggs/
@@ -66,6 +67,8 @@ MANIFEST
 .cache
 .nox/
 .hypothesis/
+.import_linter_cache/
+.grimp_cache/
 
 # Dependency manager cache
 .pip-cache/
@@ -80,6 +83,7 @@ node_modules/
 bandit-report.json
 bandit-report.xml
 bandit-report.html
+bandit_report.html
 
 # Rapports de couverture de code (pytest-cov, coverage)
 .coverage
@@ -95,7 +99,6 @@ mypy-report.txt
 
 # Rapports de tests
 test-results/
-.pytest_cache/
 junit.xml
 test-report.xml
 nosetests.xml
@@ -154,12 +157,6 @@ version_info.txt
 # =============================================================================
 # IDE ET ÉDITEURS (COMMUNS)
 # =============================================================================
-# Cursor
-.cursorignore
-.cursor/
-.cursor/rules/
-.cursor_cache/
-
 # Visual Studio Code
 .vscode/
 .vscode-server/
@@ -181,15 +178,22 @@ version_info.txt
 # =============================================================================
 # AI AGENT
 # =============================================================================
-# Cursor
-.cursor/
-.cursorrules
-.cursor/rules/
-.cursor/*.mdc
-cursor.json
+# GitHub Copilot
+.github/copilot/
+.copilot/
+.github/copilot-instructions.md
+.github/instructions/*.instructions.md
+AGENTS.md
+CLAUDE.md
+GEMINI.md
 
 # Claude (Anthropic)
+.clinerules
 .claude/
+CLAUDE.md
+
+# Cline (VS Code extension)
+.cline/
 
 # =============================================================================
 # FICHIERS SYSTÈME (COMMUNS)
@@ -230,9 +234,6 @@ temp/
 tmp/
 tmpclaude-*
 
-# MkDocs build output
-site/
-
 # =============================================================================
 # EXCLUSIONS SPÉCIFIQUES AU PROJET RACINE
 # =============================================================================
@@ -249,6 +250,8 @@ site/
 *.crt
 credentials/
 keys/
+.tufup/keys/
+.tufup/repo/targets/
 
 # =============================================================================
 # PATTERNS ADDITIONNELS
@@ -260,6 +263,17 @@ commit_message.txt
 test_output/
 temp_projects/
 
+# Fichiers client d'auto-update générés par ezcompiler au build
+# (UpdaterService.generate → racine, à côté de main.py). Régénérés à chaque
+# build (settings.py embarque la VERSION), donc jamais versionnés.
+/update.py
+/settings.py
+/root.json
+
 # Configuration locale utilisateur
 local_config/
 user_settings/
+bin/presets
+.remember
+docs/superpowers
+.superpowers/
