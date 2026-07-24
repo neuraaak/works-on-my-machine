@@ -27,13 +27,7 @@ from pathlib import Path
 from rich.progress import TaskID
 
 # Local imports
-from ...exceptions.common import ValidationServiceError
-from ...exceptions.lint import (
-    LintServiceError,
-    PythonLintInterfaceError,
-    ToolAvailabilityServiceError,
-    ToolExecutionServiceError,
-)
+from ...exceptions.lint import LintServiceError, PythonLintInterfaceError
 from ...services import FileScannerService, PythonLintService
 from ...shared.results.lint_results import LintSummaryResult, ToolStatusResult
 from ...ui.common import ezprinter
@@ -153,12 +147,7 @@ class PythonLintInterface:
 
                 try:
                     python_files = self._get_target_files(target_paths)
-                except (
-                    LintServiceError,
-                    ToolExecutionServiceError,
-                    ToolAvailabilityServiceError,
-                    ValidationServiceError,
-                ) as e:
+                except LintServiceError as e:
                     # Convert service exceptions to interface exceptions
                     raise PythonLintInterfaceError(
                         message=f"Failed to get target files: {e}",
@@ -209,12 +198,7 @@ class PythonLintInterface:
                     tool_results = self.python_lint_service.check_python_code(
                         target_dirs=target_dirs, cwd=self.project_root, tools=tools
                     )
-                except (
-                    LintServiceError,
-                    ToolExecutionServiceError,
-                    ToolAvailabilityServiceError,
-                    ValidationServiceError,
-                ) as e:
+                except LintServiceError as e:
                     # Convert service exceptions to interface exceptions
                     raise PythonLintInterfaceError(
                         message=f"Failed to execute Python linting tools: {e}",
@@ -302,12 +286,7 @@ class PythonLintInterface:
 
                 try:
                     python_files = self._get_target_files(target_paths)
-                except (
-                    LintServiceError,
-                    ToolExecutionServiceError,
-                    ToolAvailabilityServiceError,
-                    ValidationServiceError,
-                ) as e:
+                except LintServiceError as e:
                     # Convert service exceptions to interface exceptions
                     raise PythonLintInterfaceError(
                         message=f"Failed to get target files: {e}",
@@ -358,12 +337,7 @@ class PythonLintInterface:
                     tool_results = self.python_lint_service.fix_python_code(
                         target_dirs=target_dirs, cwd=self.project_root, tools=tools
                     )
-                except (
-                    LintServiceError,
-                    ToolExecutionServiceError,
-                    ToolAvailabilityServiceError,
-                    ValidationServiceError,
-                ) as e:
+                except LintServiceError as e:
                     # Convert service exceptions to interface exceptions
                     raise PythonLintInterfaceError(
                         message=f"Failed to execute Python fixing tools: {e}",
@@ -441,7 +415,7 @@ class PythonLintInterface:
                 display_tool_status(tool_summary)
 
                 return result
-            except (LintServiceError, ToolAvailabilityServiceError) as e:
+            except LintServiceError as e:
                 # Convert service exceptions to interface exceptions
                 raise PythonLintInterfaceError(
                     message=f"Failed to get tool summary: {e}",
@@ -499,12 +473,7 @@ class PythonLintInterface:
                             details="File search failed",
                         )
                     return search_result.files_found or []
-                except (
-                    LintServiceError,
-                    ToolExecutionServiceError,
-                    ToolAvailabilityServiceError,
-                    ValidationServiceError,
-                ) as e:
+                except LintServiceError as e:
                     # Convert service exceptions to interface exceptions
                     raise PythonLintInterfaceError(
                         message=f"Failed to scan project for Python files: {e}",
@@ -535,12 +504,7 @@ class PythonLintInterface:
                         )
                         if search_result.success and search_result.files_found:
                             python_files.extend(search_result.files_found)
-                    except (
-                        LintServiceError,
-                        ToolExecutionServiceError,
-                        ToolAvailabilityServiceError,
-                        ValidationServiceError,
-                    ) as e:
+                    except LintServiceError as e:
                         # Convert service exceptions to interface exceptions
                         raise PythonLintInterfaceError(
                             message=f"Failed to find Python files in {path_str}: {e}",

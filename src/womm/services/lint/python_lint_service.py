@@ -23,11 +23,7 @@ from threading import Lock
 from typing import ClassVar
 
 # Local imports
-from ...exceptions.lint import (
-    LintServiceError,
-    ToolAvailabilityServiceError,
-    ToolExecutionServiceError,
-)
+from ...exceptions.lint import LintServiceError
 from ...shared.configs.lint import PythonLintingConfig
 from ...shared.result_models import ToolResult
 from .core_service import LintService
@@ -74,38 +70,18 @@ class PythonLintService:
 
         Returns:
             dict[str, bool]: Tool name -> availability status
-
-        Raises:
-            LintServiceError: If tool availability check fails
         """
-        try:
-            if self._available_tools is None:
-                self._available_tools = {}
-                for tool_name in PythonLintingConfig.TOOLS_CONFIG:
-                    try:
-                        self._available_tools[tool_name] = (
-                            self.lint_service.check_tool_available(tool_name)
-                        )
-                        if self._available_tools[tool_name]:
-                            self.logger.debug(f"✓ {tool_name} is available")
-                        else:
-                            self.logger.debug(f"✗ {tool_name} is not available")
-                    except Exception as e:
-                        # Log but don't raise - this is a helper method
-                        self.logger.warning(
-                            f"Error checking availability for {tool_name}: {e}"
-                        )
-                        self._available_tools[tool_name] = False
+        if self._available_tools is None:
+            self._available_tools = {}
+            for tool_name in PythonLintingConfig.TOOLS_CONFIG:
+                available = self.lint_service.check_tool_available(tool_name)
+                self._available_tools[tool_name] = available
+                if available:
+                    self.logger.debug(f"✓ {tool_name} is available")
+                else:
+                    self.logger.debug(f"✗ {tool_name} is not available")
 
-            return self._available_tools
-
-        except Exception as e:
-            # Wrap unexpected external exceptions
-            raise LintServiceError(
-                message=f"Failed to get available tools: {e}",
-                operation="get_available_tools",
-                details=f"Exception type: {type(e).__name__}",
-            ) from e
+        return self._available_tools
 
     def check_python_code(
         self, target_dirs: list[str], cwd: Path, tools: list[str] | None = None
@@ -121,91 +97,45 @@ class PythonLintService:
             dict[str, ToolResult]: Tool name -> result mapping
 
         Raises:
-            LintServiceError: If input validation fails
-            ToolExecutionError: If tool execution fails
-            ToolAvailabilityError: If required tools are not available
+            LintServiceError: If input validation fails, no tool is available,
+                or a tool fails to run
         """
-        try:
-            # Input validation
-            if not target_dirs:
-                raise LintServiceError(
-                    message="Target directories cannot be empty",
-                    operation="check_python_code",
-                    details="No directories provided for Python code checking",
-                )
+        available_tools = self._validate_run(target_dirs, cwd, "check_python_code")
+        tools_to_run = tools or [
+            t for t, available in available_tools.items() if available
+        ]
 
-            if not cwd or not cwd.exists():
-                raise LintServiceError(
-                    message="Working directory does not exist",
-                    operation="check_python_code",
-                    details=f"Invalid working directory: {cwd}",
-                )
-
-            available_tools = self.get_available_tools()
-            tools_to_run = tools or [
-                t for t, available in available_tools.items() if available
-            ]
-
-            if not tools_to_run:
-                raise ToolAvailabilityServiceError(
-                    message="No Python linting tools are available",
-                    tool_name="python_linting_tools",
-                    reason="No Python linting tools are available",
-                    details="All configured tools are unavailable",
-                )
-
-            results: dict[str, ToolResult] = {}
-            for tool_name in tools_to_run:
-                if not available_tools.get(tool_name, False):
-                    self.logger.warning(f"Tool {tool_name} is not available, skipping")
-                    continue
-
-                config = PythonLintingConfig.TOOLS_CONFIG[tool_name]
-                check_args = config.get("check_args", [])
-                if not isinstance(check_args, list):
-                    check_args = []
-                json_support = config.get("json_support", False)
-                if not isinstance(json_support, bool):
-                    json_support = False
-                try:
-                    result = self.lint_service.run_tool_check(
-                        tool_name=tool_name,
-                        args=check_args,
-                        target_dirs=target_dirs,
-                        cwd=cwd,
-                        json_output=json_support,
-                    )
-                    results[tool_name] = result
-                    self.logger.debug(f"✓ {tool_name} check completed")
-                except (LintServiceError, ToolExecutionServiceError):
-                    # Re-raise specialized exceptions as-is
-                    raise
-                except Exception as e:
-                    # Wrap unexpected external exceptions
-                    raise ToolExecutionServiceError(
-                        message=f"Failed to run {tool_name}: {e}",
-                        tool_name=tool_name,
-                        operation="check",
-                        reason=f"Failed to run {tool_name}: {e}",
-                        details=f"Exception type: {type(e).__name__}, Tool: {tool_name}",
-                    ) from e
-
-            return results
-
-        except (
-            LintServiceError,
-            ToolExecutionServiceError,
-            ToolAvailabilityServiceError,
-        ):
-            # Re-raise specialized exceptions as-is
-            raise
-        except Exception as e:
-            # Wrap unexpected external exceptions
+        if not tools_to_run:
             raise LintServiceError(
-                message=f"Unexpected error during Python code checking: {e}",
                 operation="check_python_code",
-                details=f"Exception type: {type(e).__name__}, Target dirs: {target_dirs}",
-            ) from e
+                reason="No Python linting tools are available",
+                details="All configured tools are unavailable",
+            )
+
+        results: dict[str, ToolResult] = {}
+        for tool_name in tools_to_run:
+            if not available_tools.get(tool_name, False):
+                self.logger.warning(f"Tool {tool_name} is not available, skipping")
+                continue
+
+            config = PythonLintingConfig.TOOLS_CONFIG[tool_name]
+            check_args = config.get("check_args", [])
+            if not isinstance(check_args, list):
+                check_args = []
+            json_support = config.get("json_support", False)
+            if not isinstance(json_support, bool):
+                json_support = False
+
+            results[tool_name] = self.lint_service.run_tool_check(
+                tool_name=tool_name,
+                args=check_args,
+                target_dirs=target_dirs,
+                cwd=cwd,
+                json_output=json_support,
+            )
+            self.logger.debug(f"✓ {tool_name} check completed")
+
+        return results
 
     def fix_python_code(
         self, target_dirs: list[str], cwd: Path, tools: list[str] | None = None
@@ -221,140 +151,111 @@ class PythonLintService:
             dict[str, ToolResult]: Tool name -> result mapping
 
         Raises:
-            LintServiceError: If input validation fails
-            ToolExecutionError: If tool execution fails
-            ToolAvailabilityError: If required tools are not available
+            LintServiceError: If input validation fails, no fixable tool is
+                available, or a tool fails to run
         """
-        try:
-            # Input validation
-            if not target_dirs:
-                raise LintServiceError(
-                    message="Target directories cannot be empty",
-                    operation="fix_python_code",
-                    details="No directories provided for Python code fixing",
-                )
+        available_tools = self._validate_run(target_dirs, cwd, "fix_python_code")
+        fixable_tools = [
+            t
+            for t, config in PythonLintingConfig.TOOLS_CONFIG.items()
+            if config["fix_args"] or t in PythonLintingConfig.FIXABLE_TOOLS
+        ]
+        tools_to_run = tools or [
+            t for t in fixable_tools if available_tools.get(t, False)
+        ]
 
-            if not cwd or not cwd.exists():
-                raise LintServiceError(
-                    message="Working directory does not exist",
-                    operation="fix_python_code",
-                    details=f"Invalid working directory: {cwd}",
-                )
-
-            available_tools = self.get_available_tools()
-            fixable_tools = [
-                t
-                for t, config in PythonLintingConfig.TOOLS_CONFIG.items()
-                if config["fix_args"] or t in PythonLintingConfig.FIXABLE_TOOLS
-            ]
-            tools_to_run = tools or [
-                t for t in fixable_tools if available_tools.get(t, False)
-            ]
-
-            if not tools_to_run:
-                raise ToolAvailabilityServiceError(
-                    message="No fixable Python linting tools are available",
-                    tool_name="python_linting_tools",
-                    reason="No fixable Python linting tools are available",
-                    details="All configured fixable tools are unavailable",
-                )
-
-            results: dict[str, ToolResult] = {}
-            for tool_name in tools_to_run:
-                if not available_tools.get(tool_name, False):
-                    self.logger.warning(f"Tool {tool_name} is not available, skipping")
-                    continue
-
-                config = PythonLintingConfig.TOOLS_CONFIG[tool_name]
-                fix_args = config.get("fix_args", [])
-                if not isinstance(fix_args, list):
-                    fix_args = []
-
-                # For tools that fix by default (black, isort), use empty args
-                if not fix_args and tool_name in PythonLintingConfig.FIXABLE_TOOLS:
-                    fix_args = []
-
-                if tool_name == "bandit":
-                    # Bandit doesn't have fix mode, skip
-                    self.logger.info(f"Skipping {tool_name} - no fix mode available")
-                    continue
-
-                try:
-                    result = self.lint_service.run_tool_fix(
-                        tool_name=tool_name,
-                        args=fix_args,
-                        target_dirs=target_dirs,
-                        cwd=cwd,
-                    )
-                    results[tool_name] = result
-                    self.logger.debug(f"✓ {tool_name} fix completed")
-                except (LintServiceError, ToolExecutionServiceError):
-                    # Re-raise specialized exceptions as-is
-                    raise
-                except Exception as e:
-                    # Wrap unexpected external exceptions
-                    raise ToolExecutionServiceError(
-                        message=f"Failed to run {tool_name}: {e}",
-                        tool_name=tool_name,
-                        operation="fix",
-                        reason=f"Failed to run {tool_name}: {e}",
-                        details=f"Exception type: {type(e).__name__}, Tool: {tool_name}",
-                    ) from e
-
-            return results
-
-        except (
-            LintServiceError,
-            ToolExecutionServiceError,
-            ToolAvailabilityServiceError,
-        ):
-            # Re-raise specialized exceptions as-is
-            raise
-        except Exception as e:
-            # Wrap unexpected external exceptions
+        if not tools_to_run:
             raise LintServiceError(
-                message=f"Unexpected error during Python code fixing: {e}",
                 operation="fix_python_code",
-                details=f"Exception type: {type(e).__name__}, Target dirs: {target_dirs}",
-            ) from e
+                reason="No fixable Python linting tools are available",
+                details="All configured fixable tools are unavailable",
+            )
+
+        results: dict[str, ToolResult] = {}
+        for tool_name in tools_to_run:
+            if not available_tools.get(tool_name, False):
+                self.logger.warning(f"Tool {tool_name} is not available, skipping")
+                continue
+
+            if tool_name == "bandit":
+                # Bandit doesn't have fix mode, skip
+                self.logger.info(f"Skipping {tool_name} - no fix mode available")
+                continue
+
+            config = PythonLintingConfig.TOOLS_CONFIG[tool_name]
+            fix_args = config.get("fix_args", [])
+            if not isinstance(fix_args, list):
+                fix_args = []
+
+            results[tool_name] = self.lint_service.run_tool_fix(
+                tool_name=tool_name,
+                args=fix_args,
+                target_dirs=target_dirs,
+                cwd=cwd,
+            )
+            self.logger.debug(f"✓ {tool_name} fix completed")
+
+        return results
 
     def get_tool_summary(self) -> dict[str, str]:
         """Get summary of tool availability and versions.
 
         Returns:
             dict[str, str]: Tool name -> status/version string
+        """
+        summary: dict[str, str] = {}
+
+        for tool_name, is_available in self.get_available_tools().items():
+            if not is_available:
+                summary[tool_name] = "Not available"
+                continue
+
+            try:
+                version = self.lint_service.get_tool_version(tool_name)
+            except LintServiceError as e:
+                # Log but don't raise - a missing version is not fatal here
+                self.logger.warning(f"Error getting version for {tool_name}: {e}")
+                summary[tool_name] = "Available (version unknown)"
+                continue
+
+            summary[tool_name] = (
+                f"Available: {version}" if version else "Available (version unknown)"
+            )
+
+        return summary
+
+    # ///////////////////////////////////////////////////////////////
+    # PRIVATE METHODS
+    # ///////////////////////////////////////////////////////////////
+
+    def _validate_run(
+        self, target_dirs: list[str], cwd: Path, operation: str
+    ) -> dict[str, bool]:
+        """Validate the inputs shared by the check and fix runs.
+
+        Args:
+            target_dirs: List of directories/files to process
+            cwd: Working directory
+            operation: Calling operation, reported on failure
+
+        Returns:
+            dict[str, bool]: Tool name -> availability status
 
         Raises:
-            LintServiceError: If tool summary generation fails
+            LintServiceError: If the target directories are empty or the
+                working directory does not exist
         """
-        try:
-            available_tools = self.get_available_tools()
-            summary: dict[str, str] = {}
-
-            for tool_name, is_available in available_tools.items():
-                if is_available:
-                    try:
-                        version = self.lint_service.get_tool_version(tool_name)
-                        summary[tool_name] = (
-                            f"Available: {version}"
-                            if version
-                            else "Available (version unknown)"
-                        )
-                    except Exception as e:
-                        # Log but don't raise - this is a helper method
-                        self.logger.warning(
-                            f"Error getting version for {tool_name}: {e}"
-                        )
-                        summary[tool_name] = "Available (version unknown)"
-                else:
-                    summary[tool_name] = "Not available"
-
-            return summary
-
-        except Exception as e:
-            # Wrap unexpected external exceptions
+        if not target_dirs:
             raise LintServiceError(
-                message=f"Failed to get tool summary: {e}",
-                operation="get_tool_summary",
-                details=f"Exception type: {type(e).__name__}",
-            ) from e
+                operation=operation,
+                reason="Target directories cannot be empty",
+            )
+
+        if not cwd or not cwd.exists():
+            raise LintServiceError(
+                operation=operation,
+                reason="Working directory does not exist",
+                details=f"Invalid working directory: {cwd}",
+            )
+
+        return self.get_available_tools()

@@ -20,25 +20,16 @@ from __future__ import annotations
 # ///////////////////////////////////////////////////////////////
 # Local imports
 from .lint_interface import LintInterfaceError, PythonLintInterfaceError
-from .lint_service import (
-    LintServiceError,
-    ToolAvailabilityServiceError,
-    ToolExecutionServiceError,
-)
+from .lint_service import LintServiceError
 
 # ///////////////////////////////////////////////////////////////
 # PUBLIC API
 # ///////////////////////////////////////////////////////////////
 
-__all__ = [  # noqa: RUF022
+__all__ = [
     # lint_interface
-    "PythonLintInterfaceError",
-    "PythonLintInterfaceError",
     "LintInterfaceError",
-    "PythonLintInterfaceError",
     "PythonLintInterfaceError",
     # lint_service
     "LintServiceError",
-    "ToolAvailabilityServiceError",
-    "ToolExecutionServiceError",
 ]

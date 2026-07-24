@@ -1,115 +1,57 @@
 #!/usr/bin/env python3
 # ///////////////////////////////////////////////////////////////
-# LINT SERVICE EXCEPTIONS - Lint Service Exception Classes
+# LINT SERVICE EXCEPTIONS - Lint Service Exception Class
 # Project: works-on-my-machine
 # ///////////////////////////////////////////////////////////////
 
 """
-Exception classes for linting service operations.
+Exception class for the linting services.
 
-Provides specialized exceptions for linting tool operations, validation,
-and execution errors.
+A single exception covers the whole lint service layer; the failing step is
+carried by a structured field rather than by a class hierarchy.
 """
 
 from __future__ import annotations
 
 # ///////////////////////////////////////////////////////////////
-# BASE EXCEPTION CLASSES
+# SERVICE EXCEPTION
 # ///////////////////////////////////////////////////////////////
 
 
 class LintServiceError(Exception):
-    """Base exception for lint service errors."""
+    """Single exception for ``LintService`` and ``PythonLintService``.
+
+    Covers every linting failure (invalid input, no tool available, tool
+    execution, timeout, JSON output parsing, ...). The failing step is carried
+    by the ``operation`` field rather than by per-step subclasses, since no
+    caller branches on the specific failure kind.
+    """
 
     def __init__(
         self,
-        message: str = "",
-        operation: str = "",
-        details: str = "",
+        operation: str,
+        reason: str,
+        details: str | None = None,
     ) -> None:
-        """Initialize lint service error.
+        """Initialize a lint service error.
 
         Args:
-            message: Error message
-            operation: Operation that failed
-            details: Additional error details
+            operation: Lint step that failed (e.g. "run_tool_check",
+                "get_tool_version", "fix_python_code")
+            reason: Human-readable reason for the failure
+            details: Optional technical details for debugging
         """
-        self.message = message or "Lint service error occurred"
         self.operation = operation
+        self.reason = reason
         self.details = details
-        super().__init__(self.message)
-
-    def __str__(self) -> str:
-        """Return string representation of error."""
-        parts = [self.message]
-        if self.operation:
-            parts.append(f"Operation: {self.operation}")
-        if self.details:
-            parts.append(f"Details: {self.details}")
-        return " | ".join(parts)
-
-
-# ///////////////////////////////////////////////////////////////
-# SPECIALIZED EXCEPTION CLASSES
-# ///////////////////////////////////////////////////////////////
-
-
-class ToolExecutionServiceError(LintServiceError):
-    """Exception raised when linting tool execution fails."""
-
-    def __init__(
-        self,
-        message: str = "",
-        tool_name: str = "",
-        operation: str = "",
-        reason: str = "",
-        details: str = "",
-    ) -> None:
-        """Initialize tool execution error.
-
-        Args:
-            message: Error message
-            tool_name: Name of the tool that failed
-            operation: Operation that failed
-            reason: Reason for failure
-            details: Additional error details
-        """
-        self.tool_name = tool_name
-        self.reason = reason
-        super().__init__(message, operation, details)
-
-
-class ToolAvailabilityServiceError(LintServiceError):
-    """Exception raised when a linting tool is not available."""
-
-    def __init__(
-        self,
-        message: str = "",
-        tool_name: str = "",
-        operation: str = "",
-        reason: str = "",
-        details: str = "",
-    ) -> None:
-        """Initialize tool availability error.
-
-        Args:
-            message: Error message
-            tool_name: Name of the tool that is not available
-            operation: Operation that failed
-            reason: Reason for failure
-            details: Additional error details
-        """
-        self.tool_name = tool_name
-        self.reason = reason
-        super().__init__(message, operation, details)
+        message = f"Lint service error during {operation}: {reason}"
+        if details:
+            message = f"{message} | Details: {details}"
+        super().__init__(message)
 
 
 # ///////////////////////////////////////////////////////////////
 # PUBLIC API
 # ///////////////////////////////////////////////////////////////
 
-__all__ = [
-    "LintServiceError",
-    "ToolAvailabilityServiceError",
-    "ToolExecutionServiceError",
-]
+__all__ = ["LintServiceError"]
