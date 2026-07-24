@@ -21,7 +21,6 @@ from __future__ import annotations
 # ///////////////////////////////////////////////////////////////
 # Local imports
 from .lint_utils import (
-    check_tool_availability,
     export_lint_results_to_json,
     get_tool_version,
     parse_lint_output,
@@ -33,7 +32,6 @@ from .lint_utils import (
 # ///////////////////////////////////////////////////////////////
 
 __all__ = [
-    "check_tool_availability",
     "export_lint_results_to_json",
     "get_tool_version",
     "parse_lint_output",

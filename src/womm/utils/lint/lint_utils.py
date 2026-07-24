@@ -21,7 +21,6 @@ from __future__ import annotations
 # ///////////////////////////////////////////////////////////////
 # Standard library imports
 import json
-import shutil
 from datetime import datetime
 from pathlib import Path
 
@@ -38,37 +37,6 @@ from ...shared.results import ToolResult
 # ///////////////////////////////////////////////////////////////
 # TOOL DETECTION FUNCTIONS
 # ///////////////////////////////////////////////////////////////
-
-
-def check_tool_availability(
-    tool_name: str, command_runner: CommandRunnerService
-) -> bool:
-    """Check if a linting tool is available.
-
-    Args:
-        tool_name: Name of the tool to check
-        command_runner: CommandRunnerService instance
-
-    Returns:
-        bool: True if tool is available, False otherwise
-    """
-    try:
-        if not tool_name:
-            return False
-
-        # First check if command exists in PATH
-        if not shutil.which(tool_name):
-            return False
-
-        # Try to run --version with a timeout
-        result = command_runner.run_silent(
-            [tool_name, "--version"],
-        )
-
-        return bool(result)
-
-    except Exception:
-        return False
 
 
 def get_tool_version(tool_name: str, command_runner: CommandRunnerService) -> str:
@@ -91,14 +59,6 @@ def get_tool_version(tool_name: str, command_runner: CommandRunnerService) -> st
                 message="Tool name cannot be empty",
                 tool_name="",
                 details="Empty tool name provided for version check",
-            )
-
-        # Check if tool is available first
-        if not check_tool_availability(tool_name, command_runner):
-            raise ToolAvailabilityServiceError(
-                message=f"Tool '{tool_name}' not available",
-                tool_name=tool_name,
-                details=f"Tool '{tool_name}' not available in system PATH",
             )
 
         # Get version
@@ -345,7 +305,6 @@ def export_lint_results_to_json(
 # ///////////////////////////////////////////////////////////////
 
 __all__ = [
-    "check_tool_availability",
     "export_lint_results_to_json",
     "get_tool_version",
     "parse_lint_output",
