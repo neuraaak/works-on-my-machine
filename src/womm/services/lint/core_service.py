@@ -81,7 +81,7 @@ class LintService:
     def check_tool_available(self, tool_name: str) -> bool:
         """Check if a linting tool is available.
 
-        Uses DevToolsService to centralize dependency checking.
+        Uses the lightweight probe to centralize dependency checking.
 
         Args:
             tool_name: Name of the tool to check
@@ -90,12 +90,9 @@ class LintService:
             bool: True if tool is available, False otherwise
         """
         try:
-            # Import here to avoid circular imports
-            from ..dependencies.devtools_dependencies_service import DevToolsService
+            from ...utils.dependencies import probe
 
-            service = DevToolsService()
-            result = service.check_tool_availability(tool_name)
-            return result.is_available
+            return probe(tool_name, detect_version=False).available
         except Exception as e:
             self.logger.debug(f"Error checking tool availability for {tool_name}: {e}")
             return False
@@ -103,7 +100,7 @@ class LintService:
     def get_tool_version(self, tool_name: str) -> str:
         """Get version of a linting tool.
 
-        First checks if tool is available via DevToolsService (centralized),
+        First checks if tool is available via the probe (centralized),
         then gets version using command execution.
 
         Args:
@@ -117,7 +114,7 @@ class LintService:
             ToolExecutionError: If version check fails
         """
         try:
-            # First, check if tool is available via DevToolsService
+            # First, check if tool is available via the probe
             # This centralizes dependency checking at service layer
             if not self.check_tool_available(tool_name):
                 raise ToolAvailabilityServiceError(

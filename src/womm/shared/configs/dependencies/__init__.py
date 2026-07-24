@@ -20,8 +20,6 @@ from __future__ import annotations
 # IMPORTS
 # ///////////////////////////////////////////////////////////////
 # Local imports
-from .core_config import DependenciesConfig
-from .dependencies_hierarchy import DependenciesHierarchy
 from .devtools_config import DevToolsConfig
 from .runtime_config import RuntimeConfig
 from .system_package_manager_config import SystemPackageManagerConfig
@@ -31,8 +29,6 @@ from .system_package_manager_config import SystemPackageManagerConfig
 # ///////////////////////////////////////////////////////////////
 
 __all__ = [
-    "DependenciesConfig",
-    "DependenciesHierarchy",
     "DevToolsConfig",
     "RuntimeConfig",
     "SystemPackageManagerConfig",

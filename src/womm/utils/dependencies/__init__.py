@@ -7,10 +7,8 @@
 """
 Dependencies utility functions for Works On My Machine.
 
-This package contains pure utility functions for:
-- Package manager operations
-- Runtime management
-- Development tools management
+This package exposes the lightweight read-only probe used to detect whether an
+executable (system package manager, runtime, or dev tool) is available.
 """
 
 from __future__ import annotations
@@ -20,19 +18,6 @@ from __future__ import annotations
 # ///////////////////////////////////////////////////////////////
 # Local imports
 from .probe import ProbeResult, probe
-from .runtime_utils import (
-    compare_versions,
-    get_package_name_for_manager,
-    parse_version,
-    satisfies_min_version,
-)
-from .system_package_manager_utils import (
-    build_install_command,
-    build_search_command,
-    extract_first_line_version,
-    extract_version_from_output,
-    select_best_manager,
-)
 
 # ///////////////////////////////////////////////////////////////
 # PUBLIC API
@@ -40,14 +25,5 @@ from .system_package_manager_utils import (
 
 __all__ = [
     "ProbeResult",
-    "build_install_command",
-    "build_search_command",
-    "compare_versions",
-    "extract_first_line_version",
-    "extract_version_from_output",
-    "get_package_name_for_manager",
-    "parse_version",
     "probe",
-    "satisfies_min_version",
-    "select_best_manager",
 ]
