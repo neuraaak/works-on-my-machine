@@ -21,16 +21,11 @@ from __future__ import annotations
 # ///////////////////////////////////////////////////////////////
 # Standard library imports
 import json
+import subprocess
 from datetime import datetime
 from pathlib import Path
 
 # Local imports
-from ...exceptions.common import ValidationServiceError
-from ...exceptions.lint import (
-    LintServiceError,
-    ToolAvailabilityServiceError,
-    ToolExecutionServiceError,
-)
 from ...services import CommandRunnerService
 from ...shared.results import ToolResult
 
@@ -47,57 +42,39 @@ def get_tool_version(tool_name: str, command_runner: CommandRunnerService) -> st
         command_runner: CommandRunnerService instance
 
     Returns:
-        str: Version string or empty string if not available
+        str: Version string, or an empty string if the tool printed nothing
 
     Raises:
-        ToolAvailabilityError: If tool is not available
-        ToolExecutionError: If version check fails
+        ValueError: If the tool name is empty
+        subprocess.CalledProcessError: If the version command fails
     """
-    try:
-        if not tool_name:
-            raise ToolAvailabilityServiceError(
-                message="Tool name cannot be empty",
-                tool_name="",
-                details="Empty tool name provided for version check",
-            )
+    if not tool_name:
+        raise ValueError("Tool name cannot be empty")
 
-        # Get version
-        result = command_runner.run_silent(
-            [tool_name, "--version"],
+    command = [tool_name, "--version"]
+    result = command_runner.run_silent(command)
+
+    if not result:
+        raise subprocess.CalledProcessError(
+            result.returncode,
+            command,
+            output=result.stdout,
+            stderr=result.stderr,
         )
 
-        if not bool(result):
-            raise ToolExecutionServiceError(
-                message=f"Version check failed for {tool_name}",
-                tool_name=tool_name,
-                operation="version_check",
-                details=f"Command output: {result.stderr or result.stdout}",
-            )
-
-        # Extract version from output
-        output = result.stdout.strip()
-        if output:
-            # Special handling for isort which has ASCII art in output
-            if tool_name == "isort":
-                # Look for "VERSION X.X.X" line
-                for line in output.split("\n"):
-                    if "VERSION" in line.upper():
-                        return line.strip()
-
-            # Default: take first line which usually contains version
-            first_line = output.split("\n")[0]
-            return first_line
-
+    output = result.stdout.strip()
+    if not output:
         return ""
 
-    except (ToolAvailabilityServiceError, ToolExecutionServiceError):
-        raise
-    except Exception as e:
-        raise LintServiceError(
-            message=f"Unexpected error during tool version check: {e}",
-            operation="get_tool_version",
-            details=f"Exception type: {type(e).__name__}, Tool: {tool_name}",
-        ) from e
+    # Special handling for isort which has ASCII art in output
+    if tool_name == "isort":
+        # Look for "VERSION X.X.X" line
+        for line in output.split("\n"):
+            if "VERSION" in line.upper():
+                return line.strip()
+
+    # Default: take first line which usually contains version
+    return output.split("\n")[0]
 
 
 # ///////////////////////////////////////////////////////////////
@@ -114,62 +91,50 @@ def parse_lint_output(output: str, tool_name: str) -> dict[str, object]:
 
     Returns:
         dict: Parsed output with issues and metadata
-
-    Raises:
-        LintValidationError: If output parsing fails
     """
-    try:
-        if not output:
-            return {
-                "issues": [],
-                "metadata": {"tool": tool_name, "total_issues": 0},
-            }
-
-        # Try to parse as JSON first
-        try:
-            data = json.loads(output)
-            if isinstance(data, list):
-                return {
-                    "issues": data,
-                    "metadata": {"tool": tool_name, "total_issues": len(data)},
-                }
-            elif isinstance(data, dict):
-                issues = data.get("results", [])
-                return {
-                    "issues": issues,
-                    "metadata": {"tool": tool_name, "total_issues": len(issues)},
-                }
-        except json.JSONDecodeError:
-            pass
-
-        # Parse as text output
-        lines = output.splitlines()
-        issues = []
-        for line in lines:
-            stripped_line = line.strip()
-            if stripped_line and ":" in stripped_line:
-                parts = stripped_line.split(":", 2)
-                if len(parts) >= 3:
-                    issues.append(
-                        {
-                            "file": parts[0],
-                            "line": int(parts[1]) if parts[1].isdigit() else 0,
-                            "message": parts[2],
-                        }
-                    )
-
+    if not output:
         return {
-            "issues": issues,
-            "metadata": {"tool": tool_name, "total_issues": len(issues)},
+            "issues": [],
+            "metadata": {"tool": tool_name, "total_issues": 0},
         }
 
-    except Exception as e:
-        raise ValidationServiceError(
-            operation="parse_tool_output",
-            field=tool_name,
-            reason=f"Failed to parse output: {e}",
-            details=f"Raw output: {output[:200]}...",
-        ) from e
+    # Try to parse as JSON first
+    try:
+        data = json.loads(output)
+    except json.JSONDecodeError:
+        pass
+    else:
+        if isinstance(data, list):
+            return {
+                "issues": data,
+                "metadata": {"tool": tool_name, "total_issues": len(data)},
+            }
+        if isinstance(data, dict):
+            issues = data.get("results", [])
+            return {
+                "issues": issues,
+                "metadata": {"tool": tool_name, "total_issues": len(issues)},
+            }
+
+    # Parse as text output
+    issues = []
+    for line in output.splitlines():
+        stripped_line = line.strip()
+        if stripped_line and ":" in stripped_line:
+            parts = stripped_line.split(":", 2)
+            if len(parts) >= 3:
+                issues.append(
+                    {
+                        "file": parts[0],
+                        "line": int(parts[1]) if parts[1].isdigit() else 0,
+                        "message": parts[2],
+                    }
+                )
+
+    return {
+        "issues": issues,
+        "metadata": {"tool": tool_name, "total_issues": len(issues)},
+    }
 
 
 # ///////////////////////////////////////////////////////////////
@@ -187,42 +152,18 @@ def validate_lint_result(result: ToolResult) -> bool:
         bool: True if result is valid
 
     Raises:
-        LintValidationError: If result validation fails
+        ValueError: If the result is missing or lacks a required attribute
     """
-    try:
-        if not result:
-            raise ValidationServiceError(
-                operation="validate_lint_result",
-                field="result",
-                reason="Tool result is None or empty",
-                details="No result provided for validation",
-            )
+    if not result:
+        raise ValueError("Tool result is None or empty")
 
-        if not hasattr(result, "tool_name") or not result.tool_name:
-            raise ValidationServiceError(
-                operation="validate_lint_result",
-                field="tool_name",
-                reason="Tool result missing tool name",
-                details="ToolResult must have a valid tool_name attribute",
-            )
-        if not hasattr(result, "success"):
-            raise ValidationServiceError(
-                operation="validate_lint_result",
-                field="success",
-                reason="Tool result missing success status",
-                details="ToolResult must have a valid success attribute",
-            )
-        return True
+    if not getattr(result, "tool_name", ""):
+        raise ValueError("Tool result is missing a tool name")
 
-    except ValidationServiceError:
-        raise
-    except Exception as e:
-        raise ValidationServiceError(
-            operation="validate_lint_result",
-            field="result",
-            reason=f"Unexpected error during validation: {e}",
-            details=f"Exception type: {type(e).__name__}",
-        ) from e
+    if not hasattr(result, "success"):
+        raise ValueError("Tool result is missing a success status")
+
+    return True
 
 
 # ///////////////////////////////////////////////////////////////
@@ -246,58 +187,51 @@ def export_lint_results_to_json(
         list[Path]: List of paths to exported JSON files
 
     Raises:
-        LintServiceError: If export fails
+        OSError: If the output directory or a result file cannot be written
+        TypeError: If a tool result holds non-serializable data
     """
-    try:
-        # Create output directory if it doesn't exist
-        output_dir.mkdir(parents=True, exist_ok=True)
+    # Create output directory if it doesn't exist
+    output_dir.mkdir(parents=True, exist_ok=True)
 
-        # Generate timestamp for unique filenames
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    # Generate timestamp for unique filenames
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
-        exported_files: list[Path] = []
+    exported_files: list[Path] = []
 
-        for tool_name, result in tool_results.items():
-            # Create filename with tool name, mode, and timestamp
-            filename = f"{tool_name}_{mode}_{timestamp}.json"
-            filepath = output_dir / filename
+    for tool_name, result in tool_results.items():
+        # Create filename with tool name, mode, and timestamp
+        filename = f"{tool_name}_{mode}_{timestamp}.json"
+        filepath = output_dir / filename
 
-            # Prepare output data
-            output_data = {
-                "tool": tool_name,
-                "mode": mode,
-                "timestamp": datetime.now().isoformat(),
+        # Prepare output data
+        output_data = {
+            "tool": tool_name,
+            "mode": mode,
+            "timestamp": datetime.now().isoformat(),
+            "success": result.success,
+            "files_checked": result.files_checked,
+            "issues_found": getattr(result, "issues_found", 0),
+            "fixed_issues": getattr(result, "fixed_issues", 0),
+            "message": result.message,
+            "data": result.data,
+            "raw_result": {
+                "tool_name": result.tool_name,
                 "success": result.success,
+                "message": result.message,
                 "files_checked": result.files_checked,
                 "issues_found": getattr(result, "issues_found", 0),
                 "fixed_issues": getattr(result, "fixed_issues", 0),
-                "message": result.message,
                 "data": result.data,
-                "raw_result": {
-                    "tool_name": result.tool_name,
-                    "success": result.success,
-                    "message": result.message,
-                    "files_checked": result.files_checked,
-                    "issues_found": getattr(result, "issues_found", 0),
-                    "fixed_issues": getattr(result, "fixed_issues", 0),
-                    "data": result.data,
-                },
-            }
+            },
+        }
 
-            # Write to file
-            with open(filepath, "w", encoding="utf-8") as f:
-                json.dump(output_data, f, indent=2, ensure_ascii=False)
+        # Write to file
+        with open(filepath, "w", encoding="utf-8") as f:
+            json.dump(output_data, f, indent=2, ensure_ascii=False)
 
-            exported_files.append(filepath)
+        exported_files.append(filepath)
 
-        return exported_files
-
-    except Exception as e:
-        raise LintServiceError(
-            message=f"Failed to export lint results to JSON: {e}",
-            operation="export_results",
-            details=f"Exception type: {type(e).__name__}",
-        ) from e
+    return exported_files
 
 
 # ///////////////////////////////////////////////////////////////
