@@ -23,11 +23,12 @@ from pathlib import Path
 # Third-party imports
 import click
 from ezpl import LogLevel
+from rich.progress import TaskID
 
 # Local imports
-from ...exceptions.lint import PythonLintInterfaceError
 from ...interfaces import PythonLintInterface
 from ...ui.common import ezpl_bridge, ezprinter
+from ...ui.lint import render_lint_summary_result, render_tool_status_result
 
 # ///////////////////////////////////////////////////////////////
 # COMMAND GROUPS
@@ -86,35 +87,28 @@ def lint_python(
     # Print header
     ezprinter.print_header("Python Linting")
 
-    try:
-        # Initialize lint interface (lazy loading)
-        lint_interface = PythonLintInterface(project_root=Path(path))
+    lint_interface = PythonLintInterface(project_root=Path(path))
+    target_paths = [path] if path != "." else None
+    tool_names = [t.strip() for t in tools.split(",")] if tools else None
+    mode = "fix" if fix else "check"
 
-        # Run linting (interface handles UI display)
-        if fix:
-            summary = lint_interface.fix_python_code(
-                target_paths=[path] if path != "." else None,
-                tools=[t.strip() for t in tools.split(",")] if tools else None,
-                output_dir=output_dir,
-            )
-        else:
-            summary = lint_interface.check_python_code(
-                target_paths=[path] if path != "." else None,
-                tools=[t.strip() for t in tools.split(",")] if tools else None,
-                output_dir=output_dir,
-            )
+    with ezprinter.create_spinner_with_status(
+        "Scanning project for Python files..."
+    ) as (progress, task):
+        progress.update(
+            TaskID(task),
+            description=f"Running Python linting tools ({mode} mode)...",
+            status="Working...",
+        )
+        run = (
+            lint_interface.fix_python_code if fix else lint_interface.check_python_code
+        )
+        summary = run(
+            target_paths=target_paths, tools=tool_names, output_dir=output_dir
+        )
 
-        # Exit with appropriate code
-        sys.exit(0 if summary.success else 1)
-
-    except PythonLintInterfaceError as e:
-        ezprinter.error(f"Linting failed: {e.message}")
-        if e.details:
-            ezprinter.error(f"Details: {e.details}")
-        sys.exit(1)
-    except Exception as e:
-        ezprinter.error(f"Unexpected error during linting: {e}")
-        sys.exit(1)
+    render_lint_summary_result(summary, mode=mode)
+    sys.exit(0 if summary.success else 1)
 
 
 # ///////////////////////////////////////////////////////////////
@@ -138,16 +132,6 @@ def lint_status(verbose: bool) -> None:
     # Print header
     ezprinter.print_header("Linting Tools Status")
 
-    try:
-        # Interface handles UI display
-        lint_interface = PythonLintInterface()
-        lint_interface.get_tool_status()
-
-    except PythonLintInterfaceError as e:
-        ezprinter.error(f"Tool status check failed: {e.message}")
-        if e.details:
-            ezprinter.error(f"Details: {e.details}")
-        sys.exit(1)
-    except Exception as e:
-        ezprinter.error(f"Unexpected error during tool status check: {e}")
-        sys.exit(1)
+    result = PythonLintInterface().get_tool_status()
+    render_tool_status_result(result)
+    sys.exit(0 if result.success else 1)

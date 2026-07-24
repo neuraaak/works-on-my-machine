@@ -7,11 +7,9 @@
 """
 Python Linting Interface for Works On My Machine.
 
-Handles Python code linting and fixing with integrated UI.
-Provides comprehensive linting capabilities with structured results.
-
-This interface orchestrates PythonLintService and FileScannerService
-and converts service exceptions to interface exceptions following the MEF pattern.
+Orchestrates PythonLintService and FileScannerService, and converts the lint
+service exception into a result object. The interface owns no presentation:
+rendering and exit codes belong to the command layer.
 """
 
 from __future__ import annotations
@@ -22,16 +20,12 @@ from __future__ import annotations
 # Standard library imports
 import logging
 from pathlib import Path
-
-# Third-party imports
-from rich.progress import TaskID
+from typing import Any
 
 # Local imports
-from ...exceptions.lint import LintServiceError, PythonLintInterfaceError
+from ...exceptions.lint import LintServiceError
 from ...services import FileScannerService, PythonLintService
 from ...shared.results.lint_results import LintSummaryResult, ToolStatusResult
-from ...ui.common import ezprinter
-from ...ui.lint import display_lint_summary, display_tool_status
 from ...utils.lint import export_lint_results_to_json
 
 # ///////////////////////////////////////////////////////////////
@@ -46,55 +40,21 @@ logger = logging.getLogger(__name__)
 
 
 class PythonLintInterface:
-    """
-    Manages Python linting operations for different tools.
+    """Manages Python linting operations for different tools.
 
-    This interface orchestrates PythonLintService and FileScannerService
-    and converts service exceptions to interface exceptions following the MEF pattern.
+    Every public method returns a result object: a failure of the lint service
+    is translated into ``success=False`` plus a message, never re-raised.
     """
 
     def __init__(self, project_root: Path | None = None) -> None:
-        """
-        Initialize Python lint interface.
+        """Initialize Python lint interface.
 
         Args:
             project_root: Root directory of the project (defaults to current directory)
-
-        Raises:
-            PythonLintInterfaceError: If interface initialization fails
         """
-        try:
-            # Input validation
-            if project_root is not None and not isinstance(project_root, Path):
-                raise PythonLintInterfaceError(
-                    message="Project root must be a Path object",
-                    details=f"Received type: {type(project_root).__name__}",
-                )
-
-            self.project_root = project_root or Path.cwd()
-
-            # Initialize services
-            try:
-                self._file_scanner: FileScannerService | None = None
-                self._python_lint_service: PythonLintService | None = None
-            except Exception as e:
-                raise PythonLintInterfaceError(
-                    message=f"Failed to initialize services: {e}",
-                    details=f"Exception type: {type(e).__name__}",
-                ) from e
-
-        except PythonLintInterfaceError:
-            # Re-raise our custom exceptions
-            raise
-        except Exception as e:
-            # Wrap unexpected external exceptions
-            logger.error(
-                f"Failed to initialize PythonLintInterface: {e}", exc_info=True
-            )
-            raise PythonLintInterfaceError(
-                message=f"Python lint interface initialization failed: {e}",
-                details=f"Exception type: {type(e).__name__}",
-            ) from e
+        self.project_root = project_root or Path.cwd()
+        self._file_scanner: FileScannerService | None = None
+        self._python_lint_service: PythonLintService | None = None
 
     @property
     def file_scanner(self) -> FileScannerService:
@@ -120,8 +80,7 @@ class PythonLintInterface:
         tools: list[str] | None = None,
         output_dir: str | None = None,
     ) -> LintSummaryResult:
-        """
-        Run Python linting tools in check mode.
+        """Run Python linting tools in check mode.
 
         Args:
             target_paths: Specific paths to check (if None, scan entire project)
@@ -129,129 +88,10 @@ class PythonLintInterface:
             output_dir: Output directory for detailed reports
 
         Returns:
-            LintSummary: Summary of linting results
-
-        Raises:
-            LintCheckInterfaceError: If linting check fails
+            LintSummaryResult: Summary of the run; on failure, ``success`` is
+                False and ``message`` carries the reason
         """
-        try:
-            with ezprinter.create_spinner_with_status(
-                "Scanning project for Python files..."
-            ) as (progress, task):
-                task_id = TaskID(task)
-                progress.update(
-                    task_id,
-                    description="Scanning project for Python files...",
-                    status="Initializing...",
-                )
-
-                try:
-                    python_files = self._get_target_files(target_paths)
-                except LintServiceError as e:
-                    # Convert service exceptions to interface exceptions
-                    raise PythonLintInterfaceError(
-                        message=f"Failed to get target files: {e}",
-                        operation="check_python_code",
-                        details=f"Service exception: {type(e).__name__}",
-                    ) from e
-                except Exception as e:
-                    # Wrap unexpected external exceptions
-                    raise PythonLintInterfaceError(
-                        message=f"Failed to get target files: {e}",
-                        operation="check_python_code",
-                        details=f"Exception type: {type(e).__name__}",
-                    ) from e
-
-                if not python_files:
-                    progress.update(task_id, status="No Python files found to check")
-                    return LintSummaryResult(
-                        success=False, message="No Python files found to check"
-                    )
-
-                progress.update(
-                    task_id, status=f"Found {len(python_files)} Python files"
-                )
-
-                try:
-                    scan_result = self.file_scanner.get_scan_summary(python_files)
-                    # Convert FileScanResult to dict for compatibility
-                    scan_summary = {
-                        "target_path": (
-                            str(scan_result.target_path)
-                            if scan_result.target_path
-                            else ""
-                        ),
-                        "total_files": scan_result.total_files,
-                        "file_extensions": scan_result.file_extensions or [],
-                        "excluded_dirs": scan_result.excluded_dirs or [],
-                        "scan_successful": scan_result.success,
-                    }
-                except Exception as e:
-                    logger.warning(f"Failed to get scan summary: {e}")
-                    scan_summary = {"total_files": len(python_files), "errors": []}
-
-                progress.update(task_id, status="Running linting tools...")
-
-                target_dirs = [str(f) for f in python_files]
-
-                try:
-                    tool_results = self.python_lint_service.check_python_code(
-                        target_dirs=target_dirs, cwd=self.project_root, tools=tools
-                    )
-                except LintServiceError as e:
-                    # Convert service exceptions to interface exceptions
-                    raise PythonLintInterfaceError(
-                        message=f"Failed to execute Python linting tools: {e}",
-                        operation="check_python_code",
-                        details=f"Service exception: {type(e).__name__}",
-                    ) from e
-                except Exception as e:
-                    # Wrap unexpected external exceptions
-                    raise PythonLintInterfaceError(
-                        message=f"Failed to execute Python linting tools: {e}",
-                        operation="check_python_code",
-                        details=f"Exception type: {type(e).__name__}",
-                    ) from e
-
-                progress.update(task_id, status="Analysis completed")
-
-            # Calculate totals
-            total_issues = sum(result.issues_found for result in tool_results.values())
-
-            summary = LintSummaryResult(
-                success=all(result.success for result in tool_results.values()),
-                message=f"Checked {len(python_files)} files with {len(tool_results)} tools",
-                total_files=len(python_files),
-                total_issues=total_issues,
-                tool_results=tool_results,
-                scan_summary=scan_summary,
-            )
-
-            # Generate output files if requested
-            if output_dir:
-                try:
-                    export_lint_results_to_json(
-                        tool_results, Path(output_dir), mode="check"
-                    )
-                except Exception as e:
-                    logger.warning(f"Failed to generate output files: {e}")
-
-            # Display results via UI
-            display_lint_summary(summary, mode="check")
-
-            return summary
-
-        except PythonLintInterfaceError:
-            # Re-raise interface exceptions
-            raise
-        except Exception as e:
-            # Wrap unexpected external exceptions
-            logger.error(f"Unexpected error in check_python_code: {e}", exc_info=True)
-            raise PythonLintInterfaceError(
-                message=f"Python code checking failed: {e}",
-                operation="check_python_code",
-                details=f"Exception type: {type(e).__name__}",
-            ) from e
+        return self._run("check", target_paths, tools, output_dir)
 
     def fix_python_code(
         self,
@@ -259,8 +99,7 @@ class PythonLintInterface:
         tools: list[str] | None = None,
         output_dir: str | None = None,
     ) -> LintSummaryResult:
-        """
-        Run Python linting tools in fix mode.
+        """Run Python linting tools in fix mode.
 
         Args:
             target_paths: Specific paths to fix (if None, scan entire project)
@@ -268,272 +107,155 @@ class PythonLintInterface:
             output_dir: Output directory for detailed reports
 
         Returns:
-            LintSummary: Summary of fixing results
-
-        Raises:
-            LintFixInterfaceError: If linting fix fails
+            LintSummaryResult: Summary of the run; on failure, ``success`` is
+                False and ``message`` carries the reason
         """
-        try:
-            with ezprinter.create_spinner_with_status(
-                "Scanning project for Python files..."
-            ) as (progress, task):
-                task_id = TaskID(task)
-                progress.update(
-                    task_id,
-                    description="Scanning project for Python files...",
-                    status="Initializing...",
-                )
-
-                try:
-                    python_files = self._get_target_files(target_paths)
-                except LintServiceError as e:
-                    # Convert service exceptions to interface exceptions
-                    raise PythonLintInterfaceError(
-                        message=f"Failed to get target files: {e}",
-                        operation="fix_python_code",
-                        details=f"Service exception: {type(e).__name__}",
-                    ) from e
-                except Exception as e:
-                    # Wrap unexpected external exceptions
-                    raise PythonLintInterfaceError(
-                        message=f"Failed to get target files: {e}",
-                        operation="fix_python_code",
-                        details=f"Exception type: {type(e).__name__}",
-                    ) from e
-
-                if not python_files:
-                    progress.update(task_id, status="No Python files found to fix")
-                    return LintSummaryResult(
-                        success=False, message="No Python files found to fix"
-                    )
-
-                progress.update(
-                    task_id, status=f"Found {len(python_files)} Python files"
-                )
-
-                try:
-                    scan_result = self.file_scanner.get_scan_summary(python_files)
-                    # Convert FileScanResult to dict for compatibility
-                    scan_summary = {
-                        "target_path": (
-                            str(scan_result.target_path)
-                            if scan_result.target_path
-                            else ""
-                        ),
-                        "total_files": scan_result.total_files,
-                        "file_extensions": scan_result.file_extensions or [],
-                        "excluded_dirs": scan_result.excluded_dirs or [],
-                        "scan_successful": scan_result.success,
-                    }
-                except Exception as e:
-                    logger.warning(f"Failed to get scan summary: {e}")
-                    scan_summary = {"total_files": len(python_files), "errors": []}
-
-                progress.update(task_id, status="Running fixing tools...")
-
-                target_dirs = [str(f) for f in python_files]
-
-                try:
-                    tool_results = self.python_lint_service.fix_python_code(
-                        target_dirs=target_dirs, cwd=self.project_root, tools=tools
-                    )
-                except LintServiceError as e:
-                    # Convert service exceptions to interface exceptions
-                    raise PythonLintInterfaceError(
-                        message=f"Failed to execute Python fixing tools: {e}",
-                        operation="fix_python_code",
-                        details=f"Service exception: {type(e).__name__}",
-                    ) from e
-                except Exception as e:
-                    # Wrap unexpected external exceptions
-                    raise PythonLintInterfaceError(
-                        message=f"Failed to execute Python fixing tools: {e}",
-                        operation="fix_python_code",
-                        details=f"Exception type: {type(e).__name__}",
-                    ) from e
-
-                progress.update(task_id, status="Analysis completed")
-
-            # Calculate totals
-            total_fixed = sum(result.fixed_issues for result in tool_results.values())
-
-            summary = LintSummaryResult(
-                success=all(result.success for result in tool_results.values()),
-                message=f"Processed {len(python_files)} files with {len(tool_results)} tools",
-                total_files=len(python_files),
-                total_fixed=total_fixed,
-                tool_results=tool_results,
-                scan_summary=scan_summary,
-            )
-
-            # Generate output files if requested
-            if output_dir:
-                try:
-                    export_lint_results_to_json(
-                        tool_results, Path(output_dir), mode="fix"
-                    )
-                except Exception as e:
-                    logger.warning(f"Failed to generate output files: {e}")
-
-            # Display results via UI
-            display_lint_summary(summary, mode="fix")
-
-            return summary
-
-        except PythonLintInterfaceError:
-            # Re-raise interface exceptions
-            raise
-        except Exception as e:
-            # Wrap unexpected external exceptions
-            logger.error(f"Unexpected error in fix_python_code: {e}", exc_info=True)
-            raise PythonLintInterfaceError(
-                message=f"Python code fixing failed: {e}",
-                operation="fix_python_code",
-                details=f"Exception type: {type(e).__name__}",
-            ) from e
+        return self._run("fix", target_paths, tools, output_dir)
 
     def get_tool_status(self) -> ToolStatusResult:
-        """
-        Get status of all available linting tools.
+        """Get status of all available linting tools.
 
         Returns:
             ToolStatusResult: Tool availability and version information
-
-        Raises:
-            LintToolStatusInterfaceError: If tool status retrieval fails
         """
-        try:
-            try:
-                tool_summary = self.python_lint_service.get_tool_summary()
-                result = ToolStatusResult(
-                    success=True,
-                    message="Tool status retrieved successfully",
-                    tool_summary=tool_summary,
-                )
-
-                # Display results via UI
-                display_tool_status(tool_summary)
-
-                return result
-            except LintServiceError as e:
-                # Convert service exceptions to interface exceptions
-                raise PythonLintInterfaceError(
-                    message=f"Failed to get tool summary: {e}",
-                    operation="get_tool_status",
-                    details=f"Service exception: {type(e).__name__}",
-                ) from e
-            except Exception as e:
-                # Wrap unexpected external exceptions
-                raise PythonLintInterfaceError(
-                    message=f"Failed to get tool summary: {e}",
-                    operation="get_tool_status",
-                    details=f"Exception type: {type(e).__name__}",
-                ) from e
-
-        except PythonLintInterfaceError:
-            # Re-raise interface exceptions
-            raise
-        except Exception as e:
-            # Wrap unexpected external exceptions
-            logger.error(f"Unexpected error in get_tool_status: {e}", exc_info=True)
-            raise PythonLintInterfaceError(
-                message=f"Tool status retrieval failed: {e}",
-                operation="get_tool_status",
-                details=f"Exception type: {type(e).__name__}",
-            ) from e
+        return ToolStatusResult(
+            success=True,
+            message="Tool status retrieved successfully",
+            tool_summary=self.python_lint_service.get_tool_summary(),
+        )
 
     # ///////////////////////////////////////////////////////////////
     # PRIVATE METHODS
     # ///////////////////////////////////////////////////////////////
 
-    def _get_target_files(self, target_paths: list[str] | None) -> list[Path]:
-        """
-        Get list of Python files to process.
+    def _run(
+        self,
+        mode: str,
+        target_paths: list[str] | None,
+        tools: list[str] | None,
+        output_dir: str | None,
+    ) -> LintSummaryResult:
+        """Run the linting tools in check or fix mode.
 
         Args:
-            target_paths: Specific paths to check (if None, scan entire project)
+            mode: Either "check" or "fix"
+            target_paths: Specific paths to process (if None, scan entire project)
+            tools: Specific tools to run (if None, run all available)
+            output_dir: Output directory for detailed reports
 
         Returns:
-            list[Path]: List of Python files to process
-
-        Raises:
-            PythonLintInterfaceError: If file scanning fails
+            LintSummaryResult: Summary of the run
         """
+        python_files, scan_error = self._get_target_files(target_paths)
+        if scan_error:
+            return LintSummaryResult(success=False, message=scan_error)
+
+        if not python_files:
+            return LintSummaryResult(
+                success=False, message=f"No Python files found to {mode}"
+            )
+
+        target_dirs = [str(f) for f in python_files]
         try:
-            if not target_paths:
-                # Scan entire project
-                try:
-                    search_result = self.file_scanner.get_project_python_files(
-                        self.project_root
-                    )
-                    if not search_result.success:
-                        raise PythonLintInterfaceError(
-                            message=f"Failed to scan project: {search_result.error}",
-                            operation="_get_target_files",
-                            details="File search failed",
-                        )
-                    return search_result.files_found or []
-                except LintServiceError as e:
-                    # Convert service exceptions to interface exceptions
-                    raise PythonLintInterfaceError(
-                        message=f"Failed to scan project for Python files: {e}",
-                        operation="_get_target_files",
-                        details=f"Service exception: {type(e).__name__}",
-                    ) from e
-                except Exception as e:
-                    # Wrap unexpected external exceptions
-                    raise PythonLintInterfaceError(
-                        message=f"Failed to scan project for Python files: {e}",
-                        operation="_get_target_files",
-                        details=f"Exception type: {type(e).__name__}",
-                    ) from e
+            if mode == "check":
+                tool_results = self.python_lint_service.check_python_code(
+                    target_dirs=target_dirs, cwd=self.project_root, tools=tools
+                )
+            else:
+                tool_results = self.python_lint_service.fix_python_code(
+                    target_dirs=target_dirs, cwd=self.project_root, tools=tools
+                )
+        except LintServiceError as e:
+            return LintSummaryResult(
+                success=False,
+                message=f"Failed to execute Python {mode} tools: {e}",
+            )
 
-            # Process specific paths
-            python_files: list[Path] = []
-            for path_str in target_paths:
-                try:
-                    path = Path(path_str)
-                    # Don't modify the path if it's already absolute
-                    # If it's relative, resolve it from current working directory, not project_root
-                    if not path.is_absolute():
-                        path = Path.cwd() / path
+        verb = "Checked" if mode == "check" else "Processed"
+        summary = LintSummaryResult(
+            success=all(result.success for result in tool_results.values()),
+            message=f"{verb} {len(python_files)} files with {len(tool_results)} tools",
+            total_files=len(python_files),
+            total_issues=sum(r.issues_found for r in tool_results.values()),
+            total_fixed=sum(r.fixed_issues for r in tool_results.values()),
+            tool_results=tool_results,
+            scan_summary=self._get_scan_summary(python_files),
+        )
 
-                    try:
-                        search_result = self.file_scanner.find_python_files(
-                            path, recursive=True
-                        )
-                        if search_result.success and search_result.files_found:
-                            python_files.extend(search_result.files_found)
-                    except LintServiceError as e:
-                        # Convert service exceptions to interface exceptions
-                        raise PythonLintInterfaceError(
-                            message=f"Failed to find Python files in {path_str}: {e}",
-                            operation="_get_target_files",
-                            details=f"Service exception: {type(e).__name__}",
-                        ) from e
-                    except Exception as e:
-                        # Wrap unexpected external exceptions
-                        logger.warning(
-                            f"Failed to find Python files in {path_str}: {e}"
-                        )
-                        # Continue with other paths
-                        continue
+        # Generate output files if requested
+        if output_dir:
+            try:
+                export_lint_results_to_json(tool_results, Path(output_dir), mode=mode)
+            except (OSError, TypeError) as e:
+                logger.warning(f"Failed to generate output files: {e}")
 
-                except Exception as e:
-                    logger.warning(f"Failed to process path {path_str}: {e}")
-                    # Continue with other paths
-                    continue
+        return summary
 
-            return python_files
+    def _get_target_files(
+        self, target_paths: list[str] | None
+    ) -> tuple[list[Path], str]:
+        """Collect the Python files to process.
 
-        except PythonLintInterfaceError:
-            # Re-raise interface exceptions
-            raise
-        except Exception as e:
-            # Wrap unexpected external exceptions
-            logger.error(f"Unexpected error in _get_target_files: {e}", exc_info=True)
-            raise PythonLintInterfaceError(
-                message=f"Target files retrieval failed: {e}",
-                operation="_get_target_files",
-                details=f"Exception type: {type(e).__name__}",
-            ) from e
+        ``FileScannerService`` reports its failures through its result object,
+        so no exception has to be handled here.
+
+        Args:
+            target_paths: Specific paths to scan (if None, scan entire project)
+
+        Returns:
+            tuple[list[Path], str]: Files found, and an error message that is
+                empty when the scan succeeded
+        """
+        if not target_paths:
+            # Scan entire project
+            search_result = self.file_scanner.get_project_python_files(
+                self.project_root
+            )
+            if not search_result.success:
+                return [], f"Failed to scan project: {search_result.error}"
+            return search_result.files_found or [], ""
+
+        # Process specific paths
+        python_files: list[Path] = []
+        for path_str in target_paths:
+            path = Path(path_str)
+            # Don't modify the path if it's already absolute
+            # If it's relative, resolve it from current working directory, not project_root
+            if not path.is_absolute():
+                path = Path.cwd() / path
+
+            search_result = self.file_scanner.find_python_files(path, recursive=True)
+            if not search_result.success:
+                # Continue with other paths
+                logger.warning(
+                    f"Failed to find Python files in {path_str}: {search_result.error}"
+                )
+            elif search_result.files_found:
+                python_files.extend(search_result.files_found)
+
+        return python_files, ""
+
+    def _get_scan_summary(self, python_files: list[Path]) -> dict[str, Any]:
+        """Build the scan summary attached to the lint result.
+
+        Args:
+            python_files: Files that will be processed
+
+        Returns:
+            dict[str, Any]: Scan metadata, degraded to a file count if the
+                scanner cannot produce a summary
+        """
+        scan_result = self.file_scanner.get_scan_summary(python_files)
+        if not scan_result.success:
+            logger.warning(f"Failed to get scan summary: {scan_result.error}")
+            return {"total_files": len(python_files), "errors": []}
+
+        return {
+            "target_path": (
+                str(scan_result.target_path) if scan_result.target_path else ""
+            ),
+            "total_files": scan_result.total_files,
+            "file_extensions": scan_result.file_extensions or [],
+            "excluded_dirs": scan_result.excluded_dirs or [],
+            "scan_successful": scan_result.success,
+        }

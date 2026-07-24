@@ -22,7 +22,41 @@ from rich.table import Table
 
 # Local imports
 from ...shared.result_models import LintSummaryResult
+from ...shared.results.lint_results import ToolStatusResult
 from ..common.ezpl_bridge import ezconsole, ezprinter
+
+# ///////////////////////////////////////////////////////////////
+# RESULT RENDERERS
+# ///////////////////////////////////////////////////////////////
+
+
+def render_lint_summary_result(summary: LintSummaryResult, mode: str = "check") -> None:
+    """Render a lint summary result, whether it succeeded or not.
+
+    Args:
+        summary: Result returned by the lint interface
+        mode: Mode of operation ("check" or "fix")
+    """
+    if not summary.success and not summary.tool_results:
+        # The run never reached the tools (no file found, service failure)
+        ezprinter.error(summary.message)
+        return
+
+    display_lint_summary(summary, mode)
+
+
+def render_tool_status_result(result: ToolStatusResult) -> None:
+    """Render a tool status result, whether it succeeded or not.
+
+    Args:
+        result: Result returned by the lint interface
+    """
+    if not result.success:
+        ezprinter.error(result.message)
+        return
+
+    display_tool_status(result.tool_summary or {})
+
 
 # ///////////////////////////////////////////////////////////////
 # PUBLIC API
@@ -214,4 +248,6 @@ def display_tool_status(tool_summary: dict) -> None:
 __all__ = [
     "display_lint_summary",
     "display_tool_status",
+    "render_lint_summary_result",
+    "render_tool_status_result",
 ]

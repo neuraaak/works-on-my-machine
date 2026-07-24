@@ -19,17 +19,10 @@ from __future__ import annotations
 # IMPORTS
 # ///////////////////////////////////////////////////////////////
 # Local imports
-from .lint_interface import LintInterfaceError, PythonLintInterfaceError
 from .lint_service import LintServiceError
 
 # ///////////////////////////////////////////////////////////////
 # PUBLIC API
 # ///////////////////////////////////////////////////////////////
 
-__all__ = [
-    # lint_interface
-    "LintInterfaceError",
-    "PythonLintInterfaceError",
-    # lint_service
-    "LintServiceError",
-]
+__all__ = ["LintServiceError"]

@@ -58,7 +58,7 @@ from .context import (
 )
 
 # Local imports - Lint exceptions
-from .lint import LintInterfaceError, LintServiceError, PythonLintInterfaceError
+from .lint import LintServiceError
 
 # Local imports - Project exceptions
 from .project import (
@@ -128,9 +128,7 @@ __all__ = [  # noqa: RUF022
     "ContextUtilityError",
     "ScriptDetectorServiceError",
     # Lint exceptions
-    "LintInterfaceError",
     "LintServiceError",
-    "PythonLintInterfaceError",
     # Project exceptions
     "CreateInterfaceError",
     "ProjectDetectionInterfaceError",
