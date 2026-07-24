@@ -36,12 +36,12 @@ from ...services import (
 )
 from ...shared.results import ProjectSetupResult
 from ...ui.common import ezprinter
+from ...utils.dependencies import probe
 from ...utils.project import (
     copy_asset_type,
     validate_project_path,
     validate_project_type,
 )
-from ..dependencies.runtime_interface import RuntimeInterface
 
 # ///////////////////////////////////////////////////////////////
 # LOGGER SETUP
@@ -573,8 +573,7 @@ class ProjectSetupInterface:
         """
         try:
             if project_type == "python":
-                runtime_manager = RuntimeInterface()
-                result = runtime_manager.check_runtime("python")
+                result = probe("python")
                 if not result.success:
                     raise SetupInterfaceError(
                         message="Python runtime not found",
@@ -584,8 +583,7 @@ class ProjectSetupInterface:
                     )
 
             elif project_type in ["javascript", "react", "vue"]:
-                runtime_manager = RuntimeInterface()
-                result = runtime_manager.check_runtime("node")
+                result = probe("node")
                 if not result.success:
                     raise SetupInterfaceError(
                         message="Node.js runtime not found",

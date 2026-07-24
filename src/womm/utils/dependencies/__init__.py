@@ -19,6 +19,7 @@ from __future__ import annotations
 # IMPORTS
 # ///////////////////////////////////////////////////////////////
 # Local imports
+from .probe import ProbeResult, probe
 from .runtime_utils import (
     compare_versions,
     get_package_name_for_manager,
@@ -38,6 +39,7 @@ from .system_package_manager_utils import (
 # ///////////////////////////////////////////////////////////////
 
 __all__ = [
+    "ProbeResult",
     "build_install_command",
     "build_search_command",
     "compare_versions",
@@ -45,6 +47,7 @@ __all__ = [
     "extract_version_from_output",
     "get_package_name_for_manager",
     "parse_version",
+    "probe",
     "satisfies_min_version",
     "select_best_manager",
 ]

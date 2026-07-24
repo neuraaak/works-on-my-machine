@@ -31,7 +31,7 @@ from ...shared.results import (
     ProjectSetupResult,
 )
 from ...ui.common import ezprinter
-from ..dependencies.runtime_interface import RuntimeInterface
+from ...utils.dependencies import probe
 from .create_interface import ProjectCreateInterface
 from .detection_interface import ProjectDetectionInterface
 from .setup_interface import ProjectSetupInterface
@@ -257,8 +257,7 @@ class ProjectManagerInterface:
         """Check if required dependencies are available."""
         try:
             if project_type == "python":
-                runtime_manager = RuntimeInterface()
-                result = runtime_manager.check_runtime("python")
+                result = probe("python")
                 if not result.success:
                     raise ProjectServiceError(
                         "Python runtime not found, attempting to install...",
@@ -266,8 +265,7 @@ class ProjectManagerInterface:
                     )
 
             elif project_type in ["javascript", "react", "vue"]:
-                runtime_manager = RuntimeInterface()
-                result = runtime_manager.check_runtime("node")
+                result = probe("node")
                 if not result.success:
                     raise ProjectServiceError(
                         "Node.js runtime not found, attempting to install...",
