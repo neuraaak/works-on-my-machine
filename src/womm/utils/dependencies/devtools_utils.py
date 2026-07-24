@@ -16,12 +16,6 @@ This module provides stateless functions for:
 from __future__ import annotations
 
 # ///////////////////////////////////////////////////////////////
-# IMPORTS
-# ///////////////////////////////////////////////////////////////
-# Standard library imports
-import shutil
-
-# ///////////////////////////////////////////////////////////////
 # TOOL CATEGORIZATION FUNCTIONS
 # ///////////////////////////////////////////////////////////////
 
@@ -106,27 +100,3 @@ def detect_installation_method(
         return installation_methods[language]
 
     return "auto"
-
-
-def resolve_tool_path(tool: str, check_method: str = "standard") -> str | None:
-    """
-    Resolve path to a tool executable.
-
-    Args:
-        tool: Tool name
-        check_method: Method to check tool (standard, npx)
-
-    Returns:
-        str | None: Path to tool or None if not found
-    """
-    if check_method == "standard":
-        return shutil.which(tool)
-
-    # For npx tools, we can't resolve the path directly
-    # but we can check if npx is available
-    if check_method == "npx":
-        if shutil.which("npx"):
-            return f"npx {tool}"
-        return None
-
-    return None

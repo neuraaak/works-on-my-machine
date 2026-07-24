@@ -23,7 +23,6 @@ from .devtools_utils import (
     detect_installation_method,
     get_all_tools_for_language,
     get_tool_type_for_language,
-    resolve_tool_path,
 )
 from .runtime_utils import (
     compare_versions,
@@ -54,7 +53,6 @@ __all__ = [
     "get_package_name_for_manager",
     "get_tool_type_for_language",
     "parse_version",
-    "resolve_tool_path",
     "satisfies_min_version",
     "select_best_manager",
 ]
