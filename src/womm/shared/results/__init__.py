@@ -20,16 +20,6 @@ from __future__ import annotations
 from .base import BaseResult, CommandResult
 from .command_results import CommandAvailabilityResult, CommandVersionResult
 from .context_results import ContextRegistryResult, ContextValidationResult
-from .cspell_results import (
-    AddWordsResult,
-    CSpellCheckResult,
-    CSpellConfigResult,
-    CSpellInstallResult,
-    CSpellResult,
-    CSpellSummary,
-    DictionaryResult,
-    DictionarySetupResult,
-)
 from .dependencies_results import (
     DependencyCheckResult,
     DevToolAvailabilityResult,
@@ -77,13 +67,7 @@ from .system_results import (
 # ///////////////////////////////////////////////////////////////
 
 __all__ = [
-    "AddWordsResult",
     "BaseResult",
-    "CSpellCheckResult",
-    "CSpellConfigResult",
-    "CSpellInstallResult",
-    "CSpellResult",
-    "CSpellSummary",
     "CommandAvailabilityResult",
     "CommandResult",
     "CommandValidationResult",
@@ -94,8 +78,6 @@ __all__ = [
     "DependencyCheckResult",
     "DevToolAvailabilityResult",
     "DevToolResult",
-    "DictionaryResult",
-    "DictionarySetupResult",
     "EnvironmentRefreshResult",
     "EnvironmentVerificationResult",
     "FileOperationResult",

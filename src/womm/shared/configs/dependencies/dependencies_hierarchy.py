@@ -17,7 +17,7 @@ Strata 2: runtime + runtime_package_manager
     - runtime_package_manager: Bundled or standalone pkg managers (pip, uv, npm, yarn)
 
 Strata 3: devtools_dependencies
-    Development utilities (cspell, ruff, eslint, pytest)
+    Development utilities (ruff, eslint, pytest)
 """
 
 from __future__ import annotations
@@ -52,7 +52,7 @@ class DependenciesHierarchy:
 
     Strata 3: devtools_dependencies
         Development tools that require runtime_package_managers
-        Examples: cspell, ruff, eslint, pytest
+        Examples: ruff, eslint, pytest
 
     Installation Order:
     ===================
@@ -68,8 +68,8 @@ class DependenciesHierarchy:
     Example Chain:
     ==============
 
-        To install cspell:
-        cspell → npm → node → winget
+        To install eslint:
+        eslint → npm → node → winget
 
         To install ruff:
         ruff → pip → python → winget
@@ -94,7 +94,7 @@ class DependenciesHierarchy:
         3: {
             "name": "devtools_dependencies",
             "description": "Development and project utilities",
-            "examples": ["cspell", "ruff", "eslint", "pytest"],
+            "examples": ["ruff", "eslint", "pytest"],
         },
     }
 
@@ -200,11 +200,6 @@ class DependenciesHierarchy:
             "runtime_package_manager": "npm",
             "runtime": "node",
         },
-        "cspell": {
-            "runtime_package_manager": "npm",
-            "runtime": "node",
-            "check_method": "npx",  # Can be checked via npx without global install
-        },
     }
 
     # ///////////////////////////////////////////////////////////
@@ -248,9 +243,9 @@ class DependenciesHierarchy:
             Dictionary with runtime, runtime_package_manager, and optional check_method
 
         Example:
-            >>> get_devtool_chain("cspell")
+            >>> get_devtool_chain("eslint")
             {
-                "devtool": "cspell",
+                "devtool": "eslint",
                 "runtime_package_manager": "npm",
                 "runtime": "node",
                 "check_method": "npx"
@@ -379,8 +374,8 @@ class DependenciesHierarchy:
             List of (strata_number, component_name) tuples, sorted by strata
 
         Example:
-            >>> get_full_chain("cspell")
-            [(2, "node"), (2, "npm"), (3, "cspell")]
+            >>> get_full_chain("eslint")
+            [(2, "node"), (2, "npm"), (3, "eslint")]
 
             >>> get_full_chain("ruff")
             [(2, "python"), (2, "pip"), (3, "ruff")]
@@ -423,9 +418,9 @@ class DependenciesHierarchy:
             Sorted list respecting hierarchy (Strata 1 → 2 → 3)
 
         Example:
-            >>> items = [(3, "cspell"), (2, "node"), (2, "npm")]
+            >>> items = [(3, "eslint"), (2, "node"), (2, "npm")]
             >>> validate_installation_order(items)
-            [(2, "node"), (2, "npm"), (3, "cspell")]
+            [(2, "node"), (2, "npm"), (3, "eslint")]
         """
         return sorted(items, key=lambda x: x[0])
 

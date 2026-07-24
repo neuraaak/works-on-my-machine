@@ -160,7 +160,7 @@ class DepsInterface:
             for rt in RuntimeConfig.RUNTIMES
         }
 
-        sample_tools = ["cspell", "ruff", "pytest", "eslint"]
+        sample_tools = ["ruff", "pytest", "eslint"]
         tool_results = {}
         for tool in sample_tools:
             try:

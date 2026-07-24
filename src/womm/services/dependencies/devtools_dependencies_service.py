@@ -212,7 +212,7 @@ class DevToolsService:
         then installs the tool using the appropriate package manager.
 
         Args:
-            tool: Name of the tool to install (cspell, ruff, eslint, etc.)
+            tool: Name of the tool to install (ruff, eslint, etc.)
 
         Returns:
             DevToolAvailabilityResult: Result with installation status

@@ -10,7 +10,7 @@ Dependencies command for Works On My Machine.
 Manages the 3-strata dependency hierarchy:
 - Strata 1: System Package Managers (winget, choco, homebrew)
 - Strata 2: Runtimes (python, node, git)
-- Strata 3: DevTools (cspell, ruff, eslint)
+- Strata 3: DevTools (ruff, eslint)
 """
 
 from __future__ import annotations
@@ -80,7 +80,7 @@ def deps_group(ctx: click.Context) -> None:
     \b
     Strata 1: System Package Managers (winget, chocolatey, homebrew, apt)
     Strata 2: Runtimes (python, node, git)
-    Strata 3: Development Tools (cspell, ruff, eslint, pytest)
+    Strata 3: Development Tools (ruff, eslint, pytest)
 
     Each strata depends on the lower ones. Use subcommands to manage each level.
     """
@@ -416,14 +416,14 @@ def tool_group(ctx: click.Context) -> None:
     """
     Manage development tools (Strata 3).
 
-    Development tools are language-specific utilities (cspell, ruff, eslint)
+    Development tools are language-specific utilities (ruff, eslint)
     that help with code quality, formatting, and linting.
 
     \b
     Examples:
         womm deps tool check          # Check all tools
-        womm deps tool check cspell   # Check specific tool
-        womm deps tool install cspell # Install with dependency resolution
+        womm deps tool check ruff     # Check specific tool
+        womm deps tool install ruff   # Install with dependency resolution
         womm deps tool list           # List available tools
     """
     if ctx.invoked_subcommand is None:
@@ -449,7 +449,7 @@ def tool_check(tool: str | None, verbose: bool) -> None:
     \b
     Examples:
         womm deps tool check          # Check all tools
-        womm deps tool check cspell   # Check cspell only
+        womm deps tool check ruff     # Check ruff only
         womm deps tool check -v       # Verbose output
     """
     if verbose:
@@ -515,7 +515,7 @@ def tool_install(tool: str, force: bool, verbose: bool) -> None:
 
     \b
     Examples:
-        womm deps tool install cspell
+        womm deps tool install ruff
         womm deps tool install ruff --force
         womm deps tool install eslint -v
     """

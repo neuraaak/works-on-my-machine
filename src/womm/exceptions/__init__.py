@@ -12,7 +12,6 @@ Import exceptions from the appropriate domain:
 
     from exceptions.common import CommandServiceError, FileServiceError
     from exceptions.context import ContextServiceError
-    from exceptions.cspell import CSpellError, SpellServiceError
     from exceptions.dependencies import DevToolsError, PackageManagerError
     from exceptions.lint import LintServiceError, ToolExecutionError
     from exceptions.project import ProjectServiceError, TemplateError
@@ -22,7 +21,6 @@ Import exceptions from the appropriate domain:
 Available domains:
 - common: Command, file, and security service exceptions
 - context: Context menu service exceptions
-- cspell: Spell checking service exceptions
 - dependencies: Dependency management exceptions
 - lint: Linting service exceptions
 - project: Project management exceptions
@@ -59,15 +57,6 @@ from .context import (
     ContextUtilityError,
     MenuServiceError,
     ScriptDetectorServiceError,
-)
-
-# Local imports - CSpell exceptions
-from .cspell import (
-    CheckServiceError,
-    CSpellDictionaryInterfaceError,
-    CSpellInterfaceError,
-    CSpellServiceError,
-    DictionaryServiceError,
 )
 
 # Local imports - Dependencies exceptions
@@ -164,13 +153,6 @@ __all__ = [  # noqa: RUF022
     "ContextServiceError",
     "ContextUtilityError",
     "ScriptDetectorServiceError",
-    # CSpell exceptions
-    "CheckServiceError",
-    "CSpellInterfaceError",
-    "DictionaryServiceError",
-    "CSpellDictionaryInterfaceError",
-    "CSpellInterfaceError",
-    "CSpellServiceError",
     # Dependencies exceptions
     "DependenciesInterfaceError",
     "DependenciesServiceError",

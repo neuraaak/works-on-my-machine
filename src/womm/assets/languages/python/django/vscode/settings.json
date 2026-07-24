@@ -133,40 +133,5 @@
     "python.analysis.typeCheckingMode": "basic",
     // Django-specific settings
     "python.analysis.diagnosticMode": "workspace",
-    "python.analysis.stubPath": "${workspaceFolder}/.vscode/typings",
-    // CSpell Configuration
-    "cSpell.enabled": true,
-    "cSpell.language": "en,fr",
-    "cSpell.enableFiletypes": [
-        "python",
-        "markdown",
-        "text",
-        "yaml",
-        "json",
-        "django-html",
-        "django-txt"
-    ],
-    "cSpell.words": [],
-    "cSpell.userWords": [],
-    "cSpell.ignorePaths": [
-        "**/__pycache__/**",
-        "**/*.egg-info/**",
-        "**/.pytest_cache/**",
-        "**/.mypy_cache/**",
-        "**/.tox/**",
-        "**/venv/**",
-        "**/.venv/**",
-        "**/.env*",
-        "**/.secret*",
-        "**/*password*",
-        "**/*secret*",
-        "**/*.key",
-        "**/*.pem",
-        "**/*.crt",
-        "**/credentials/**",
-        "**/migrations/**",
-        "**/db.sqlite3",
-        "**/staticfiles/**",
-        "**/static_collected/**"
-    ]
+    "python.analysis.stubPath": "${workspaceFolder}/.vscode/typings"
 }

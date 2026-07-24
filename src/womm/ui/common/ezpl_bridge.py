@@ -500,40 +500,6 @@ class ExtendedPrinter(EzPrinter):
 
         return table
 
-    def create_dictionary_table(self, dictionaries: list[dict[str, Any]]) -> Table:
-        """
-        Create a table for displaying CSpell dictionaries (returns Table object).
-
-        Args:
-            dictionaries: List of dictionary information dictionaries
-
-        Returns:
-            Table object (not displayed)
-        """
-        table = Table(title="CSpell Dictionaries", show_header=True)
-        table.add_column("File", style="cyan", no_wrap=True)
-        table.add_column("Words", style="green", no_wrap=True)
-        table.add_column("Size", style="yellow", no_wrap=True)
-        table.add_column("Status", style="bold", no_wrap=True)
-
-        for dict_info in dictionaries:
-            file_name = dict_info.get("file", "")
-            word_count = dict_info.get("words", 0)
-            file_size = dict_info.get("size", "N/A")
-            status = dict_info.get("status", "Available")
-
-            # Format status with emoji
-            if "available" in status.lower():
-                status_display = "✅ Available"
-            elif "error" in status.lower():
-                status_display = "❌ Error"
-            else:
-                status_display = f"ℹ️ {status}"
-
-            table.add_row(file_name, str(word_count), str(file_size), status_display)
-
-        return table
-
     def create_backup_table(self, backups: list[dict[str, Any]]) -> Table:
         """
         Create a table for displaying PATH backup information (returns Table object).

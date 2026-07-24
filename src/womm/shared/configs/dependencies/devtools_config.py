@@ -52,7 +52,6 @@ class DevToolsConfig:
             "bundling": ["webpack", "vite"],
         },
         "universal": {
-            "spell_checking": ["cspell"],
             "git_hooks": ["pre-commit"],
         },
     }
@@ -66,16 +65,6 @@ class DevToolsConfig:
 
     # Special tool configurations
     TOOL_CONFIGS: ClassVar[dict[str, dict[str, str | list[str | list[str]]]]] = {
-        "cspell": {
-            "check_method": "npx",  # Can be checked via npx
-            "runtime_package_manager": "npm",
-            "check_commands": [
-                "cspell",  # Direct command in PATH
-                ["npx", "cspell"],  # Via npx (npm local or global fallback)
-            ],
-            "version_flag": "--version",
-            "install_global": "npm install -g cspell",
-        },
         "pre-commit": {
             "check_method": "standard",
             "runtime_package_manager": "pip",

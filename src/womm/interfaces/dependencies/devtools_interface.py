@@ -960,7 +960,7 @@ class DevToolsInterface:
             required_runtime = None
             if install_method == "pip":
                 required_runtime = "python"
-            elif install_method == "npm" or tool in ("cspell",):
+            elif install_method == "npm":
                 required_runtime = "node"
 
             if not required_runtime:

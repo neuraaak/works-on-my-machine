@@ -111,30 +111,5 @@
     },
     "terminal.integrated.env.osx": {
         "NODE_PATH": "${workspaceFolder}/node_modules"
-    },
-    // CSpell configuration
-    "cSpell.enabled": true,
-    "cSpell.language": "en,fr",
-    "cSpell.enableFiletypes": [
-        "javascript",
-        "vue",
-        "html",
-        "css",
-        "scss",
-        "json",
-        "markdown",
-        "yaml"
-    ],
-    "cSpell.words": [],
-    "cSpell.userWords": [],
-    "cSpell.ignorePaths": [
-        "**/node_modules/**",
-        "**/dist/**",
-        "**/build/**",
-        "**/coverage/**",
-        "**/.cache/**",
-        "**/package-lock.json",
-        "**/yarn.lock",
-        "**/pnpm-lock.yaml"
-    ]
+    }
 }

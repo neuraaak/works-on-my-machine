@@ -162,7 +162,7 @@ class TemplateResult(BaseResult):
 class ConfigurationResult(BaseResult):
     """Result for configuration operations."""
 
-    config_type: str = ""  # vscode, git, cspell, etc.
+    config_type: str = ""  # vscode, git, etc.
     config_files: list[str] | None = None
     settings_applied: dict[str, Any] | None = None
 

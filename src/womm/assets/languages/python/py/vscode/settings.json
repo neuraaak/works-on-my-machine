@@ -110,34 +110,5 @@
         "./src"
     ],
     "python.analysis.autoSearchPaths": true,
-    "python.analysis.typeCheckingMode": "basic",
-    // CSpell Configuration
-    "cSpell.enabled": true,
-    "cSpell.language": "en,fr",
-    "cSpell.enableFiletypes": [
-        "python",
-        "markdown",
-        "text",
-        "yaml",
-        "json"
-    ],
-    "cSpell.words": [],
-    "cSpell.userWords": [],
-    "cSpell.ignorePaths": [
-        "**/__pycache__/**",
-        "**/*.egg-info/**",
-        "**/.pytest_cache/**",
-        "**/.mypy_cache/**",
-        "**/.tox/**",
-        "**/venv/**",
-        "**/.venv/**",
-        "**/.env*",
-        "**/.secret*",
-        "**/*password*",
-        "**/*secret*",
-        "**/*.key",
-        "**/*.pem",
-        "**/*.crt",
-        "**/credentials/**"
-    ]
+    "python.analysis.typeCheckingMode": "basic"
 }

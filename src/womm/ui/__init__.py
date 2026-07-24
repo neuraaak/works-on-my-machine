@@ -17,7 +17,7 @@ from __future__ import annotations
 # IMPORTS
 # ///////////////////////////////////////////////////////////////
 # Local imports
-from . import common, context, cspell, dependencies, lint, project, system
+from . import common, context, dependencies, lint, project, system
 
 # ///////////////////////////////////////////////////////////////
 # PUBLIC API
@@ -26,7 +26,6 @@ from . import common, context, cspell, dependencies, lint, project, system
 __all__ = [
     "common",
     "context",
-    "cspell",
     "dependencies",
     "lint",
     "project",

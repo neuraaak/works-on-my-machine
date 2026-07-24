@@ -24,9 +24,6 @@ from .context import (
     ContextScriptDetectorInterface,
 )
 
-# Local imports - Cspell interfaces
-from .cspell import CSpellCheckerInterface, CSpellDictionaryInterface
-
 # Local imports - Dependencies interfaces
 from .dependencies import (
     DepsInterface,
@@ -62,9 +59,6 @@ from .womm_setup import WommInstallerInterface, WommUninstallerInterface
 # ///////////////////////////////////////////////////////////////
 
 __all__ = [
-    # Cspell interfaces
-    "CSpellCheckerInterface",
-    "CSpellDictionaryInterface",
     # Context interfaces
     "ContextIconInterface",
     "ContextMenuInterface",

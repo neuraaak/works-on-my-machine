@@ -212,13 +212,6 @@ if HAS_PROOF_FILE:
     except ImportError:
         pass
 
-    try:
-        from .commands.tools import cspell_group
-
-        womm.add_command(cspell_group)
-    except ImportError:
-        pass
-
 # System commands are always available
 try:
     from .commands.system import system_group

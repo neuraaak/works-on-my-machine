@@ -146,8 +146,6 @@ class SecurityPatternsConfig:
         "mypy",
         "eslint",
         "prettier",
-        "cspell",
-        "spellcheck",
         "echo",
         "cat",
         "ls",

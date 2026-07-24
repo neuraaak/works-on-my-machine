@@ -32,9 +32,6 @@ from .context import (
     ContextValidationService,
 )
 
-# Local imports - Cspell services
-from .cspell import CSpellCheckerService, CSpellDictionaryService
-
 # Local imports - Dependencies services
 from .dependencies import DevToolsService, RuntimeService, SystemPackageManagerService
 
@@ -72,9 +69,6 @@ __all__ = [  # noqa: RUF022
     "ContextRegistryService",
     "ContextType",
     "ContextValidationService",
-    # Cspell services
-    "CSpellCheckerService",
-    "CSpellDictionaryService",
     # Dependencies services
     "DevToolsService",
     "SystemPackageManagerService",
