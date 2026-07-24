@@ -44,11 +44,10 @@ logger = logging.getLogger(__name__)
 # DEVELOPMENT TOOLS DEFINITIONS
 # ///////////////////////////////////////////////////////////////
 
-# DEVTOOLS_DEPENDENCIES, DEFAULT_RUNTIME_PACKAGE_MANAGER, and TOOL_CONFIGS from DevToolsConfig
+# DEVTOOLS_DEPENDENCIES and DEFAULT_RUNTIME_PACKAGE_MANAGER from DevToolsConfig
 # Import from config instead of defining here
 DEVTOOLS_DEPENDENCIES = DevToolsConfig.DEVTOOLS_DEPENDENCIES
 DEFAULT_RUNTIME_PACKAGE_MANAGER = DevToolsConfig.DEFAULT_RUNTIME_PACKAGE_MANAGER
-TOOL_CONFIGS = DevToolsConfig.TOOL_CONFIGS
 
 # Backward compatibility aliases
 DEV_TOOLS = DEVTOOLS_DEPENDENCIES

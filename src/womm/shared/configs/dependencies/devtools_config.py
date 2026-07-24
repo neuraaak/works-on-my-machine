@@ -63,16 +63,6 @@ class DevToolsConfig:
         "universal": "auto",  # Auto-detect based on tool
     }
 
-    # Special tool configurations
-    TOOL_CONFIGS: ClassVar[dict[str, dict[str, str | list[str | list[str]]]]] = {
-        "pre-commit": {
-            "check_method": "standard",
-            "runtime_package_manager": "pip",
-            "check_commands": ["pre-commit"],
-            "version_flag": "--version",
-        },
-    }
-
 
 # ///////////////////////////////////////////////////////////////
 # PUBLIC API

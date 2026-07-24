@@ -118,21 +118,6 @@ class DevToolsService:
             # Check if tool is available
             available = shutil.which(tool) is not None
 
-            # For special tools, check via alternative methods
-            if not available and tool in DevToolsConfig.TOOL_CONFIGS:
-                config = DevToolsConfig.TOOL_CONFIGS[tool]
-                check_method = config.get("check_method", "standard")
-                if check_method == "npx":
-                    # Check via npx
-                    try:
-                        result = self._command_runner.run_silent(
-                            ["npx", tool, "--version"]
-                        )
-                        available = bool(result)
-                    except Exception as e:
-                        logger.debug(f"Failed to check tool {tool} via npx: {e}")
-                        available = False
-
             self.cache[cache_key] = available
 
             # Find language
@@ -187,22 +172,6 @@ class DevToolsService:
         if not language:
             return "auto"
         return DevToolsConfig.DEFAULT_RUNTIME_PACKAGE_MANAGER.get(language, "auto")
-
-    def get_tool_config(
-        cls, tool: str
-    ) -> dict[str, str | list[str | list[str]]] | None:
-        """
-        Get special configuration for a tool.
-
-        Args:
-            tool: Name of the tool
-
-        Returns:
-            dict | None: Tool configuration or None if not found
-        """
-        if not tool:
-            return None
-        return DevToolsConfig.TOOL_CONFIGS.get(tool)
 
     def install_devtool(self, tool: str) -> DevToolAvailabilityResult:
         """
