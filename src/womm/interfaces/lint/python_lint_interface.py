@@ -43,7 +43,7 @@ class PythonLintInterface:
     """Manages Python linting operations for different tools.
 
     Every public method returns a result object: a failure of the lint service
-    is translated into ``success=False`` plus a message, never re-raised.
+    is translated into ``success=False`` plus an ``error``, never re-raised.
     """
 
     def __init__(self, project_root: Path | None = None) -> None:
@@ -89,7 +89,7 @@ class PythonLintInterface:
 
         Returns:
             LintSummaryResult: Summary of the run; on failure, ``success`` is
-                False and ``message`` carries the reason
+                False and ``error`` carries the reason
         """
         return self._run("check", target_paths, tools, output_dir)
 
@@ -108,7 +108,7 @@ class PythonLintInterface:
 
         Returns:
             LintSummaryResult: Summary of the run; on failure, ``success`` is
-                False and ``message`` carries the reason
+                False and ``error`` carries the reason
         """
         return self._run("fix", target_paths, tools, output_dir)
 
@@ -148,11 +148,11 @@ class PythonLintInterface:
         """
         python_files, scan_error = self._get_target_files(target_paths)
         if scan_error:
-            return LintSummaryResult(success=False, message=scan_error)
+            return LintSummaryResult(success=False, error=scan_error)
 
         if not python_files:
             return LintSummaryResult(
-                success=False, message=f"No Python files found to {mode}"
+                success=False, error=f"No Python files found to {mode}"
             )
 
         target_dirs = [str(f) for f in python_files]
@@ -168,7 +168,7 @@ class PythonLintInterface:
         except LintServiceError as e:
             return LintSummaryResult(
                 success=False,
-                message=f"Failed to execute Python {mode} tools: {e}",
+                error=f"Failed to execute Python {mode} tools: {e}",
             )
 
         verb = "Checked" if mode == "check" else "Processed"

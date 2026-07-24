@@ -39,7 +39,7 @@ def render_lint_summary_result(summary: LintSummaryResult, mode: str = "check") 
     """
     if not summary.success and not summary.tool_results:
         # The run never reached the tools (no file found, service failure)
-        ezprinter.error(summary.message)
+        ezprinter.error(summary.error)
         return
 
     display_lint_summary(summary, mode)
@@ -52,7 +52,7 @@ def render_tool_status_result(result: ToolStatusResult) -> None:
         result: Result returned by the lint interface
     """
     if not result.success:
-        ezprinter.error(result.message)
+        ezprinter.error(result.error)
         return
 
     display_tool_status(result.tool_summary or {})
