@@ -307,27 +307,6 @@ def display_deps_status_table(
     ezconsole.print(table)
 
 
-def display_deps_validation_results(
-    issues: list[str], valid_count: int, _verbose: bool = False
-) -> None:
-    """
-    Display dependency validation results.
-
-    Args:
-        issues: List of validation issues found
-        valid_count: Number of valid dependency chains
-        verbose: Whether to show detailed results
-    """
-    ezprinter.info("Validating dependency chains...\n")
-
-    if issues:
-        ezprinter.error(f"\n{len(issues)} issue(s) found:")
-        for issue in issues:
-            ezprinter.error(f"  {issue}")
-    else:
-        ezprinter.success(f"\n✓ All {valid_count} dependency chains are valid")
-
-
 # ///////////////////////////////////////////////////////////////
 # PUBLIC API
 # ///////////////////////////////////////////////////////////////
@@ -337,7 +316,6 @@ __all__ = [
     "display_best_manager",
     "display_deps_check_results",
     "display_deps_status_table",
-    "display_deps_validation_results",
     "display_system_detection_results",
     "display_system_managers_list",
 ]

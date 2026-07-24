@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 # ///////////////////////////////////////////////////////////////
-# DEPS INTERFACE - Global Dependencies Orchestration
+# DEPS INTERFACE - Global Dependencies Diagnostic
 # Project: works-on-my-machine
 # ///////////////////////////////////////////////////////////////
 
 """
 Global dependencies interface for Works On My Machine.
 
-Provides high-level operations for checking, validating, and
-displaying status across all dependency strata.
+Provides read-only diagnostic operations across the three dependency strata
+(system package managers, runtimes, dev tools). Backed by the lightweight
+:func:`probe` primitive — no installation, resolution, or god-object machinery.
 """
 
 from __future__ import annotations
@@ -18,16 +19,15 @@ from __future__ import annotations
 # ///////////////////////////////////////////////////////////////
 # Standard library imports
 import logging
+import sys
 
 # Local imports
 from ...shared.configs.dependencies import (
-    DependenciesHierarchy,
     DevToolsConfig,
     RuntimeConfig,
+    SystemPackageManagerConfig,
 )
-from .devtools_interface import DevToolsInterface
-from .runtime_interface import RuntimeInterface
-from .system_package_manager_interface import SystemPackageManagerInterface
+from ...utils.dependencies import ProbeResult, probe
 
 # ///////////////////////////////////////////////////////////////
 # LOGGER SETUP
@@ -37,25 +37,42 @@ logger = logging.getLogger(__name__)
 
 
 # ///////////////////////////////////////////////////////////////
-# HELPER FUNCTION
+# HELPER FUNCTIONS
 # ///////////////////////////////////////////////////////////////
 
 
-def _find_tool_info(tool_name: str) -> tuple[str, str] | None:
-    """
-    Find the language (category) and tool_type (subcategory) for a given tool.
+def _current_platform() -> str:
+    """Return the current platform key (windows, darwin, linux)."""
+    if sys.platform.startswith("win"):
+        return "windows"
+    if sys.platform == "darwin":
+        return "darwin"
+    return "linux"
 
-    Args:
-        tool_name: The name of the tool to find
 
-    Returns:
-        Tuple of (language, tool_type) if found, None otherwise
-    """
-    for category, tools in DevToolsConfig.DEVTOOLS_DEPENDENCIES.items():
-        for subcategory, tool_list in tools.items():
-            if tool_name in tool_list:
-                return (category, subcategory)
-    return None
+def _probe_managers(detect_version: bool) -> dict[str, ProbeResult]:
+    """Probe the system package managers supported on the current platform."""
+    platform = _current_platform()
+    return {
+        name: probe(str(info["command"]), detect_version=detect_version)
+        for name, info in SystemPackageManagerConfig.SYSTEM_PACKAGE_MANAGERS.items()
+        if info["platform"] == platform
+    }
+
+
+def _probe_runtimes() -> dict[str, ProbeResult]:
+    """Probe every configured runtime (python, node, git)."""
+    return {runtime: probe(runtime) for runtime in RuntimeConfig.RUNTIMES}
+
+
+def _probe_tools() -> dict[str, ProbeResult]:
+    """Probe every configured dev tool (availability only)."""
+    return {
+        tool: probe(tool, detect_version=False)
+        for tools in DevToolsConfig.DEVTOOLS_DEPENDENCIES.values()
+        for tool_list in tools.values()
+        for tool in tool_list
+    }
 
 
 # ///////////////////////////////////////////////////////////////
@@ -64,38 +81,7 @@ def _find_tool_info(tool_name: str) -> tuple[str, str] | None:
 
 
 class DepsInterface:
-    """Orchestrates global dependency operations across all strata."""
-
-    def __init__(self):
-        """Initialize the deps interface with lazy-loaded sub-interfaces."""
-        self._system_interface: SystemPackageManagerInterface | None = None
-        self._runtime_interface: RuntimeInterface | None = None
-        self._tool_interface: DevToolsInterface | None = None
-
-    # ///////////////////////////////////////////////////////////////
-    # SERVICE PROPERTIES (LAZY INITIALIZATION)
-    # ///////////////////////////////////////////////////////////////
-
-    @property
-    def system_interface(self) -> SystemPackageManagerInterface:
-        """Lazy load SystemPackageManagerInterface when needed."""
-        if self._system_interface is None:
-            self._system_interface = SystemPackageManagerInterface()
-        return self._system_interface
-
-    @property
-    def runtime_interface(self) -> RuntimeInterface:
-        """Lazy load RuntimeInterface when needed."""
-        if self._runtime_interface is None:
-            self._runtime_interface = RuntimeInterface()
-        return self._runtime_interface
-
-    @property
-    def tool_interface(self) -> DevToolsInterface:
-        """Lazy load DevToolsInterface when needed."""
-        if self._tool_interface is None:
-            self._tool_interface = DevToolsInterface()
-        return self._tool_interface
+    """Read-only diagnostic across all dependency strata (probe-based)."""
 
     # ///////////////////////////////////////////////////////////////
     # PUBLIC METHODS
@@ -103,34 +89,20 @@ class DepsInterface:
 
     def check_all(self, verbose: bool = False) -> dict:
         """
-        Check all dependencies across all strata and display results.
+        Check availability of every dependency across all strata.
 
         Args:
-            verbose: Whether to show detailed information
+            verbose: Whether to show per-component version details.
 
         Returns:
-            dict: All check results organized by strata
+            dict: Probe results keyed by strata (``system``/``runtime``/``tools``).
         """
         from ...ui.system import display_deps_check_results
 
-        # Collect all results
-        system_results = self.system_interface.detect_available_managers()
-        runtime_results = {
-            rt: self.runtime_interface.check_runtime(rt)
-            for rt in RuntimeConfig.RUNTIMES
-        }
+        system_results = _probe_managers(detect_version=verbose)
+        runtime_results = _probe_runtimes()
+        tool_results = _probe_tools()
 
-        # Tool results
-        tool_results = {}
-        for category, tools in DevToolsConfig.DEVTOOLS_DEPENDENCIES.items():
-            for subcategory, tool_list in tools.items():
-                for tool in tool_list:
-                    result = self.tool_interface.check_dev_tool(
-                        category, subcategory, tool
-                    )
-                    tool_results[tool] = result
-
-        # Display results
         display_deps_check_results(
             system_results, runtime_results, tool_results, verbose
         )
@@ -143,38 +115,35 @@ class DepsInterface:
 
     def show_status(self, verbose: bool = False) -> dict:
         """
-        Show comprehensive dependency status and display table.
+        Render a comprehensive status table across all strata.
 
         Args:
-            verbose: Whether to show additional details
+            verbose: Whether to show additional detail columns.
 
         Returns:
-            dict: Status data for all strata
+            dict: Status data keyed by strata.
         """
         from ...ui.system import display_deps_status_table
 
-        # Collect data
-        system_status = self.system_interface.get_installation_status()
-        runtime_results = {
-            rt: self.runtime_interface.check_runtime(rt)
-            for rt in RuntimeConfig.RUNTIMES
-        }
+        platform = _current_platform()
+        system_status: dict[str, dict] = {}
+        for name, info in SystemPackageManagerConfig.SYSTEM_PACKAGE_MANAGERS.items():
+            supported = info["platform"] == platform
+            result = (
+                probe(str(info["command"]), detect_version=verbose)
+                if supported
+                else None
+            )
+            system_status[name] = {
+                "supported_on_current_platform": supported,
+                "available": bool(result and result.available),
+                "version": result.version if result else None,
+                "priority": info.get("priority", "N/A"),
+            }
 
-        sample_tools = ["ruff", "pytest", "eslint"]
-        tool_results = {}
-        for tool in sample_tools:
-            try:
-                tool_info = _find_tool_info(tool)
-                if tool_info:
-                    language, tool_type = tool_info
-                    result = self.tool_interface.check_dev_tool(
-                        language, tool_type, tool
-                    )
-                    tool_results[tool] = result
-            except Exception as e:
-                logger.debug(f"Could not check tool {tool}: {e}")
+        runtime_results = _probe_runtimes()
+        tool_results = _probe_tools()
 
-        # Display table
         display_deps_status_table(system_status, runtime_results, tool_results, verbose)
 
         return {
@@ -183,45 +152,30 @@ class DepsInterface:
             "tools": tool_results,
         }
 
-    def validate_chains(self, verbose: bool = False) -> dict:
+    def list_all(self, verbose: bool = False) -> None:  # noqa: ARG002
         """
-        Validate all dependency chains and display results.
+        List the dependencies WOMM knows about (static inventory, no probing).
 
         Args:
-            verbose: Whether to show detailed information
-
-        Returns:
-            dict: Validation results with issues and valid count
+            verbose: Unused; kept for CLI symmetry.
         """
-        from ...ui.system import display_deps_validation_results
+        from ...ui.common import ezprinter
 
-        issues = []
-        valid_count = 0
+        platform = _current_platform()
 
-        # Check each devtool's chain
-        for _category, tools in DevToolsConfig.DEVTOOLS_DEPENDENCIES.items():
-            for _subcategory, tool_list in tools.items():
-                for tool in tool_list:
-                    try:
-                        chain = DependenciesHierarchy.get_devtool_chain(tool)
+        ezprinter.info("=== System Package Managers (Strata 1) ===")
+        for name, info in SystemPackageManagerConfig.SYSTEM_PACKAGE_MANAGERS.items():
+            if info["platform"] == platform:
+                ezprinter.info(f"  • {name} ({info['command']})")
 
-                        if not chain.get("runtime_package_manager"):
-                            issues.append(f"❌ {tool}: Missing runtime_package_manager")
-                        elif not chain.get("runtime"):
-                            issues.append(f"❌ {tool}: Missing runtime")
-                        else:
-                            valid_count += 1
-                    except Exception as e:
-                        issues.append(f"❌ {tool}: Invalid chain ({e})")
+        ezprinter.info("\n=== Runtimes (Strata 2) ===")
+        for runtime, info in RuntimeConfig.RUNTIMES.items():
+            ezprinter.info(f"  • {runtime} (>= {info['version']})")
 
-        # Display results
-        display_deps_validation_results(issues, valid_count, verbose)
-
-        return {
-            "issues": issues,
-            "valid_count": valid_count,
-            "total": valid_count + len(issues),
-        }
+        ezprinter.info("\n=== Development Tools (Strata 3) ===")
+        for language, categories in DevToolsConfig.DEVTOOLS_DEPENDENCIES.items():
+            for category, tools in categories.items():
+                ezprinter.info(f"  • {language}/{category}: {', '.join(tools)}")
 
 
 # ///////////////////////////////////////////////////////////////
