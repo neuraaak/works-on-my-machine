@@ -12,7 +12,6 @@ Import exceptions from the appropriate domain:
 
     from exceptions.common import CommandServiceError, FileServiceError
     from exceptions.context import ContextServiceError
-    from exceptions.dependencies import DevToolsError, PackageManagerError
     from exceptions.lint import LintServiceError, ToolExecutionError
     from exceptions.project import ProjectServiceError, TemplateError
     from exceptions.system import SystemServiceError, FileSystemError
@@ -21,7 +20,6 @@ Import exceptions from the appropriate domain:
 Available domains:
 - common: Command, file, and security service exceptions
 - context: Context menu service exceptions
-- dependencies: Dependency management exceptions
 - lint: Linting service exceptions
 - project: Project management exceptions
 - system: System management exceptions
@@ -57,18 +55,6 @@ from .context import (
     ContextUtilityError,
     MenuServiceError,
     ScriptDetectorServiceError,
-)
-
-# Local imports - Dependencies exceptions
-from .dependencies import (
-    DependenciesInterfaceError,
-    DependenciesServiceError,
-    DevToolsInterfaceError,
-    DevToolsServiceError,
-    RuntimeInterfaceError,
-    RuntimeServiceError,
-    SystemPkgManagerInterfaceError,
-    SystemPkgManagerServiceError,
 )
 
 # Local imports - Lint exceptions
@@ -153,15 +139,6 @@ __all__ = [  # noqa: RUF022
     "ContextServiceError",
     "ContextUtilityError",
     "ScriptDetectorServiceError",
-    # Dependencies exceptions
-    "DependenciesInterfaceError",
-    "DependenciesServiceError",
-    "DevToolsServiceError",
-    "DevToolsInterfaceError",
-    "SystemPkgManagerServiceError",
-    "SystemPkgManagerInterfaceError",
-    "RuntimeServiceError",
-    "RuntimeInterfaceError",
     # Lint exceptions
     "PythonLintInterfaceError",
     "PythonLintInterfaceError",

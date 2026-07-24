@@ -20,16 +20,6 @@ from __future__ import annotations
 from .base import BaseResult, CommandResult
 from .command_results import CommandAvailabilityResult, CommandVersionResult
 from .context_results import ContextRegistryResult, ContextValidationResult
-from .dependencies_results import (
-    DependencyCheckResult,
-    DevToolAvailabilityResult,
-    DevToolResult,
-    PackageManagerAvailabilityResult,
-    PackageManagerPlatformResult,
-    PackageManagerResult,
-    RuntimeInstallationResult,
-    RuntimeResult,
-)
 from .file_results import FileOperationResult, FileScanResult, FileSearchResult
 from .installation_results import (
     InstallationResult,
@@ -75,9 +65,6 @@ __all__ = [
     "ConfigurationResult",
     "ContextRegistryResult",
     "ContextValidationResult",
-    "DependencyCheckResult",
-    "DevToolAvailabilityResult",
-    "DevToolResult",
     "EnvironmentRefreshResult",
     "EnvironmentVerificationResult",
     "FileOperationResult",
@@ -85,9 +72,6 @@ __all__ = [
     "FileSearchResult",
     "InstallationResult",
     "LintSummaryResult",
-    "PackageManagerAvailabilityResult",
-    "PackageManagerPlatformResult",
-    "PackageManagerResult",
     "PathOperationResult",
     "PathValidationResult",
     "PrerequisitesCheckResult",
@@ -95,8 +79,6 @@ __all__ = [
     "ProjectCreationResult",
     "ProjectDetectionResult",
     "ProjectSetupResult",
-    "RuntimeInstallationResult",
-    "RuntimeResult",
     "SecurityReportResult",
     "SecurityResult",
     "SetupResult",

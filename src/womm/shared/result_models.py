@@ -30,22 +30,14 @@ from .results import (
     ConfigurationResult,
     ContextRegistryResult,
     ContextValidationResult,
-    DependencyCheckResult,
-    DevToolAvailabilityResult,
-    DevToolResult,
     FileOperationResult,
     FileScanResult,
     FileSearchResult,
     InstallationResult,
     LintSummaryResult,
-    PackageManagerAvailabilityResult,
-    PackageManagerPlatformResult,
-    PackageManagerResult,
     PathOperationResult,
     PathValidationResult,
     ProjectDetectionResult,
-    RuntimeInstallationResult,
-    RuntimeResult,
     SecurityReportResult,
     SecurityResult,
     SetupResult,
@@ -84,55 +76,6 @@ def create_error_result(error: str = "", **kwargs: Any) -> BaseResult:
         BaseResult: An error result object
     """
     return BaseResult(success=False, error=error, **kwargs)
-
-
-def create_dependency_check_success(
-    available: list[str], missing: list[str] | None = None
-) -> DependencyCheckResult:
-    """Create a successful dependency check result.
-
-    Args:
-        available: List of available dependencies
-        missing: List of missing dependencies
-
-    Returns:
-        DependencyCheckResult: A successful dependency check result
-    """
-    if missing is None:
-        missing = []
-    return DependencyCheckResult(
-        success=True,
-        message=f"Found {len(available)} available dependencies",
-        available=available,
-        missing=missing,
-        all_available=len(missing) == 0,
-    )
-
-
-def create_dependency_check_error(
-    error: str, available: list[str] | None = None, missing: list[str] | None = None
-) -> DependencyCheckResult:
-    """Create an error dependency check result.
-
-    Args:
-        error: Error message
-        available: List of available dependencies
-        missing: List of missing dependencies
-
-    Returns:
-        DependencyCheckResult: An error dependency check result
-    """
-    if available is None:
-        available = []
-    if missing is None:
-        missing = []
-    return DependencyCheckResult(
-        success=False,
-        error=error,
-        available=available,
-        missing=missing,
-        all_available=False,
-    )
 
 
 def create_setup_success(
@@ -185,22 +128,14 @@ __all__ = [
     "ConfigurationResult",
     "ContextRegistryResult",
     "ContextValidationResult",
-    "DependencyCheckResult",
-    "DevToolAvailabilityResult",
-    "DevToolResult",
     "FileOperationResult",
     "FileScanResult",
     "FileSearchResult",
     "InstallationResult",
     "LintSummaryResult",
-    "PackageManagerAvailabilityResult",
-    "PackageManagerPlatformResult",
-    "PackageManagerResult",
     "PathOperationResult",
     "PathValidationResult",
     "ProjectDetectionResult",
-    "RuntimeInstallationResult",
-    "RuntimeResult",
     "SecurityReportResult",
     "SecurityResult",
     "SetupResult",
@@ -208,8 +143,6 @@ __all__ = [
     "ToolResult",
     "ValidationResult",
     "WOMMInstallerVerificationResult",
-    "create_dependency_check_error",
-    "create_dependency_check_success",
     "create_error_result",
     "create_setup_error",
     "create_setup_success",
