@@ -19,6 +19,8 @@ from __future__ import annotations
 # Standard library imports
 import logging
 import platform
+import re
+import subprocess
 from threading import Lock
 from typing import ClassVar
 
@@ -30,6 +32,7 @@ from ...shared.results import (
     PackageManagerAvailabilityResult,
     PackageManagerPlatformResult,
 )
+from ...ui.common import ezlogger
 from ..common.command_runner_service import CommandRunnerService
 
 # ///////////////////////////////////////////////////////////////
@@ -167,19 +170,23 @@ class SystemPackageManagerService:
             version = None
             try:
                 # Get version flag from config, default to --version
-                version_flag = config.get("version_flag", "--version")
-                # Use subprocess directly with shell=True for Windows scripts (.ps1)
-                import subprocess
+                version_flag_raw = config.get("version_flag", "--version")
+                version_flag = (
+                    version_flag_raw
+                    if isinstance(version_flag_raw, str)
+                    else "--version"
+                )
 
-                # nosec B602: shell=True is safe here - command and version_flag
-                # are from internal config, not user input
-                result = subprocess.run(  # noqa: S602
-                    f"{command} {version_flag}",
+                # Execute version check without shell for security
+                # All package manager commands (winget, choco, brew, apt...)
+                # are simple binaries with a flag - no shell features needed
+                result = subprocess.run(
+                    [command, version_flag],
                     capture_output=True,
                     text=True,
-                    shell=True,  # nosec B602
+                    shell=False,
                     timeout=10,
-                    check=False,  # We handle errors ourselves
+                    check=False,
                 )
 
                 # Check if command succeeded (returncode == 0)
@@ -188,7 +195,6 @@ class SystemPackageManagerService:
                     if stdout:
                         # Try to extract version number from output
                         # Some managers output just the version, others include the name
-                        import re
 
                         # Search across all lines for version patterns
                         # Pattern 1: tag: vX.Y.Z (scoop style)
@@ -419,6 +425,19 @@ class SystemPackageManagerService:
             logger.info(
                 f"Installing {package_name} using {manager_name}: {' '.join(install_cmd)}"
             )
+
+            # Execute pre-install command if configured (e.g., apt update)
+            pre_install_cmd = SystemPackageManagerConfig.PRE_INSTALL_COMMANDS.get(
+                manager_name
+            )
+            if pre_install_cmd:
+                ezlogger.info(f"Running pre-install: {' '.join(pre_install_cmd)}")
+                pre_result = self._command_runner.run(pre_install_cmd)
+                if pre_result.returncode != 0:
+                    ezlogger.warning(
+                        f"Pre-install command failed: "
+                        f"{pre_result.stderr or pre_result.stdout}"
+                    )
 
             # Execute installation command
             result = self._command_runner.run(install_cmd)

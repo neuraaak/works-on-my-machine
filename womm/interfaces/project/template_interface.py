@@ -23,7 +23,6 @@ from __future__ import annotations
 import json
 import logging
 import re
-import shutil
 from pathlib import Path
 
 # Local imports
@@ -32,6 +31,7 @@ from ...exceptions.project import TemplateInterfaceError, TemplateServiceError
 from ...services import ProjectDetectionService, TemplateService
 from ...shared.results import ProjectDetectionResult, TemplateResult
 from ...ui.common import ezprinter
+from ...utils.common import safe_rmtree
 from ...utils.womm_setup import get_womm_installation_path
 
 # ///////////////////////////////////////////////////////////////
@@ -458,7 +458,7 @@ class TemplateInterface:
 
             # Remove template directory
             try:
-                shutil.rmtree(template_dir)
+                safe_rmtree(template_dir, allowed_parent=self._templates_dir)
             except (PermissionError, OSError) as e:
                 raise TemplateInterfaceError(
                     message=f"Failed to delete template directory: {e}",

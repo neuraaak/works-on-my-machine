@@ -226,7 +226,6 @@ class CSpellDictionaryService:
             ) from e
 
     @staticmethod
-    @staticmethod
     def _get_dictionary_info(
         project_path: Path | None = None, dict_dir: Path | None = None
     ) -> dict[str, object]:

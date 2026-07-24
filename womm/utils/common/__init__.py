@@ -32,6 +32,7 @@ from .path_resolver_utils import (
     resolve_script_path,
     validate_script_exists,
 )
+from .safe_fs_utils import safe_rmtree
 
 # ///////////////////////////////////////////////////////////////
 # PUBLIC API
@@ -47,5 +48,6 @@ __all__ = [
     "is_python_file",
     "resolve_script_path",
     "should_exclude_path",
+    "safe_rmtree",
     "validate_script_exists",
 ]

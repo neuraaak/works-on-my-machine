@@ -44,6 +44,7 @@ from ...services import WommUninstallerService
 from ...services.system.path_service import SystemPathService
 from ...shared.results import UninstallationResult
 from ...ui.common import confirm, ezconsole, ezprinter
+from ...utils.common import safe_rmtree
 from ...utils.womm_setup import (
     get_default_womm_path,
     get_files_to_remove,
@@ -610,7 +611,6 @@ class WommUninstallerInterface:
             UninstallationUtilityError: If utility operations fail
         """
         try:
-            import shutil
             from time import sleep
 
             # Remove each file and directory in order (files first, then directories)
@@ -638,7 +638,7 @@ class WommUninstallerInterface:
                         if verbose:
                             ezprinter.system(f"🗑️ Removed file: {item_path}")
                     elif target_item.is_dir():
-                        shutil.rmtree(target_item)
+                        safe_rmtree(target_item, allowed_parent=self.target_path)
                         sleep(0.02)
                         if verbose:
                             ezprinter.system(f"🗑️ Removed directory: {item_path}")
@@ -681,7 +681,10 @@ class WommUninstallerInterface:
                     "Removing installation directory",
                 )
                 try:
-                    shutil.rmtree(self.target_path)
+                    safe_rmtree(
+                        self.target_path,
+                        allowed_parent=self.target_path.parent,
+                    )
                     sleep(0.1)
 
                     if verbose:

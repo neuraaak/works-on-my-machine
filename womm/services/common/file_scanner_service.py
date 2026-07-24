@@ -183,14 +183,16 @@ class FileScannerService:
 
             python_files = []
 
-            # Walk through all subdirectories
+            # Walk through all subdirectories, filtering by Python extensions
+            # at the glob level for performance (avoids enumerating non-Python files)
             try:
-                for item in project_root.rglob("*"):
-                    if should_exclude_path(item):
-                        continue
+                for ext in FileScannerConfig.PYTHON_EXTENSIONS:
+                    for item in project_root.rglob(f"*{ext}"):
+                        if should_exclude_path(item):
+                            continue
 
-                    if item.is_file() and is_python_file(item):
-                        python_files.append(item)
+                        if item.is_file():
+                            python_files.append(item)
 
             except (PermissionError, OSError) as e:
                 search_time = time.time() - start_time
@@ -336,14 +338,15 @@ class FileScannerService:
             python_files = []
 
             if recursive:
-                # Recursive scan
+                # Recursive scan - filter by Python extensions at glob level
                 try:
-                    for item in directory.rglob("*"):
-                        if should_exclude_path(item):
-                            continue
+                    for ext in FileScannerConfig.PYTHON_EXTENSIONS:
+                        for item in directory.rglob(f"*{ext}"):
+                            if should_exclude_path(item):
+                                continue
 
-                        if item.is_file() and is_python_file(item):
-                            python_files.append(item)
+                            if item.is_file():
+                                python_files.append(item)
                 except (PermissionError, OSError) as e:
                     raise FileAccessError(
                         message=f"Permission or OS error during recursive scan: {e}",

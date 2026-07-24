@@ -83,20 +83,15 @@ class SystemPackageManagerConfig:
         "chocolatey": ["choco", "install", "{package_name}", "-y"],
         "scoop": ["scoop", "install", "{package_name}"],
         "homebrew": ["brew", "install", "{package_name}"],
-        "apt": [
-            "sudo",
-            "apt",
-            "update",
-            "&&",
-            "sudo",
-            "apt",
-            "install",
-            "-y",
-            "{package_name}",
-        ],
+        "apt": ["sudo", "apt", "install", "-y", "{package_name}"],
         "dnf": ["sudo", "dnf", "install", "-y", "{package_name}"],
         "pacman": ["sudo", "pacman", "-S", "--noconfirm", "{package_name}"],
         "zypper": ["sudo", "zypper", "install", "-y", "{package_name}"],
+    }
+
+    # Pre-install commands to run before INSTALL_COMMANDS (e.g., apt update)
+    PRE_INSTALL_COMMANDS: ClassVar[dict[str, list[str]]] = {
+        "apt": ["sudo", "apt", "update"],
     }
 
     # ///////////////////////////////////////////////////////////
