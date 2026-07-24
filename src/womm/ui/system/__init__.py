@@ -24,6 +24,8 @@ from .display import (
     display_deps_status_table,
     display_system_detection_results,
     display_system_managers_list,
+    render_environment_refresh_result,
+    render_system_detection_result,
 )
 
 # ///////////////////////////////////////////////////////////////
@@ -37,4 +39,6 @@ __all__ = [
     "display_deps_status_table",
     "display_system_detection_results",
     "display_system_managers_list",
+    "render_environment_refresh_result",
+    "render_system_detection_result",
 ]

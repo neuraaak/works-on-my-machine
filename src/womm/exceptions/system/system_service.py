@@ -43,88 +43,13 @@ class SystemServiceError(Exception):
 # ///////////////////////////////////////////////////////////////
 
 
-class DevEnvDetectionServiceError(SystemServiceError):
-    """Exception raised when development environment detection fails.
+class DetectorServiceError(SystemServiceError):
+    """Single exception for the SystemDetectorService.
 
-    This exception is raised when development environments cannot be detected.
-    """
-
-    def __init__(
-        self,
-        environment: str,
-        operation: str,
-        reason: str,
-        details: str | None = None,
-    ) -> None:
-        """Initialize development environment detection error.
-
-        Args:
-            environment: Development environment that failed
-            operation: Operation that failed
-            reason: Human-readable reason for the failure
-            details: Optional technical details for debugging
-        """
-        self.environment = environment
-        self.operation = operation
-        self.reason = reason
-        message = f"Development environment detection error for {environment} during {operation}: {reason}"
-        super().__init__(message, details)
-
-
-class PkgManagerDetectionServiceError(SystemServiceError):
-    """Exception raised when package manager detection fails.
-
-    This exception is raised when package managers cannot be detected
-    or their information cannot be retrieved.
-    """
-
-    def __init__(
-        self,
-        package_manager: str,
-        operation: str,
-        reason: str,
-        details: str | None = None,
-    ) -> None:
-        """Initialize package manager detection error.
-
-        Args:
-            package_manager: Package manager that failed
-            operation: Operation that failed
-            reason: Human-readable reason for the failure
-            details: Optional technical details for debugging
-        """
-        self.package_manager = package_manager
-        self.operation = operation
-        self.reason = reason
-        message = f"Package manager detection error for {package_manager} during {operation}: {reason}"
-        super().__init__(message, details)
-
-
-class SystemDetectionServiceError(SystemServiceError):
-    """Exception raised when system detection fails.
-
-    This exception is raised when the system detector cannot determine
-    system information, package managers, or development environments.
-    """
-
-    def __init__(
-        self,
-        message: str,
-        details: str | None = None,
-    ) -> None:
-        """Initialize system detection error.
-
-        Args:
-            message: Human-readable error message
-            details: Optional technical details for debugging
-        """
-        super().__init__(message, details)
-
-
-class InfoServiceError(SystemServiceError):
-    """Exception raised when system information gathering fails.
-
-    This exception is raised when platform information cannot be retrieved.
+    Covers every detection failure (platform info, package-manager detection,
+    development-environment detection, report generation, …). The failing step is
+    carried by the ``operation`` field rather than by per-step subclasses, since
+    no caller branches on the specific failure kind.
     """
 
     def __init__(
@@ -133,41 +58,17 @@ class InfoServiceError(SystemServiceError):
         reason: str,
         details: str | None = None,
     ) -> None:
-        """Initialize system info error.
+        """Initialize a detector service error.
 
         Args:
-            operation: Operation that failed
+            operation: Detection step that failed (e.g. "platform_info",
+                "package_manager_detection", "report_generation")
             reason: Human-readable reason for the failure
             details: Optional technical details for debugging
         """
         self.operation = operation
         self.reason = reason
-        message = f"System info error during {operation}: {reason}"
-        super().__init__(message, details)
-
-
-class ReportGenerationServiceError(SystemServiceError):
-    """Exception raised when report generation fails.
-
-    This exception is raised when system reports cannot be generated or exported.
-    """
-
-    def __init__(
-        self,
-        operation: str,
-        reason: str,
-        details: str | None = None,
-    ) -> None:
-        """Initialize report generation error.
-
-        Args:
-            operation: Operation that failed
-            reason: Human-readable reason for the failure
-            details: Optional technical details for debugging
-        """
-        self.operation = operation
-        self.reason = reason
-        message = f"Report generation error during {operation}: {reason}"
+        message = f"System detection error during {operation}: {reason}"
         super().__init__(message, details)
 
 

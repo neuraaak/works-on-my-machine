@@ -19,6 +19,7 @@ from __future__ import annotations
 from rich.table import Table
 
 # Local imports
+from ...shared.results import EnvironmentRefreshResult, SystemDetectionResult
 from ..common import ezconsole, ezpl_bridge, ezprinter
 
 # ///////////////////////////////////////////////////////////////
@@ -194,6 +195,57 @@ def display_system_detection_results(data: dict) -> None:
     ezpl_bridge.console.print(panel)
 
 
+def render_system_detection_result(result: SystemDetectionResult) -> None:
+    """
+    Render a system detection Result: the detail panel on success, an error
+    message on failure.
+
+    Args:
+        result: Outcome returned by ``SystemDetectorInterface.detect_system()``.
+    """
+    if result.success:
+        print()
+        display_system_detection_results(result.system_data or {})
+        return
+
+    ezprinter.error(result.message or "System detection failed")
+    if result.error:
+        ezprinter.info(result.error)
+
+
+def render_environment_refresh_result(
+    result: EnvironmentRefreshResult, accessible: bool
+) -> None:
+    """
+    Render an environment refresh Result together with the accessibility check.
+
+    Args:
+        result: Outcome returned by ``SystemEnvironmentInterface.refresh_environment()``.
+        accessible: Whether the target command is reachable after the refresh
+            (from ``verify_environment_refresh()``).
+    """
+    if result.success:
+        if accessible:
+            print()
+            ezprinter.tip(
+                "Recent PATH additions should now be accessible in this terminal session"
+            )
+        else:
+            ezprinter.warning(
+                "Environment refreshed but changes may not be accessible in current session"
+            )
+            ezprinter.tip(
+                "Solution: Restart your terminal or open a new command prompt"
+            )
+        return
+
+    ezprinter.error(result.message or "Environment refresh failed")
+    if result.error:
+        ezprinter.info(result.error)
+    ezprinter.info("This means WOMM may not be accessible in the current session")
+    ezprinter.info("Solution: Restart your terminal or run 'refreshenv' manually")
+
+
 def display_deps_check_results(
     system_results: dict,
     runtime_results: dict,
@@ -318,4 +370,6 @@ __all__ = [
     "display_deps_status_table",
     "display_system_detection_results",
     "display_system_managers_list",
+    "render_environment_refresh_result",
+    "render_system_detection_result",
 ]

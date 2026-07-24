@@ -1,18 +1,16 @@
 #!/usr/bin/env python3
 # ///////////////////////////////////////////////////////////////
-# SYSTEM MANAGER INTERFACE - System Detection and Prerequisites Management Interface
+# SYSTEM DETECTOR INTERFACE - System Detection Interface
 # Project: works-on-my-machine
 # ///////////////////////////////////////////////////////////////
 
 """
-System Manager Interface for Works On My Machine.
+System Detector Interface for Works On My Machine.
 
-Handles system detection and prerequisites installation with integrated UI.
-Provides comprehensive system information, package manager detection,
-and runtime installation capabilities.
-
-This interface orchestrates system services and converts service exceptions
-to interface exceptions following the MEF pattern.
+Orchestrates SystemDetectorService and translates its exception into a Result.
+This interface carries no UI: it does not print, log, or drive spinners — the
+command layer owns presentation (spinner + renderer). It never re-raises; the
+single service exception is converted into a ``SystemDetectionResult``.
 """
 
 from __future__ import annotations
@@ -20,20 +18,10 @@ from __future__ import annotations
 # ///////////////////////////////////////////////////////////////
 # IMPORTS
 # ///////////////////////////////////////////////////////////////
-# Third-party imports
-from rich.progress import TaskID
-
 # Local imports
-from ...exceptions.system import (
-    DetectorInterfaceError,
-    DevEnvDetectionServiceError,
-    InfoServiceError,
-    SystemDetectionServiceError,
-)
+from ...exceptions.system import DetectorServiceError
 from ...services import SystemDetectorService
 from ...shared.results import SystemDetectionResult
-from ...ui.common import ezlogger, ezpl_bridge, ezprinter
-from ...ui.system import display_system_detection_results
 
 # ///////////////////////////////////////////////////////////////
 # MAIN CLASS
@@ -41,14 +29,15 @@ from ...ui.system import display_system_detection_results
 
 
 class SystemDetectorInterface:
-    """Manages system detection and prerequisites installation with integrated UI.
+    """Orchestrates SystemDetectorService and returns a Result.
 
-    This interface orchestrates SystemDetectorService and converts service
-    exceptions to interface exceptions following the MEF pattern.
+    Pure orchestration: no UI, no re-raise. The service's ``DetectorServiceError``
+    is translated into a ``SystemDetectionResult`` (the single exception→Result
+    conversion point). Unexpected errors are not swallowed — they propagate.
     """
 
     def __init__(self) -> None:
-        """Initialize the SystemManagerInterface."""
+        """Initialize the interface (service is created lazily)."""
         # Lazy initialization to avoid slow startup
         self._detector: SystemDetectorService | None = None
 
@@ -65,83 +54,31 @@ class SystemDetectorInterface:
 
     def detect_system(self) -> SystemDetectionResult:
         """
-        Detect system information and available tools with UI.
+        Detect system information and available tools.
 
         Returns:
-            SystemDetectionResult: Result of the detection operation
-
-        Raises:
-            SystemDetectorInterfaceError: If system detection fails
+            SystemDetectionResult: success with ``system_data`` populated, or
+            failure carrying the error message when detection fails.
         """
         try:
-            with ezprinter.create_spinner_with_status(
-                "Detecting system information..."
-            ) as (
-                progress,
-                task,
-            ):
-                task_id = TaskID(task)
-                # Update description and status
-                progress.update(
-                    task_id,
-                    description="🔍 Detecting system information...",
-                    status="Initializing...",
-                )
+            data = self.detector.get_system_data()
+        except DetectorServiceError as e:
+            return SystemDetectionResult(
+                success=False,
+                message="System detection failed",
+                error=str(e),
+                system_data={},
+            )
 
-                # Update status during detection
-                progress.update(task_id, status="Scanning system...")
-                try:
-                    data = self.detector.get_system_data()
-                except (
-                    InfoServiceError,
-                    DetectorInterfaceError,
-                    DevEnvDetectionServiceError,
-                    SystemDetectionServiceError,
-                ) as e:
-                    # Convert service exceptions to interface exceptions
-                    ezlogger.error(f"System detection failed: {e}")
-                    raise DetectorInterfaceError(
-                        message=f"System detection failed: {e.message if hasattr(e, 'message') else str(e)}",
-                        operation="detect_system",
-                        details=f"Service exception: {type(e).__name__} - {e.details if hasattr(e, 'details') else ''}",
-                    ) from e
-                except Exception as e:
-                    # Wrap unexpected external exceptions
-                    ezlogger.error(f"Unexpected error during system detection: {e}")
-                    raise DetectorInterfaceError(
-                        message=f"Failed to retrieve system information: {e}",
-                        operation="detect_system",
-                        details=f"Exception type: {type(e).__name__}",
-                    ) from e
+        return SystemDetectionResult(
+            success=True,
+            message="System detection completed successfully",
+            system_data=data,
+        )
 
-                # Final status update
-                progress.update(task_id, status="Detection complete!")
 
-            if data:
-                print()
-                display_system_detection_results(data)
-                return SystemDetectionResult(
-                    success=True,
-                    message="System detection completed successfully",
-                    system_data=data,
-                    detection_time=0.0,
-                )
-            else:
-                ezpl_bridge.console.print("❌ Failed to detect system information")
-                raise DetectorInterfaceError(
-                    message="System detection returned no data",
-                    operation="detect_system",
-                    details="SystemDetector.get_system_data() returned None or empty data",
-                )
+# ///////////////////////////////////////////////////////////////
+# PUBLIC API
+# ///////////////////////////////////////////////////////////////
 
-        except DetectorInterfaceError:
-            # Re-raise interface exceptions
-            raise
-        except Exception as e:
-            # Wrap unexpected external exceptions
-            ezlogger.error(f"Unexpected error in detect_system: {e}")
-            raise DetectorInterfaceError(
-                message=f"System detection failed: {e}",
-                operation="detect_system",
-                details=f"Exception type: {type(e).__name__}",
-            ) from e
+__all__ = ["SystemDetectorInterface"]

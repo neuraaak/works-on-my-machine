@@ -7,8 +7,9 @@
 """
 System commands for WOMM CLI.
 
-This module handles system detection and prerequisites installation.
-Provides commands for detecting system information and installing required tools.
+This module handles system detection and environment refresh. It owns the
+presentation (headers, spinners, renderers) and drives the interfaces, which
+return Result objects.
 """
 
 from __future__ import annotations
@@ -22,11 +23,15 @@ import sys
 # Third-party imports
 import click
 from ezpl import LogLevel
+from rich.progress import TaskID
 
 # Local imports
-from ...exceptions.system import DetectorInterfaceError, EnvironmentInterfaceError
 from ...interfaces import SystemDetectorInterface, SystemEnvironmentInterface
 from ...ui.common import ezpl_bridge, ezprinter
+from ...ui.system import (
+    render_environment_refresh_result,
+    render_system_detection_result,
+)
 
 # ///////////////////////////////////////////////////////////////
 # COMMAND GROUPS
@@ -59,19 +64,24 @@ def system_detect(verbose: bool) -> None:
     if verbose:
         ezpl_bridge.set_level(LogLevel.DEBUG.label)
 
-    # Print header
     ezprinter.print_header("System Detection")
 
-    try:
-        system_detector = SystemDetectorInterface()
-        result = system_detector.detect_system()
-        sys.exit(0 if result.success else 1)
-    except DetectorInterfaceError as e:
-        ezprinter.error(f"System detection failed: {e}")
-        sys.exit(1)
-    except Exception as e:
-        ezprinter.error(f"Unexpected error during system detection: {e}")
-        sys.exit(1)
+    interface = SystemDetectorInterface()
+    with ezprinter.create_spinner_with_status("Detecting system information...") as (
+        progress,
+        task,
+    ):
+        task_id = TaskID(task)
+        progress.update(
+            task_id,
+            description="🔍 Detecting system information...",
+            status="Scanning system...",
+        )
+        result = interface.detect_system()
+        progress.update(task_id, status="Detection complete!")
+
+    render_system_detection_result(result)
+    sys.exit(0 if result.success else 1)
 
 
 # ///////////////////////////////////////////////////////////////
@@ -92,16 +102,28 @@ def system_refresh_env(verbose: bool) -> None:
     if verbose:
         ezpl_bridge.set_level(LogLevel.DEBUG.label)
 
-    # Print header
     ezprinter.print_header("Environment Refresh")
 
-    try:
-        environment_manager = SystemEnvironmentInterface()
-        result = environment_manager.refresh_environment_with_ui()
-        sys.exit(0 if result else 1)
-    except EnvironmentInterfaceError as e:
-        ezprinter.error(f"Environment refresh failed: {e}")
-        sys.exit(1)
-    except Exception as e:
-        ezprinter.error(f"Unexpected environment refresh error: {e}")
-        sys.exit(1)
+    interface = SystemEnvironmentInterface()
+    with ezprinter.create_spinner_with_status(
+        "Refreshing environment variables..."
+    ) as (progress, task):
+        task_id = TaskID(task)
+        progress.update(
+            task_id,
+            description="Refreshing environment variables...",
+            status="Reading registry/system configuration...",
+        )
+        result = interface.refresh_environment()
+        progress.update(
+            task_id,
+            status=(
+                "Environment refreshed successfully!"
+                if result.success
+                else "Environment refresh failed."
+            ),
+        )
+
+    accessible = interface.verify_environment_refresh() if result.success else False
+    render_environment_refresh_result(result, accessible)
+    sys.exit(0 if result.success else 1)

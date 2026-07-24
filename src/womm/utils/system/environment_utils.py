@@ -22,9 +22,6 @@ import os
 import platform
 from pathlib import Path
 
-# Local imports
-from ...exceptions.system import EnvironmentServiceError
-
 # ///////////////////////////////////////////////////////////////
 # WINDOWS REGISTRY FUNCTIONS
 # ///////////////////////////////////////////////////////////////
@@ -38,46 +35,36 @@ def read_windows_registry_path() -> tuple[str | None, str | None]:
         Tuple[Optional[str], Optional[str]]: (HKLM_PATH, HKCU_PATH)
 
     Raises:
-        EnvironmentRefreshError: If registry access fails
+        OSError: If called on a non-Windows platform.
+        ImportError: If the stdlib ``winreg`` module is unavailable.
     """
     if platform.system().lower() != "windows":
-        raise EnvironmentServiceError(
-            operation="registry_read",
-            reason="Registry access is only available on Windows",
-            details="Current platform is not Windows",
-        )
+        raise OSError("Registry access is only available on Windows")
 
+    # winreg ships with the stdlib on Windows; ImportError propagates elsewhere.
+    import winreg
+
+    hklm_path = None
+    hkcu_path = None
+
+    # Read HKLM PATH
     try:
-        import winreg
+        with winreg.OpenKey(
+            winreg.HKEY_LOCAL_MACHINE,
+            r"System\CurrentControlSet\Control\Session Manager\Environment",
+        ) as key:
+            hklm_path = winreg.QueryValueEx(key, "Path")[0]
+    except OSError:
+        pass
 
-        hklm_path = None
-        hkcu_path = None
+    # Read HKCU PATH
+    try:
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, "Environment") as key:
+            hkcu_path = winreg.QueryValueEx(key, "Path")[0]
+    except OSError:
+        pass
 
-        # Read HKLM PATH
-        try:
-            with winreg.OpenKey(
-                winreg.HKEY_LOCAL_MACHINE,
-                r"System\CurrentControlSet\Control\Session Manager\Environment",
-            ) as key:
-                hklm_path = winreg.QueryValueEx(key, "Path")[0]
-        except (FileNotFoundError, OSError):
-            pass
-
-        # Read HKCU PATH
-        try:
-            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, "Environment") as key:
-                hkcu_path = winreg.QueryValueEx(key, "Path")[0]
-        except (FileNotFoundError, OSError):
-            pass
-
-        return hklm_path, hkcu_path
-
-    except ImportError as e:
-        raise EnvironmentServiceError(
-            operation="registry_read",
-            reason="winreg module not available",
-            details="Windows registry access requires winreg module",
-        ) from e
+    return hklm_path, hkcu_path
 
 
 def combine_paths(hklm_path: str | None, hkcu_path: str | None) -> str:
@@ -120,7 +107,7 @@ def refresh_path_from_registry() -> bool:
             os.environ["PATH"] = combined_path
             return True
         return False
-    except EnvironmentServiceError:
+    except (OSError, ImportError):
         return False
 
 

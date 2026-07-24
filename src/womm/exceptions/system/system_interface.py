@@ -57,34 +57,6 @@ class SystemInterfaceError(Exception):
 
 
 # ///////////////////////////////////////////////////////////////
-# SYSTEM MANAGER INTERFACE EXCEPTIONS
-# ///////////////////////////////////////////////////////////////
-
-
-class EnvironmentInterfaceError(SystemInterfaceError):
-    """Exception raised when environment manager interface operations fail.
-
-    This exception is raised when environment refresh or verification
-    operations fail at the interface level.
-    """
-
-    def __init__(
-        self,
-        message: str,
-        operation: str = "",
-        details: str | None = None,
-    ) -> None:
-        """Initialize environment manager interface error.
-
-        Args:
-            message: Human-readable error message
-            operation: Operation that failed
-            details: Optional technical details for debugging
-        """
-        super().__init__(message, operation, details)
-
-
-# ///////////////////////////////////////////////////////////////
 # USER PATH MANAGER INTERFACE EXCEPTIONS
 # ///////////////////////////////////////////////////////////////
 
@@ -112,32 +84,4 @@ class UserPathInterfaceError(SystemInterfaceError):
             details: Optional technical details for debugging
         """
         self.path = path
-        super().__init__(message, operation, details)
-
-
-# ///////////////////////////////////////////////////////////////
-# SYSTEM DETECTOR INTERFACE EXCEPTIONS
-# ///////////////////////////////////////////////////////////////
-
-
-class DetectorInterfaceError(SystemInterfaceError):
-    """Exception raised when system detector interface operations fail.
-
-    This exception is raised when system detection, prerequisites checking,
-    or interactive selection operations fail at the interface level.
-    """
-
-    def __init__(
-        self,
-        message: str,
-        operation: str = "",
-        details: str | None = None,
-    ) -> None:
-        """Initialize system detector interface error.
-
-        Args:
-            message: Human-readable error message
-            operation: Operation that failed
-            details: Optional technical details for debugging
-        """
         super().__init__(message, operation, details)

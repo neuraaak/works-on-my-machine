@@ -208,7 +208,7 @@ class SystemEnvironmentService:
                 refresh_time=time.time() - start_time,
             )
 
-        except (OSError, PermissionError) as e:
+        except OSError as e:
             # Critical system errors - raise exception
             raise EnvironmentServiceError(
                 operation="refresh_windows_environment",

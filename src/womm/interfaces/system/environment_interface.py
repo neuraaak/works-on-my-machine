@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
 # ///////////////////////////////////////////////////////////////
-# SYSTEM ENVIRONMENT INTERFACE - Environment Manager Interface
+# SYSTEM ENVIRONMENT INTERFACE - Environment Interface
 # Project: works-on-my-machine
 # ///////////////////////////////////////////////////////////////
 
 """
-Environment Manager Interface for Works On My Machine.
+System Environment Interface for Works On My Machine.
 
-Handles environment variable refresh and management with integrated UI.
-Provides cross-platform environment management capabilities.
-
-This interface orchestrates SystemEnvironmentService and converts service
-exceptions to interface exceptions following the MEF pattern.
+Orchestrates SystemEnvironmentService and translates its exception into a Result.
+This interface carries no UI: it does not print, log, or drive spinners — the
+command layer owns presentation (spinner + renderer). It never re-raises; the
+single service exception is converted into a Result (or a best-effort bool for
+verification).
 """
 
 from __future__ import annotations
@@ -21,16 +21,11 @@ from __future__ import annotations
 # ///////////////////////////////////////////////////////////////
 # Standard library imports
 import platform
-from time import sleep
-
-# Third-party imports
-from rich.progress import TaskID
 
 # Local imports
-from ...exceptions.system import EnvironmentInterfaceError, EnvironmentServiceError
+from ...exceptions.system import EnvironmentServiceError
 from ...services import SystemEnvironmentService
 from ...shared.results import EnvironmentRefreshResult
-from ...ui.common import ezlogger, ezprinter
 
 # ///////////////////////////////////////////////////////////////
 # MAIN CLASS
@@ -38,15 +33,16 @@ from ...ui.common import ezlogger, ezprinter
 
 
 class SystemEnvironmentInterface:
-    """Manages environment variable refresh and management with integrated UI.
+    """Orchestrates SystemEnvironmentService and returns a Result.
 
-    This interface orchestrates SystemEnvironmentService and converts service
-    exceptions to interface exceptions following the MEF pattern.
+    Pure orchestration: no UI, no re-raise. The service's
+    ``EnvironmentServiceError`` is translated into an ``EnvironmentRefreshResult``
+    (the single exception→Result conversion point). Unexpected errors are not
+    swallowed — they propagate.
     """
 
     def __init__(self) -> None:
-        """Initialize the EnvironmentManagerInterface."""
-        # Lazy initialization to avoid slow startup
+        """Initialize the interface (service is created lazily)."""
         self.platform = platform.system().lower()
         self._environment_service: SystemEnvironmentService | None = None
 
@@ -66,54 +62,35 @@ class SystemEnvironmentInterface:
         Refresh environment variables from registry/system.
 
         Returns:
-            EnvironmentRefreshResult: Result of the environment refresh operation
-
-        Raises:
-            EnvironmentManagerInterfaceError: If environment refresh fails
+            EnvironmentRefreshResult: success/failure; failure carries the error.
         """
         try:
-            result = self.environment_service.refresh_environment()
-            return result
+            return self.environment_service.refresh_environment()
         except EnvironmentServiceError as e:
-            ezlogger.error(f"Service error in refresh_environment: {e}")
-            raise EnvironmentInterfaceError(
-                message=f"Environment refresh failed: {e}",
-                operation="refresh_environment",
-                details=f"Service exception: {type(e).__name__}",
-            ) from e
-        except Exception as e:
-            ezlogger.error(f"Unexpected error in refresh_environment: {e}")
-            raise EnvironmentInterfaceError(
-                message=f"Environment refresh failed: {e}",
-                operation="refresh_environment",
-                details=f"Exception type: {type(e).__name__}",
-            ) from e
+            return EnvironmentRefreshResult(
+                success=False,
+                message="Environment refresh failed",
+                error=str(e),
+                platform=self.platform,
+            )
 
     def verify_environment_refresh(self, command: str = "womm") -> bool:
         """
-        Verify that environment refresh was successful by testing command accessibility.
+        Verify that environment refresh worked by testing command accessibility.
+
+        This is best-effort: any service failure yields ``False`` rather than
+        propagating.
 
         Args:
             command: Command to test (default: "womm")
 
         Returns:
-            bool: True if command is accessible, False otherwise
-
-        Raises:
-            EnvironmentManagerInterfaceError: If verification fails critically
+            bool: True if the command is accessible, False otherwise.
         """
         try:
             result = self.environment_service.verify_environment_refresh(command)
             return result.success and result.command_accessible
-        except EnvironmentServiceError as e:
-            ezlogger.error(f"Service error in verify_environment_refresh: {e}")
-            raise EnvironmentInterfaceError(
-                message=f"Environment verification failed: {e}",
-                operation="verify_environment_refresh",
-                details=f"Service exception: {type(e).__name__}",
-            ) from e
-        except Exception as e:
-            ezlogger.warning(f"Could not verify environment refresh: {e}")
+        except EnvironmentServiceError:
             return False
 
     def get_environment_info(self) -> dict[str, str]:
@@ -124,62 +101,6 @@ class SystemEnvironmentInterface:
             Dict[str, str]: Dictionary of environment information
         """
         return self.environment_service.get_environment_info()
-
-    def refresh_environment_with_ui(self) -> bool:
-        """
-        Refresh environment variables with user interface feedback.
-
-        Returns:
-            bool: True if refresh was successful, False otherwise
-        """
-        with ezprinter.create_spinner_with_status(
-            "Refreshing environment variables..."
-        ) as (progress, task):
-            task_id = TaskID(task)
-            progress.update(
-                task_id,
-                description="Refreshing environment variables...",
-                status="Initializing...",
-            )
-            sleep(1)
-            progress.update(task_id, status="Reading registry/system configuration...")
-            sleep(2)
-            try:
-                result = self.refresh_environment()
-                success = result.success
-                if success:
-                    progress.update(
-                        task_id, status="Environment refreshed successfully!"
-                    )
-            except EnvironmentInterfaceError as e:
-                ezlogger.error(f"Environment refresh failed: {e}")
-                progress.update(task_id, status="Environment refresh failed.")
-                success = False
-
-        if success:
-            # Verify the refresh worked
-            if self.verify_environment_refresh():
-                print()
-                ezprinter.tip(
-                    "Recent PATH additions should now be accessible in this terminal session"
-                )
-            else:
-                ezprinter.warning(
-                    "Environment refreshed but changes may not be accessible in current session"
-                )
-                ezprinter.tip(
-                    "Solution: Restart your terminal or open a new command prompt"
-                )
-        else:
-            ezprinter.error("Environment refresh failed")
-            ezprinter.info(
-                "This means WOMM may not be accessible in the current session"
-            )
-            ezprinter.info(
-                "Solution: Restart your terminal or run 'refreshenv' manually"
-            )
-
-        return success
 
 
 # ///////////////////////////////////////////////////////////////

@@ -20,20 +20,14 @@ from __future__ import annotations
 # ///////////////////////////////////////////////////////////////
 # Local imports
 from .system_interface import (
-    DetectorInterfaceError,
-    EnvironmentInterfaceError,
     SystemInterfaceError,
     UserPathInterfaceError,
 )
 from .system_service import (
-    DevEnvDetectionServiceError,
+    DetectorServiceError,
     EnvironmentServiceError,
     FileSystemServiceError,
-    InfoServiceError,
-    PkgManagerDetectionServiceError,
     RegistryServiceError,
-    ReportGenerationServiceError,
-    SystemDetectionServiceError,
     SystemServiceError,
     UserPathServiceError,
 )
@@ -44,20 +38,13 @@ from .system_service import (
 
 __all__ = [  # noqa: RUF022
     # system_interface
-    "EnvironmentInterfaceError",
-    "EnvironmentInterfaceError",
     "UserPathInterfaceError",
-    "DetectorInterfaceError",
     "SystemInterfaceError",
     # system_service
-    "DevEnvDetectionServiceError",
+    "DetectorServiceError",
     "EnvironmentServiceError",
     "FileSystemServiceError",
-    "PkgManagerDetectionServiceError",
     "RegistryServiceError",
-    "ReportGenerationServiceError",
-    "SystemDetectionServiceError",
-    "InfoServiceError",
     "SystemServiceError",
     "UserPathServiceError",
 ]
