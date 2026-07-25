@@ -1,115 +1,59 @@
 #!/usr/bin/env python3
 # ///////////////////////////////////////////////////////////////
-# PROJECT SERVICE EXCEPTIONS - Project Service Exception Classes
+# PROJECT SERVICE EXCEPTIONS - Project Service Exception Class
 # Project: works-on-my-machine
 # ///////////////////////////////////////////////////////////////
 
 """
-Exception classes for project service operations.
+Exception class for the project services.
 
-Provides specialized exceptions for project detection, validation,
-template operations, and VSCode configuration errors.
+A single exception covers the whole project service layer (detection,
+validation, conflict resolution, template processing, Python/JavaScript
+project creation); the failing step is carried by a structured field
+rather than by a class hierarchy.
 """
 
 from __future__ import annotations
 
 # ///////////////////////////////////////////////////////////////
-# BASE EXCEPTION CLASSES
+# SERVICE EXCEPTION
 # ///////////////////////////////////////////////////////////////
 
 
 class ProjectServiceError(Exception):
-    """Base exception for project service errors."""
+    """Single exception for every ``services/project`` service.
+
+    Covers project detection, validation, conflict resolution, template
+    processing, and Python/JavaScript project creation failures. The failing
+    step is carried by the ``operation`` field rather than by per-service
+    subclasses, since no caller branches on the specific failure kind.
+    """
 
     def __init__(
         self,
-        message: str = "",
-        operation: str = "",
-        details: str = "",
+        operation: str,
+        reason: str,
+        details: str | None = None,
     ) -> None:
-        """Initialize project service error.
+        """Initialize a project service error.
 
         Args:
-            message: Error message
-            operation: Operation that failed
-            details: Additional error details
+            operation: Service step that failed (e.g. "detect_project_type",
+                "create_project_structure", "resolve_file_conflict")
+            reason: Human-readable reason for the failure
+            details: Optional technical details for debugging
         """
-        self.message = message or "Project service error occurred"
         self.operation = operation
+        self.reason = reason
         self.details = details
-        super().__init__(self.message)
-
-    def __str__(self) -> str:
-        """Return string representation of error."""
-        parts = [self.message]
-        if self.operation:
-            parts.append(f"Operation: {self.operation}")
-        if self.details:
-            parts.append(f"Details: {self.details}")
-        return " | ".join(parts)
-
-
-# ///////////////////////////////////////////////////////////////
-# SPECIALIZED EXCEPTION CLASSES
-# ///////////////////////////////////////////////////////////////
-
-
-class ProjectDetectionServiceError(ProjectServiceError):
-    """Exception raised when project detection fails."""
-
-    def __init__(
-        self,
-        message: str = "",
-        operation: str = "",
-        project_path: str = "",
-        reason: str = "",
-        details: str = "",
-    ) -> None:
-        """Initialize project detection error.
-
-        Args:
-            message: Error message
-            operation: Operation that failed
-            project_path: Path to the project that failed detection
-            reason: Reason for failure
-            details: Additional error details
-        """
-        self.project_path = project_path
-        self.reason = reason
-        super().__init__(message, operation, details)
-
-
-class TemplateServiceError(ProjectServiceError):
-    """Exception raised when template operations fail."""
-
-    def __init__(
-        self,
-        message: str = "",
-        operation: str = "",
-        template_path: str = "",
-        reason: str = "",
-        details: str = "",
-    ) -> None:
-        """Initialize template error.
-
-        Args:
-            message: Error message
-            operation: Operation that failed
-            template_path: Path to the template that caused the error
-            reason: Reason for failure
-            details: Additional error details
-        """
-        self.template_path = template_path
-        self.reason = reason
-        super().__init__(message, operation, details)
+        message = f"Project service error during {operation}: {reason}"
+        if details:
+            message = f"{message} | Details: {details}"
+        super().__init__(message)
 
 
 # ///////////////////////////////////////////////////////////////
 # PUBLIC API
 # ///////////////////////////////////////////////////////////////
 
-__all__ = [
-    "ProjectDetectionServiceError",
-    "ProjectServiceError",
-    "TemplateServiceError",
-]
+__all__ = ["ProjectServiceError"]

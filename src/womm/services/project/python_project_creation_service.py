@@ -27,8 +27,7 @@ from threading import Lock
 from typing import ClassVar
 
 # Local imports
-from ...exceptions.common import ValidationServiceError
-from ...exceptions.project import ProjectServiceError, TemplateServiceError
+from ...exceptions.project import ProjectServiceError
 from ...shared.configs.project import PythonProjectConfig
 from ...shared.results import ProjectCreationResult
 from ...utils.common import get_assets_module_path
@@ -101,8 +100,7 @@ class PythonProjectCreationService:
             ProjectCreationResult: Result with created directory information
 
         Raises:
-            ProjectServiceError: If structure creation fails
-            ProjectValidationError: If validation fails
+            ProjectServiceError: If structure creation or validation fails
         """
         try:
             created_dirs = create_python_structure(project_path, project_name)
@@ -117,13 +115,13 @@ class PythonProjectCreationService:
                 ),
             )
 
-        except (ProjectServiceError, ValidationServiceError):
+        except ProjectServiceError:
             raise
         except Exception as e:
-            logger.error(f"Unexpected error in create_project_structure: {e}")
+            logger.exception("Unexpected error in create_project_structure")
             raise ProjectServiceError(
-                message=f"Failed to create project structure: {e}",
                 operation="create_project_structure",
+                reason=str(e),
                 details=f"Exception type: {type(e).__name__}",
             ) from e
 
@@ -141,8 +139,7 @@ class PythonProjectCreationService:
             ProjectCreationResult: Result with created files information
 
         Raises:
-            ProjectServiceError: If file creation fails
-            TemplateError: If template processing fails
+            ProjectServiceError: If file creation or template processing fails
         """
         try:
             validate_project_path(project_path)
@@ -189,17 +186,13 @@ class PythonProjectCreationService:
                 files_created=created_files,
             )
 
-        except (
-            ProjectServiceError,
-            TemplateServiceError,
-            ValidationServiceError,
-        ):
+        except ProjectServiceError:
             raise
         except Exception as e:
-            logger.error(f"Unexpected error in create_project_files: {e}")
+            logger.exception("Unexpected error in create_project_files")
             raise ProjectServiceError(
-                message=f"Failed to create project files: {e}",
                 operation="create_project_files",
+                reason=str(e),
                 details=f"Exception type: {type(e).__name__}",
             ) from e
 
@@ -226,18 +219,17 @@ class PythonProjectCreationService:
                 )
             else:
                 raise ProjectServiceError(
-                    message="Failed to create virtual environment",
                     operation="setup_virtual_environment",
-                    details="Virtual environment creation returned failure",
+                    reason="Virtual environment creation returned failure",
                 )
 
         except ProjectServiceError:
             raise
         except Exception as e:
-            logger.error(f"Unexpected error in setup_virtual_environment: {e}")
+            logger.exception("Unexpected error in setup_virtual_environment")
             raise ProjectServiceError(
-                message=f"Failed to setup virtual environment: {e}",
                 operation="setup_virtual_environment",
+                reason=str(e),
                 details=f"Exception type: {type(e).__name__}",
             ) from e
 
@@ -271,10 +263,10 @@ class PythonProjectCreationService:
         except ProjectServiceError:
             raise
         except Exception as e:
-            logger.error(f"Unexpected error in install_dev_dependencies: {e}")
+            logger.exception("Unexpected error in install_dev_dependencies")
             raise ProjectServiceError(
-                message=f"Failed to install development dependencies: {e}",
                 operation="install_dev_dependencies",
+                reason=str(e),
                 details=f"Exception type: {type(e).__name__}",
             ) from e
 
@@ -300,10 +292,10 @@ class PythonProjectCreationService:
         except ProjectServiceError:
             raise
         except Exception as e:
-            logger.error(f"Unexpected error in setup_dev_tools: {e}")
+            logger.exception("Unexpected error in setup_dev_tools")
             raise ProjectServiceError(
-                message=f"Failed to setup development tools: {e}",
                 operation="setup_dev_tools",
+                reason=str(e),
                 details=f"Exception type: {type(e).__name__}",
             ) from e
 
@@ -363,10 +355,10 @@ class PythonProjectCreationService:
         except ProjectServiceError:
             raise
         except Exception as e:
-            logger.error(f"Unexpected error in setup_git_repository: {e}")
+            logger.exception("Unexpected error in setup_git_repository")
             raise ProjectServiceError(
-                message=f"Failed to setup Git repository: {e}",
                 operation="setup_git_repository",
+                reason=str(e),
                 details=f"Exception type: {type(e).__name__}",
             ) from e
 
@@ -388,8 +380,7 @@ class PythonProjectCreationService:
             ProjectCreationResult: Result of pyproject.toml creation
 
         Raises:
-            ProjectServiceError: If pyproject.toml creation fails
-            TemplateError: If template processing fails
+            ProjectServiceError: If pyproject.toml creation or template processing fails
         """
         try:
             template_path = self._template_dir / "pyproject.toml.template"
@@ -421,12 +412,10 @@ class PythonProjectCreationService:
                 files_created=["pyproject.toml"],
             )
 
-        except TemplateServiceError:
-            raise
         except Exception as e:
-            logger.error(f"Unexpected error in _create_pyproject_toml: {e}")
+            logger.exception("Unexpected error in _create_pyproject_toml")
             raise ProjectServiceError(
-                message=f"Failed to create pyproject.toml: {e}",
                 operation="create_pyproject_toml",
+                reason=str(e),
                 details=f"Exception type: {type(e).__name__}",
             ) from e

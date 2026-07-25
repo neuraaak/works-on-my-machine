@@ -29,8 +29,7 @@ from threading import Lock
 from typing import Any, ClassVar
 
 # Local imports
-from ...exceptions.common import ValidationServiceError
-from ...exceptions.project import ProjectServiceError, TemplateServiceError
+from ...exceptions.project import ProjectServiceError
 from ...shared.results import ProjectCreationResult
 from ...utils.common import get_assets_module_path
 from ...utils.project import (
@@ -103,8 +102,7 @@ class JavaScriptProjectCreationService:
             ProjectCreationResult: Result with created directory information
 
         Raises:
-            ProjectServiceError: If structure creation fails
-            ProjectValidationError: If validation fails
+            ProjectServiceError: If structure creation or validation fails
         """
         try:
             created_dirs = create_javascript_structure(project_path, project_name)
@@ -119,13 +117,13 @@ class JavaScriptProjectCreationService:
                 ),
             )
 
-        except (ProjectServiceError, ValidationServiceError):
+        except ProjectServiceError:
             raise
         except Exception as e:
-            logger.error(f"Unexpected error in create_project_structure: {e}")
+            logger.exception("Unexpected error in create_project_structure")
             raise ProjectServiceError(
-                message=f"Failed to create project structure: {e}",
                 operation="create_project_structure",
+                reason=str(e),
                 details=f"Exception type: {type(e).__name__}",
             ) from e
 
@@ -148,8 +146,7 @@ class JavaScriptProjectCreationService:
             ProjectCreationResult: Result with created files information
 
         Raises:
-            ProjectServiceError: If file creation fails
-            TemplateError: If template processing fails
+            ProjectServiceError: If file creation or template processing fails
         """
         try:
             validate_project_path(project_path)
@@ -189,17 +186,13 @@ class JavaScriptProjectCreationService:
                 files_created=created_files,
             )
 
-        except (
-            ProjectServiceError,
-            TemplateServiceError,
-            ValidationServiceError,
-        ):
+        except ProjectServiceError:
             raise
         except Exception as e:
-            logger.error(f"Unexpected error in create_project_files: {e}")
+            logger.exception("Unexpected error in create_project_files")
             raise ProjectServiceError(
-                message=f"Failed to create project files: {e}",
                 operation="create_project_files",
+                reason=str(e),
                 details=f"Exception type: {type(e).__name__}",
             ) from e
 
@@ -228,8 +221,8 @@ class JavaScriptProjectCreationService:
             # Check if npm is available
             if not check_npm_available():
                 raise ProjectServiceError(
-                    message="npm is not installed or not in PATH",
                     operation="initialize_npm_project",
+                    reason="npm is not installed or not in PATH",
                     details="npm command not found in PATH",
                 )
 
@@ -244,10 +237,10 @@ class JavaScriptProjectCreationService:
         except ProjectServiceError:
             raise
         except Exception as e:
-            logger.error(f"initialize_npm_project failed: {e}")
+            logger.exception("initialize_npm_project failed")
             raise ProjectServiceError(
-                message=f"Failed to initialize npm project: {e}",
                 operation="initialize_npm_project",
+                reason=str(e),
                 details=f"Exception type: {type(e).__name__}",
             ) from e
 
@@ -275,8 +268,8 @@ class JavaScriptProjectCreationService:
             success = install_npm_dependencies(project_path)
             if not success:
                 raise ProjectServiceError(
-                    message="npm install command failed",
                     operation="install_dependencies",
+                    reason="npm install command failed",
                     details="npm install did not complete successfully",
                 )
 
@@ -290,10 +283,10 @@ class JavaScriptProjectCreationService:
         except ProjectServiceError:
             raise
         except Exception as e:
-            logger.error(f"install_dependencies failed: {e}")
+            logger.exception("install_dependencies failed")
             raise ProjectServiceError(
-                message=f"Failed to install dependencies: {e}",
                 operation="install_dependencies",
+                reason=str(e),
                 details=f"Exception type: {type(e).__name__}",
             ) from e
 
@@ -318,8 +311,8 @@ class JavaScriptProjectCreationService:
             # Check if npm is available
             if not shutil.which("npm"):
                 raise ProjectServiceError(
-                    message="npm is not installed or not in PATH",
                     operation="setup_dev_tools",
+                    reason="npm is not installed or not in PATH",
                     details="npm command not found in PATH",
                 )
 
@@ -354,8 +347,8 @@ class JavaScriptProjectCreationService:
             success = install_npm_dev_dependencies(project_path, dev_dependencies)
             if not success:
                 raise ProjectServiceError(
-                    message="Failed to install development tools",
                     operation="setup_dev_tools",
+                    reason="Failed to install development tools",
                     details="npm install dev tools command failed",
                 )
 
@@ -370,8 +363,8 @@ class JavaScriptProjectCreationService:
             raise
         except Exception as e:
             raise ProjectServiceError(
-                message=f"Failed to set up development tools: {e}",
                 operation="setup_dev_tools",
+                reason=str(e),
                 details=f"Exception type: {type(e).__name__}",
             ) from e
 
@@ -423,8 +416,8 @@ class JavaScriptProjectCreationService:
             raise
         except Exception as e:
             raise ProjectServiceError(
-                message=f"Failed to setup Git repository: {e}",
                 operation="setup_git_repository",
+                reason=str(e),
                 details=f"Exception type: {type(e).__name__}",
             ) from e
 
@@ -491,8 +484,8 @@ class JavaScriptProjectCreationService:
             raise
         except Exception as e:
             raise ProjectServiceError(
-                message=f"Failed to set up Git hooks: {e}",
                 operation="setup_git_hooks",
+                reason=str(e),
                 details=f"Exception type: {type(e).__name__}",
             ) from e
 
@@ -515,8 +508,7 @@ class JavaScriptProjectCreationService:
             dict: Metadata about file creation with 'success' key
 
         Raises:
-            ProjectServiceError: If package.json creation fails
-            TemplateError: If template processing fails
+            ProjectServiceError: If package.json creation or template processing fails
         """
         try:
             template_path = self._template_dir / "package.template.json"
@@ -632,12 +624,10 @@ class JavaScriptProjectCreationService:
 
             return {"success": True}
 
-        except TemplateServiceError:
-            raise
         except Exception as e:
             raise ProjectServiceError(
-                message=f"Failed to create package.json: {e}",
                 operation="create_package_json",
+                reason=str(e),
                 details=f"Exception type: {type(e).__name__}",
             ) from e
 
@@ -680,8 +670,8 @@ class JavaScriptProjectCreationService:
 
         except Exception as e:
             raise ProjectServiceError(
-                message=f"Failed to create main JavaScript file: {e}",
                 operation="create_main_js_file",
+                reason=str(e),
                 details=f"Exception type: {type(e).__name__}",
             ) from e
 
@@ -1049,8 +1039,8 @@ createApp(App).mount('#app')
 
         except Exception as e:
             raise ProjectServiceError(
-                message=f"Failed to create config files: {e}",
                 operation="create_config_files",
+                reason=str(e),
                 details=f"Exception type: {type(e).__name__}",
             ) from e
 
@@ -1167,7 +1157,7 @@ module.exports = {
 
         except Exception as e:
             raise ProjectServiceError(
-                message=f"Failed to create source files: {e}",
                 operation="create_source_files",
+                reason=str(e),
                 details=f"Exception type: {type(e).__name__}",
             ) from e

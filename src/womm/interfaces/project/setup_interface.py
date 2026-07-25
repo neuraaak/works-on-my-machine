@@ -225,15 +225,11 @@ class ProjectSetupInterface:
         except (ProjectServiceError, ValidationServiceError) as e:
             # Convert service exceptions to interface exceptions
             raise SetupInterfaceError(
-                message=f"Failed to setup project: {e.message if hasattr(e, 'message') else str(e)}",
+                message=f"Failed to setup project: {e.reason}",
                 operation="setup_project",
                 project_path=str(project_path) if project_path else "",
                 project_type=project_type or "",
-                details=(
-                    e.details
-                    if hasattr(e, "details")
-                    else f"Exception type: {type(e).__name__}"
-                ),
+                details=e.details or f"Exception type: {type(e).__name__}",
             ) from e
         except SetupInterfaceError:
             raise

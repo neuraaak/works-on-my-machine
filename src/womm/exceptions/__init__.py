@@ -13,7 +13,7 @@ Import exceptions from the appropriate domain:
     from exceptions.common import CommandServiceError, FileServiceError
     from exceptions.context import ContextServiceError
     from exceptions.lint import LintServiceError
-    from exceptions.project import ProjectServiceError, TemplateError
+    from exceptions.project import ProjectServiceError
     from exceptions.system import SystemServiceError, FileSystemError
     from exceptions.womm_deployment import WommDeploymentServiceError
 
@@ -59,12 +59,10 @@ from .lint import LintServiceError
 from .project import (
     CreateInterfaceError,
     ProjectDetectionInterfaceError,
-    ProjectDetectionServiceError,
     ProjectInterfaceError,
     ProjectServiceError,
     SetupInterfaceError,
     TemplateInterfaceError,
-    TemplateServiceError,
 )
 
 # Local imports - System exceptions
@@ -107,11 +105,9 @@ __all__ = [  # noqa: RUF022
     # Project exceptions
     "CreateInterfaceError",
     "ProjectDetectionInterfaceError",
-    "ProjectDetectionServiceError",
     "ProjectInterfaceError",
     "ProjectServiceError",
     "SetupInterfaceError",
-    "TemplateServiceError",
     "TemplateInterfaceError",
     # System exceptions
     "DetectorServiceError",

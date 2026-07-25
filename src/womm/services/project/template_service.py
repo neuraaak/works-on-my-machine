@@ -79,9 +79,6 @@ class TemplateService:
 
         Returns:
             str: Text with placeholders replaced
-
-        Raises:
-            ProjectServiceError: If placeholder replacement fails
         """
         return replace_platform_placeholders(text, **extra_vars)
 
@@ -99,7 +96,8 @@ class TemplateService:
             template_vars: Variables to replace in the template
 
         Raises:
-            TemplateError: If template generation fails
+            ValueError: If the template or output path is missing
+            OSError: If the template cannot be read or the output cannot be written
         """
         generate_cross_platform_template(template_path, output_path, template_vars)
 
@@ -111,9 +109,6 @@ class TemplateService:
 
         Returns:
             TemplateResult: A result object containing validation statistics
-
-        Raises:
-            TemplateError: If template validation fails
         """
         try:
             stats = validate_template_placeholders(template_path)
@@ -124,7 +119,7 @@ class TemplateService:
                 metadata={"validation_stats": stats},
             )
         except Exception as e:
-            logger.error(f"validate_template failed: {e}")
+            logger.exception("validate_template failed")
             return TemplateResult(
                 success=False,
                 message=f"Template validation failed: {e}",

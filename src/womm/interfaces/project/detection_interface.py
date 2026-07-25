@@ -24,11 +24,7 @@ import logging
 from pathlib import Path
 
 # Local imports
-from ...exceptions.project import (
-    ProjectDetectionInterfaceError,
-    ProjectDetectionServiceError,
-    ProjectServiceError,
-)
+from ...exceptions.project import ProjectDetectionInterfaceError, ProjectServiceError
 from ...services import ProjectDetectionService
 from ...shared.results import ProjectDetectionResult
 from ...ui.common import ezprinter
@@ -121,7 +117,7 @@ class ProjectDetectionInterface:
                         config_files = config_result.configuration_files or {}
                         detected_files = config_result.detected_files or []
                     confidence = 100.0  # High confidence when type is detected
-                except (ProjectServiceError, ProjectDetectionServiceError):
+                except ProjectServiceError:
                     # If config detection fails, we still have the type
                     logger.warning(
                         f"Could not detect full configuration for {detected_type} project"
@@ -149,17 +145,13 @@ class ProjectDetectionInterface:
 
             return result
 
-        except (ProjectServiceError, ProjectDetectionServiceError) as e:
+        except ProjectServiceError as e:
             # Convert service exceptions to interface exceptions
             raise ProjectDetectionInterfaceError(
-                message=f"Failed to detect project type: {e.message if hasattr(e, 'message') else str(e)}",
+                message=f"Failed to detect project type: {e.reason}",
                 operation="detect_project_type",
                 project_path=str(project_path) if project_path else "",
-                details=(
-                    e.details
-                    if hasattr(e, "details")
-                    else f"Exception type: {type(e).__name__}"
-                ),
+                details=e.details or f"Exception type: {type(e).__name__}",
             ) from e
         except Exception as e:
             # Wrap unexpected exceptions
@@ -233,17 +225,13 @@ class ProjectDetectionInterface:
 
             return result
 
-        except (ProjectServiceError, ProjectDetectionServiceError) as e:
+        except ProjectServiceError as e:
             # Convert service exceptions to interface exceptions
             raise ProjectDetectionInterfaceError(
-                message=f"Failed to detect project configuration: {e.message if hasattr(e, 'message') else str(e)}",
+                message=f"Failed to detect project configuration: {e.reason}",
                 operation="detect_project_config",
                 project_path=str(project_path) if project_path else "",
-                details=(
-                    e.details
-                    if hasattr(e, "details")
-                    else f"Exception type: {type(e).__name__}"
-                ),
+                details=e.details or f"Exception type: {type(e).__name__}",
             ) from e
         except Exception as e:
             # Wrap unexpected exceptions

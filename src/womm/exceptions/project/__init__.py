@@ -26,11 +26,7 @@ from .project_interface import (
     SetupInterfaceError,
     TemplateInterfaceError,
 )
-from .project_service import (
-    ProjectDetectionServiceError,
-    ProjectServiceError,
-    TemplateServiceError,
-)
+from .project_service import ProjectServiceError
 
 # ///////////////////////////////////////////////////////////////
 # PUBLIC API
@@ -44,7 +40,5 @@ __all__ = [  # noqa: RUF022
     "SetupInterfaceError",
     "TemplateInterfaceError",
     # project_service
-    "ProjectDetectionServiceError",
     "ProjectServiceError",
-    "TemplateServiceError",
 ]

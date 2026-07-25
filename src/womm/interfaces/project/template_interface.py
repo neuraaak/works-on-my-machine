@@ -27,7 +27,7 @@ from pathlib import Path
 
 # Local imports
 from ...exceptions.common import ValidationServiceError
-from ...exceptions.project import TemplateInterfaceError, TemplateServiceError
+from ...exceptions.project import TemplateInterfaceError
 from ...services import ProjectDetectionService, TemplateService
 from ...shared.results import ProjectDetectionResult, TemplateResult
 from ...ui.common import ezprinter
@@ -219,7 +219,7 @@ class TemplateInterface:
 
         except TemplateInterfaceError:
             raise
-        except (ValidationServiceError, TemplateServiceError) as e:
+        except ValidationServiceError as e:
             raise TemplateInterfaceError(
                 message=f"Template creation failed: {getattr(e, 'message', str(e))}",
                 operation="create_template_from_project",
@@ -338,7 +338,7 @@ class TemplateInterface:
 
         except TemplateInterfaceError:
             raise
-        except (ValidationServiceError, TemplateServiceError) as e:
+        except ValidationServiceError as e:
             raise TemplateInterfaceError(
                 message=f"Template generation failed: {getattr(e, 'message', str(e))}",
                 operation="generate_from_template",
@@ -478,7 +478,7 @@ class TemplateInterface:
 
         except TemplateInterfaceError:
             raise
-        except (ValidationServiceError, TemplateServiceError) as e:
+        except ValidationServiceError as e:
             raise TemplateInterfaceError(
                 message=f"Template deletion failed: {getattr(e, 'message', str(e))}",
                 operation="delete_template",

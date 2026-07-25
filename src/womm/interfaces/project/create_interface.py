@@ -28,11 +28,7 @@ from rich.progress import TaskID
 
 # Local imports
 from ...exceptions.common import ValidationServiceError
-from ...exceptions.project import (
-    CreateInterfaceError,
-    ProjectServiceError,
-    TemplateServiceError,
-)
+from ...exceptions.project import CreateInterfaceError, ProjectServiceError
 from ...services import (
     CommandRunnerService,
     ConflictResolutionService,
@@ -176,10 +172,10 @@ class ProjectCreateInterface:
                 project_type=project_type,
                 details=e.details or str(e),
             ) from e
-        except (ProjectServiceError, TemplateServiceError) as e:
+        except ProjectServiceError as e:
             logger.error(f"Service error in create_project: {e}", exc_info=True)
             raise CreateInterfaceError(
-                message=f"Project creation failed: {e.message}",
+                message=f"Project creation failed: {e.reason}",
                 operation="create_project",
                 project_path=str(project_path),
                 project_type=project_type,
@@ -388,10 +384,10 @@ class ProjectCreateInterface:
 
         except CreateInterfaceError:
             raise
-        except (ProjectServiceError, TemplateServiceError) as e:
+        except ProjectServiceError as e:
             logger.error(f"Service error in _create_python_project: {e}", exc_info=True)
             raise CreateInterfaceError(
-                message=f"Python project creation failed: {e.message}",
+                message=f"Python project creation failed: {e.reason}",
                 operation="create_python_project",
                 project_path=str(project_path),
                 project_type="python",
@@ -564,12 +560,12 @@ class ProjectCreateInterface:
 
         except CreateInterfaceError:
             raise
-        except (ProjectServiceError, TemplateServiceError) as e:
+        except ProjectServiceError as e:
             logger.error(
                 f"Service error in _create_javascript_project: {e}", exc_info=True
             )
             raise CreateInterfaceError(
-                message=f"JavaScript project creation failed: {e.message}",
+                message=f"JavaScript project creation failed: {e.reason}",
                 operation="create_javascript_project",
                 project_path=str(project_path),
                 project_type=project_type,

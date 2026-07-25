@@ -121,8 +121,8 @@ class ConflictResolutionService:
 
         except Exception as e:
             raise ProjectServiceError(
-                message=f"Failed to resolve file conflict: {e}",
                 operation="resolve_file_conflict",
+                reason=str(e),
                 details=f"Source: {source_file}, Target: {target_file}",
             ) from e
 
@@ -162,8 +162,8 @@ class ConflictResolutionService:
 
         except Exception as e:
             raise ProjectServiceError(
-                message=f"Failed to resolve directory conflict: {e}",
                 operation="resolve_directory_conflict",
+                reason=str(e),
                 details=f"Source: {source_dir}, Target: {target_dir}",
             ) from e
 
@@ -212,8 +212,8 @@ class ConflictResolutionService:
 
         except Exception as e:
             raise ProjectServiceError(
-                message=f"Failed to copy file with resolution: {e}",
                 operation="copy_file_with_resolution",
+                reason=str(e),
                 details=f"Source: {source_file}, Target: {target_file}",
             ) from e
 
@@ -275,8 +275,8 @@ class ConflictResolutionService:
 
         except Exception as e:
             raise ProjectServiceError(
-                message=f"Failed to copy directory with resolution: {e}",
                 operation="copy_directory_with_resolution",
+                reason=str(e),
                 details=f"Source: {source_dir}, Target: {target_dir}",
             ) from e
 

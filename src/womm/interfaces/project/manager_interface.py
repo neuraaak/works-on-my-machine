@@ -59,7 +59,8 @@ class ProjectManagerInterface:
             self.logger = logging.getLogger(__name__)
         except Exception as e:
             raise ProjectServiceError(
-                f"Failed to initialize project manager: {e}",
+                operation="initialization",
+                reason=str(e),
                 details="Error creating component managers",
             ) from e
 
@@ -200,7 +201,8 @@ class ProjectManagerInterface:
             raise
         except Exception as e:
             raise ProjectServiceError(
-                f"Unexpected error creating project: {e}",
+                operation="create_project",
+                reason=str(e),
                 details=f"Project type: {project_type}, Project name: {project_name}",
             ) from e
 
@@ -260,7 +262,8 @@ class ProjectManagerInterface:
                 result = probe("python")
                 if not result.success:
                     raise ProjectServiceError(
-                        "Python runtime not found, attempting to install...",
+                        operation="check_dependencies",
+                        reason="Python runtime not found, attempting to install...",
                         details="Python runtime not found",
                     )
 
@@ -268,7 +271,8 @@ class ProjectManagerInterface:
                 result = probe("node")
                 if not result.success:
                     raise ProjectServiceError(
-                        "Node.js runtime not found, attempting to install...",
+                        operation="check_dependencies",
+                        reason="Node.js runtime not found, attempting to install...",
                         details="Node.js runtime not found",
                     )
 
@@ -276,7 +280,8 @@ class ProjectManagerInterface:
 
         except Exception as e:
             raise ProjectServiceError(
-                f"Error checking dependencies: {e}",
+                operation="check_dependencies",
+                reason=str(e),
                 details=f"Project type: {project_type}",
             ) from e
 

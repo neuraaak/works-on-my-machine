@@ -147,8 +147,8 @@ class ProjectValidationService:
         except Exception as e:
             # Wrap unexpected external exceptions
             raise ProjectServiceError(
-                message=f"Unexpected error during project name validation: {e}",
                 operation="validate_project_name",
+                reason=str(e),
                 details=f"Exception type: {type(e).__name__}, Project name: {project_name}",
             ) from e
 
@@ -245,8 +245,8 @@ class ProjectValidationService:
         except Exception as e:
             # Wrap unexpected external exceptions
             raise ProjectServiceError(
-                message=f"Unexpected error during project path validation: {e}",
                 operation="validate_project_path",
+                reason=str(e),
                 details=f"Exception type: {type(e).__name__}, Project path: {project_path}",
             ) from e
 
@@ -286,8 +286,8 @@ class ProjectValidationService:
         except Exception as e:
             # Wrap unexpected external exceptions
             raise ProjectServiceError(
-                message=f"Unexpected error during project type validation: {e}",
                 operation="validate_project_type",
+                reason=str(e),
                 details=f"Exception type: {type(e).__name__}, Project type: {project_type}",
             ) from e
 
@@ -332,8 +332,8 @@ class ProjectValidationService:
         except Exception as e:
             # Wrap unexpected external exceptions
             raise ProjectServiceError(
-                message=f"Unexpected error during project configuration validation: {e}",
                 operation="validate_project_config",
+                reason=str(e),
                 details=f"Exception type: {type(e).__name__}, Config: {config}",
             ) from e
 
@@ -413,7 +413,7 @@ class ProjectValidationService:
 
         except Exception as e:
             raise ProjectServiceError(
-                message=f"Failed to generate validation summary: {e}",
                 operation="get_validation_summary",
+                reason=str(e),
                 details=f"Exception type: {type(e).__name__}",
             ) from e

@@ -23,7 +23,7 @@ from threading import Lock
 from typing import ClassVar
 
 # Local imports
-from ...exceptions.project import ProjectDetectionServiceError, ProjectServiceError
+from ...exceptions.project import ProjectServiceError
 from ...shared.configs.project import ProjectConfig
 from ...shared.results import ProjectDetectionResult
 from ...utils.project import (
@@ -86,32 +86,26 @@ class ProjectDetectionService:
             ProjectDetectionResult: Result with detected project type and metadata
 
         Raises:
-            ProjectServiceError: If input validation fails
-            ProjectDetectionError: If project detection fails
+            ProjectServiceError: If validation fails or project detection fails
         """
         try:
             # Input validation
             if not project_path:
                 raise ProjectServiceError(
-                    message="Project path cannot be None",
                     operation="detect_project_type",
-                    details="Empty project path provided for project type detection",
+                    reason="Project path cannot be None",
                 )
 
             if not project_path.exists():
-                raise ProjectDetectionServiceError(
-                    message="Project path does not exist",
+                raise ProjectServiceError(
                     operation="detect_project_type",
-                    project_path=str(project_path),
                     reason="Project path does not exist",
                     details=f"Path {project_path} was not found",
                 )
 
             if not project_path.is_dir():
-                raise ProjectDetectionServiceError(
-                    message="Project path is not a directory",
+                raise ProjectServiceError(
                     operation="detect_project_type",
-                    project_path=str(project_path),
                     reason="Project path is not a directory",
                     details=f"Path {project_path} is not a directory",
                 )
@@ -157,15 +151,15 @@ class ProjectDetectionService:
                 configuration_files={},
             )
 
-        except (ProjectServiceError, ProjectDetectionServiceError):
-            # Re-raise specialized exceptions as-is
+        except ProjectServiceError:
+            # Re-raise as-is
             raise
         except Exception as e:
             # Wrap unexpected external exceptions
-            logger.error(f"Unexpected error in detect_project_type: {e}")
+            logger.exception("Unexpected error in detect_project_type")
             raise ProjectServiceError(
-                message=f"Unexpected error during project type detection: {e}",
                 operation="detect_project_type",
+                reason=str(e),
                 details=f"Exception type: {type(e).__name__}, Project: {project_path}",
             ) from e
 
@@ -179,32 +173,26 @@ class ProjectDetectionService:
             ProjectDetectionResult: Result with project configuration information
 
         Raises:
-            ProjectServiceError: If input validation fails
-            ProjectDetectionError: If project configuration detection fails
+            ProjectServiceError: If validation fails or project configuration detection fails
         """
         try:
             # Input validation
             if not project_path:
                 raise ProjectServiceError(
-                    message="Project path cannot be None",
                     operation="detect_project_config",
-                    details="Empty project path provided for project configuration detection",
+                    reason="Project path cannot be None",
                 )
 
             if not project_path.exists():
-                raise ProjectDetectionServiceError(
-                    message="Project path does not exist",
+                raise ProjectServiceError(
                     operation="detect_project_config",
-                    project_path=str(project_path),
                     reason="Project path does not exist",
                     details=f"Path {project_path} was not found",
                 )
 
             if not project_path.is_dir():
-                raise ProjectDetectionServiceError(
-                    message="Project path is not a directory",
+                raise ProjectServiceError(
                     operation="detect_project_config",
-                    project_path=str(project_path),
                     reason="Project path is not a directory",
                     details=f"Path {project_path} is not a directory",
                 )
@@ -214,10 +202,8 @@ class ProjectDetectionService:
             # Detect project type first
             type_result = self.detect_project_type(project_path)
             if not type_result.success:
-                raise ProjectDetectionServiceError(
-                    message="Failed to detect project type",
+                raise ProjectServiceError(
                     operation="detect_project_config",
-                    project_path=str(project_path),
                     reason="Unable to determine project type",
                     details="Project type detection failed",
                 )
@@ -265,15 +251,15 @@ class ProjectDetectionService:
                 configuration_files=config_files,
             )
 
-        except (ProjectServiceError, ProjectDetectionServiceError):
-            # Re-raise specialized exceptions as-is
+        except ProjectServiceError:
+            # Re-raise as-is
             raise
         except Exception as e:
             # Wrap unexpected external exceptions
-            logger.error(f"Unexpected error in detect_project_config: {e}")
+            logger.exception("Unexpected error in detect_project_config")
             raise ProjectServiceError(
-                message=f"Unexpected error during project configuration detection: {e}",
                 operation="detect_project_config",
+                reason=str(e),
                 details=f"Exception type: {type(e).__name__}, Project: {project_path}",
             ) from e
 
@@ -287,32 +273,26 @@ class ProjectDetectionService:
             ProjectDetectionResult: Result with project structure information
 
         Raises:
-            ProjectServiceError: If input validation fails
-            ProjectDetectionError: If project structure detection fails
+            ProjectServiceError: If validation fails or project structure detection fails
         """
         try:
             # Input validation
             if not project_path:
                 raise ProjectServiceError(
-                    message="Project path cannot be None",
                     operation="detect_project_structure",
-                    details="Empty project path provided for project structure detection",
+                    reason="Project path cannot be None",
                 )
 
             if not project_path.exists():
-                raise ProjectDetectionServiceError(
-                    message="Project path does not exist",
+                raise ProjectServiceError(
                     operation="detect_project_structure",
-                    project_path=str(project_path),
                     reason="Project path does not exist",
                     details=f"Path {project_path} was not found",
                 )
 
             if not project_path.is_dir():
-                raise ProjectDetectionServiceError(
-                    message="Project path is not a directory",
+                raise ProjectServiceError(
                     operation="detect_project_structure",
-                    project_path=str(project_path),
                     reason="Project path is not a directory",
                     details=f"Path {project_path} is not a directory",
                 )
@@ -367,14 +347,14 @@ class ProjectDetectionService:
                 configuration_files=structure,
             )
 
-        except (ProjectServiceError, ProjectDetectionServiceError):
-            # Re-raise specialized exceptions as-is
+        except ProjectServiceError:
+            # Re-raise as-is
             raise
         except Exception as e:
             # Wrap unexpected external exceptions
-            logger.error(f"Unexpected error in detect_project_structure: {e}")
+            logger.exception("Unexpected error in detect_project_structure")
             raise ProjectServiceError(
-                message=f"Unexpected error during project structure detection: {e}",
                 operation="detect_project_structure",
+                reason=str(e),
                 details=f"Exception type: {type(e).__name__}, Project: {project_path}",
             ) from e
