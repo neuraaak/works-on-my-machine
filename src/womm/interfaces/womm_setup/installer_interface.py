@@ -516,29 +516,20 @@ class WommInstallerInterface:
                     )
                     try:
                         self._setup_path()  # Always raises exception on failure, never returns False
-                    except (
-                        PathUtilityError,
-                        UserPathServiceError,
-                        RegistryServiceError,
-                        FileSystemServiceError,
-                    ) as e:
-                        # Re-raise system exceptions with full details
+                    except PathUtilityError as e:
+                        # Re-raise system exception with full details
                         progress.emergency_stop(
                             f"PATH setup failed: {type(e).__name__}"
                         )
-                        error_details = getattr(e, "details", str(e))
-                        error_reason = getattr(
-                            e, "reason", getattr(e, "message", str(e))
-                        )
-                        ezprinter.error(f"PATH setup error: {error_reason}")
-                        if error_details and error_details != error_reason:
-                            ezprinter.error(f"Details: {error_details}")
+                        ezprinter.error(f"PATH setup error: {e.message}")
+                        if e.details and e.details != e.message:
+                            ezprinter.error(f"Details: {e.details}")
                         # Convert to InstallationPathError for consistency
                         raise PathServiceError(
                             operation="setup",
                             path=str(self.target_path),
-                            message=error_reason,
-                            details=error_details,
+                            message=e.message,
+                            details=e.details,
                         ) from e
                     except (PathServiceError, DeploymentUtilityError):
                         # Re-raise our custom exceptions
@@ -602,10 +593,6 @@ class WommInstallerInterface:
                     FileVerificationServiceError,
                     PathUtilityError,
                     ExeVerificationServiceError,
-                    # System exceptions that might be raised by user_path_manager
-                    UserPathServiceError,
-                    RegistryServiceError,
-                    FileSystemServiceError,
                 ) as e:
                     # Stop progress first, then print error details
                     progress.emergency_stop(f"Installation failed: {type(e).__name__}")
@@ -974,26 +961,7 @@ class WommInstallerInterface:
         """
         try:
             path_manager = SystemPathInterface(target=str(self.target_path))
-            try:
-                result = path_manager.add_to_path()
-            except (
-                UserPathServiceError,
-                RegistryServiceError,
-                FileSystemServiceError,
-            ) as e:
-                # Re-raise our custom exceptions with full details
-                logger.exception(f"PATH setup failed with {type(e).__name__}")
-                if hasattr(e, "details"):
-                    logger.exception(f"Details: {e.details}")
-                raise
-            except Exception as e:
-                # Wrap unexpected external exceptions
-                logger.exception("Unexpected error in PathManager.add_to_path")
-                raise PathServiceError(
-                    operation="setup",
-                    path=str(self.target_path),
-                    details=f"Exception type: {type(e).__name__}",
-                ) from e
+            result = path_manager.add_to_path()
 
             sleep(0.5)
 
@@ -1009,21 +977,14 @@ class WommInstallerInterface:
                     details=f"PathManager error: {error_msg}",
                 )
 
-        except (
-            PathUtilityError,
-            UserPathServiceError,
-            RegistryServiceError,
-            FileSystemServiceError,
-        ) as e:
-            # Log and re-raise our custom exceptions with full details
-            error_msg = getattr(e, "message", getattr(e, "reason", str(e)))
-            error_details = getattr(e, "details", "")
-            logger.exception(f"PATH setup failed: {type(e).__name__}: {error_msg}")
-            if error_details:
-                logger.exception(f"Details: {error_details}")
-            ezprinter.error(f"PATH setup error: {error_msg}")
-            if error_details and error_details != error_msg:
-                ezprinter.error(f"Details: {error_details}")
+        except PathUtilityError as e:
+            # Log and re-raise our custom exception with full details
+            logger.exception(f"PATH setup failed: {e.message}")
+            if e.details:
+                logger.exception(f"Details: {e.details}")
+            ezprinter.error(f"PATH setup error: {e.message}")
+            if e.details and e.details != e.message:
+                ezprinter.error(f"Details: {e.details}")
             raise
         except Exception as e:
             # Note: PATH setup is not called within progress context, safe to print immediately
@@ -1188,49 +1149,27 @@ class WommInstallerInterface:
         """
         try:
             path_manager = SystemPathInterface(target=str(self.target_path))
-            try:
-                backup_result = path_manager._backup_path()
-            except (
-                UserPathServiceError,
-                RegistryServiceError,
-                FileSystemServiceError,
-            ):
-                # Re-raise our custom exceptions
-                raise
-            except Exception as e:
-                # Wrap unexpected external exceptions
-                raise PathServiceError(
-                    operation="backup",
-                    path=str(self.target_path),
-                    message=f"PathManager backup failed: {e}",
-                    details=f"Exception type: {type(e).__name__}",
-                ) from e
+            backup_result = path_manager.create_backup()
 
-            if backup_result["success"]:
+            if backup_result.success:
                 # Keep backup reference for potential rollback
-                backup_files = backup_result.get("backup_files", [])
-                if backup_files:
-                    latest_name = backup_files[0]
+                if backup_result.backup_file:
                     self._path_backup_file = str(
-                        (path_manager.backup_dir / latest_name).resolve()
+                        Path(backup_result.backup_file).resolve()
                     )
                 return True
             else:
-                ezprinter.error(f"PATH backup failed: {backup_result.get('error')}")
+                ezprinter.error(f"PATH backup failed: {backup_result.error}")
 
                 raise PathServiceError(
                     operation="backup",
                     path=str(self.target_path),
                     message="PATH backup failed",
-                    details=f"PathManager backup error: {backup_result.get('error')}",
+                    details=f"PathManager backup error: {backup_result.error}",
                 )
 
-        except (
-            UserPathServiceError,
-            RegistryServiceError,
-            FileSystemServiceError,
-        ):
-            # Re-raise our custom exceptions
+        except PathServiceError:
+            # Re-raise our custom exception
             raise
         except Exception as e:
             ezprinter.error(f"Unexpected error during PATH backup: {e}")

@@ -84,6 +84,44 @@ class PathOperationResult(BaseResult):
 
 
 # ///////////////////////////////////////////////////////////////
+# PATH BACKUP RESULTS
+# ///////////////////////////////////////////////////////////////
+
+
+@dataclass
+class PathBackupInfo:
+    """A single PATH backup file's metadata (plain record, not a Result)."""
+
+    name: str
+    path: str
+    size: int
+    modified: str
+    path_entries: int
+
+
+@dataclass
+class PathBackupListResult(BaseResult):
+    """Result for listing PATH backup files."""
+
+    backup_location: str = ""
+    backups: list[PathBackupInfo] | None = None
+
+    def __post_init__(self) -> None:
+        """Initialize derived fields."""
+        if self.backups is None:
+            self.backups = []
+
+
+@dataclass
+class PathBackupResult(BaseResult):
+    """Result for creating a PATH backup."""
+
+    backup_location: str = ""
+    backup_file: str = ""
+    entries_count: int = 0
+
+
+# ///////////////////////////////////////////////////////////////
 # ENVIRONMENT REFRESH RESULT
 # ///////////////////////////////////////////////////////////////
 
@@ -198,6 +236,9 @@ class PrerequisitesInstallResult(BaseResult):
 __all__ = [
     "EnvironmentRefreshResult",
     "EnvironmentVerificationResult",
+    "PathBackupInfo",
+    "PathBackupListResult",
+    "PathBackupResult",
     "PathOperationResult",
     "PrerequisitesCheckResult",
     "PrerequisitesInstallResult",

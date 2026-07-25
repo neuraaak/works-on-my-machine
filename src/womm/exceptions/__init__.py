@@ -78,9 +78,7 @@ from .system import (
     EnvironmentServiceError,
     FileSystemServiceError,
     RegistryServiceError,
-    SystemInterfaceError,
     SystemServiceError,
-    UserPathInterfaceError,
     UserPathServiceError,
 )
 
@@ -142,9 +140,7 @@ __all__ = [  # noqa: RUF022
     "DetectorServiceError",
     "EnvironmentServiceError",
     "FileSystemServiceError",
-    "UserPathInterfaceError",
     "RegistryServiceError",
-    "SystemInterfaceError",
     "SystemServiceError",
     "UserPathServiceError",
     # WOMM Deployment exceptions

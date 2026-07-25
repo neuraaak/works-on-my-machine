@@ -15,14 +15,7 @@ from __future__ import annotations
 # ///////////////////////////////////////////////////////////////
 # IMPORTS
 # ///////////////////////////////////////////////////////////////
-# ///////////////////////////////////////////////////////////////
-# IMPORTS
-# ///////////////////////////////////////////////////////////////
 # Local imports
-from .system_interface import (
-    SystemInterfaceError,
-    UserPathInterfaceError,
-)
 from .system_service import (
     DetectorServiceError,
     EnvironmentServiceError,
@@ -36,11 +29,7 @@ from .system_service import (
 # PUBLIC API
 # ///////////////////////////////////////////////////////////////
 
-__all__ = [  # noqa: RUF022
-    # system_interface
-    "UserPathInterfaceError",
-    "SystemInterfaceError",
-    # system_service
+__all__ = [
     "DetectorServiceError",
     "EnvironmentServiceError",
     "FileSystemServiceError",

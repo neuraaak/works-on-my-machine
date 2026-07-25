@@ -18,17 +18,13 @@ from __future__ import annotations
 # ///////////////////////////////////////////////////////////////
 # Standard library imports
 import sys
+from pathlib import Path
 
 # Third-party imports
 import click
 from ezpl import LogLevel
 
 # Local imports
-from ...exceptions.system import (
-    FileSystemServiceError,
-    RegistryServiceError,
-    UserPathServiceError,
-)
 from ...exceptions.womm_deployment import DeploymentUtilityError, WommUninstallerError
 from ...interfaces import (
     SystemPathInterface,
@@ -36,7 +32,12 @@ from ...interfaces import (
     WommUninstallerInterface,
 )
 from ...services import SecurityValidatorService
-from ...ui.common import ezpl_bridge, ezprinter
+from ...ui.common import InteractiveMenu, ezpl_bridge, ezprinter, format_backup_item
+from ...ui.system import (
+    render_path_backup_list_result,
+    render_path_backup_result,
+    render_path_operation_result,
+)
 
 # ///////////////////////////////////////////////////////////////
 # INSTALLATION COMMANDS
@@ -91,25 +92,6 @@ def install(
 
     except DeploymentUtilityError as e:
         ezprinter.error(f"Installation error: {e.message}")
-        if e.details:
-            ezprinter.error(f"Details: {e.details}")
-        sys.exit(1)
-    except RegistryServiceError as e:
-        ezprinter.error(
-            f"PATH utility error: Registry {e.operation} failed for {e.registry_key}: {e.reason}"
-        )
-        if e.details:
-            ezprinter.error(f"Details: {e.details}")
-        sys.exit(1)
-    except FileSystemServiceError as e:
-        ezprinter.error(
-            f"PATH utility error: File {e.operation} failed for {e.path}: {e.reason}"
-        )
-        if e.details:
-            ezprinter.error(f"Details: {e.details}")
-        sys.exit(1)
-    except UserPathServiceError as e:
-        ezprinter.error(f"PATH utility error: {e.message}")
         if e.details:
             ezprinter.error(f"Details: {e.details}")
         sys.exit(1)
@@ -222,12 +204,85 @@ def path_cmd(
         manager = SystemPathInterface(target=target)
 
         if list_flag:
-            manager.list_backup()
-        elif restore_flag:
-            manager.restore_path()
+            ezprinter.print_header("W.O.M.M PATH Backup List")
+            result = manager.list_backups()
+            render_path_backup_list_result(result)
+            if not result.success:
+                sys.exit(1)
+
         elif backup_flag:
-            manager.backup_path()
+            ezprinter.print_header("W.O.M.M PATH Backup Creation")
+            backup_result = manager.create_backup()
+            render_path_backup_result(backup_result)
+            if not backup_result.success:
+                sys.exit(1)
+
+        elif restore_flag:
+            ezprinter.print_header("W.O.M.M PATH Restoration")
+            _run_path_restore(manager)
 
     except Exception as e:
         ezprinter.error(f"Unexpected PATH command error: {e}")
+        sys.exit(1)
+
+
+def _run_path_restore(manager: SystemPathInterface) -> None:
+    """Interactively select a PATH backup and restore it.
+
+    Args:
+        manager: PATH interface used to list backups and perform the restore.
+    """
+    list_result = manager.list_backups()
+    if not list_result.success:
+        render_path_backup_list_result(list_result)
+        sys.exit(1)
+
+    backups = list_result.backups or []
+    if not backups:
+        ezprinter.system("No PATH backups found")
+        return
+
+    table = ezprinter.create_table(
+        title="Available PATH Backups",
+        columns=[
+            ("Index", "cyan", True),
+            ("Backup File", "green", False),
+            ("Date", "yellow", False),
+            ("Size", "blue", False),
+            ("PATH Entries", "magenta", False),
+        ],
+    )
+    for i, backup in enumerate(backups, 1):
+        table.add_row(
+            str(i),
+            backup.name,
+            backup.modified,
+            f"{backup.size} bytes",
+            str(backup.path_entries),
+        )
+    ezpl_bridge.console.print(table)
+    ezpl_bridge.console.print("")
+
+    menu_items = [
+        {"file": Path(backup.path), "path_entries": backup.path_entries}
+        for backup in backups
+    ]
+    menu = InteractiveMenu(title="Select Backup to Restore", border_style="cyan")
+    selected = menu.select_from_list(menu_items, display_func=format_backup_item)
+    if selected is None:
+        ezprinter.system("Restoration cancelled")
+        return
+
+    confirm_menu = InteractiveMenu(title="Confirm Restoration", border_style="yellow")
+    if not confirm_menu.confirm_action("Proceed with restoration?", default_yes=True):
+        ezprinter.system("Restoration cancelled")
+        return
+
+    restore_result = manager.restore_backup(selected["file"])
+    render_path_operation_result(restore_result)
+    if restore_result.success:
+        ezprinter.info(
+            "You may need to restart your terminal for changes to take effect"
+        )
+    else:
         sys.exit(1)
