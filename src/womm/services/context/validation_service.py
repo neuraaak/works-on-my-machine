@@ -257,7 +257,7 @@ class ContextValidationService:
                 input_value=label,
                 label=label,
             )
-        except ValidationServiceError as e:
+        except ValueError as e:
             return ContextValidationResult(
                 success=False,
                 error=str(e),
@@ -291,7 +291,7 @@ class ContextValidationService:
                 input_value=key_name,
                 registry_key=key_name,
             )
-        except ValidationServiceError as e:
+        except ValueError as e:
             return ContextValidationResult(
                 success=False,
                 error=str(e),
@@ -355,7 +355,7 @@ class ContextValidationService:
                 icon_type=icon_type,
             )
 
-        except ValidationServiceError as e:
+        except ValueError as e:
             return ContextValidationResult(
                 success=False,
                 error=str(e),

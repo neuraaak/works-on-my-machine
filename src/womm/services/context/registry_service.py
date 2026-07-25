@@ -364,14 +364,13 @@ class ContextRegistryService:
                     while True:
                         try:
                             subkey_name = winreg.EnumKey(key, i)
-                            entry_info = get_registry_entry_info(
-                                registry_path, subkey_name
-                            )
-                            if entry_info:
-                                entries.append(entry_info)
-                            i += 1
                         except OSError:
+                            # No more subkeys to enumerate.
                             break
+                        entry_info = get_registry_entry_info(registry_path, subkey_name)
+                        if entry_info:
+                            entries.append(entry_info)
+                        i += 1
 
             except (OSError, PermissionError) as e:
                 raise RegistryServiceError(
