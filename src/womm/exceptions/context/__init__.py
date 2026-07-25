@@ -15,36 +15,13 @@ from __future__ import annotations
 # ///////////////////////////////////////////////////////////////
 # IMPORTS
 # ///////////////////////////////////////////////////////////////
-# ///////////////////////////////////////////////////////////////
-# IMPORTS
-# ///////////////////////////////////////////////////////////////
 # Local imports
-from .context_interface import (
-    ContextInterfaceError,
-    IconInterfaceError,
-    MenuInterfaceError,
-    RegistryInterfaceError,
-    ScriptDetectorInterfaceError,
-    ValidationInterfaceError,
-)
-from .context_service import (
-    ContextServiceError,
-    ContextUtilityError,
-)
+from .context_service import ContextServiceError
 
 # ///////////////////////////////////////////////////////////////
 # PUBLIC API
 # ///////////////////////////////////////////////////////////////
 
-__all__ = [  # noqa: RUF022
-    # context_interface
-    "ContextInterfaceError",
-    "IconInterfaceError",
-    "MenuInterfaceError",
-    "RegistryInterfaceError",
-    "ScriptDetectorInterfaceError",
-    "ValidationInterfaceError",
-    # context_service
+__all__ = [
     "ContextServiceError",
-    "ContextUtilityError",
 ]

@@ -49,44 +49,7 @@ class ContextServiceError(Exception):
 
 
 # ///////////////////////////////////////////////////////////////
-# INTERFACE-LEVEL LEFTOVER (still used by interfaces/context, not yet
-# converted to Result — see [[womm-exception-rework]] stage 3)
-# ///////////////////////////////////////////////////////////////
-
-
-class ContextUtilityError(Exception):
-    """Exception raised for unexpected errors at the context interface level."""
-
-    def __init__(
-        self,
-        message: str = "",
-        operation: str = "",
-        details: str = "",
-    ) -> None:
-        """Initialize context utility error.
-
-        Args:
-            message: Error message
-            operation: Operation that failed
-            details: Additional error details
-        """
-        self.message = message or "Context service error occurred"
-        self.operation = operation
-        self.details = details
-        super().__init__(self.message)
-
-    def __str__(self) -> str:
-        """Return string representation of error."""
-        parts = [self.message]
-        if self.operation:
-            parts.append(f"Operation: {self.operation}")
-        if self.details:
-            parts.append(f"Details: {self.details}")
-        return " | ".join(parts)
-
-
-# ///////////////////////////////////////////////////////////////
 # PUBLIC API
 # ///////////////////////////////////////////////////////////////
 
-__all__ = ["ContextServiceError", "ContextUtilityError"]
+__all__ = ["ContextServiceError"]

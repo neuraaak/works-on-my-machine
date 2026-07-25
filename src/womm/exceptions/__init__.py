@@ -50,10 +50,7 @@ from .common import (
 )
 
 # Local imports - Context exceptions
-from .context import (
-    ContextServiceError,
-    ContextUtilityError,
-)
+from .context import ContextServiceError
 
 # Local imports - Lint exceptions
 from .lint import LintServiceError
@@ -105,7 +102,6 @@ __all__ = [  # noqa: RUF022
     "ValidationServiceError",
     # Context exceptions
     "ContextServiceError",
-    "ContextUtilityError",
     # Lint exceptions
     "LintServiceError",
     # Project exceptions
