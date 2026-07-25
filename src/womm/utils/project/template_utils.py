@@ -22,7 +22,6 @@ import re
 from pathlib import Path
 
 # Local imports
-from ...exceptions.project import ProjectServiceError, TemplateServiceError
 from .platform_utils import (
     get_node_paths,
     get_platform_info,
@@ -51,64 +50,53 @@ def replace_platform_placeholders(text: str, **extra_vars: str) -> str:
 
     Returns:
         str: Text with placeholders replaced
-
-    Raises:
-        ProjectServiceError: If placeholder replacement fails
     """
-    try:
-        if not text:
-            return text
+    if not text:
+        return text
 
-        platform_info = get_platform_info()
-        python_paths = get_python_paths()
-        node_paths = get_node_paths()
-        shell_commands = get_shell_commands()
+    platform_info = get_platform_info()
+    python_paths = get_python_paths()
+    node_paths = get_node_paths()
+    shell_commands = get_shell_commands()
 
-        # Replacement dictionary
-        replacements = {
-            # Platform information
-            "PLATFORM_SYSTEM": platform_info["system"],
-            "PLATFORM_SYSTEM_LOWER": platform_info["system_lower"],
-            "IS_WINDOWS": str(platform_info["is_windows"]).lower(),
-            "IS_LINUX": str(platform_info["is_linux"]).lower(),
-            "IS_MACOS": str(platform_info["is_macos"]).lower(),
-            "PATH_SEP": platform_info["path_separator"],
-            "LINE_ENDING": platform_info["line_ending"],
-            # Python paths
-            "PYTHON_PATH": python_paths["venv_python"],
-            "VENV_ACTIVATE": python_paths["venv_activate"],
-            "VENV_PIP": python_paths["venv_pip"],
-            "PYTHON_EXECUTABLE": python_paths["python_executable"],
-            # Node.js paths
-            "NPM_EXECUTABLE": node_paths["npm_executable"],
-            "NODE_EXECUTABLE": node_paths["node_executable"],
-            "NPX_EXECUTABLE": node_paths["npx_executable"],
-            # Shell commands
-            "SHELL": shell_commands["shell"],
-            "SHELL_EXT": shell_commands["shell_extension"],
-            "REMOVE_DIR": shell_commands["remove_dir"],
-            "COPY_FILE": shell_commands["copy_file"],
-            "MOVE_FILE": shell_commands["move_file"],
-            "MAKE_EXECUTABLE": shell_commands["make_executable"],
-            "WHICH": shell_commands["which"],
-            # Additional variables
-            **extra_vars,
-        }
+    # Replacement dictionary
+    replacements = {
+        # Platform information
+        "PLATFORM_SYSTEM": platform_info["system"],
+        "PLATFORM_SYSTEM_LOWER": platform_info["system_lower"],
+        "IS_WINDOWS": str(platform_info["is_windows"]).lower(),
+        "IS_LINUX": str(platform_info["is_linux"]).lower(),
+        "IS_MACOS": str(platform_info["is_macos"]).lower(),
+        "PATH_SEP": platform_info["path_separator"],
+        "LINE_ENDING": platform_info["line_ending"],
+        # Python paths
+        "PYTHON_PATH": python_paths["venv_python"],
+        "VENV_ACTIVATE": python_paths["venv_activate"],
+        "VENV_PIP": python_paths["venv_pip"],
+        "PYTHON_EXECUTABLE": python_paths["python_executable"],
+        # Node.js paths
+        "NPM_EXECUTABLE": node_paths["npm_executable"],
+        "NODE_EXECUTABLE": node_paths["node_executable"],
+        "NPX_EXECUTABLE": node_paths["npx_executable"],
+        # Shell commands
+        "SHELL": shell_commands["shell"],
+        "SHELL_EXT": shell_commands["shell_extension"],
+        "REMOVE_DIR": shell_commands["remove_dir"],
+        "COPY_FILE": shell_commands["copy_file"],
+        "MOVE_FILE": shell_commands["move_file"],
+        "MAKE_EXECUTABLE": shell_commands["make_executable"],
+        "WHICH": shell_commands["which"],
+        # Additional variables
+        **extra_vars,
+    }
 
-        # Replace placeholders
-        result = text
-        for key, value in replacements.items():
-            placeholder = f"{{{{{key}}}}}"
-            result = result.replace(placeholder, str(value))
+    # Replace placeholders
+    result = text
+    for key, value in replacements.items():
+        placeholder = f"{{{{{key}}}}}"
+        result = result.replace(placeholder, str(value))
 
-        return result
-
-    except Exception as e:
-        raise ProjectServiceError(
-            message=f"Failed to replace platform placeholders: {e}",
-            operation="replace_platform_placeholders",
-            details=f"Exception type: {type(e).__name__}",
-        ) from e
+    return result
 
 
 def validate_template_placeholders(
@@ -123,128 +111,74 @@ def validate_template_placeholders(
         dict[str, str | bool | int | list]: A dictionary containing validation statistics
 
     Raises:
-        TemplateError: If template validation fails
+        ValueError: If the template path is missing
+        FileNotFoundError: If the template file does not exist
+        IsADirectoryError: If the template path is not a file
+        OSError: If the template file cannot be read
+        UnicodeDecodeError: If the template file has an encoding error
     """
-    try:
-        # Input validation
-        if not template_path:
-            raise TemplateServiceError(
-                message="Template path cannot be None",
-                operation="validate_template_placeholders",
-                template_path="None",
-                reason="Template path cannot be None",
-                details="Empty or None template path provided",
-            )
+    if not template_path:
+        raise ValueError("Template path cannot be None")
 
-        if not template_path.exists():
-            raise TemplateServiceError(
-                message="Template file does not exist",
-                operation="validate_template_placeholders",
-                template_path=str(template_path),
-                reason="Template file does not exist",
-                details=f"Template: {template_path}",
-            )
+    if not template_path.exists():
+        raise FileNotFoundError(f"Template file does not exist: {template_path}")
 
-        if not template_path.is_file():
-            raise TemplateServiceError(
-                message="Template path is not a file",
-                operation="validate_template_placeholders",
-                template_path=str(template_path),
-                reason="Template path is not a file",
-                details=f"Path: {template_path}",
-            )
+    if not template_path.is_file():
+        raise IsADirectoryError(f"Template path is not a file: {template_path}")
 
-        # Read template content
-        try:
-            with open(template_path, encoding="utf-8") as f:
-                content = f.read()
-        except (PermissionError, OSError) as e:
-            raise TemplateServiceError(
-                message="Cannot read template file",
-                operation="validate_template_placeholders",
-                template_path=str(template_path),
-                reason="Cannot read template file",
-                details=f"File: {template_path}, Error: {e}",
-            ) from e
-        except UnicodeDecodeError as e:
-            raise TemplateServiceError(
-                message="Template file encoding error",
-                operation="validate_template_placeholders",
-                template_path=str(template_path),
-                reason="Template file encoding error",
-                details=f"File: {template_path}, Error: {e}",
-            ) from e
+    with open(template_path, encoding="utf-8") as f:
+        content = f.read()
 
-        # Search for placeholders
-        try:
-            placeholder_pattern = r"\{\{([A-Z_]+)\}\}"
-            placeholders = re.findall(placeholder_pattern, content)
-        except re.error as e:
-            raise TemplateServiceError(
-                message="Invalid placeholder pattern",
-                operation="validate_template_placeholders",
-                template_path=str(template_path),
-                reason="Invalid placeholder pattern",
-                details=f"Regex error: {e}",
-            ) from e
+    # Search for placeholders
+    placeholder_pattern = r"\{\{([A-Z_]+)\}\}"
+    placeholders = re.findall(placeholder_pattern, content)
 
-        # Supported placeholders
-        supported_placeholders = {
-            "PLATFORM_SYSTEM",
-            "PLATFORM_SYSTEM_LOWER",
-            "IS_WINDOWS",
-            "IS_LINUX",
-            "IS_MACOS",
-            "PATH_SEP",
-            "LINE_ENDING",
-            "PYTHON_PATH",
-            "VENV_ACTIVATE",
-            "VENV_PIP",
-            "PYTHON_EXECUTABLE",
-            "NPM_EXECUTABLE",
-            "NODE_EXECUTABLE",
-            "NPX_EXECUTABLE",
-            "SHELL",
-            "SHELL_EXT",
-            "REMOVE_DIR",
-            "COPY_FILE",
-            "MOVE_FILE",
-            "MAKE_EXECUTABLE",
-            "WHICH",
-            # Standard project placeholders
-            "PROJECT_NAME",
-            "PROJECT_DESCRIPTION",
-            "AUTHOR_NAME",
-            "AUTHOR_EMAIL",
-            "PROJECT_URL",
-            "PROJECT_REPOSITORY",
-            "PROJECT_DOCS_URL",
-            "PROJECT_KEYWORDS",
-        }
+    # Supported placeholders
+    supported_placeholders = {
+        "PLATFORM_SYSTEM",
+        "PLATFORM_SYSTEM_LOWER",
+        "IS_WINDOWS",
+        "IS_LINUX",
+        "IS_MACOS",
+        "PATH_SEP",
+        "LINE_ENDING",
+        "PYTHON_PATH",
+        "VENV_ACTIVATE",
+        "VENV_PIP",
+        "PYTHON_EXECUTABLE",
+        "NPM_EXECUTABLE",
+        "NODE_EXECUTABLE",
+        "NPX_EXECUTABLE",
+        "SHELL",
+        "SHELL_EXT",
+        "REMOVE_DIR",
+        "COPY_FILE",
+        "MOVE_FILE",
+        "MAKE_EXECUTABLE",
+        "WHICH",
+        # Standard project placeholders
+        "PROJECT_NAME",
+        "PROJECT_DESCRIPTION",
+        "AUTHOR_NAME",
+        "AUTHOR_EMAIL",
+        "PROJECT_URL",
+        "PROJECT_REPOSITORY",
+        "PROJECT_DOCS_URL",
+        "PROJECT_KEYWORDS",
+    }
 
-        # Classify placeholders
-        found_placeholders = set(placeholders)
-        supported_found = found_placeholders & supported_placeholders
-        unsupported_found = found_placeholders - supported_placeholders
+    # Classify placeholders
+    found_placeholders = set(placeholders)
+    supported_found = found_placeholders & supported_placeholders
+    unsupported_found = found_placeholders - supported_placeholders
 
-        return {
-            "total_placeholders": len(found_placeholders),
-            "supported_placeholders": list(supported_found),
-            "unsupported_placeholders": list(unsupported_found),
-            "is_valid": len(unsupported_found) == 0,
-            "template_path": str(template_path),
-        }
-
-    except TemplateServiceError:
-        # Re-raise specialized exceptions as-is
-        raise
-    except Exception as e:
-        # Wrap unexpected external exceptions
-        raise ProjectServiceError(
-            message=f"Unexpected error during template validation: {e}",
-            operation="validate_template_placeholders",
-            details=f"Exception type: {type(e).__name__}, Template: {template_path}",
-        ) from e
+    return {
+        "total_placeholders": len(found_placeholders),
+        "supported_placeholders": list(supported_found),
+        "unsupported_placeholders": list(unsupported_found),
+        "is_valid": len(unsupported_found) == 0,
+        "template_path": str(template_path),
+    }
 
 
 def generate_cross_platform_template(
@@ -260,110 +194,40 @@ def generate_cross_platform_template(
         template_vars: Variables to replace in the template
 
     Raises:
-        TemplateError: If template generation fails
+        ValueError: If the template or output path is missing
+        FileNotFoundError: If the template file does not exist
+        IsADirectoryError: If the template path is not a file
+        OSError: If the template cannot be read or the output cannot be written
+        UnicodeDecodeError: If the template file has an encoding error
     """
-    try:
-        # Input validation
-        if not template_path:
-            raise TemplateServiceError(
-                message="Template path cannot be None",
-                operation="generate_cross_platform_template",
-                template_path="None",
-                reason="Template path cannot be None",
-                details="Empty or None template path provided",
-            )
+    if not template_path:
+        raise ValueError("Template path cannot be None")
 
-        if not template_path.exists():
-            raise TemplateServiceError(
-                message="Template file does not exist",
-                operation="generate_cross_platform_template",
-                template_path=str(template_path),
-                reason="Template file does not exist",
-                details=f"Template: {template_path}",
-            )
+    if not template_path.exists():
+        raise FileNotFoundError(f"Template file does not exist: {template_path}")
 
-        if not template_path.is_file():
-            raise TemplateServiceError(
-                message="Template path is not a file",
-                operation="generate_cross_platform_template",
-                template_path=str(template_path),
-                reason="Template path is not a file",
-                details=f"Path: {template_path}",
-            )
+    if not template_path.is_file():
+        raise IsADirectoryError(f"Template path is not a file: {template_path}")
 
-        if not output_path:
-            raise TemplateServiceError(
-                message="Output path cannot be None",
-                operation="generate_cross_platform_template",
-                template_path=str(template_path),
-                reason="Output path cannot be None",
-                details="Empty or None output path provided",
-            )
+    if not output_path:
+        raise ValueError("Output path cannot be None")
 
-        if template_vars is None:
-            template_vars = {}
+    if template_vars is None:
+        template_vars = {}
 
-        # Read template
-        try:
-            with open(template_path, encoding="utf-8") as f:
-                template_content = f.read()
-        except (PermissionError, OSError) as e:
-            raise TemplateServiceError(
-                message="Cannot read template file",
-                operation="generate_cross_platform_template",
-                template_path=str(template_path),
-                reason="Cannot read template file",
-                details=f"File: {template_path}, Error: {e}",
-            ) from e
-        except UnicodeDecodeError as e:
-            raise TemplateServiceError(
-                message="Template file encoding error",
-                operation="generate_cross_platform_template",
-                template_path=str(template_path),
-                reason="Template file encoding error",
-                details=f"File: {template_path}, Error: {e}",
-            ) from e
+    # Read template
+    with open(template_path, encoding="utf-8") as f:
+        template_content = f.read()
 
-        # Replace placeholders
-        result_content = replace_platform_placeholders(
-            template_content, **template_vars
-        )
+    # Replace placeholders
+    result_content = replace_platform_placeholders(template_content, **template_vars)
 
-        # Create output directory if necessary
-        try:
-            output_path.parent.mkdir(parents=True, exist_ok=True)
-        except (PermissionError, OSError) as e:
-            raise TemplateServiceError(
-                message="Cannot create output directory",
-                operation="generate_cross_platform_template",
-                template_path=str(template_path),
-                reason="Cannot create output directory",
-                details=f"Directory: {output_path.parent}, Error: {e}",
-            ) from e
+    # Create output directory if necessary
+    output_path.parent.mkdir(parents=True, exist_ok=True)
 
-        # Write output file
-        try:
-            with open(output_path, "w", encoding="utf-8") as f:
-                f.write(result_content)
-        except (PermissionError, OSError) as e:
-            raise TemplateServiceError(
-                message="Cannot write output file",
-                operation="generate_cross_platform_template",
-                template_path=str(template_path),
-                reason="Cannot write output file",
-                details=f"File: {output_path}, Error: {e}",
-            ) from e
-
-    except TemplateServiceError:
-        # Re-raise specialized exceptions as-is
-        raise
-    except Exception as e:
-        # Wrap unexpected external exceptions
-        raise ProjectServiceError(
-            message=f"Unexpected error during template generation: {e}",
-            operation="generate_cross_platform_template",
-            details=f"Exception type: {type(e).__name__}, Template: {template_path}, Output: {output_path}",
-        ) from e
+    # Write output file
+    with open(output_path, "w", encoding="utf-8") as f:
+        f.write(result_content)
 
 
 # ///////////////////////////////////////////////////////////////

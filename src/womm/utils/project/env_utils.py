@@ -25,8 +25,6 @@ import venv
 from pathlib import Path
 
 # Local imports
-from ...exceptions.common import ValidationServiceError
-from ...exceptions.project import ProjectServiceError
 from ...services.common import CommandRunnerService
 from ...shared.configs.project import PythonProjectConfig
 from .validation_utils import validate_project_path
@@ -55,44 +53,34 @@ def create_virtual_environment(
         dict: Metadata with 'success', 'venv_path', and 'existing' keys
 
     Raises:
-        ProjectServiceError: If venv creation fails
-        ProjectValidationError: If validation fails
+        ValueError: If validation fails
+        OSError: If venv creation fails
     """
-    try:
-        validate_project_path(project_path)
+    validate_project_path(project_path)
 
-        venv_name = venv_name or PythonProjectConfig.VENV_DIR
-        venv_path = project_path / venv_name
+    venv_name = venv_name or PythonProjectConfig.VENV_DIR
+    venv_path = project_path / venv_name
 
-        if venv_path.exists():
-            logger.info(f"Virtual environment already exists at {venv_path}")
-            return {
-                "success": True,
-                "venv_path": str(venv_path),
-                "existing": True,
-            }
-
-        # Create virtual environment
-        venv.create(venv_path, with_pip=True)
-        logger.info(f"Created virtual environment at {venv_path}")
-
-        # Upgrade pip
-        _upgrade_pip(project_path, venv_path)
-
+    if venv_path.exists():
+        logger.info(f"Virtual environment already exists at {venv_path}")
         return {
             "success": True,
             "venv_path": str(venv_path),
-            "existing": False,
+            "existing": True,
         }
 
-    except (ProjectServiceError, ValidationServiceError):
-        raise
-    except Exception as e:
-        raise ProjectServiceError(
-            message=f"Failed to create virtual environment: {e}",
-            operation="create_virtual_environment",
-            details=f"Exception type: {type(e).__name__}",
-        ) from e
+    # Create virtual environment
+    venv.create(venv_path, with_pip=True)
+    logger.info(f"Created virtual environment at {venv_path}")
+
+    # Upgrade pip
+    _upgrade_pip(project_path, venv_path)
+
+    return {
+        "success": True,
+        "venv_path": str(venv_path),
+        "existing": False,
+    }
 
 
 def _upgrade_pip(project_path: Path, venv_path: Path) -> None:
@@ -167,15 +155,11 @@ def find_pip_executable(venv_path: Path) -> Path:
         Path: Path to pip executable
 
     Raises:
-        ProjectServiceError: If pip executable not found
+        FileNotFoundError: If pip executable not found
     """
     pip_exe = _find_venv_executable(venv_path, "pip")
     if not pip_exe:
-        raise ProjectServiceError(
-            message="pip not found in virtual environment",
-            operation="find_pip_executable",
-            details="pip executable not found in venv",
-        )
+        raise FileNotFoundError("pip not found in virtual environment")
     return pip_exe
 
 
@@ -192,56 +176,39 @@ def install_python_dependencies(
         bool: True if installation succeeded
 
     Raises:
-        ProjectServiceError: If installation fails
-        ProjectValidationError: If validation fails
+        ValueError: If validation fails
+        FileNotFoundError: If the virtual environment is missing
+        RuntimeError: If the pip install command fails
     """
-    try:
-        validate_project_path(project_path)
+    validate_project_path(project_path)
 
-        venv_path = project_path / PythonProjectConfig.VENV_DIR
+    venv_path = project_path / PythonProjectConfig.VENV_DIR
+    if not venv_path.exists():
+        venv_path = project_path / PythonProjectConfig.ALT_VENV_DIR
         if not venv_path.exists():
-            venv_path = project_path / PythonProjectConfig.ALT_VENV_DIR
-            if not venv_path.exists():
-                raise ProjectServiceError(
-                    message="Virtual environment not found",
-                    operation="install_python_dependencies",
-                    details="venv directory does not exist",
-                )
+            raise FileNotFoundError("Virtual environment not found")
 
-        # Find pip executable
-        pip_exe = find_pip_executable(venv_path)
+    # Find pip executable
+    pip_exe = find_pip_executable(venv_path)
 
-        # Check if requirements file exists
-        req_file = project_path / requirements_file
-        if not req_file.exists():
-            logger.warning(f"Requirements file {requirements_file} not found, skipping")
-            return True
-
-        # Install dependencies
-        command_runner = CommandRunnerService()
-        result = command_runner.run(
-            [str(pip_exe), "install", "-r", requirements_file],
-            cwd=str(project_path),
-        )
-
-        if not result:
-            raise ProjectServiceError(
-                message=f"Failed to install dependencies: {result.stderr}",
-                operation="install_python_dependencies",
-                details="pip install command failed",
-            )
-
-        logger.info(f"Successfully installed dependencies from {requirements_file}")
+    # Check if requirements file exists
+    req_file = project_path / requirements_file
+    if not req_file.exists():
+        logger.warning(f"Requirements file {requirements_file} not found, skipping")
         return True
 
-    except (ProjectServiceError, ValidationServiceError):
-        raise
-    except Exception as e:
-        raise ProjectServiceError(
-            message=f"Failed to install Python dependencies: {e}",
-            operation="install_python_dependencies",
-            details=f"Exception type: {type(e).__name__}",
-        ) from e
+    # Install dependencies
+    command_runner = CommandRunnerService()
+    result = command_runner.run(
+        [str(pip_exe), "install", "-r", requirements_file],
+        cwd=str(project_path),
+    )
+
+    if not result:
+        raise RuntimeError(f"Failed to install dependencies: {result.stderr}")
+
+    logger.info(f"Successfully installed dependencies from {requirements_file}")
+    return True
 
 
 # ///////////////////////////////////////////////////////////////
@@ -268,44 +235,27 @@ def install_npm_dependencies(project_path: Path) -> bool:
         bool: True if installation succeeded
 
     Raises:
-        ProjectServiceError: If installation fails
-        ProjectValidationError: If validation fails
+        ValueError: If validation fails
+        FileNotFoundError: If npm is not installed or not in PATH
+        RuntimeError: If the npm install command fails
     """
-    try:
-        validate_project_path(project_path)
+    validate_project_path(project_path)
 
-        if not check_npm_available():
-            raise ProjectServiceError(
-                message="npm is not installed or not in PATH",
-                operation="install_npm_dependencies",
-                details="npm command not found in PATH",
-            )
+    if not check_npm_available():
+        raise FileNotFoundError("npm is not installed or not in PATH")
 
-        # Install dependencies
-        command_runner = CommandRunnerService()
-        result = command_runner.run(
-            ["npm", "install"],
-            cwd=str(project_path),
-        )
+    # Install dependencies
+    command_runner = CommandRunnerService()
+    result = command_runner.run(
+        ["npm", "install"],
+        cwd=str(project_path),
+    )
 
-        if not result:
-            raise ProjectServiceError(
-                message=f"Failed to install dependencies: {result.stderr}",
-                operation="install_npm_dependencies",
-                details="npm install command failed",
-            )
+    if not result:
+        raise RuntimeError(f"Failed to install dependencies: {result.stderr}")
 
-        logger.info("Successfully installed npm dependencies")
-        return True
-
-    except (ProjectServiceError, ValidationServiceError):
-        raise
-    except Exception as e:
-        raise ProjectServiceError(
-            message=f"Failed to install npm dependencies: {e}",
-            operation="install_npm_dependencies",
-            details=f"Exception type: {type(e).__name__}",
-        ) from e
+    logger.info("Successfully installed npm dependencies")
+    return True
 
 
 def install_npm_dev_dependencies(project_path: Path, dependencies: list[str]) -> bool:
@@ -319,48 +269,31 @@ def install_npm_dev_dependencies(project_path: Path, dependencies: list[str]) ->
         bool: True if installation succeeded
 
     Raises:
-        ProjectServiceError: If installation fails
-        ProjectValidationError: If validation fails
+        ValueError: If validation fails
+        FileNotFoundError: If npm is not installed or not in PATH
+        RuntimeError: If the npm install command fails
     """
-    try:
-        validate_project_path(project_path)
+    validate_project_path(project_path)
 
-        if not check_npm_available():
-            raise ProjectServiceError(
-                message="npm is not installed or not in PATH",
-                operation="install_npm_dev_dependencies",
-                details="npm command not found in PATH",
-            )
+    if not check_npm_available():
+        raise FileNotFoundError("npm is not installed or not in PATH")
 
-        if not dependencies:
-            logger.info("No dev dependencies to install")
-            return True
-
-        # Install dev dependencies
-        command_runner = CommandRunnerService()
-        result = command_runner.run(
-            ["npm", "install", "--save-dev", *dependencies],
-            cwd=str(project_path),
-        )
-
-        if not result:
-            raise ProjectServiceError(
-                message=f"Failed to install development tools: {result.stderr}",
-                operation="install_npm_dev_dependencies",
-                details="npm install dev tools command failed",
-            )
-
-        logger.info(f"Successfully installed {len(dependencies)} dev dependencies")
+    if not dependencies:
+        logger.info("No dev dependencies to install")
         return True
 
-    except (ProjectServiceError, ValidationServiceError):
-        raise
-    except Exception as e:
-        raise ProjectServiceError(
-            message=f"Failed to install npm dev dependencies: {e}",
-            operation="install_npm_dev_dependencies",
-            details=f"Exception type: {type(e).__name__}",
-        ) from e
+    # Install dev dependencies
+    command_runner = CommandRunnerService()
+    result = command_runner.run(
+        ["npm", "install", "--save-dev", *dependencies],
+        cwd=str(project_path),
+    )
+
+    if not result:
+        raise RuntimeError(f"Failed to install development tools: {result.stderr}")
+
+    logger.info(f"Successfully installed {len(dependencies)} dev dependencies")
+    return True
 
 
 # ///////////////////////////////////////////////////////////////

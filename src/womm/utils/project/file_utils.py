@@ -23,7 +23,6 @@ import logging
 from pathlib import Path
 
 # Local imports
-from ...exceptions.project import ProjectServiceError
 from ...shared.configs.project import ProjectStructureConfig
 
 # ///////////////////////////////////////////////////////////////
@@ -48,27 +47,24 @@ def create_python_main_files(project_path: Path, project_name: str) -> list[str]
         list[str]: List of created file paths (relative to project_path)
 
     Raises:
-        ProjectServiceError: If file creation fails
+        OSError: If file creation fails
     """
-    try:
-        # Create src directory structure
-        src_dir = project_path / ProjectStructureConfig.SOURCE_DIR
-        package_dir = src_dir / project_name.replace("-", "_")
-        package_dir.mkdir(parents=True, exist_ok=True)
+    # Create src directory structure
+    src_dir = project_path / ProjectStructureConfig.SOURCE_DIR
+    package_dir = src_dir / project_name.replace("-", "_")
+    package_dir.mkdir(parents=True, exist_ok=True)
 
-        created_files = []
+    created_files = []
 
-        # Create __init__.py
-        init_file = package_dir / "__init__.py"
-        init_content = (
-            f'"""Main package for {project_name}."""\n\n__version__ = "0.1.0"\n'
-        )
-        init_file.write_text(init_content, encoding="utf-8")
-        created_files.append(str(init_file.relative_to(project_path)))
+    # Create __init__.py
+    init_file = package_dir / "__init__.py"
+    init_content = f'"""Main package for {project_name}."""\n\n__version__ = "0.1.0"\n'
+    init_file.write_text(init_content, encoding="utf-8")
+    created_files.append(str(init_file.relative_to(project_path)))
 
-        # Create main.py
-        main_file = package_dir / "main.py"
-        main_content = f'''#!/usr/bin/env python3
+    # Create main.py
+    main_file = package_dir / "main.py"
+    main_content = f'''#!/usr/bin/env python3
 """
 Main entry point for {project_name}.
 
@@ -97,19 +93,12 @@ def main():
 if __name__ == "__main__":
     sys.exit(main())
 '''
-        main_file.write_text(main_content, encoding="utf-8")
-        main_file.chmod(0o755)  # Make executable
-        created_files.append(str(main_file.relative_to(project_path)))
+    main_file.write_text(main_content, encoding="utf-8")
+    main_file.chmod(0o755)  # Make executable
+    created_files.append(str(main_file.relative_to(project_path)))
 
-        logger.debug(f"Created Python main files: {created_files}")
-        return created_files
-
-    except Exception as e:
-        raise ProjectServiceError(
-            message=f"Failed to create Python main files: {e}",
-            operation="create_python_main_files",
-            details=f"Exception type: {type(e).__name__}",
-        ) from e
+    logger.debug(f"Created Python main files: {created_files}")
+    return created_files
 
 
 def create_python_test_file(project_path: Path, project_name: str) -> list[str]:
@@ -123,13 +112,12 @@ def create_python_test_file(project_path: Path, project_name: str) -> list[str]:
         list[str]: List of created file paths (relative to project_path)
 
     Raises:
-        ProjectServiceError: If file creation fails
+        OSError: If file creation fails
     """
-    try:
-        test_dir = project_path / ProjectStructureConfig.TESTS_DIR
-        test_file = test_dir / f"test_{project_name.replace('-', '_')}.py"
+    test_dir = project_path / ProjectStructureConfig.TESTS_DIR
+    test_file = test_dir / f"test_{project_name.replace('-', '_')}.py"
 
-        test_content = f'''"""
+    test_content = f'''"""
 Tests for {project_name}.
 
 This module contains tests for the main functionality.
@@ -157,17 +145,10 @@ def test_import():
     import {project_name.replace("-", "_")}
     assert {project_name.replace("-", "_")} is not None
 '''
-        test_file.write_text(test_content, encoding="utf-8")
+    test_file.write_text(test_content, encoding="utf-8")
 
-        logger.debug(f"Created Python test file: {test_file.name}")
-        return [str(test_file.relative_to(project_path))]
-
-    except Exception as e:
-        raise ProjectServiceError(
-            message=f"Failed to create Python test file: {e}",
-            operation="create_python_test_file",
-            details=f"Exception type: {type(e).__name__}",
-        ) from e
+    logger.debug(f"Created Python test file: {test_file.name}")
+    return [str(test_file.relative_to(project_path))]
 
 
 # ///////////////////////////////////////////////////////////////
@@ -186,16 +167,15 @@ def create_node_main_files(project_path: Path, project_name: str) -> list[str]:
         list[str]: List of created file paths (relative to project_path)
 
     Raises:
-        ProjectServiceError: If file creation fails
+        OSError: If file creation fails
     """
-    try:
-        src_dir = project_path / ProjectStructureConfig.SOURCE_DIR
-        src_dir.mkdir(exist_ok=True)
-        created_files = []
+    src_dir = project_path / ProjectStructureConfig.SOURCE_DIR
+    src_dir.mkdir(exist_ok=True)
+    created_files = []
 
-        # Create main.js
-        main_file = src_dir / "main.js"
-        main_content = f"""#!/usr/bin/env node
+    # Create main.js
+    main_file = src_dir / "main.js"
+    main_content = f"""#!/usr/bin/env node
 /**
  * Main entry point for {project_name}.
  *
@@ -222,13 +202,13 @@ if (require.main === module) {{
 
 module.exports = {{ main }};
 """
-        main_file.write_text(main_content, encoding="utf-8")
-        main_file.chmod(0o755)  # Make executable
-        created_files.append(str(main_file.relative_to(project_path)))
+    main_file.write_text(main_content, encoding="utf-8")
+    main_file.chmod(0o755)  # Make executable
+    created_files.append(str(main_file.relative_to(project_path)))
 
-        # Create index.js
-        index_file = src_dir / "index.js"
-        index_content = f"""/**
+    # Create index.js
+    index_file = src_dir / "index.js"
+    index_content = f"""/**
  * Entry point for {project_name}.
  *
  * This file exports the main functionality of the application.
@@ -241,18 +221,11 @@ module.exports = {{
     // Add other exports here
 }};
 """
-        index_file.write_text(index_content, encoding="utf-8")
-        created_files.append(str(index_file.relative_to(project_path)))
+    index_file.write_text(index_content, encoding="utf-8")
+    created_files.append(str(index_file.relative_to(project_path)))
 
-        logger.debug(f"Created Node.js main files: {created_files}")
-        return created_files
-
-    except Exception as e:
-        raise ProjectServiceError(
-            message=f"Failed to create Node.js main files: {e}",
-            operation="create_node_main_files",
-            details=f"Exception type: {type(e).__name__}",
-        ) from e
+    logger.debug(f"Created Node.js main files: {created_files}")
+    return created_files
 
 
 def create_react_main_files(project_path: Path, project_name: str) -> list[str]:
@@ -266,18 +239,17 @@ def create_react_main_files(project_path: Path, project_name: str) -> list[str]:
         list[str]: List of created file paths (relative to project_path)
 
     Raises:
-        ProjectServiceError: If file creation fails
+        OSError: If file creation fails
     """
-    try:
-        src_dir = project_path / ProjectStructureConfig.SOURCE_DIR
-        src_dir.mkdir(exist_ok=True)
-        public_dir = project_path / "public"
-        public_dir.mkdir(exist_ok=True)
-        created_files = []
+    src_dir = project_path / ProjectStructureConfig.SOURCE_DIR
+    src_dir.mkdir(exist_ok=True)
+    public_dir = project_path / "public"
+    public_dir.mkdir(exist_ok=True)
+    created_files = []
 
-        # Create App.jsx
-        app_file = src_dir / "App.jsx"
-        app_content = f"""import React from 'react';
+    # Create App.jsx
+    app_file = src_dir / "App.jsx"
+    app_content = f"""import React from 'react';
 import './App.css';
 
 function App() {{
@@ -293,12 +265,12 @@ function App() {{
 
 export default App;
 """
-        app_file.write_text(app_content, encoding="utf-8")
-        created_files.append(str(app_file.relative_to(project_path)))
+    app_file.write_text(app_content, encoding="utf-8")
+    created_files.append(str(app_file.relative_to(project_path)))
 
-        # Create App.css
-        css_file = src_dir / "App.css"
-        css_content = """.App {
+    # Create App.css
+    css_file = src_dir / "App.css"
+    css_content = """.App {
   text-align: center;
 }
 
@@ -318,12 +290,12 @@ export default App;
   color: #61dafb;
 }
 """
-        css_file.write_text(css_content, encoding="utf-8")
-        created_files.append(str(css_file.relative_to(project_path)))
+    css_file.write_text(css_content, encoding="utf-8")
+    created_files.append(str(css_file.relative_to(project_path)))
 
-        # Create index.jsx
-        index_file = src_dir / "index.jsx"
-        index_content = """import React from 'react';
+    # Create index.jsx
+    index_file = src_dir / "index.jsx"
+    index_content = """import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';
 import App from './App';
@@ -335,12 +307,12 @@ root.render(
   </React.StrictMode>
 );
 """
-        index_file.write_text(index_content, encoding="utf-8")
-        created_files.append(str(index_file.relative_to(project_path)))
+    index_file.write_text(index_content, encoding="utf-8")
+    created_files.append(str(index_file.relative_to(project_path)))
 
-        # Create index.css
-        index_css_file = src_dir / "index.css"
-        index_css_content = """body {
+    # Create index.css
+    index_css_file = src_dir / "index.css"
+    index_css_content = """body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
@@ -354,12 +326,12 @@ code {
     monospace;
 }
 """
-        index_css_file.write_text(index_css_content, encoding="utf-8")
-        created_files.append(str(index_css_file.relative_to(project_path)))
+    index_css_file.write_text(index_css_content, encoding="utf-8")
+    created_files.append(str(index_css_file.relative_to(project_path)))
 
-        # Create public/index.html
-        html_file = public_dir / "index.html"
-        html_content = f"""<!DOCTYPE html>
+    # Create public/index.html
+    html_file = public_dir / "index.html"
+    html_content = f"""<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
@@ -378,18 +350,11 @@ code {
   </body>
 </html>
 """
-        html_file.write_text(html_content, encoding="utf-8")
-        created_files.append(str(html_file.relative_to(project_path)))
+    html_file.write_text(html_content, encoding="utf-8")
+    created_files.append(str(html_file.relative_to(project_path)))
 
-        logger.debug(f"Created React main files: {created_files}")
-        return created_files
-
-    except Exception as e:
-        raise ProjectServiceError(
-            message=f"Failed to create React main files: {e}",
-            operation="create_react_main_files",
-            details=f"Exception type: {type(e).__name__}",
-        ) from e
+    logger.debug(f"Created React main files: {created_files}")
+    return created_files
 
 
 def create_vue_main_files(project_path: Path, project_name: str) -> list[str]:
@@ -403,18 +368,17 @@ def create_vue_main_files(project_path: Path, project_name: str) -> list[str]:
         list[str]: List of created file paths (relative to project_path)
 
     Raises:
-        ProjectServiceError: If file creation fails
+        OSError: If file creation fails
     """
-    try:
-        src_dir = project_path / ProjectStructureConfig.SOURCE_DIR
-        src_dir.mkdir(exist_ok=True)
-        public_dir = project_path / "public"
-        public_dir.mkdir(exist_ok=True)
-        created_files = []
+    src_dir = project_path / ProjectStructureConfig.SOURCE_DIR
+    src_dir.mkdir(exist_ok=True)
+    public_dir = project_path / "public"
+    public_dir.mkdir(exist_ok=True)
+    created_files = []
 
-        # Create App.vue
-        app_file = src_dir / "App.vue"
-        app_content = f"""<template>
+    # Create App.vue
+    app_file = src_dir / "App.vue"
+    app_content = f"""<template>
   <div id="app">
     <header>
       <h1>Welcome to {{ projectName }}</h1>
@@ -451,22 +415,22 @@ header {{
 }}
 </style>
 """
-        app_file.write_text(app_content, encoding="utf-8")
-        created_files.append(str(app_file.relative_to(project_path)))
+    app_file.write_text(app_content, encoding="utf-8")
+    created_files.append(str(app_file.relative_to(project_path)))
 
-        # Create main.js
-        main_file = src_dir / "main.js"
-        main_content = """import { createApp } from 'vue'
+    # Create main.js
+    main_file = src_dir / "main.js"
+    main_content = """import { createApp } from 'vue'
 import App from './App.vue'
 
 createApp(App).mount('#app')
 """
-        main_file.write_text(main_content, encoding="utf-8")
-        created_files.append(str(main_file.relative_to(project_path)))
+    main_file.write_text(main_content, encoding="utf-8")
+    created_files.append(str(main_file.relative_to(project_path)))
 
-        # Create public/index.html
-        html_file = public_dir / "index.html"
-        html_content = f"""<!DOCTYPE html>
+    # Create public/index.html
+    html_file = public_dir / "index.html"
+    html_content = f"""<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="utf-8">
@@ -484,18 +448,11 @@ createApp(App).mount('#app')
   </body>
 </html>
 """
-        html_file.write_text(html_content, encoding="utf-8")
-        created_files.append(str(html_file.relative_to(project_path)))
+    html_file.write_text(html_content, encoding="utf-8")
+    created_files.append(str(html_file.relative_to(project_path)))
 
-        logger.debug(f"Created Vue main files: {created_files}")
-        return created_files
-
-    except Exception as e:
-        raise ProjectServiceError(
-            message=f"Failed to create Vue main files: {e}",
-            operation="create_vue_main_files",
-            details=f"Exception type: {type(e).__name__}",
-        ) from e
+    logger.debug(f"Created Vue main files: {created_files}")
+    return created_files
 
 
 def create_javascript_source_files(
@@ -512,24 +469,14 @@ def create_javascript_source_files(
         list[str]: List of created file paths (relative to project_path)
 
     Raises:
-        ProjectServiceError: If file creation fails
+        OSError: If file creation fails
     """
-    try:
-        if project_type == "react":
-            return create_react_main_files(project_path, project_name)
-        elif project_type == "vue":
-            return create_vue_main_files(project_path, project_name)
-        else:  # node
-            return create_node_main_files(project_path, project_name)
-
-    except ProjectServiceError:
-        raise
-    except Exception as e:
-        raise ProjectServiceError(
-            message=f"Failed to create JavaScript source files: {e}",
-            operation="create_javascript_source_files",
-            details=f"Exception type: {type(e).__name__}, Project type: {project_type}",
-        ) from e
+    if project_type == "react":
+        return create_react_main_files(project_path, project_name)
+    elif project_type == "vue":
+        return create_vue_main_files(project_path, project_name)
+    else:  # node
+        return create_node_main_files(project_path, project_name)
 
 
 # ///////////////////////////////////////////////////////////////
