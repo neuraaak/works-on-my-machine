@@ -30,9 +30,6 @@ from .context_interface import (
 from .context_service import (
     ContextServiceError,
     ContextUtilityError,
-    IconServiceError,
-    MenuServiceError,
-    ScriptDetectorServiceError,
 )
 
 # ///////////////////////////////////////////////////////////////
@@ -50,7 +47,4 @@ __all__ = [  # noqa: RUF022
     # context_service
     "ContextServiceError",
     "ContextUtilityError",
-    "IconServiceError",
-    "MenuServiceError",
-    "ScriptDetectorServiceError",
 ]

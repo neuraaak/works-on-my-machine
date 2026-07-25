@@ -24,8 +24,7 @@ from threading import Lock
 from typing import ClassVar
 
 # Local imports
-from ...exceptions.common import ValidationServiceError
-from ...exceptions.context import ContextUtilityError
+from ...exceptions.context import ContextServiceError
 from ...shared.configs.context import ContextConfig
 from ...utils.context import (
     build_command_with_parameter,
@@ -124,29 +123,27 @@ class ContextParametersService:
             context_type: The context type to add
 
         Raises:
-            ValidationError: If context_type is invalid
-            ContextUtilityError: For unexpected errors
+            ContextServiceError: If context_type is invalid or an unexpected
+                error occurs
         """
         try:
             # Input validation
             if not context_type:
-                raise ValidationServiceError(
-                    "context_type", "context_type", "Context type cannot be None"
-                )
+                raise ContextServiceError("context_type", "Context type cannot be None")
 
             if not isinstance(context_type, ContextType):
-                raise ValidationServiceError(
-                    "context_type",
+                raise ContextServiceError(
                     "context_type",
                     f"Context type must be a ContextType enum, got {type(context_type).__name__}",
                 )
 
             self.context_types.add(context_type)
 
-        except ValidationServiceError:
+        except ContextServiceError:
             raise
         except Exception as e:
-            raise ContextUtilityError(
+            raise ContextServiceError(
+                "context_type",
                 f"Unexpected error adding context type: {e}",
                 details=f"Context type: {context_type}",
             ) from e
@@ -159,29 +156,26 @@ class ContextParametersService:
             file_type: The file type to add (e.g., 'image', 'text', 'archive')
 
         Raises:
-            ValidationError: If file_type is invalid
-            ContextUtilityError: For unexpected errors
+            ContextServiceError: If file_type is invalid or an unexpected
+                error occurs
         """
         try:
             # Input validation
             if not file_type:
-                raise ValidationServiceError(
-                    "file_type", "file_type", "File type cannot be None or empty"
+                raise ContextServiceError(
+                    "file_type", "File type cannot be None or empty"
                 )
 
             if not isinstance(file_type, str):
-                raise ValidationServiceError(
-                    "file_type",
+                raise ContextServiceError(
                     "file_type",
                     f"File type must be a string, got {type(file_type).__name__}",
                 )
 
             file_type = file_type.strip()
             if not file_type:
-                raise ValidationServiceError(
-                    "file_type",
-                    "file_type",
-                    "File type cannot be empty after stripping",
+                raise ContextServiceError(
+                    "file_type", "File type cannot be empty after stripping"
                 )
 
             if file_type in self.FILE_TYPE_EXTENSIONS:
@@ -192,10 +186,11 @@ class ContextParametersService:
             else:
                 self.custom_extensions.add(f".{file_type.lower()}")
 
-        except ValidationServiceError:
+        except ContextServiceError:
             raise
         except Exception as e:
-            raise ContextUtilityError(
+            raise ContextServiceError(
+                "file_type",
                 f"Unexpected error adding file type: {e}",
                 details=f"File type: {file_type}",
             ) from e
@@ -208,7 +203,7 @@ class ContextParametersService:
             List of registry paths
 
         Raises:
-            ContextUtilityError: For unexpected errors
+            ContextServiceError: For unexpected errors
         """
         try:
             return [
@@ -218,7 +213,8 @@ class ContextParametersService:
             ]
 
         except Exception as e:
-            raise ContextUtilityError(
+            raise ContextServiceError(
+                "registry_paths",
                 f"Unexpected error getting registry paths: {e}",
                 details=f"Context types: {[ct.value for ct in self.context_types]}",
             ) from e
@@ -234,29 +230,29 @@ class ContextParametersService:
             Command parameter string
 
         Raises:
-            ValidationError: If context_type is invalid
-            ContextUtilityError: For unexpected errors
+            ContextServiceError: If context_type is invalid or an unexpected
+                error occurs
         """
         try:
             # Input validation
             if not context_type:
-                raise ValidationServiceError(
-                    "command_parameter", "context_type", "Context type cannot be None"
+                raise ContextServiceError(
+                    "command_parameter", "Context type cannot be None"
                 )
 
             if not isinstance(context_type, ContextType):
-                raise ValidationServiceError(
+                raise ContextServiceError(
                     "command_parameter",
-                    "context_type",
                     f"Context type must be a ContextType enum, got {type(context_type).__name__}",
                 )
 
             return self.COMMAND_PARAMETERS.get(context_type, "%V")
 
-        except ValidationServiceError:
+        except ContextServiceError:
             raise
         except Exception as e:
-            raise ContextUtilityError(
+            raise ContextServiceError(
+                "command_parameter",
                 f"Unexpected error getting command parameter: {e}",
                 details=f"Context type: {context_type}",
             ) from e
@@ -269,7 +265,7 @@ class ContextParametersService:
             Set of file extensions
 
         Raises:
-            ContextUtilityError: For unexpected errors
+            ContextServiceError: For unexpected errors
         """
         try:
             extensions = set()
@@ -285,7 +281,8 @@ class ContextParametersService:
             return extensions
 
         except Exception as e:
-            raise ContextUtilityError(
+            raise ContextServiceError(
+                "file_extensions",
                 f"Unexpected error getting file extensions: {e}",
                 details=f"File types: {list(self.file_types)}, Custom extensions: {list(self.custom_extensions)}",
             ) from e
@@ -302,44 +299,41 @@ class ContextParametersService:
             Complete command with parameters
 
         Raises:
-            ValidationError: If parameters are invalid
-            ContextUtilityError: For unexpected errors
+            ContextServiceError: If parameters are invalid or an unexpected
+                error occurs
         """
         try:
             # Input validation
             if not base_command:
-                raise ValidationServiceError(
-                    "command_building",
-                    "base_command",
-                    "Base command cannot be None or empty",
+                raise ContextServiceError(
+                    "command_building", "Base command cannot be None or empty"
                 )
 
             if not isinstance(base_command, str):
-                raise ValidationServiceError(
+                raise ContextServiceError(
                     "command_building",
-                    "base_command",
                     f"Base command must be a string, got {type(base_command).__name__}",
                 )
 
             if not context_type:
-                raise ValidationServiceError(
-                    "command_building", "context_type", "Context type cannot be None"
+                raise ContextServiceError(
+                    "command_building", "Context type cannot be None"
                 )
 
             if not isinstance(context_type, ContextType):
-                raise ValidationServiceError(
+                raise ContextServiceError(
                     "command_building",
-                    "context_type",
                     f"Context type must be a ContextType enum, got {type(context_type).__name__}",
                 )
 
             parameter = self.get_command_parameter(context_type)
             return build_command_with_parameter(base_command, parameter)
 
-        except (ValidationServiceError, ContextUtilityError):
+        except ContextServiceError:
             raise
         except Exception as e:
-            raise ContextUtilityError(
+            raise ContextServiceError(
+                "command_building",
                 f"Unexpected error building command: {e}",
                 details=f"Base command: {base_command}, Context type: {context_type}",
             ) from e
@@ -352,7 +346,7 @@ class ContextParametersService:
             Validation result dictionary
 
         Raises:
-            ContextUtilityError: For unexpected errors
+            ContextServiceError: For unexpected errors
         """
         try:
             errors = []
@@ -394,7 +388,8 @@ class ContextParametersService:
             }
 
         except Exception as e:
-            raise ContextUtilityError(
+            raise ContextServiceError(
+                "validate_parameters",
                 f"Unexpected error validating parameters: {e}",
                 details="Failed to validate context parameters",
             ) from e
@@ -407,7 +402,7 @@ class ContextParametersService:
             Description string
 
         Raises:
-            ContextUtilityError: For unexpected errors
+            ContextServiceError: For unexpected errors
         """
         try:
             parts = []
@@ -432,7 +427,8 @@ class ContextParametersService:
             )
 
         except Exception as e:
-            raise ContextUtilityError(
+            raise ContextServiceError(
+                "get_description",
                 f"Unexpected error getting description: {e}",
                 details="Failed to generate context description",
             ) from e
@@ -462,22 +458,20 @@ class ContextParametersService:
             Configured ContextParametersService instance
 
         Raises:
-            ValidationError: If parameters are invalid
-            ContextUtilityError: For unexpected errors
+            ContextServiceError: If parameters are invalid or an unexpected
+                error occurs
         """
         try:
             # Input validation
             if file_types is not None and not isinstance(file_types, list):
-                raise ValidationServiceError(
+                raise ContextServiceError(
                     "from_flags",
-                    "file_types",
                     f"File types must be a list, got {type(file_types).__name__}",
                 )
 
             if extensions is not None and not isinstance(extensions, list):
-                raise ValidationServiceError(
+                raise ContextServiceError(
                     "from_flags",
-                    "extensions",
                     f"Extensions must be a list, got {type(extensions).__name__}",
                 )
 
@@ -510,10 +504,11 @@ class ContextParametersService:
 
             return params
 
-        except (ValidationServiceError, ContextUtilityError):
+        except ContextServiceError:
             raise
         except Exception as e:
-            raise ContextUtilityError(
+            raise ContextServiceError(
+                "from_flags",
                 f"Unexpected error creating ContextParametersService from flags: {e}",
                 details=f"Root: {root}, File: {file}, Files: {files}, Background: {background}",
             ) from e
@@ -525,9 +520,6 @@ class ContextParametersService:
 
         Returns:
             Dictionary of file types and their extensions
-
-        Raises:
-            ContextUtilityError: For unexpected errors
         """
         return get_available_file_types()
 
@@ -538,9 +530,6 @@ class ContextParametersService:
 
         Returns:
             Help text string
-
-        Raises:
-            ContextUtilityError: For unexpected errors
         """
         return get_context_type_help()
 
@@ -551,8 +540,5 @@ class ContextParametersService:
 
         Returns:
             Help text string
-
-        Raises:
-            ContextUtilityError: For unexpected errors
         """
         return get_file_type_help()

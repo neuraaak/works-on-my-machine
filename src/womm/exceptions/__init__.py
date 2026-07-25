@@ -53,8 +53,6 @@ from .common import (
 from .context import (
     ContextServiceError,
     ContextUtilityError,
-    MenuServiceError,
-    ScriptDetectorServiceError,
 )
 
 # Local imports - Lint exceptions
@@ -106,10 +104,8 @@ __all__ = [  # noqa: RUF022
     "TimeoutError",
     "ValidationServiceError",
     # Context exceptions
-    "MenuServiceError",
     "ContextServiceError",
     "ContextUtilityError",
-    "ScriptDetectorServiceError",
     # Lint exceptions
     "LintServiceError",
     # Project exceptions

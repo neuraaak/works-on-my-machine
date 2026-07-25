@@ -25,8 +25,7 @@ from threading import Lock
 from typing import ClassVar
 
 # Local imports
-from ...exceptions.common import ValidationServiceError
-from ...exceptions.context import ContextUtilityError
+from ...exceptions.context import ContextServiceError
 from ...shared.configs.context import ContextConfig
 from ...shared.result_models import ContextValidationResult
 from ...utils.context import (
@@ -94,29 +93,24 @@ class ContextValidationService:
             ContextValidationResult: Validation result
 
         Raises:
-            ValidationError: If script_path is invalid
-            ContextUtilityError: For unexpected errors
+            ContextServiceError: If script_path is invalid or an unexpected
+                error occurs
         """
         try:
             # Input validation
             if not script_path:
-                raise ValidationServiceError(
-                    "script_path", "script_path", "Script path is required"
-                )
+                raise ContextServiceError("script_path", "Script path is required")
 
             if not isinstance(script_path, str):
-                raise ValidationServiceError(
-                    "script_path",
+                raise ContextServiceError(
                     "script_path",
                     f"Script path must be a string, got {type(script_path).__name__}",
                 )
 
             script_path = script_path.strip()
             if not script_path:
-                raise ValidationServiceError(
-                    "script_path",
-                    "script_path",
-                    "Script path cannot be empty after stripping",
+                raise ContextServiceError(
+                    "script_path", "Script path cannot be empty after stripping"
                 )
 
             # Security validation using SecurityValidatorService
@@ -125,59 +119,51 @@ class ContextValidationService:
                     script_path
                 )
                 if not validation_result.is_valid:
-                    raise ValidationServiceError(
-                        "script_path",
+                    raise ContextServiceError(
                         "script_path",
                         f"Security validation failed: {validation_result.validation_reason}",
                     )
-            except ValidationServiceError:
+            except ContextServiceError:
                 raise
             except Exception as e:
-                raise ValidationServiceError(
-                    "script_path",
-                    "script_path",
-                    f"Security validation failed: {e}",
+                raise ContextServiceError(
+                    "script_path", f"Security validation failed: {e}"
                 ) from e
 
             # Convert to Path object and resolve relative paths
             try:
                 path = Path(script_path).resolve()
             except Exception as e:
-                raise ValidationServiceError(
-                    "script_path", "script_path", f"Invalid script path format: {e}"
+                raise ContextServiceError(
+                    "script_path", f"Invalid script path format: {e}"
                 ) from e
 
             # Check if file exists
             try:
                 if not path.exists():
-                    raise ValidationServiceError(
-                        "script_path",
-                        "script_path",
-                        f"Script file not found: {script_path}",
+                    raise ContextServiceError(
+                        "script_path", f"Script file not found: {script_path}"
                     )
             except (OSError, PermissionError) as e:
-                raise ValidationServiceError(
-                    "script_path", "script_path", f"Cannot access script file: {e}"
+                raise ContextServiceError(
+                    "script_path", f"Cannot access script file: {e}"
                 ) from e
 
             # Check if it's a file (not directory)
             try:
                 if not path.is_file():
-                    raise ValidationServiceError(
-                        "script_path",
-                        "script_path",
-                        f"Path is not a file: {script_path}",
+                    raise ContextServiceError(
+                        "script_path", f"Path is not a file: {script_path}"
                     )
             except (OSError, PermissionError) as e:
-                raise ValidationServiceError(
-                    "script_path", "script_path", f"Cannot check if path is file: {e}"
+                raise ContextServiceError(
+                    "script_path", f"Cannot check if path is file: {e}"
                 ) from e
 
             # Check file extension
             extension = path.suffix.lower()
             if extension not in ContextConfig.VALID_SCRIPT_EXTENSIONS:
-                raise ValidationServiceError(
-                    "script_path",
+                raise ContextServiceError(
                     "script_path",
                     f"Unsupported file extension: {extension}. Supported: {', '.join(ContextConfig.VALID_SCRIPT_EXTENSIONS)}",
                 )
@@ -185,12 +171,10 @@ class ContextValidationService:
             # Check file size (prevent empty files)
             try:
                 if path.stat().st_size == 0:
-                    raise ValidationServiceError(
-                        "script_path", "script_path", "Script file is empty"
-                    )
+                    raise ContextServiceError("script_path", "Script file is empty")
             except (OSError, PermissionError) as e:
-                raise ValidationServiceError(
-                    "script_path", "script_path", f"Cannot access script file: {e}"
+                raise ContextServiceError(
+                    "script_path", f"Cannot access script file: {e}"
                 ) from e
 
             # Check if file is readable
@@ -200,16 +184,14 @@ class ContextValidationService:
             except (UnicodeDecodeError, PermissionError) as e:
                 # For binary files like .exe, this is expected
                 if extension not in {".exe", ".msi"}:
-                    raise ValidationServiceError(
-                        "script_path",
+                    raise ContextServiceError(
                         "script_path",
                         "Script file is not readable or contains invalid characters",
                     ) from e
 
             # Check path length
             if len(str(path)) > ContextConfig.MAX_PATH_LENGTH:
-                raise ValidationServiceError(
-                    "script_path",
+                raise ContextServiceError(
                     "script_path",
                     f"Script path is too long (max {ContextConfig.MAX_PATH_LENGTH} characters)",
                 )
@@ -224,10 +206,11 @@ class ContextValidationService:
                 file_size=path.stat().st_size,
             )
 
-        except ValidationServiceError:
+        except ContextServiceError:
             raise
         except Exception as e:
-            raise ContextUtilityError(
+            raise ContextServiceError(
+                "script_path",
                 f"Unexpected error validating script path: {e}",
                 details=f"Script path: {script_path}",
             ) from e
@@ -241,11 +224,8 @@ class ContextValidationService:
             label: Label to validate
 
         Returns:
-            ContextValidationResult: Validation result
-
-        Raises:
-            ValidationError: If label is invalid
-            ContextUtilityError: For unexpected errors
+            ContextValidationResult: Validation result (``success=False`` if
+                the label is invalid)
         """
         try:
             # Utility function raises exception if invalid, returns None if valid
@@ -275,11 +255,8 @@ class ContextValidationService:
             key_name: Registry key name to validate
 
         Returns:
-            ContextValidationResult: Validation result
-
-        Raises:
-            ValidationError: If key_name is invalid
-            ContextUtilityError: For unexpected errors
+            ContextValidationResult: Validation result (``success=False`` if
+                the key is invalid)
         """
         try:
             # Utility function raises exception if invalid, returns None if valid
@@ -308,11 +285,11 @@ class ContextValidationService:
             icon_path: Icon path to validate
 
         Returns:
-            ContextValidationResult: Validation result
+            ContextValidationResult: Validation result (``success=False`` if
+                the icon path is invalid)
 
         Raises:
-            ValidationError: If icon_path is invalid
-            ContextUtilityError: For unexpected errors
+            ContextServiceError: For unexpected errors
         """
         try:
             # Utility function raises exception if invalid, returns None if valid
@@ -365,7 +342,8 @@ class ContextValidationService:
                 icon_type="",
             )
         except Exception as e:
-            raise ContextUtilityError(
+            raise ContextServiceError(
+                "icon_path",
                 f"Unexpected error validating icon path: {e}",
                 details=f"Icon path: {icon_path}",
             ) from e
@@ -384,8 +362,7 @@ class ContextValidationService:
             Validation result dictionary
 
         Raises:
-            ValidationError: If data is invalid
-            ContextUtilityError: For unexpected errors
+            ValueError: If data is invalid
         """
         validate_backup_data(data)
         return data
@@ -398,7 +375,7 @@ class ContextValidationService:
             ContextValidationResult: Permission check result
 
         Raises:
-            ContextUtilityError: For unexpected errors
+            ContextServiceError: For unexpected errors
         """
         try:
             # Check if running on Windows using SystemDetectorService
@@ -453,7 +430,8 @@ class ContextValidationService:
                 )
 
         except Exception as e:
-            raise ContextUtilityError(
+            raise ContextServiceError(
+                "permissions",
                 f"Unexpected error checking permissions: {e}",
                 details="Failed to check registry permissions",
             ) from e
@@ -466,7 +444,7 @@ class ContextValidationService:
             ContextValidationResult: Compatibility check result
 
         Raises:
-            ContextUtilityError: For unexpected errors
+            ContextServiceError: For unexpected errors
         """
         try:
             # Get system info using SystemDetectorService
@@ -542,7 +520,8 @@ class ContextValidationService:
             )
 
         except Exception as e:
-            raise ContextUtilityError(
+            raise ContextServiceError(
+                "windows_compatibility",
                 f"Unexpected error checking Windows compatibility: {e}",
                 details="Failed to validate system compatibility",
             ) from e
@@ -562,39 +541,34 @@ class ContextValidationService:
             ContextValidationResult: Comprehensive validation result
 
         Raises:
-            ValidationError: If parameters are invalid
-            ContextUtilityError: For unexpected errors
+            ContextServiceError: If parameters are invalid or an unexpected
+                error occurs
         """
         try:
             # Input validation
             if not script_path:
-                raise ValidationServiceError(
-                    "command_parameters", "script_path", "Script path is required"
+                raise ContextServiceError(
+                    "command_parameters", "Script path is required"
                 )
 
             if not label:
-                raise ValidationServiceError(
-                    "command_parameters", "label", "Label is required"
-                )
+                raise ContextServiceError("command_parameters", "Label is required")
 
             if not isinstance(script_path, str):
-                raise ValidationServiceError(
+                raise ContextServiceError(
                     "command_parameters",
-                    "script_path",
                     f"Script path must be a string, got {type(script_path).__name__}",
                 )
 
             if not isinstance(label, str):
-                raise ValidationServiceError(
+                raise ContextServiceError(
                     "command_parameters",
-                    "label",
                     f"Label must be a string, got {type(label).__name__}",
                 )
 
             if icon is not None and not isinstance(icon, str):
-                raise ValidationServiceError(
+                raise ContextServiceError(
                     "command_parameters",
-                    "icon",
                     f"Icon must be a string, got {type(icon).__name__}",
                 )
 
@@ -617,7 +591,7 @@ class ContextValidationService:
                 if not script_validation.success:
                     result.success = False
                     errors.append(script_validation.error)
-            except ValidationServiceError as e:
+            except ContextServiceError as e:
                 result.success = False
                 errors.append(str(e))
 
@@ -628,7 +602,7 @@ class ContextValidationService:
                 if not label_validation.success:
                     result.success = False
                     errors.append(label_validation.error)
-            except ValidationServiceError as e:
+            except ContextServiceError as e:
                 result.success = False
                 errors.append(str(e))
 
@@ -640,7 +614,7 @@ class ContextValidationService:
                     result.icon_type = icon_validation.icon_type
                     if not icon_validation.success:
                         warnings.append(f"Icon validation: {icon_validation.error}")
-                except ValidationServiceError as e:
+                except ContextServiceError as e:
                     warnings.append(f"Icon validation: {e!s}")
 
             # Check permissions
@@ -674,10 +648,11 @@ class ContextValidationService:
 
             return result
 
-        except ValidationServiceError:
+        except ContextServiceError:
             raise
         except Exception as e:
-            raise ContextUtilityError(
+            raise ContextServiceError(
+                "command_parameters",
                 f"Unexpected error validating command parameters: {e}",
                 details=f"Script path: {script_path}, Label: {label}, Icon: {icon}",
             ) from e
@@ -693,8 +668,7 @@ class ContextValidationService:
             Sanitized key name
 
         Raises:
-            ValidationError: If key_name is invalid
-            ContextUtilityError: For unexpected errors
+            ValueError: If key_name is invalid
         """
         return sanitize_registry_key(key_name)
 
@@ -709,7 +683,6 @@ class ContextValidationService:
             Sanitized label
 
         Raises:
-            ValidationError: If label is invalid
-            ContextUtilityError: For unexpected errors
+            ValueError: If label is invalid
         """
         return sanitize_label(label)

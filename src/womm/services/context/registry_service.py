@@ -23,9 +23,7 @@ from threading import Lock
 from typing import ClassVar
 
 # Local imports
-from ...exceptions.common import ValidationServiceError
-from ...exceptions.context import ContextUtilityError
-from ...exceptions.system import RegistryServiceError
+from ...exceptions.context import ContextServiceError
 from ...shared.configs.context import ContextConfig
 from ...shared.result_models import ContextRegistryResult
 from ...utils.context import generate_registry_key_name, get_registry_entry_info
@@ -82,8 +80,7 @@ class ContextRegistryService:
             Generated registry key name
 
         Raises:
-            ValidationError: If file_path is invalid
-            ContextUtilityError: For unexpected errors
+            ValueError: If file_path is invalid
         """
         return generate_registry_key_name(file_path)
 
@@ -107,54 +104,47 @@ class ContextRegistryService:
             ContextRegistryResult: Result of the operation
 
         Raises:
-            ValidationError: If parameters are invalid
-            RegistryError: If registry operation fails
-            ContextUtilityError: For unexpected errors
+            ContextServiceError: If parameters are invalid, the registry
+                operation fails, or an unexpected error occurs
         """
         try:
             # Input validation
             if not registry_path:
-                raise ValidationServiceError(
-                    "registry_entry",
-                    "registry_path",
-                    "Registry path cannot be None or empty",
+                raise ContextServiceError(
+                    "registry_entry", "Registry path cannot be None or empty"
                 )
 
             if not command:
-                raise ValidationServiceError(
-                    "registry_entry", "command", "Command cannot be None or empty"
+                raise ContextServiceError(
+                    "registry_entry", "Command cannot be None or empty"
                 )
 
             if not mui_verb:
-                raise ValidationServiceError(
-                    "registry_entry", "mui_verb", "Display name cannot be None or empty"
+                raise ContextServiceError(
+                    "registry_entry", "Display name cannot be None or empty"
                 )
 
             if not isinstance(registry_path, str):
-                raise ValidationServiceError(
+                raise ContextServiceError(
                     "registry_entry",
-                    "registry_path",
                     f"Registry path must be a string, got {type(registry_path).__name__}",
                 )
 
             if not isinstance(command, str):
-                raise ValidationServiceError(
+                raise ContextServiceError(
                     "registry_entry",
-                    "command",
                     f"Command must be a string, got {type(command).__name__}",
                 )
 
             if not isinstance(mui_verb, str):
-                raise ValidationServiceError(
+                raise ContextServiceError(
                     "registry_entry",
-                    "mui_verb",
                     f"Display name must be a string, got {type(mui_verb).__name__}",
                 )
 
             if icon_path is not None and not isinstance(icon_path, str):
-                raise ValidationServiceError(
+                raise ContextServiceError(
                     "registry_entry",
-                    "icon_path",
                     f"Icon path must be a string, got {type(icon_path).__name__}",
                 )
 
@@ -182,14 +172,15 @@ class ContextRegistryService:
                 )
 
             except (OSError, PermissionError) as e:
-                raise RegistryServiceError(
-                    "add", registry_path, f"Failed to create registry entry: {e}"
+                raise ContextServiceError(
+                    "registry_entry", f"Failed to create registry entry: {e}"
                 ) from e
 
-        except (ValidationServiceError, RegistryServiceError):
+        except ContextServiceError:
             raise
         except Exception as e:
-            raise ContextUtilityError(
+            raise ContextServiceError(
+                "registry_entry",
                 f"Unexpected error adding registry entry: {e}",
                 details=f"Registry path: {registry_path}, Command: {command}",
             ) from e
@@ -205,23 +196,19 @@ class ContextRegistryService:
             ContextRegistryResult: Result of the operation
 
         Raises:
-            ValidationError: If registry_path is invalid
-            RegistryError: If registry operation fails
-            ContextUtilityError: For unexpected errors
+            ContextServiceError: If registry_path is invalid, the registry
+                operation fails, or an unexpected error occurs
         """
         try:
             # Input validation
             if not registry_path:
-                raise ValidationServiceError(
-                    "registry_removal",
-                    "registry_path",
-                    "Registry path cannot be None or empty",
+                raise ContextServiceError(
+                    "registry_removal", "Registry path cannot be None or empty"
                 )
 
             if not isinstance(registry_path, str):
-                raise ValidationServiceError(
+                raise ContextServiceError(
                     "registry_removal",
-                    "registry_path",
                     f"Registry path must be a string, got {type(registry_path).__name__}",
                 )
 
@@ -276,8 +263,8 @@ class ContextRegistryService:
                     registry_path=registry_path,
                 )
             except PermissionError as e:
-                raise RegistryServiceError(
-                    "remove", registry_path, f"Failed to remove registry entry: {e}"
+                raise ContextServiceError(
+                    "registry_removal", f"Failed to remove registry entry: {e}"
                 ) from e
             except FileNotFoundError as e:
                 # Entry doesn't exist - return result with success=False
@@ -290,8 +277,8 @@ class ContextRegistryService:
             except OSError as e:
                 # Check if it's a permission error (WinError 5)
                 if hasattr(e, "winerror") and e.winerror == 5:
-                    raise RegistryServiceError(
-                        "remove", registry_path, f"Failed to remove registry entry: {e}"
+                    raise ContextServiceError(
+                        "registry_removal", f"Failed to remove registry entry: {e}"
                     ) from e
                 # Check if it's a "file not found" error (WinError 2)
                 elif hasattr(e, "winerror") and e.winerror == 2:
@@ -302,14 +289,15 @@ class ContextRegistryService:
                         error=f"Entry not found: {e}",
                     )
                 else:
-                    raise RegistryServiceError(
-                        "remove", registry_path, f"Failed to remove registry entry: {e}"
+                    raise ContextServiceError(
+                        "registry_removal", f"Failed to remove registry entry: {e}"
                     ) from e
 
-        except (ValidationServiceError, RegistryServiceError):
+        except ContextServiceError:
             raise
         except Exception as e:
-            raise ContextUtilityError(
+            raise ContextServiceError(
+                "registry_removal",
                 f"Unexpected error removing registry entry: {e}",
                 details=f"Registry path: {registry_path}",
             ) from e
@@ -327,23 +315,19 @@ class ContextRegistryService:
             ContextRegistryResult: Result with list of entries
 
         Raises:
-            ValidationError: If context_type is invalid
-            RegistryError: If registry operation fails
-            ContextUtilityError: For unexpected errors
+            ContextServiceError: If context_type is invalid, the registry
+                operation fails, or an unexpected error occurs
         """
         try:
             # Input validation
             if not context_type:
-                raise ValidationServiceError(
-                    "registry_listing",
-                    "context_type",
-                    "Context type cannot be None or empty",
+                raise ContextServiceError(
+                    "registry_listing", "Context type cannot be None or empty"
                 )
 
             if not isinstance(context_type, str):
-                raise ValidationServiceError(
+                raise ContextServiceError(
                     "registry_listing",
-                    "context_type",
                     f"Context type must be a string, got {type(context_type).__name__}",
                 )
 
@@ -373,8 +357,8 @@ class ContextRegistryService:
                         i += 1
 
             except (OSError, PermissionError) as e:
-                raise RegistryServiceError(
-                    "list", registry_path, f"Failed to list registry entries: {e}"
+                raise ContextServiceError(
+                    "registry_listing", f"Failed to list registry entries: {e}"
                 ) from e
 
             return ContextRegistryResult(
@@ -384,10 +368,11 @@ class ContextRegistryService:
                 entries=entries,
             )
 
-        except (ValidationServiceError, RegistryServiceError):
+        except ContextServiceError:
             raise
         except Exception as e:
-            raise ContextUtilityError(
+            raise ContextServiceError(
+                "registry_listing",
                 f"Unexpected error listing registry entries: {e}",
                 details=f"Context type: {context_type}",
             ) from e
@@ -405,16 +390,14 @@ class ContextRegistryService:
             ContextRegistryResult: Result with backup data
 
         Raises:
-            ValidationError: If context_types is invalid
-            RegistryError: If registry operation fails
-            ContextUtilityError: For unexpected errors
+            ContextServiceError: If context_types is invalid or an
+                unexpected error occurs
         """
         try:
             # Input validation
             if context_types is not None and not isinstance(context_types, list):
-                raise ValidationServiceError(
+                raise ContextServiceError(
                     "registry_backup",
-                    "context_types",
                     f"Context types must be a list, got {type(context_types).__name__}",
                 )
 
@@ -450,10 +433,11 @@ class ContextRegistryService:
                 backup_data=backup_data,
             )
 
-        except (ValidationServiceError, RegistryServiceError):
+        except ContextServiceError:
             raise
         except Exception as e:
-            raise ContextUtilityError(
+            raise ContextServiceError(
+                "registry_backup",
                 f"Unexpected error backing up registry entries: {e}",
                 details=f"Context types: {context_types}",
             ) from e
@@ -471,23 +455,19 @@ class ContextRegistryService:
             ContextRegistryResult: Result of the operation
 
         Raises:
-            ValidationError: If backup_data is invalid
-            RegistryError: If registry operation fails
-            ContextUtilityError: For unexpected errors
+            ContextServiceError: If backup_data is invalid, the registry
+                operation fails, or an unexpected error occurs
         """
         try:
             # Input validation
             if not backup_data:
-                raise ValidationServiceError(
-                    "registry_restore",
-                    "backup_data",
-                    "Backup data cannot be None or empty",
+                raise ContextServiceError(
+                    "registry_restore", "Backup data cannot be None or empty"
                 )
 
             if not isinstance(backup_data, dict):
-                raise ValidationServiceError(
+                raise ContextServiceError(
                     "registry_restore",
-                    "backup_data",
                     f"Backup data must be a dictionary, got {type(backup_data).__name__}",
                 )
 
@@ -517,14 +497,15 @@ class ContextRegistryService:
                 )
 
             except (OSError, PermissionError) as e:
-                raise RegistryServiceError(
-                    "restore", "backup_data", f"Failed to restore registry entries: {e}"
+                raise ContextServiceError(
+                    "registry_restore", f"Failed to restore registry entries: {e}"
                 ) from e
 
-        except (ValidationServiceError, RegistryServiceError):
+        except ContextServiceError:
             raise
         except Exception as e:
-            raise ContextUtilityError(
+            raise ContextServiceError(
+                "registry_restore",
                 f"Unexpected error restoring registry entries: {e}",
                 details="Failed to restore from backup data",
             ) from e
@@ -540,31 +521,29 @@ class ContextRegistryService:
             Registry path or None if not found
 
         Raises:
-            ValidationError: If context_type is invalid
-            ContextUtilityError: For unexpected errors
+            ContextServiceError: If context_type is invalid or an unexpected
+                error occurs
         """
         try:
             # Input validation
             if not context_type:
-                raise ValidationServiceError(
-                    "context_path",
-                    "context_type",
-                    "Context type cannot be None or empty",
+                raise ContextServiceError(
+                    "context_path", "Context type cannot be None or empty"
                 )
 
             if not isinstance(context_type, str):
-                raise ValidationServiceError(
+                raise ContextServiceError(
                     "context_path",
-                    "context_type",
                     f"Context type must be a string, got {type(context_type).__name__}",
                 )
 
             return ContextConfig.CONTEXT_PATHS.get(context_type)
 
-        except ValidationServiceError:
+        except ContextServiceError:
             raise
         except Exception as e:
-            raise ContextUtilityError(
+            raise ContextServiceError(
+                "context_path",
                 f"Unexpected error getting context path: {e}",
                 details=f"Context type: {context_type}",
             ) from e
@@ -577,12 +556,13 @@ class ContextRegistryService:
             List of supported context types
 
         Raises:
-            ContextUtilityError: For unexpected errors
+            ContextServiceError: For unexpected errors
         """
         try:
             return list(ContextConfig.CONTEXT_PATHS.keys())
         except Exception as e:
-            raise ContextUtilityError(
+            raise ContextServiceError(
+                "supported_context_types",
                 f"Unexpected error getting supported context types: {e}",
                 details="Failed to get context paths keys",
             ) from e
