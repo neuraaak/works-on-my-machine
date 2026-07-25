@@ -18,6 +18,7 @@ from __future__ import annotations
 # ///////////////////////////////////////////////////////////////
 # Local imports
 from .installer_interface import WommInstallerInterface
+from .progress import DeploymentProgressReporter, NullProgressReporter
 from .uninstaller_interface import WommUninstallerInterface
 
 # ///////////////////////////////////////////////////////////////
@@ -25,6 +26,8 @@ from .uninstaller_interface import WommUninstallerInterface
 # ///////////////////////////////////////////////////////////////
 
 __all__ = [
+    "DeploymentProgressReporter",
+    "NullProgressReporter",
     "WommInstallerInterface",
     "WommUninstallerInterface",
 ]

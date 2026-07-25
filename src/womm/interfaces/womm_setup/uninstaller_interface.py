@@ -6,7 +6,17 @@
 
 """
 Uninstallation Manager for Works On My Machine.
-Removes WOMM from the system and cleans up PATH entries.
+
+Orchestrates WommUninstallerService and SystemPathService and converts their
+exceptions into a Result. The interface carries no UI, including no
+interactive confirmation — that belongs to the command layer, which decides
+whether to proceed based on the plan and the user's answer.
+
+Public flow mirrors the installer:
+    1. ``plan_uninstall()`` — resolves the target, checks it exists, builds
+       the file manifest. No progress UI needed yet.
+    2. ``execute_uninstall()`` — performs the PATH cleanup/removal/verify
+       steps, reporting through the supplied ``DeploymentProgressReporter``.
 """
 
 from __future__ import annotations
@@ -19,33 +29,21 @@ import logging
 import platform
 from pathlib import Path
 from threading import Lock
-from time import sleep
 from typing import ClassVar
-
-# Third-party imports
-from rich.progress import TaskID
 
 # Local imports
 from ...exceptions.common import DirectoryAccessError, FileScanError
-from ...exceptions.system import (
-    FileSystemServiceError,
-    RegistryServiceError,
-    UserPathServiceError,
-)
-from ...exceptions.womm_deployment import (
-    UninstallerInterfaceError,
-    WommDeploymentServiceError,
-)
+from ...exceptions.womm_deployment import WommDeploymentServiceError
 from ...services import WommUninstallerService
 from ...services.system.path_service import SystemPathService
-from ...shared.results import UninstallationResult
-from ...ui.common import confirm, ezconsole, ezprinter
+from ...shared.results import UninstallationResult, UninstallPlanResult
 from ...utils.common import safe_rmtree
 from ...utils.womm_setup import (
     get_default_womm_path,
     get_files_to_remove,
     verify_directory_removed,
 )
+from .progress import DeploymentProgressReporter, NullProgressReporter
 
 # ///////////////////////////////////////////////////////////////
 # LOGGER SETUP
@@ -59,9 +57,13 @@ logger = logging.getLogger(__name__)
 
 
 class WommUninstallerInterface:
-    """Manages the uninstallation process for Works On My Machine.
+    """Orchestrates the uninstallation of Works On My Machine.
 
-    Singleton pattern for safe uninstallation operations.
+    Singleton pattern for safe uninstallation operations. Pure orchestration:
+    no UI, no re-raise. ``WommDeploymentServiceError``/``OSError``/
+    ``ValueError`` raised by services or utils are translated into
+    ``UninstallationResult``. Unexpected errors are not swallowed — they
+    propagate to the top-level CLI catch-all.
     """
 
     _instance: ClassVar[WommUninstallerInterface | None] = None
@@ -76,724 +78,274 @@ class WommUninstallerInterface:
         return cls._instance
 
     def __init__(self, target: str | None = None) -> None:
-        """
-        Initialize the uninstallation manager.
+        """Initialize the uninstallation manager (only once).
 
         Args:
             target: Custom target directory (default: ~/.womm)
-
-        Raises:
-            UninstallationManagerInterfaceError: If uninstallation manager initialization fails
         """
         if WommUninstallerInterface._initialized:
             return
 
-        try:
-            if target:
-                self.target_path = Path(target).expanduser().resolve()
-            else:
-                try:
-                    self.target_path = get_default_womm_path()
-                except (WommDeploymentServiceError, OSError, ValueError):
-                    # Re-raise our custom exceptions
-                    raise
-                except Exception as e:
-                    # Wrap unexpected external exceptions
-                    raise UninstallerInterfaceError(
-                        message=f"Failed to get target path: {e}",
-                        operation="initialization",
-                        details=f"Exception type: {type(e).__name__}",
-                    ) from e
+        self.target_path = (
+            Path(target).expanduser().resolve() if target else get_default_womm_path()
+        )
+        self.platform = platform.system()
+        self._uninstallation_service = WommUninstallerService()
+        self._path_service = SystemPathService()
+        WommUninstallerInterface._initialized = True
 
-            self.platform = platform.system()
-            self._uninstallation_service = WommUninstallerService()
-            self._path_service = SystemPathService()
-            WommUninstallerInterface._initialized = True
+    # ///////////////////////////////////////////////////////////////
+    # PUBLIC METHODS - PLANNING (NO PROGRESS UI NEEDED)
+    # ///////////////////////////////////////////////////////////////
 
-        except UninstallerInterfaceError:
-            # Re-raise interface exceptions
-            raise
-        except (WommDeploymentServiceError, OSError, ValueError):
-            # Convert service exceptions to interface exceptions
-            raise UninstallerInterfaceError(
-                message="Failed to initialize uninstallation manager",
-                operation="initialization",
-                details="Exception type: UninstallationManagerError",
-            ) from WommDeploymentServiceError(
-                operation="uninstall",
-                reason="Failed to initialize",
-                details="Service initialization error",
+    def plan_uninstall(self) -> UninstallPlanResult:
+        """
+        Check that a WOMM installation exists and build the removal manifest.
+
+        Returns:
+            UninstallPlanResult: ``success=False`` (with a "not found"
+                message) if nothing is installed at the target; otherwise
+                carries ``files_to_remove`` for the command to size its
+                progress UI.
+        """
+        if not self.target_path.exists():
+            return UninstallPlanResult(
+                success=False,
+                error="WOMM installation not found",
+                message=f"No installation found at: {self.target_path}",
+                target_path=str(self.target_path),
             )
-        except Exception as e:
-            # Wrap unexpected external exceptions
-            logger.error(f"Failed to initialize UninstallationManager: {e}")
-            raise UninstallerInterfaceError(
-                message=f"Failed to initialize uninstallation manager: {e}",
-                operation="initialization",
-                details=f"Exception type: {type(e).__name__}",
-            ) from e
+
+        try:
+            files_to_remove = get_files_to_remove(self.target_path)
+        except (
+            OSError,
+            ValueError,
+            FileScanError,
+            DirectoryAccessError,
+        ) as e:
+            return UninstallPlanResult(
+                success=False,
+                error=f"Failed to scan installation directory: {e}",
+                target_path=str(self.target_path),
+            )
+
+        return UninstallPlanResult(
+            success=True,
+            message=f"Found {len(files_to_remove)} files to remove",
+            target_path=str(self.target_path),
+            files_to_remove=files_to_remove,
+        )
 
     # ///////////////////////////////////////////////////////////////
-    # PUBLIC METHODS
+    # PUBLIC METHODS - EXECUTION
     # ///////////////////////////////////////////////////////////////
 
-    def uninstall(
+    def execute_uninstall(
         self,
-        force: bool = False,
+        plan: UninstallPlanResult,
+        reporter: DeploymentProgressReporter | None = None,
         verbose: bool = False,
     ) -> UninstallationResult:
         """
-        Uninstall Works On My Machine from the user's system.
+        Run the uninstallation described by a successful ``plan_uninstall()``.
 
         Args:
-            force: Force uninstallation without confirmation
-            verbose: Show detailed progress information
+            plan: Result of ``plan_uninstall()`` (must have ``success=True``)
+            reporter: Stage-by-stage progress feedback; defaults to a no-op
+            verbose: Unused placeholder kept for signature stability
 
         Returns:
-            UninstallationResult: Result of the uninstallation operation
-
-        Raises:
-            UninstallationManagerInterfaceError: If uninstallation fails
-            UninstallationUtilityError: If utility operations fail
-            UninstallationFileError: If file operations fail
-            UninstallationVerificationInterfaceError: If verification fails
+            UninstallationResult: success/failure; failure carries the error.
         """
+        del verbose  # no console output at this layer; kept for call-site parity
+        reporter = reporter or NullProgressReporter()
+        self.target_path = Path(plan.target_path)
+        files_to_remove = list(plan.files_to_remove or [])
+
         try:
-            files_to_remove: list[str] = []
-            ezprinter.print_header("W.O.M.M Uninstallation")
-
-            # Check target directory existence
-            with ezprinter.create_spinner_with_status(
-                "Checking target directory..."
-            ) as (
-                progress,
-                task,
-            ):
-                task_id = TaskID(task)
-                progress.update(
-                    task_id, status="Analyzing uninstallation requirements..."
-                )
-
-                # Check if WOMM is installed
-                if not self.target_path.exists():
-                    progress.stop()
-
-                    warning_content = (
-                        "WOMM not found.\n\n"
-                        f"No installation found at: {self.target_path}\n"
-                        "WOMM may not be installed or may be in a different location"
-                    )
-                    warning_panel = ezprinter.create_panel(
-                        warning_content,
-                        title="✅ Uninstallation Complete",
-                        style="bright_orange",
-                        border_style="bright_green",
-                        padding=(1, 1),
-                    )
-                    ezconsole.print("")
-                    ezconsole.print(warning_panel)
-                    return UninstallationResult(
-                        success=False,
-                        error="WOMM installation not found",
-                        removed_path=str(self.target_path),
-                        files_removed=0,
-                        path_cleaned=False,
-                        verification_passed=False,
-                    )
-                else:
-                    progress.update(
-                        task_id,
-                        status=f"Found installation at: {self.target_path}",
-                    )
-
-            # Check if force is required
-            if not force:
-                # Show warning panel for uninstallation
-                ezconsole.print("")
-
-                warning_content = (
-                    f"This will completely remove WOMM from {self.target_path}.\n\n"
-                    "This action cannot be undone."
-                )
-                warning_panel = ezprinter.create_warning_panel(
-                    title="Uninstallation Confirmation",
-                    content=warning_content,
-                    border_style="bright_green",
-                    padding=(1, 1),
-                    style="bright_orange",
-                )
-                ezconsole.print("")
-                ezconsole.print(warning_panel)
-
-                # Ask for confirmation
-                if not confirm(
-                    "Do you want to continue and remove WOMM completely?",
-                    default=False,
-                ):
-                    ezconsole.print("❌ Uninstallation cancelled", style="red")
-                    return UninstallationResult(
-                        success=False,
-                        error="Uninstallation cancelled by user",
-                        removed_path=str(self.target_path),
-                        files_removed=0,
-                        path_cleaned=False,
-                        verification_passed=False,
-                    )
-
-                ezconsole.print("")
-                ezprinter.system("Proceeding with uninstallation...")
-
-            # Dry run message is already handled in the directory check section
-
-            # Get list of files to remove
-            ezconsole.print("")
-
-            with ezprinter.create_spinner_with_status(
-                "Analyzing installed files..."
-            ) as (
-                progress,
-                task,
-            ):
-                task_id = TaskID(task)
-                progress.update(task_id, status="Scanning installation directory...")
-                try:
-                    files_to_remove = get_files_to_remove(self.target_path)
-                except (
-                    WommDeploymentServiceError,
-                    OSError,
-                    ValueError,
-                    FileScanError,
-                    DirectoryAccessError,
-                ):
-                    # Re-raise our custom exceptions
-                    raise
-                except Exception as e:
-                    # Wrap unexpected external exceptions
-                    raise WommDeploymentServiceError(
-                        operation="uninstall",
-                        reason=f"Failed to get files to remove: {e}",
-                        details=f"Exception type: {type(e).__name__}",
-                    ) from e
-
-                progress.update(
-                    task_id,
-                    status=f"Found {len(files_to_remove)} files to remove",
-                )
-
-            # Define uninstallation stages with DynamicLayeredProgress
-            # Color palette: unified cyan for all steps, semantic colors for states
-            stages = [
-                {
-                    "name": "main_uninstallation",
-                    "type": "main",
-                    "steps": [
-                        "Preparation",
-                        "PATH Cleanup",
-                        "File Removal",
-                        "Verification",
-                    ],
-                    "description": "WOMM Uninstallation Progress",
-                    "style": "bold bright_white",
-                },
-                {
-                    "name": "preparation",
-                    "type": "spinner",
-                    "description": "Preparing uninstallation environment...",
-                    "style": "bright_blue",
-                },
-                {
-                    "name": "path_cleanup",
-                    "type": "spinner",
-                    "description": "Removing from PATH...",
-                    "style": "bright_blue",
-                },
-                {
-                    "name": "file_removal",
-                    "type": "progress",
-                    "total": len(files_to_remove),
-                    "description": "Removing installation files...",
-                    "style": "bright_blue",
-                },
-                {
-                    "name": "verification",
-                    "type": "steps",
-                    "steps": [
-                        "File removal check",
-                        "Command accessibility test",
-                    ],
-                    "description": "Verifying uninstallation...",
-                    "style": "bright_blue",
-                },
-            ]
-
-            ezconsole.print("")
-            with ezprinter.create_dynamic_layered_progress(stages) as progress:
-                try:
-                    # Stage 1: Preparation
-                    prep_messages = [
-                        "Analyzing uninstallation requirements...",
-                        "Checking installation integrity...",
-                        "Validating removal permissions...",
-                        "Preparing cleanup operations...",
-                    ]
-
-                    for msg in prep_messages:
-                        progress.update_layer("preparation", 0, msg)
-                        sleep(0.2)
-
-                    # Complete preparation
-                    progress.complete_layer("preparation")
-
-                    # Update main uninstallation progress
-                    progress.update_layer(
-                        "main_uninstallation", 0, "Preparation completed"
-                    )
-                    sleep(0.3)
-
-                    # Stage 2: PATH Cleanup
-                    progress.update_layer(
-                        "path_cleanup", 0, "Removing WOMM from PATH..."
-                    )
-                    try:
-                        if not self._cleanup_path():
-                            progress.emergency_stop("Failed to remove from PATH")
-                            raise WommDeploymentServiceError(
-                                operation="cleanup",
-                                reason="Failed to remove from PATH",
-                                details="remove_from_path utility returned False. "
-                                f"Target: {self.target_path}",
-                            )
-                    except (WommDeploymentServiceError, OSError, ValueError):
-                        # Re-raise our custom exceptions
-                        raise
-                    except Exception as e:
-                        # Wrap unexpected external exceptions
-                        raise WommDeploymentServiceError(
-                            operation="uninstall",
-                            reason=f"Failed to cleanup PATH: {e}",
-                            details=f"Exception type: {type(e).__name__}",
-                        ) from e
-
-                    progress.update_layer("path_cleanup", 0, "PATH cleanup completed")
-                    sleep(0.2)
-
-                    # Complete PATH cleanup
-                    progress.complete_layer("path_cleanup")
-
-                    # Update main uninstallation progress
-                    progress.update_layer(
-                        "main_uninstallation", 1, "PATH cleanup completed"
-                    )
-                    sleep(0.3)
-
-                    # Stage 3: File Removal
-                    try:
-                        self._remove_files_with_progress(
-                            files_to_remove, progress, verbose
-                        )
-                    except (WommDeploymentServiceError, OSError, ValueError):
-                        # Re-raise our custom exceptions
-                        raise
-                    except Exception as e:
-                        # Wrap unexpected external exceptions
-                        raise WommDeploymentServiceError(
-                            operation="uninstall",
-                            reason=f"Failed to remove files: {e}",
-                            details=f"Exception type: {type(e).__name__}",
-                        ) from e
-
-                    # Complete file removal
-                    progress.complete_layer("file_removal")
-
-                    # Update main uninstallation progress
-                    progress.update_layer("main_uninstallation", 2, "Files removed")
-                    sleep(0.3)
-
-                    # Stage 4: Verification
-                    try:
-                        self._verify_uninstallation_with_progress(progress)
-                    except (WommDeploymentServiceError, OSError, ValueError):
-                        # Re-raise our custom exceptions
-                        raise
-                    except Exception as e:
-                        # Wrap unexpected external exceptions
-                        raise WommDeploymentServiceError(
-                            operation="uninstall",
-                            reason=f"Failed to verify uninstallation: {e}",
-                            details=f"Exception type: {type(e).__name__}",
-                        ) from e
-
-                    # Complete verification
-                    progress.complete_layer("verification")
-
-                    # Complete main uninstallation progress
-                    progress.update_layer(
-                        "main_uninstallation", 3, "Uninstallation completed!"
-                    )
-                    sleep(0.3)
-
-                    # Complete and remove main uninstallation layer
-                    progress.complete_layer("main_uninstallation")
-
-                except (
-                    WommDeploymentServiceError,
-                    OSError,
-                    ValueError,
-                    FileScanError,
-                    DirectoryAccessError,
-                    UserPathServiceError,
-                    RegistryServiceError,
-                    FileSystemServiceError,
-                ) as e:
-                    # Stop progress first, then print error details
-                    progress.emergency_stop(
-                        f"Uninstallation failed: {type(e).__name__}"
-                    )
-
-                    ezprinter.error(
-                        f"Uninstallation failed at stage '{getattr(e, 'stage', 'unknown')}': {e}"
-                    )
-                    if hasattr(e, "details") and e.details:
-                        ezprinter.error(f"Details: {e.details}")
-
-                    # Re-raise our custom exceptions
-                    raise
-                except Exception as e:
-                    # Handle any other unexpected errors
-                    progress.emergency_stop("Unexpected error during uninstallation")
-
-                    ezprinter.error(f"Unexpected error during uninstallation: {e}")
-
-                    raise WommDeploymentServiceError(
-                        operation="uninstall",
-                        reason=f"Unexpected error during uninstallation: {e}",
-                        details="This is an unexpected error that should be reported",
-                    ) from e
-
-            ezconsole.print("")
-            ezprinter.success("✅ W.O.M.M uninstallation completed successfully!")
-            ezprinter.system(f"📁 Removed from: {self.target_path}")
-
-            # Show completion panel
-            completion_content = (
-                "WOMM has been successfully removed from your system.\n\n"
-                "To complete the cleanup:\n"
-                "• Restart your terminal for PATH changes to take effect\n"
-                "• Remove any remaining WOMM references from your shell config files\n\n"
-                "Thank you for using Works On My Machine!"
+            reporter.update_layer(
+                "preparation", 0, "Preparing uninstallation environment..."
             )
+            reporter.complete_layer("preparation")
+            reporter.update_layer("main_uninstallation", 0, "Preparation completed")
 
-            completion_panel = ezprinter.create_success_panel(
-                title="Uninstallation Complete",
-                content=completion_content,
-                border_style="bright_green",
-                padding=(1, 1),
-            )
-            ezconsole.print("")
-            ezconsole.print(completion_panel)
+            reporter.update_layer("path_cleanup", 0, "Removing WOMM from PATH...")
+            self._cleanup_path()
+            reporter.complete_layer("path_cleanup")
+            reporter.update_layer("main_uninstallation", 1, "PATH cleanup completed")
 
+            self._remove_files_with_progress(files_to_remove, reporter)
+            reporter.complete_layer("file_removal")
+            reporter.update_layer("main_uninstallation", 2, "Files removed")
+
+            self._verify_uninstallation_with_progress(reporter)
+            reporter.complete_layer("verification")
+            reporter.update_layer("main_uninstallation", 3, "Uninstallation completed!")
+            reporter.complete_layer("main_uninstallation")
+
+        except (
+            WommDeploymentServiceError,
+            OSError,
+            ValueError,
+        ) as e:
+            reporter.emergency_stop(f"Uninstallation failed: {type(e).__name__}")
+            details = getattr(e, "details", None)
+            error = f"{e}" + (f" | Details: {details}" if details else "")
             return UninstallationResult(
-                success=True,
-                message="Uninstallation completed successfully",
+                success=False,
+                message="Uninstallation failed",
+                error=error,
                 removed_path=str(self.target_path),
-                files_removed=len(files_to_remove),
-                path_cleaned=True,
-                verification_passed=True,
+                files_removed=0,
+                path_cleaned=False,
+                verification_passed=False,
             )
 
-        except (WommDeploymentServiceError, OSError, ValueError):
-            # Re-raise our custom exceptions
-            raise
-        except Exception as e:
-            # Wrap unexpected external exceptions
-            logger.error(f"Unexpected error in uninstall: {e}")
-            raise WommDeploymentServiceError(
-                operation="uninstall",
-                reason=f"Uninstallation failed: {e}",
-                details=f"Exception type: {type(e).__name__}",
-            ) from e
+        return UninstallationResult(
+            success=True,
+            message="Uninstallation completed successfully",
+            removed_path=str(self.target_path),
+            files_removed=len(files_to_remove),
+            path_cleaned=True,
+            verification_passed=True,
+        )
 
     # ///////////////////////////////////////////////////////////////
     # PRIVATE METHODS
     # ///////////////////////////////////////////////////////////////
 
-    def _cleanup_path(self) -> bool:
+    def _cleanup_path(self) -> None:
         """
-        Cleanup PATH environment variable using path management utils.
-
-        Returns:
-            True if successful, False otherwise
+        Cleanup PATH environment variable using SystemPathService.
 
         Raises:
             WommDeploymentServiceError: If PATH cleanup fails
-            UninstallationUtilityError: If utility operations fail
         """
-        try:
-            try:
-                result = self._path_service.remove_from_path(str(self.target_path))
-            except (
-                UserPathServiceError,
-                RegistryServiceError,
-                FileSystemServiceError,
-            ):
-                # Re-raise our custom exceptions
-                raise
-            except Exception as e:
-                # Wrap unexpected external exceptions
-                raise WommDeploymentServiceError(
-                    operation="cleanup",
-                    reason=f"remove_from_path utility failed: {e}",
-                    details=f"Exception type: {type(e).__name__}",
-                ) from e
-
-            sleep(0.5)
-
-            if not result.success:
-                ezprinter.error("PATH cleanup failed: remove_from_path returned False")
-
-                raise WommDeploymentServiceError(
-                    operation="cleanup",
-                    reason="PATH cleanup failed",
-                    details="remove_from_path utility returned False. "
-                    f"Target: {self.target_path}",
-                )
-
-            return True
-
-        except (
-            UserPathServiceError,
-            RegistryServiceError,
-            FileSystemServiceError,
-        ):
-            # Re-raise our custom exceptions
-            raise
-        except Exception as e:
-            ezprinter.error(f"Unexpected error during PATH cleanup: {e}")
-
+        result = self._path_service.remove_from_path(str(self.target_path))
+        if not result.success:
             raise WommDeploymentServiceError(
                 operation="cleanup",
-                reason=f"Unexpected error during PATH cleanup: {e}",
-                details="This is an unexpected error that should be reported",
-            ) from e
+                reason="PATH cleanup failed",
+                details="remove_from_path returned failure. "
+                f"Target: {self.target_path}",
+            )
 
     # =============================================================================
     # PRIVATE METHODS - FILE OPERATIONS
     # =============================================================================
 
     def _remove_files_with_progress(
-        self, files_to_remove: list[str], progress, verbose: bool = False
-    ) -> bool:
+        self, files_to_remove: list[str], reporter: DeploymentProgressReporter
+    ) -> None:
         """
-        Remove WOMM installation files with progress tracking.
+        Remove WOMM installation files, reporting progress.
 
         Args:
-            files_to_remove: List of files and directories to remove for progress tracking
-            progress: DynamicLayeredProgress instance
-            verbose: Show detailed progress information
-
-        Returns:
-            True if successful
+            files_to_remove: Files and directories to remove, files first
+            reporter: Progress feedback for the "file_removal" stage
 
         Raises:
-            UninstallationFileError: If file removal operations fail
-            UninstallationUtilityError: If utility operations fail
+            WommDeploymentServiceError: If a file or directory cannot be removed
         """
-        try:
-            from time import sleep
+        for i, item_path in enumerate(files_to_remove):
+            target_item = self.target_path / item_path.rstrip("/")
+            if not target_item.exists():
+                continue
 
-            # Remove each file and directory in order (files first, then directories)
-            for i, item_path in enumerate(files_to_remove):
-                target_item = self.target_path / item_path.rstrip("/")
+            item_name = Path(item_path).name
+            kind = "directory" if item_path.endswith("/") else "file"
+            reporter.update_layer(
+                "file_removal", i + 1, f"Removing {kind}: {item_name}"
+            )
 
-                if not target_item.exists():
-                    continue
+            try:
+                if target_item.is_file():
+                    target_item.unlink()
+                elif target_item.is_dir():
+                    safe_rmtree(target_item, allowed_parent=self.target_path)
+            except OSError as e:
+                # Covers PermissionError, a subclass of OSError.
+                raise WommDeploymentServiceError(
+                    operation=f"remove_{kind}",
+                    reason=str(e),
+                    details=f"file_path={target_item} | "
+                    f"Failed to remove {kind}: {item_path}",
+                ) from e
 
-                # Update progress
-                item_name = Path(item_path).name
-                if item_path.endswith("/"):
-                    progress.update_layer(
-                        "file_removal", i + 1, f"Removing directory: {item_name}"
-                    )
-                else:
-                    progress.update_layer(
-                        "file_removal", i + 1, f"Removing file: {item_name}"
-                    )
-
-                try:
-                    if target_item.is_file():
-                        target_item.unlink()
-                        sleep(0.01)
-                        if verbose:
-                            ezprinter.system(f"🗑️ Removed file: {item_path}")
-                    elif target_item.is_dir():
-                        safe_rmtree(target_item, allowed_parent=self.target_path)
-                        sleep(0.02)
-                        if verbose:
-                            ezprinter.system(f"🗑️ Removed directory: {item_path}")
-                except PermissionError as e:
-                    if target_item.is_file():
-                        raise WommDeploymentServiceError(
-                            operation="remove_file",
-                            reason=f"Permission denied: {e}",
-                            details=f"file_path={str(target_item)}"
-                            + " | "
-                            + f"Cannot remove file due to permissions: {item_path}",
-                        ) from e
-                    else:
-                        raise WommDeploymentServiceError(
-                            operation="remove_directory",
-                            reason=f"Permission denied: {e}",
-                            details=f"file_path={str(target_item)}"
-                            + " | "
-                            + f"Cannot remove directory due to permissions: {item_path}",
-                        ) from e
-                except OSError as e:
-                    if target_item.is_file():
-                        raise WommDeploymentServiceError(
-                            operation="remove_file",
-                            reason=f"OS error: {e}",
-                            details=f"file_path={str(target_item)}"
-                            + " | "
-                            + f"Failed to remove file: {item_path}",
-                        ) from e
-                    else:
-                        raise WommDeploymentServiceError(
-                            operation="remove_directory",
-                            reason=f"OS error: {e}",
-                            details=f"file_path={str(target_item)}"
-                            + " | "
-                            + f"Failed to remove directory: {item_path}",
-                        ) from e
-
-            # Finally remove the root directory itself
-            if self.target_path.exists():
-                progress.update_layer(
-                    "file_removal",
-                    len(files_to_remove) + 1,
-                    "Removing installation directory",
-                )
-                try:
-                    safe_rmtree(
-                        self.target_path,
-                        allowed_parent=self.target_path.parent,
-                    )
-                    sleep(0.1)
-
-                    if verbose:
-                        ezprinter.system(
-                            f"🗑️ Removed installation directory: {self.target_path}"
-                        )
-                except PermissionError as e:
-                    raise WommDeploymentServiceError(
-                        operation="remove_directory",
-                        reason=f"Permission denied: {e}",
-                        details=f"file_path={str(self.target_path)}"
-                        + " | "
-                        + "Cannot remove installation directory due to permissions",
-                    ) from e
-                except OSError as e:
-                    raise WommDeploymentServiceError(
-                        operation="remove_directory",
-                        reason=f"OS error: {e}",
-                        details=f"file_path={str(self.target_path)}"
-                        + " | "
-                        + "Failed to remove installation directory",
-                    ) from e
-
-            return True
-
-        except (WommDeploymentServiceError, OSError, ValueError):
-            # Re-raise our custom exceptions
-            raise
-        except Exception as e:
-            # Convert unexpected errors to our exception type
-            raise WommDeploymentServiceError(
-                operation="file_removal",
-                reason=f"Unexpected error during file removal: {e}",
-                details=f"file_path={str(self.target_path)}"
-                + " | "
-                + "This is an unexpected error that should be reported",
-            ) from e
+        if self.target_path.exists():
+            reporter.update_layer(
+                "file_removal",
+                len(files_to_remove) + 1,
+                "Removing installation directory",
+            )
+            try:
+                safe_rmtree(self.target_path, allowed_parent=self.target_path.parent)
+            except OSError as e:
+                raise WommDeploymentServiceError(
+                    operation="remove_directory",
+                    reason=str(e),
+                    details=f"file_path={self.target_path} | "
+                    "Failed to remove installation directory",
+                ) from e
 
     # =============================================================================
     # PRIVATE METHODS - VERIFICATION OPERATIONS
     # =============================================================================
 
-    def _verify_uninstallation_with_progress(self, progress) -> bool:
+    def _verify_uninstallation_with_progress(
+        self, reporter: DeploymentProgressReporter
+    ) -> None:
         """
-        Verify uninstallation with progress tracking.
+        Verify uninstallation with progress reporting.
 
         Args:
-            progress: DynamicLayeredProgress instance
-
-        Returns:
-            True if verification passed
+            reporter: Progress feedback for the "verification" stage
 
         Raises:
-            UninstallationManagerVerificationError: If verification operations fail
-            UninstallationUtilityError: If utility operations fail
+            WommDeploymentServiceError: If any verification step fails
         """
-        try:
-            # Step 1: File removal check
-            progress.update_layer("verification", 0, "Checking file removal...")
-            if self.target_path.exists():
-                raise WommDeploymentServiceError(
-                    operation="verification",
-                    reason=f"Installation directory still exists: {self.target_path}",
-                    details="file_removal_check failed. "
-                    "The target directory was not removed during uninstallation. "
-                    f"Target: {self.target_path}",
-                )
-            sleep(0.2)
-
-            # Step 2: Command accessibility test
-            progress.update_layer("verification", 1, "Testing command accessibility...")
-            try:
-                # Verify directory removal (pure utility)
-                verify_directory_removed(self.target_path)
-
-                # Verify command removal (service)
-                verification_result = (
-                    self._uninstallation_service.verify_uninstallation_complete(
-                        self.target_path
-                    )
-                )
-            except (WommDeploymentServiceError, OSError, ValueError):
-                # Re-raise our custom exceptions
-                raise
-            except Exception as e:
-                raise WommDeploymentServiceError(
-                    operation="verification",
-                    reason=f"Verification utility failed: {e}",
-                    details="command_accessibility_test failed. "
-                    "The verification utility function raised an exception. "
-                    f"Target: {self.target_path}",
-                ) from e
-
-            if not verification_result.success:
-                failure_message = (
-                    verification_result.message
-                    or verification_result.error
-                    or "Unknown error"
-                )
-                raise WommDeploymentServiceError(
-                    operation="verification",
-                    reason=f"Verification failed: {failure_message}",
-                    details="command_accessibility_test failed. "
-                    "The verification utility returned a failure status. "
-                    f"Target: {self.target_path}",
-                )
-            sleep(0.2)
-
-            return True
-
-        except (WommDeploymentServiceError, OSError, ValueError):
-            # Re-raise our custom exceptions
-            raise
-        except Exception as e:
-            # Convert unexpected errors to our exception type
+        reporter.update_layer("verification", 0, "Checking file removal...")
+        if self.target_path.exists():
             raise WommDeploymentServiceError(
                 operation="verification",
-                reason=f"Unexpected error during verification: {e}",
-                details="This is an unexpected error that should be reported",
+                reason=f"Installation directory still exists: {self.target_path}",
+                details="file_removal_check failed. "
+                f"The target directory was not removed. Target: {self.target_path}",
+            )
+
+        reporter.update_layer("verification", 1, "Testing command accessibility...")
+        try:
+            verify_directory_removed(self.target_path)
+            verification_result = (
+                self._uninstallation_service.verify_uninstallation_complete(
+                    self.target_path
+                )
+            )
+        except OSError as e:
+            raise WommDeploymentServiceError(
+                operation="verification",
+                reason=f"Verification utility failed: {e}",
+                details="command_accessibility_test failed. "
+                f"Target: {self.target_path}",
             ) from e
+
+        if not verification_result.success:
+            failure_message = (
+                verification_result.message
+                or verification_result.error
+                or "Unknown error"
+            )
+            raise WommDeploymentServiceError(
+                operation="verification",
+                reason=f"Verification failed: {failure_message}",
+                details="command_accessibility_test failed. "
+                f"Target: {self.target_path}",
+            )
+
+
+# ///////////////////////////////////////////////////////////////
+# PUBLIC API
+# ///////////////////////////////////////////////////////////////
+
+__all__ = ["WommUninstallerInterface"]

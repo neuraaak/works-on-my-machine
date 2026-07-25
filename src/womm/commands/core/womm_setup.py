@@ -25,18 +25,32 @@ import click
 from ezpl import LogLevel
 
 # Local imports
-from ...exceptions.womm_deployment import WommDeploymentServiceError
 from ...interfaces import (
     SystemPathInterface,
     WommInstallerInterface,
     WommUninstallerInterface,
 )
 from ...services import SecurityValidatorService
-from ...ui.common import InteractiveMenu, ezpl_bridge, ezprinter, format_backup_item
+from ...ui.common import (
+    InteractiveMenu,
+    confirm,
+    ezconsole,
+    ezpl_bridge,
+    ezprinter,
+    format_backup_item,
+)
 from ...ui.system import (
     render_path_backup_list_result,
     render_path_backup_result,
     render_path_operation_result,
+)
+from ...ui.womm_setup import (
+    render_install_plan_failure,
+    render_installation_result,
+    render_uninstall_cancelled,
+    render_uninstall_plan_failure,
+    render_uninstallation_result,
+    render_windows_install_tips,
 )
 
 # ///////////////////////////////////////////////////////////////
@@ -85,20 +99,95 @@ def install(
             )
             sys.exit(1)
 
-    try:
-        # Use InstallationManager for installation with integrated UI
-        manager = WommInstallerInterface()
-        manager.install(force=force, target=target, refresh_env=not no_refresh_env)
+    ezprinter.print_header("W.O.M.M Installation")
 
-    except (WommDeploymentServiceError, OSError, ValueError) as e:
-        ezprinter.error(f"Installation error: {e}")
-        details = getattr(e, "details", None)
-        if details:
-            ezprinter.error(f"Details: {details}")
+    manager = WommInstallerInterface()
+    plan = manager.precheck_install(target=target, force=force)
+    if not plan.success:
+        render_install_plan_failure(plan)
         sys.exit(1)
-    except Exception as e:
-        ezprinter.error(f"Unexpected installation error: {e}")
-        sys.exit(1)
+
+    stages = _build_install_stages(len(plan.files_to_copy or []))
+    with ezprinter.create_dynamic_layered_progress(stages) as progress:
+        result = manager.execute_install(
+            plan, progress, refresh_env=not no_refresh_env, verbose=verbose
+        )
+
+    render_installation_result(result)
+    if result.success and manager.platform == "Windows":
+        render_windows_install_tips()
+
+    sys.exit(0 if result.success else 1)
+
+
+def _build_install_stages(file_count: int) -> list[dict]:
+    """Build the DynamicLayeredProgress stage configuration for an install run.
+
+    Args:
+        file_count: Number of files to copy, used to size the "file_copy" bar
+
+    Returns:
+        list[dict]: Stage configuration for ``create_dynamic_layered_progress``
+    """
+    return [
+        {
+            "name": "main_installation",
+            "type": "main",
+            "steps": [
+                "Preparation",
+                "File Copy",
+                "Executable",
+                "Backup",
+                "PATH Setup",
+                "Verification",
+            ],
+            "description": "WOMM Installation Progress",
+            "style": "bold bright_white",
+        },
+        {
+            "name": "preparation",
+            "type": "spinner",
+            "description": "Preparing installation environment...",
+            "style": "bright_blue",
+        },
+        {
+            "name": "file_copy",
+            "type": "progress",
+            "total": file_count,
+            "description": "Copying project files...",
+            "style": "bright_blue",
+        },
+        {
+            "name": "executable",
+            "type": "spinner",
+            "description": "Creating executable script...",
+            "style": "bright_blue",
+        },
+        {
+            "name": "backup",
+            "type": "spinner",
+            "description": "Creating PATH backup...",
+            "style": "bright_blue",
+        },
+        {
+            "name": "path_setup",
+            "type": "spinner",
+            "description": "Configuring PATH environment...",
+            "style": "bright_blue",
+        },
+        {
+            "name": "verification",
+            "type": "steps",
+            "steps": [
+                "File integrity check",
+                "Essential files verification",
+                "Command accessibility test",
+                "PATH configuration test",
+            ],
+            "description": "Verifying installation...",
+            "style": "bright_blue",
+        },
+    ]
 
 
 # ///////////////////////////////////////////////////////////////
@@ -136,22 +225,95 @@ def uninstall(force: bool, target: str | None, verbose: bool) -> None:
             )
             sys.exit(1)
 
-    try:
-        # Use UninstallationManager for uninstallation with integrated UI
-        manager = WommUninstallerInterface(target)
-        manager.uninstall(force=force)
+    ezprinter.print_header("W.O.M.M Uninstallation")
 
-    except WommDeploymentServiceError as e:
-        ezprinter.error(f"Uninstallation error: {e.message}")
-        if e.details:
-            ezprinter.error(f"Details: {e.details}")
+    manager = WommUninstallerInterface(target)
+    plan = manager.plan_uninstall()
+    if not plan.success:
+        render_uninstall_plan_failure(plan)
         sys.exit(1)
-    except (OSError, ValueError) as e:
-        ezprinter.error(f"Uninstallation utility error: {e}")
-        sys.exit(1)
-    except Exception as e:
-        ezprinter.error(f"Unexpected uninstallation error: {e}")
-        sys.exit(1)
+
+    if not force:
+        ezconsole.print("")
+        warning_panel = ezprinter.create_warning_panel(
+            title="Uninstallation Confirmation",
+            content=f"This will completely remove WOMM from {plan.target_path}.\n\n"
+            "This action cannot be undone.",
+        )
+        ezconsole.print("")
+        ezconsole.print(warning_panel)
+
+        if not confirm(
+            "Do you want to continue and remove WOMM completely?", default=False
+        ):
+            render_uninstall_cancelled()
+            return
+
+        ezconsole.print("")
+        ezprinter.system("Proceeding with uninstallation...")
+
+    stages = _build_uninstall_stages(len(plan.files_to_remove or []))
+    ezconsole.print("")
+    with ezprinter.create_dynamic_layered_progress(stages) as progress:
+        result = manager.execute_uninstall(plan, progress, verbose=verbose)
+
+    render_uninstallation_result(result)
+    sys.exit(0 if result.success else 1)
+
+
+def _build_uninstall_stages(file_count: int) -> list[dict]:
+    """Build the DynamicLayeredProgress stage configuration for an uninstall run.
+
+    Args:
+        file_count: Number of files/directories to remove, used to size the
+            "file_removal" bar
+
+    Returns:
+        list[dict]: Stage configuration for ``create_dynamic_layered_progress``
+    """
+    return [
+        {
+            "name": "main_uninstallation",
+            "type": "main",
+            "steps": [
+                "Preparation",
+                "PATH Cleanup",
+                "File Removal",
+                "Verification",
+            ],
+            "description": "WOMM Uninstallation Progress",
+            "style": "bold bright_white",
+        },
+        {
+            "name": "preparation",
+            "type": "spinner",
+            "description": "Preparing uninstallation environment...",
+            "style": "bright_blue",
+        },
+        {
+            "name": "path_cleanup",
+            "type": "spinner",
+            "description": "Removing from PATH...",
+            "style": "bright_blue",
+        },
+        {
+            "name": "file_removal",
+            "type": "progress",
+            "total": file_count,
+            "description": "Removing installation files...",
+            "style": "bright_blue",
+        },
+        {
+            "name": "verification",
+            "type": "steps",
+            "steps": [
+                "File removal check",
+                "Command accessibility test",
+            ],
+            "description": "Verifying uninstallation...",
+            "style": "bright_blue",
+        },
+    ]
 
 
 # ///////////////////////////////////////////////////////////////

@@ -64,6 +64,38 @@ class UninstallationResult(BaseResult):
 
 
 @dataclass
+class InstallPlanResult(BaseResult):
+    """Result of the pre-installation planning phase (precheck + file manifest).
+
+    Computed before any progress UI is created, so the command layer can size
+    the "file_copy" stage from ``files_to_copy`` before opening the progress
+    context.
+    """
+
+    source_path: str = ""
+    target_path: str = ""
+    files_to_copy: list[str] | None = None
+
+    def __post_init__(self) -> None:
+        """Initialize derived fields."""
+        if self.files_to_copy is None:
+            self.files_to_copy = []
+
+
+@dataclass
+class UninstallPlanResult(BaseResult):
+    """Result of the pre-uninstallation planning phase (existence + file manifest)."""
+
+    target_path: str = ""
+    files_to_remove: list[str] | None = None
+
+    def __post_init__(self) -> None:
+        """Initialize derived fields."""
+        if self.files_to_remove is None:
+            self.files_to_remove = []
+
+
+@dataclass
 class WOMMInstallerVerificationResult(BaseResult):
     """Result for installation verification operations."""
 
@@ -88,7 +120,9 @@ class WOMMInstallerVerificationResult(BaseResult):
 # ///////////////////////////////////////////////////////////////
 
 __all__ = [
+    "InstallPlanResult",
     "InstallationResult",
+    "UninstallPlanResult",
     "UninstallationResult",
     "WOMMInstallerVerificationResult",
 ]

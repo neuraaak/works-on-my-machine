@@ -23,7 +23,9 @@ from .context_results import ContextRegistryResult, ContextValidationResult
 from .file_results import FileOperationResult, FileScanResult, FileSearchResult
 from .installation_results import (
     InstallationResult,
+    InstallPlanResult,
     UninstallationResult,
+    UninstallPlanResult,
     WOMMInstallerVerificationResult,
 )
 from .lint_results import LintSummaryResult, ToolResult, ToolStatusResult
@@ -73,6 +75,7 @@ __all__ = [
     "FileOperationResult",
     "FileScanResult",
     "FileSearchResult",
+    "InstallPlanResult",
     "InstallationResult",
     "LintSummaryResult",
     "PathBackupInfo",
@@ -93,6 +96,7 @@ __all__ = [
     "TemplateResult",
     "ToolResult",
     "ToolStatusResult",
+    "UninstallPlanResult",
     "UninstallationResult",
     "ValidationResult",
     "WOMMInstallerVerificationResult",
