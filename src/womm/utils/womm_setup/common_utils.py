@@ -22,7 +22,6 @@ import sys
 from pathlib import Path
 
 # Local imports
-from ...exceptions.womm_deployment import DeploymentUtilityError
 from ..common.path_resolver_utils import get_project_root
 
 # ///////////////////////////////////////////////////////////////
@@ -30,6 +29,13 @@ from ..common.path_resolver_utils import get_project_root
 # ///////////////////////////////////////////////////////////////
 
 logger = logging.getLogger(__name__)
+
+# ///////////////////////////////////////////////////////////////
+# CONSTANTS
+# ///////////////////////////////////////////////////////////////
+
+# Entry-point module that marks a directory as the womm package root.
+MAIN_MODULE = "__main__.py"
 
 # ///////////////////////////////////////////////////////////////
 # COMMON PATH UTILITIES
@@ -44,16 +50,9 @@ def get_default_womm_path() -> Path:
         Path: Path object pointing to the .womm directory in user's home.
 
     Raises:
-        InstallationUtilityError: If the home directory cannot be determined.
+        RuntimeError: If the home directory cannot be determined.
     """
-    try:
-        return Path.home() / ".womm"
-    except Exception as e:
-        # Wrap unexpected external exceptions
-        raise DeploymentUtilityError(
-            message="Failed to determine default WOMM path",
-            details=f"Exception type: {type(e).__name__}, Error: {e}",
-        ) from e
+    return Path.home() / ".womm"
 
 
 def get_current_womm_path() -> Path:
@@ -64,69 +63,35 @@ def get_current_womm_path() -> Path:
         Path: Path object pointing to the womm package directory (parent of __main__.py).
 
     Raises:
-        InstallationUtilityError: If the womm package directory cannot be found.
+        RuntimeError: If the womm package directory cannot be found.
     """
+    # First try: use project root if we're in development
+    potential_womm = get_project_root() / "womm" / MAIN_MODULE
+    if potential_womm.exists():
+        return potential_womm.parent
+
+    # Second try: import womm.__main__ directly
     try:
-        # First try: use project root if we're in development
-        try:
-            project_root = get_project_root()
-            potential_womm = project_root / "womm" / "__main__.py"
-            if potential_womm.exists():
-                return potential_womm.parent
-        except Exception as e:
-            logger.debug(f"Could not use project root method: {e}")
+        import womm.__main__
 
-        # Second try: import womm.__main__ directly
-        import_error: Exception | None = None
-        try:
-            import womm.__main__
+        return Path(womm.__main__.__file__).parent
+    except ImportError as import_error:
+        logger.warning(f"Failed to import womm.__main__: {import_error}")
 
-            __main__path = Path(womm.__main__.__file__)
-            womm_dir = __main__path.parent
-            return womm_dir
-        except ImportError as e:
-            import_error = e
-            logger.warning(f"Failed to import womm.__main__: {e}")
-            # Fallback: search in sys.path for __main__.py
-            for path in sys.path:
-                if path:
-                    try:
-                        potential_main = Path(path) / "womm" / "__main__.py"
-                        if potential_main.exists():
-                            return potential_main.parent
-                    except Exception as search_e:
-                        logger.warning(f"Failed to check path {path}: {search_e}")
-                        continue
+    # Third try: search sys.path for the package's __main__.py
+    for path in sys.path:
+        if path and (Path(path) / "womm" / MAIN_MODULE).exists():
+            return Path(path) / "womm"
 
-            # Last resort: try to find from current file location
-            try:
-                current_file = Path(__file__)
-                # Navigate up to find womm directory
-                for parent in current_file.parents:
-                    try:
-                        if (parent / "__main__.py").exists():
-                            return parent
-                    except Exception as parent_e:
-                        logger.warning(f"Failed to check parent {parent}: {parent_e}")
-                        continue
-            except Exception as file_e:
-                logger.warning(f"Failed to get current file path: {file_e}")
+    # Last resort: walk up from this file looking for a package root
+    for parent in Path(__file__).parents:
+        if (parent / MAIN_MODULE).exists():
+            return parent
 
-            # If all methods fail, raise the exception
-            raise DeploymentUtilityError(
-                message="Could not find womm package directory (__main__.py not found)",
-                details=f"All search methods failed, Import error: {import_error}",
-            ) from import_error
-
-    except DeploymentUtilityError:
-        # Re-raise specialized exceptions as-is
-        raise
-    except Exception as e:
-        # Wrap unexpected external exceptions
-        raise DeploymentUtilityError(
-            message=f"Unexpected error while finding womm package directory: {e}",
-            details=f"Exception type: {type(e).__name__}",
-        ) from e
+    raise RuntimeError(
+        "Could not find womm package directory (__main__.py not found): "
+        "project root, import, sys.path scan and parent walk all failed"
+    )
 
 
 def get_womm_installation_path() -> Path:
@@ -143,7 +108,7 @@ def get_womm_installation_path() -> Path:
             (e.g., ~/.womm or custom installation path).
 
     Raises:
-        InstallationUtilityError: If the installation path cannot be determined.
+        RuntimeError: If neither the current nor the default path can be determined.
     """
     try:
         # Get the current womm package directory
@@ -160,7 +125,7 @@ def get_womm_installation_path() -> Path:
 
         # Check if the parent directory looks like an installation directory
         # (it should contain the womm subdirectory)
-        if (installation_parent / "womm" / "__main__.py").exists():
+        if (installation_parent / "womm" / MAIN_MODULE).exists():
             # This looks like a valid installation directory
             logger.debug(f"Installation directory detected: {installation_parent}")
             return installation_parent
@@ -172,18 +137,12 @@ def get_womm_installation_path() -> Path:
         )
         return installation_parent
 
-    except DeploymentUtilityError:
+    except RuntimeError:
         # If get_current_womm_path() fails, fall back to default target path
         logger.warning(
             "Could not determine current womm path, using default target path"
         )
         return get_default_womm_path()
-    except Exception as e:
-        # For any other error, wrap and re-raise
-        raise DeploymentUtilityError(
-            message="Failed to determine WOMM installation path",
-            details=f"Exception type: {type(e).__name__}, Error: {e}",
-        ) from e
 
 
 def is_valid_womm_installation(installation_path: Path | None = None) -> bool:
@@ -214,7 +173,7 @@ def is_valid_womm_installation(installation_path: Path | None = None) -> bool:
             )
             return False
 
-        main_file = womm_dir / "__main__.py"
+        main_file = womm_dir / MAIN_MODULE
         if not main_file.is_file():
             logger.debug(
                 f"Invalid WOMM installation: __main__.py not found at {main_file}"
@@ -233,9 +192,6 @@ def is_valid_womm_installation(installation_path: Path | None = None) -> bool:
         logger.debug(f"Valid WOMM installation detected at {installation_path}")
         return True
 
-    except DeploymentUtilityError:
-        logger.debug("Could not validate WOMM installation path")
-        return False
-    except Exception as e:
+    except (RuntimeError, OSError) as e:
         logger.debug(f"Error validating WOMM installation: {e}")
         return False
