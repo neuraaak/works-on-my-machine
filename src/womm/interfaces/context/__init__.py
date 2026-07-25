@@ -17,7 +17,6 @@ from __future__ import annotations
 # IMPORTS
 # ///////////////////////////////////////////////////////////////
 # Local imports
-from .icon_interface import ContextIconInterface
 from .menu_interface import ContextMenuInterface
 from .registry_interface import ContextRegistryInterface
 from .script_detector_interface import ContextScriptDetectorInterface
@@ -27,7 +26,6 @@ from .script_detector_interface import ContextScriptDetectorInterface
 # ///////////////////////////////////////////////////////////////
 
 __all__ = [
-    "ContextIconInterface",
     "ContextMenuInterface",
     "ContextRegistryInterface",
     "ContextScriptDetectorInterface",

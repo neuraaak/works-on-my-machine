@@ -10,6 +10,8 @@ Backup manager for context menu operations.
 This module provides comprehensive backup management functionality
 for Windows context menu entries, including creation, validation,
 listing, and cleanup of backup files.
+
+This interface never raises: every public method returns a typed Result.
 """
 
 from __future__ import annotations
@@ -27,6 +29,13 @@ from pathlib import Path
 # Local imports
 from ...shared.configs.context import ContextTypesConfig
 from ...shared.configs.womm_setup import WOMMDeploymentConfig
+from ...shared.results import (
+    BackupCleanupResult,
+    BackupDataResult,
+    BackupFileInfo,
+    BackupFileListResult,
+    BackupFileResult,
+)
 from ..womm_setup.installer_interface import get_default_womm_path
 
 # ///////////////////////////////////////////////////////////////
@@ -49,33 +58,36 @@ class ContextRegistryInterface:
     def __init__(self):
         """Initialize the backup manager."""
         self.logger = logging.getLogger(__name__)
-        self.backup_dir = self._get_backup_directory()
+        self.backup_dir = self.get_backup_directory()
 
-    def _get_backup_directory(self) -> Path:
-        """Get the backup directory path."""
+    # ///////////////////////////////////////////////////////////////
+    # PUBLIC METHODS
+    # ///////////////////////////////////////////////////////////////
+
+    def get_backup_directory(self) -> Path:
+        """
+        Get the backup directory path, creating it if needed.
+
+        Falls back to the current directory when the WOMM installation is
+        unreachable; never raises.
+        """
         try:
             womm_path = get_default_womm_path()
             if womm_path.exists():
                 backup_dir = womm_path / ".backup" / "context_menu"
                 backup_dir.mkdir(parents=True, exist_ok=True)
                 return backup_dir
-        except Exception as e:
+        except OSError as e:
             self.logger.warning(f"Could not access WOMM backup directory: {e}")
-            # Fallback to current directory
-            return Path(".")
 
         return Path(".")
-
-    # ///////////////////////////////////////////////////////////////
-    # PUBLIC METHODS
-    # ///////////////////////////////////////////////////////////////
 
     def create_backup_file(
         self,
         entries: dict,
         custom_filename: str | None = None,
         add_timestamp: bool = True,
-    ) -> tuple[bool, str, dict]:
+    ) -> BackupFileResult:
         """
         Create a backup file with context menu entries.
 
@@ -85,19 +97,12 @@ class ContextRegistryInterface:
             add_timestamp: Whether to add timestamp to filename
 
         Returns:
-            Tuple of (success, filepath, metadata)
-
-        Raises:
-            ValueError: If entries is None or empty, or backup data cannot
-                be serialized
-            OSError: If the backup file cannot be written
+            BackupFileResult: written path and metadata; failure carries the error.
         """
-        if entries is None:
-            raise ValueError("Entries dictionary cannot be None")
-
         if not isinstance(entries, dict):
-            raise ValueError(
-                f"Entries must be a dictionary, got {type(entries).__name__}"
+            return BackupFileResult(
+                success=False,
+                error=f"Entries must be a dictionary, got {type(entries).__name__}",
             )
 
         # Generate filename
@@ -115,10 +120,23 @@ class ContextRegistryInterface:
         backup_data = self._create_backup_data(entries)
 
         # Write backup file
-        with open(filepath, "w", encoding="utf-8") as f:
-            json.dump(backup_data, f, indent=2, ensure_ascii=False)
+        try:
+            with open(filepath, "w", encoding="utf-8") as f:
+                json.dump(backup_data, f, indent=2, ensure_ascii=False)
+        except (OSError, TypeError, ValueError) as e:
+            return BackupFileResult(
+                success=False,
+                filepath=str(filepath),
+                error=f"Failed to write backup file: {e}",
+            )
 
-        return True, str(filepath), backup_data["metadata"]
+        return BackupFileResult(
+            success=True,
+            message=f"Backup written to {filepath}",
+            filepath=str(filepath),
+            metadata=backup_data["metadata"],
+            data=backup_data,
+        )
 
     # ///////////////////////////////////////////////////////////////
     # PRIVATE METHODS
@@ -155,75 +173,71 @@ class ContextRegistryInterface:
 
         return {"metadata": metadata, "entries": entries}
 
-    def list_backup_files(self, include_metadata: bool = True) -> list[dict]:
+    def list_backup_files(self, include_metadata: bool = True) -> BackupFileListResult:
         """
         List all available backup files with optional metadata.
+
+        A backup whose metadata cannot be read is still listed, with the
+        metadata fields left at their defaults.
 
         Args:
             include_metadata: Whether to include backup metadata
 
         Returns:
-            List of backup file information dictionaries
-
-        Raises:
-            OSError: If the backup directory cannot be accessed
+            BackupFileListResult: the discovered backups; failure carries the error.
         """
-        backup_files = []
-
-        # Find all backup files
         pattern = "context_menu_backup_*.json"
-        files = sorted(
-            self.backup_dir.glob(pattern),
-            key=lambda x: x.stat().st_mtime,
-            reverse=True,
-        )
+        try:
+            files = sorted(
+                self.backup_dir.glob(pattern),
+                key=lambda x: x.stat().st_mtime,
+                reverse=True,
+            )
+        except OSError as e:
+            return BackupFileListResult(
+                success=False,
+                backup_directory=str(self.backup_dir),
+                error=f"Could not access backup directory: {e}",
+            )
 
+        backups: list[BackupFileInfo] = []
         for file in files:
             try:
-                file_info = {
-                    "filename": file.name,
-                    "filepath": str(file),
-                    "size_bytes": file.stat().st_size,
-                    "modified_time": datetime.fromtimestamp(file.stat().st_mtime),
-                    "size_kb": file.stat().st_size / 1024,
-                }
+                stat = file.stat()
+            except OSError as e:
+                self.logger.warning(f"Failed to stat backup file {file.name}: {e}")
+                continue
 
-                if include_metadata:
-                    try:
-                        with open(file, encoding="utf-8") as f:
-                            data = json.load(f)
+            info = BackupFileInfo(
+                filename=file.name,
+                filepath=str(file),
+                size_bytes=stat.st_size,
+                modified_time=datetime.fromtimestamp(stat.st_mtime),
+            )
 
-                        metadata = data.get("metadata", {})
-                        file_info.update(
-                            {
-                                "entry_count": metadata.get("total_entries", 0),
-                                "backup_version": metadata.get("version", "unknown"),
-                                "backup_timestamp": metadata.get(
-                                    "timestamp", "unknown"
-                                ),
-                                "context_types": metadata.get("context_types", []),
-                            }
-                        )
-                    except (json.JSONDecodeError, PermissionError, OSError) as e:
-                        self.logger.warning(
-                            f"Failed to read metadata from {file.name}: {e}"
-                        )
-                        file_info.update(
-                            {
-                                "entry_count": 0,
-                                "backup_version": "unknown",
-                                "backup_timestamp": "unknown",
-                                "context_types": [],
-                            }
-                        )
+            if include_metadata:
+                try:
+                    with open(file, encoding="utf-8") as f:
+                        metadata = json.load(f).get("metadata", {})
+                    info.entry_count = metadata.get("total_entries", 0)
+                    info.backup_version = metadata.get("version", "unknown")
+                    info.backup_timestamp = metadata.get("timestamp", "unknown")
+                    info.context_types = metadata.get("context_types", [])
+                except (json.JSONDecodeError, OSError, AttributeError) as e:
+                    self.logger.warning(
+                        f"Failed to read metadata from {file.name}: {e}"
+                    )
 
-                backup_files.append(file_info)
-            except Exception as e:
-                self.logger.warning(f"Failed to process backup file {file.name}: {e}")
+            backups.append(info)
 
-        return backup_files
+        return BackupFileListResult(
+            success=True,
+            message=f"Found {len(backups)} backup file(s)",
+            backup_directory=str(self.backup_dir),
+            backups=backups,
+        )
 
-    def load_backup_file(self, filepath: str) -> tuple[bool, dict, str]:
+    def load_backup_file(self, filepath: str) -> BackupDataResult:
         """
         Load and validate a backup file.
 
@@ -231,28 +245,46 @@ class ContextRegistryInterface:
             filepath: Path to the backup file
 
         Returns:
-            Tuple of (success, data, error_message)
-
-        Raises:
-            ValueError: If filepath is None or empty
-            FileNotFoundError: If the backup file does not exist
-            OSError: If the backup file cannot be read
-            json.JSONDecodeError: If the backup file is not valid JSON
+            BackupDataResult: the parsed backup; failure carries the error.
         """
         if not filepath:
-            raise ValueError("Filepath cannot be None or empty")
+            return BackupDataResult(
+                success=False, error="Filepath cannot be None or empty"
+            )
 
         backup_path = Path(filepath)
         if not backup_path.exists():
-            raise FileNotFoundError(f"Backup file not found: {filepath}")
+            return BackupDataResult(
+                success=False,
+                filepath=filepath,
+                error=f"Backup file not found: {filepath}",
+            )
 
-        with open(backup_path, encoding="utf-8") as f:
-            data = json.load(f)
+        try:
+            with open(backup_path, encoding="utf-8") as f:
+                data = json.load(f)
+        except (json.JSONDecodeError, OSError) as e:
+            return BackupDataResult(
+                success=False,
+                filepath=filepath,
+                error=f"Could not read backup file: {e}",
+            )
 
         # Validate backup format
-        self._validate_backup_data(data)
+        try:
+            self._validate_backup_data(data)
+        except ValueError as e:
+            return BackupDataResult(
+                success=False, filepath=filepath, error=f"Invalid backup file: {e}"
+            )
 
-        return True, data, ""
+        return BackupDataResult(
+            success=True,
+            message=f"Loaded backup {backup_path.name}",
+            filepath=filepath,
+            data=data,
+            metadata=data.get("metadata", {}),
+        )
 
     def _validate_backup_data(self, data: dict) -> None:
         """
@@ -314,28 +346,33 @@ class ContextRegistryInterface:
 
     def cleanup_old_backups(
         self, max_files: int | None = None, retention_days: int | None = None
-    ) -> dict:
+    ) -> BackupCleanupResult:
         """
         Clean up old backup files.
+
+        Files that cannot be deleted are logged and counted as kept.
 
         Args:
             max_files: Maximum number of backup files to keep
             retention_days: Number of days to keep backups
 
         Returns:
-            Cleanup result dictionary
-
-        Raises:
-            ValueError: If parameters are invalid
+            BackupCleanupResult: deleted and kept files; failure carries the error.
         """
         if max_files is not None and (not isinstance(max_files, int) or max_files < 0):
-            raise ValueError(f"max_files must be a positive integer, got {max_files}")
+            return BackupCleanupResult(
+                success=False,
+                error=f"max_files must be a positive integer, got {max_files}",
+            )
 
         if retention_days is not None and (
             not isinstance(retention_days, int) or retention_days < 0
         ):
-            raise ValueError(
-                f"retention_days must be a positive integer, got {retention_days}"
+            return BackupCleanupResult(
+                success=False,
+                error=(
+                    f"retention_days must be a positive integer, got {retention_days}"
+                ),
             )
 
         if max_files is None:
@@ -343,47 +380,46 @@ class ContextRegistryInterface:
         if retention_days is None:
             retention_days = self.BACKUP_RETENTION_DAYS
 
-        backup_files = self.list_backup_files(include_metadata=False)
-        deleted_files = []
-        kept_files = []
+        listing = self.list_backup_files(include_metadata=False)
+        if not listing.success:
+            return BackupCleanupResult(success=False, error=listing.error)
+
+        deleted_files: list[str] = []
+        kept_files: list[str] = []
 
         # Sort by modification time (oldest first)
-        backup_files.sort(key=lambda x: x["modified_time"])
-
+        backups = sorted(
+            listing.backups or [], key=lambda b: b.modified_time or datetime.min
+        )
         cutoff_date = datetime.now() - timedelta(days=retention_days)
 
-        for file_info in backup_files:
-            file_path = Path(file_info["filepath"])
-            should_delete = False
+        for info in backups:
+            expired = (
+                info.modified_time is not None and info.modified_time < cutoff_date
+            )
+            over_limit = len(kept_files) >= max_files
 
-            # Check retention period
-            if file_info["modified_time"] < cutoff_date:
-                should_delete = True
+            if not (expired or over_limit):
+                kept_files.append(info.filename)
+                continue
 
-            # Check max files limit
-            if len(kept_files) >= max_files:
-                should_delete = True
+            try:
+                Path(info.filepath).unlink()
+                deleted_files.append(info.filename)
+            except OSError as e:
+                self.logger.warning(
+                    f"Could not delete backup file {info.filename}: {e}"
+                )
+                kept_files.append(info.filename)
 
-            if should_delete:
-                try:
-                    file_path.unlink()
-                    deleted_files.append(file_info["filename"])
-                except (PermissionError, OSError) as e:
-                    self.logger.warning(
-                        f"Could not delete backup file {file_info['filename']}: {e}"
-                    )
-            else:
-                kept_files.append(file_info["filename"])
+        return BackupCleanupResult(
+            success=True,
+            message=f"Deleted {len(deleted_files)} backup(s), kept {len(kept_files)}",
+            deleted_files=deleted_files,
+            kept_files=kept_files,
+        )
 
-        return {
-            "success": True,
-            "deleted_files": deleted_files,
-            "kept_files": kept_files,
-            "deleted_count": len(deleted_files),
-            "kept_count": len(kept_files),
-        }
-
-    def get_backup_info(self, filepath: str) -> dict:
+    def get_backup_info(self, filepath: str) -> BackupDataResult:
         """
         Get detailed information about a backup file.
 
@@ -391,47 +427,33 @@ class ContextRegistryInterface:
             filepath: Path to the backup file
 
         Returns:
-            Backup information dictionary
-
-        Raises:
-            ValueError: If filepath is None or empty
-            FileNotFoundError: If the backup file does not exist
-            OSError: If the backup file cannot be read
+            BackupDataResult: metadata plus per-context entry statistics;
+            failure carries the error.
         """
-        if not filepath:
-            raise ValueError("Filepath cannot be None or empty")
+        loaded = self.load_backup_file(filepath)
+        if not loaded.success:
+            return loaded
 
-        success, data, error = self.load_backup_file(filepath)
-        if not success:
-            return {"error": error}
-
-        metadata = data.get("metadata", {})
+        data = loaded.data or {}
         entries = data.get("entries", {})
 
         # Calculate additional statistics
-        entry_stats = {}
-        for context_type, context_entries in entries.items():
-            entry_stats[context_type] = {
+        entry_stats = {
+            context_type: {
                 "count": len(context_entries),
                 "sample_keys": [
                     entry.get("key_name", "unknown") for entry in context_entries[:5]
                 ],
             }
-
-        return {
-            "success": True,
-            "filepath": filepath,
-            "metadata": metadata,
-            "entry_stats": entry_stats,
-            "total_entries": metadata.get("total_entries", 0),
-            "backup_version": metadata.get("version", "unknown"),
-            "created": metadata.get("timestamp", "unknown"),
-            "platform": metadata.get("platform", "unknown"),
+            for context_type, context_entries in entries.items()
         }
+
+        loaded.entry_stats = entry_stats
+        return loaded
 
     def create_backup_copy(
         self, source_filepath: str, destination_filepath: str
-    ) -> tuple[bool, str]:
+    ) -> BackupFileResult:
         """
         Create a copy of a backup file.
 
@@ -440,36 +462,46 @@ class ContextRegistryInterface:
             destination_filepath: Destination backup file path
 
         Returns:
-            Tuple of (success, error_message)
-
-        Raises:
-            ValueError: If filepaths are None or empty
-            FileNotFoundError: If the source file does not exist
-            OSError: If the copy operation fails
+            BackupFileResult: the destination path; failure carries the error.
         """
         if not source_filepath:
-            raise ValueError("Source filepath cannot be None or empty")
+            return BackupFileResult(
+                success=False, error="Source filepath cannot be None or empty"
+            )
 
         if not destination_filepath:
-            raise ValueError("Destination filepath cannot be None or empty")
+            return BackupFileResult(
+                success=False, error="Destination filepath cannot be None or empty"
+            )
 
         source_path = Path(source_filepath)
         destination_path = Path(destination_filepath)
 
         if not source_path.exists():
-            raise FileNotFoundError(f"Source file not found: {source_filepath}")
+            return BackupFileResult(
+                success=False, error=f"Source file not found: {source_filepath}"
+            )
 
-        # Create destination directory if needed
-        destination_path.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            # Create destination directory if needed
+            destination_path.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(source_path, destination_path)
+        except OSError as e:
+            return BackupFileResult(
+                success=False,
+                filepath=str(destination_path),
+                error=f"Failed to copy backup file: {e}",
+            )
 
-        # Copy the file
-        shutil.copy2(source_path, destination_path)
-
-        return True, ""
+        return BackupFileResult(
+            success=True,
+            message=f"Copied backup to {destination_path}",
+            filepath=str(destination_path),
+        )
 
     def merge_backups(
         self, backup_filepaths: list[str], output_filepath: str
-    ) -> tuple[bool, str, dict]:
+    ) -> BackupFileResult:
         """
         Merge multiple backup files into a single backup.
 
@@ -478,40 +510,40 @@ class ContextRegistryInterface:
             output_filepath: Output backup file path
 
         Returns:
-            Tuple of (success, error_message, merged_data)
-
-        Raises:
-            ValueError: If parameters are invalid
-            FileNotFoundError: If a source backup file does not exist
-            OSError: If a backup file cannot be read or written
-            json.JSONDecodeError: If a source backup file is not valid JSON
+            BackupFileResult: the written merge; failure carries the error.
         """
         if not backup_filepaths:
-            raise ValueError("Backup filepaths list cannot be empty")
+            return BackupFileResult(
+                success=False, error="Backup filepaths list cannot be empty"
+            )
 
         if not output_filepath:
-            raise ValueError("Output filepath cannot be None or empty")
+            return BackupFileResult(
+                success=False, error="Output filepath cannot be None or empty"
+            )
 
-        merged_entries = {ctx_type: [] for ctx_type in ContextTypesConfig.ALL_TYPES}
-        merged_from: list[str] = []
-        merged_metadata = {
-            "version": self.BACKUP_VERSION,
-            "timestamp": datetime.now().isoformat(),
-            "platform": "Windows",
-            "merged_from": merged_from,
-            "total_entries": 0,
+        merged_entries: dict[str, list] = {
+            ctx_type: [] for ctx_type in ContextTypesConfig.ALL_TYPES
         }
+        merged_from: list[str] = []
 
         # Load and merge each backup
         for filepath in backup_filepaths:
-            _, data, _ = self.load_backup_file(filepath)
+            loaded = self.load_backup_file(filepath)
+            if not loaded.success:
+                return BackupFileResult(
+                    success=False,
+                    error=f"Could not merge {filepath}: {loaded.error}",
+                )
+
+            data = loaded.data or {}
 
             # Add to merged entries (avoid duplicates by key_name)
-            existing_keys = set()
-            for context_type in ["directory", "background"]:
-                existing_keys.update(
-                    entry.get("key_name") for entry in merged_entries[context_type]
-                )
+            existing_keys = {
+                entry.get("key_name")
+                for context_type in ["directory", "background"]
+                for entry in merged_entries[context_type]
+            }
 
             for context_type in ["directory", "background"]:
                 for entry in data.get("entries", {}).get(context_type, []):
@@ -520,20 +552,14 @@ class ContextRegistryInterface:
                         merged_entries[context_type].append(entry)
                         existing_keys.add(key_name)
 
-            # Update metadata
             merged_from.append(filepath)
 
-        # Calculate total entries
-        total_entries = sum(
-            len(merged_entries[context_type])
-            for context_type in ["directory", "background"]
+        # Save merged backup — create_backup_file rebuilds the metadata block
+        written = self.create_backup_file(
+            merged_entries, output_filepath, add_timestamp=False
         )
-        merged_metadata["total_entries"] = total_entries
+        if not written.success:
+            return written
 
-        # Create merged backup data
-        merged_data = {"metadata": merged_metadata, "entries": merged_entries}
-
-        # Save merged backup
-        self.create_backup_file(merged_entries, output_filepath, add_timestamp=False)
-
-        return True, "", merged_data
+        written.message = f"Merged {len(merged_from)} backup(s) into {written.filepath}"
+        return written

@@ -38,10 +38,12 @@ from ...shared.results.context_results import (
     ContextRestoreResult,
     ContextSetupResult,
     ContextStatusResult,
+    ScriptInfoResult,
     ScriptRegistrationResult,
     ScriptUnregistrationResult,
+    ScriptValidationResult,
 )
-from .icon_interface import ContextIconInterface
+from ...utils.context import ContextIconResolver
 from .registry_interface import ContextRegistryInterface
 from .script_detector_interface import ContextScriptDetectorInterface, ScriptType
 
@@ -57,7 +59,7 @@ class ContextMenuInterface:
         """Initialize the context menu manager with all required components."""
         self.logger = logging.getLogger(__name__)
         self._script_detector: ContextScriptDetectorInterface | None = None
-        self._icon_manager: ContextIconInterface | None = None
+        self._icon_manager: ContextIconResolver | None = None
         self._registry_service: ContextRegistryService | None = None
         self._backup_manager: ContextRegistryInterface | None = None
         self._validation_service: ContextValidationService | None = None
@@ -74,10 +76,10 @@ class ContextMenuInterface:
         return self._script_detector
 
     @property
-    def icon_manager(self) -> ContextIconInterface:
-        """Lazy load ContextIconInterface when needed."""
+    def icon_manager(self) -> ContextIconResolver:
+        """Lazy load ContextIconResolver when needed."""
         if self._icon_manager is None:
-            self._icon_manager = ContextIconInterface()
+            self._icon_manager = ContextIconResolver()
         return self._icon_manager
 
     @property
@@ -145,21 +147,18 @@ class ContextMenuInterface:
                 raise ValueError(f"Validation process failed: {e}") from e
 
             # Detect script type and get info
-            try:
-                script_info = ContextScriptDetectorInterface.get_script_info(
-                    script_path
-                )
-                script_type = script_info["type"]
-            except Exception as e:
-                raise RuntimeError(f"Failed to detect script type: {e}") from e
+            script_info = ContextScriptDetectorInterface.get_script_info(script_path)
+            if not script_info.success:
+                raise RuntimeError(f"Failed to detect script type: {script_info.error}")
+            script_type = script_info.script_type
 
             # Resolve icon
             try:
                 icon_path = self.icon_manager.resolve_icon(icon or "auto", script_path)
                 if icon_path is None and icon and icon.lower() != "auto":
                     # Fallback to default icon for script type
-                    icon_path = script_info["default_icon"]
-            except Exception as e:
+                    icon_path = script_info.default_icon
+            except (ValueError, OSError) as e:
                 self.logger.warning(f"Failed to resolve icon for {script_path}: {e}")
                 icon_path = None
 
@@ -172,7 +171,7 @@ class ContextMenuInterface:
                 raise RuntimeError(f"Failed to generate registry key name: {e}") from e
 
             # Build command
-            command = script_info["command"]
+            command = script_info.command
 
             # Default context parameters (directory + background) when none given
             if context_params is None:
@@ -529,32 +528,27 @@ class ContextMenuInterface:
                 success=False, error="Backup file path cannot be None or empty"
             )
 
-        try:
-            entries_result = self.list_entries()
-            entries = entries_result.entries or {}
-        except Exception as e:
+        entries_result = self.list_entries()
+        if not entries_result.success:
             return ContextBackupResult(
-                success=False, error=f"Failed to get current entries: {e}"
+                success=False,
+                error=f"Failed to get current entries: {entries_result.error}",
             )
 
-        try:
-            success, filepath, metadata = self.backup_manager.create_backup_file(
-                entries, custom_filename=Path(backup_file).stem, add_timestamp=False
-            )
-        except Exception as e:
+        written = self.backup_manager.create_backup_file(
+            entries_result.entries or {},
+            custom_filename=Path(backup_file).stem,
+            add_timestamp=False,
+        )
+        if not written.success:
             return ContextBackupResult(
-                success=False, error=f"Failed to create backup: {e}"
-            )
-
-        if not success:
-            return ContextBackupResult(
-                success=False, error=f"Backup creation failed: {filepath}"
+                success=False, error=f"Failed to create backup: {written.error}"
             )
 
         return ContextBackupResult(
             success=True,
-            backup_file=filepath,
-            entry_count=metadata.get("total_entries", 0),
+            backup_file=written.filepath,
+            entry_count=(written.metadata or {}).get("total_entries", 0),
         )
 
     def restore_entries(self, backup_file: str) -> ContextRestoreResult:
@@ -572,16 +566,16 @@ class ContextMenuInterface:
                 success=False, error="Backup file path cannot be None or empty"
             )
 
-        try:
-            _, data, _ = self.backup_manager.load_backup_file(backup_file)
-        except Exception as e:
+        loaded = self.backup_manager.load_backup_file(backup_file)
+        if not loaded.success:
             return ContextRestoreResult(
-                success=False, error=f"Backup loading failed: {e}"
+                success=False, error=f"Backup loading failed: {loaded.error}"
             )
+        data = loaded.data or {}
 
         try:
             result = self.registry_service.restore_registry_entries(data)
-        except Exception as e:
+        except ContextServiceError as e:
             return ContextRestoreResult(
                 success=False, error=f"Failed to restore registry entries: {e}"
             )
@@ -597,63 +591,50 @@ class ContextMenuInterface:
             entry_count=data.get("metadata", {}).get("total_entries", 0),
         )
 
-    def get_script_info(self, script_path: str) -> dict[str, object]:
+    def get_script_info(self, script_path: str) -> ScriptInfoResult:
         """
         Get comprehensive information about a script.
+
+        Enriches the detector's result with the resolved icon and the registry
+        key name. Neither enrichment can fail the call: both degrade to ``None``
+        and are logged.
 
         Args:
             script_path: Path to the script
 
         Returns:
-            Dict containing script information
-
-        Raises:
-            ValueError: If script_path is invalid or script detection fails
+            ScriptInfoResult: script details; failure carries the error.
         """
+        if not script_path:
+            return ScriptInfoResult(
+                success=False, error="Script path cannot be None or empty"
+            )
+
+        script_info = ContextScriptDetectorInterface.get_script_info(script_path)
+        if not script_info.success:
+            return script_info
+
         try:
-            # Input validation
-            if not script_path:
-                raise ValueError("Script path cannot be None or empty")
+            script_info.resolved_icon = self.icon_manager.resolve_icon(
+                "auto", script_path
+            )
+        except (ValueError, OSError) as e:
+            self.logger.warning(f"Failed to resolve icon for {script_path}: {e}")
+            script_info.resolved_icon = None
 
-            # Get script info
-            try:
-                script_info = ContextScriptDetectorInterface.get_script_info(
-                    script_path
-                )
-            except Exception as e:
-                raise ValueError(f"Failed to get script information: {e}") from e
+        try:
+            script_info.registry_key = self.registry_service.generate_registry_key_name(
+                script_path
+            )
+        except (ContextServiceError, ValueError) as e:
+            self.logger.warning(
+                f"Failed to generate registry key for {script_path}: {e}"
+            )
+            script_info.registry_key = None
 
-            # Add icon information
-            try:
-                icon_path = self.icon_manager.resolve_icon("auto", script_path)
-                script_info["resolved_icon"] = icon_path
-            except Exception as e:
-                self.logger.warning(f"Failed to resolve icon for {script_path}: {e}")
-                script_info["resolved_icon"] = None
+        return script_info
 
-            # Add registry key name
-            try:
-                registry_key = self.registry_service.generate_registry_key_name(
-                    script_path
-                )
-                script_info["registry_key"] = registry_key
-            except Exception as e:
-                self.logger.warning(
-                    f"Failed to generate registry key for {script_path}: {e}"
-                )
-                script_info["registry_key"] = None
-
-            return {
-                "success": True,
-                "info": script_info,
-            }
-
-        except ValueError:
-            raise
-        except Exception as e:
-            raise ValueError(f"Unexpected error getting script info: {e}") from e
-
-    def validate_script(self, script_path: str) -> dict[str, object]:
+    def validate_script(self, script_path: str) -> ScriptValidationResult:
         """
         Validate if a script can be registered in context menu.
 
@@ -661,74 +642,79 @@ class ContextMenuInterface:
             script_path: Path to the script
 
         Returns:
-            Dict containing validation result
-
-        Raises:
-            ValueError: If script_path is invalid or validation fails
+            ScriptValidationResult: validity plus the permission and
+            compatibility findings; failure carries the error.
         """
+        if not script_path:
+            return ScriptValidationResult(
+                success=False, error="Script path cannot be None or empty"
+            )
+
+        # Use ContextValidationService for comprehensive validation
         try:
-            # Input validation
-            if not script_path:
-                raise ValueError("Script path cannot be None or empty")
+            validation_result = self.validation_service.validate_script_path(
+                script_path
+            )
+        except (ContextServiceError, ValueError, OSError) as e:
+            return ScriptValidationResult(
+                success=False,
+                script_path=script_path,
+                error=f"Validation process failed: {e}",
+            )
 
-            # Use ContextValidationService for comprehensive validation
-            try:
-                validation_result = self.validation_service.validate_script_path(
-                    script_path
-                )
-                if not validation_result.success:
-                    raise ValueError(validation_result.error or "Validation failed")
-            except Exception as e:
-                if isinstance(e, ValueError):
-                    raise
-                raise ValueError(f"Validation process failed: {e}") from e
+        if not validation_result.success:
+            return ScriptValidationResult(
+                success=False,
+                script_path=script_path,
+                error=validation_result.error or "Validation failed",
+            )
 
-            # Get script info
-            try:
-                script_info = ContextScriptDetectorInterface.get_script_info(
-                    script_path
-                )
-                script_type = script_info["type"]
-            except Exception as e:
-                raise ValueError(
-                    f"Failed to get script info during validation: {e}"
-                ) from e
+        script_info = ContextScriptDetectorInterface.get_script_info(script_path)
+        if not script_info.success:
+            return ScriptValidationResult(
+                success=False,
+                script_path=script_path,
+                error=f"Failed to get script info during validation: {script_info.error}",
+            )
 
-            # Check if script type is supported
-            if script_type == ScriptType.UNKNOWN:
-                raise ValueError(f"Unsupported script type: {Path(script_path).suffix}")
+        if script_info.script_type == ScriptType.UNKNOWN:
+            return ScriptValidationResult(
+                success=False,
+                script_path=script_path,
+                script_type=script_info.script_type,
+                error=f"Unsupported script type: {Path(script_path).suffix}",
+            )
 
-            # Check if command can be built
-            command = script_info["command"]
-            if not command:
-                raise ValueError("Could not build execution command")
+        if not script_info.command:
+            return ScriptValidationResult(
+                success=False,
+                script_path=script_path,
+                script_type=script_info.script_type,
+                error="Could not build execution command",
+            )
 
-            # Check permissions and compatibility
-            try:
-                permission_check = self.validation_service.check_permissions()
-                compatibility_check = (
-                    self.validation_service.validate_windows_compatibility()
-                )
-            except Exception as e:
-                self.logger.warning(f"Failed to check permissions/compatibility: {e}")
-                permission_check = ContextValidationResult(success=False, error=str(e))
-                compatibility_check = ContextValidationResult(
-                    success=False, error=str(e)
-                )
+        # Permission and compatibility findings are reported, not fatal
+        try:
+            permission_check = self.validation_service.check_permissions()
+            compatibility_check = (
+                self.validation_service.validate_windows_compatibility()
+            )
+        except (ContextServiceError, ValueError, OSError) as e:
+            self.logger.warning(f"Failed to check permissions/compatibility: {e}")
+            permission_check = ContextValidationResult(success=False, error=str(e))
+            compatibility_check = ContextValidationResult(success=False, error=str(e))
 
-            return {
-                "valid": True,
-                "script_type": script_type,
-                "command": command,
-                "validation_details": validation_result,
-                "permissions": permission_check,
-                "compatibility": compatibility_check,
-            }
-
-        except ValueError:
-            raise
-        except Exception as e:
-            raise ValueError(f"Unexpected error during script validation: {e}") from e
+        return ScriptValidationResult(
+            success=True,
+            message=f"{script_info.script_type} script can be registered",
+            script_path=script_path,
+            script_type=script_info.script_type,
+            command=script_info.command,
+            permissions_ok=permission_check.success,
+            permissions_error=permission_check.error or "",
+            compatibility_ok=compatibility_check.success,
+            compatibility_error=compatibility_check.error or "",
+        )
 
     # ///////////////////////////////////////////////////////////////
     # PLATFORM AND UTILITY METHODS
@@ -742,7 +728,7 @@ class ContextMenuInterface:
 
     def get_backup_directory(self) -> Path:
         """Get the backup directory path, creating it if needed."""
-        return self.backup_manager._get_backup_directory()
+        return self.backup_manager.get_backup_directory()
 
     def collect_entries_from_backups(self) -> list[dict]:
         """

@@ -30,6 +30,8 @@ from womm.exceptions.context import ContextServiceError
 from womm.interfaces.context.menu_interface import ContextMenuInterface
 from womm.services.context import ContextParametersService
 from womm.shared.results.context_results import (
+    BackupDataResult,
+    BackupFileResult,
     ContextBackupResult,
     ContextEntriesResult,
     ContextRegistryResult,
@@ -80,7 +82,7 @@ class _FakeValidationService:
 
 
 class _FakeIconManager:
-    """Stand-in for ContextIconInterface."""
+    """Stand-in for ContextIconResolver."""
 
     def __init__(self, icon_path: str | None = "resolved.ico"):
         self._icon_path = icon_path
@@ -153,33 +155,35 @@ class _FakeRegistryService:
 
 
 class _FakeBackupManager:
-    """Stand-in for ContextRegistryInterface (backup file I/O)."""
+    """Stand-in for ContextRegistryInterface (backup file I/O).
+
+    Mirrors the real contract: both methods return a Result and never raise.
+    """
 
     def __init__(
         self,
-        create_result: tuple[bool, str, dict] = (True, "backup.json", {}),
-        create_error: Exception | None = None,
-        load_result: tuple[bool, dict, dict] = (True, {}, {}),
-        load_error: Exception | None = None,
+        create_result: BackupFileResult | None = None,
+        load_result: BackupDataResult | None = None,
         backup_dir: Path = Path("backups"),
     ):
-        self._create_result = create_result
-        self._create_error = create_error
-        self._load_result = load_result
-        self._load_error = load_error
+        # NB: `or` would discard a failure Result — BaseResult.__bool__ is `success`
+        self._create_result = (
+            BackupFileResult(success=True, filepath="backup.json")
+            if create_result is None
+            else create_result
+        )
+        self._load_result = (
+            BackupDataResult(success=True) if load_result is None else load_result
+        )
         self._backup_dir = backup_dir
 
     def create_backup_file(self, entries, custom_filename, add_timestamp):
-        if self._create_error is not None:
-            raise self._create_error
         return self._create_result
 
     def load_backup_file(self, backup_file):
-        if self._load_error is not None:
-            raise self._load_error
         return self._load_result
 
-    def _get_backup_directory(self) -> Path:
+    def get_backup_directory(self) -> Path:
         return self._backup_dir
 
 
@@ -426,7 +430,11 @@ class TestBackupEntries:
     def test_success_returns_backup_result(self):
         interface = _interface(
             backup=_FakeBackupManager(
-                create_result=(True, "backup.json", {"total_entries": 5})
+                create_result=BackupFileResult(
+                    success=True,
+                    filepath="backup.json",
+                    metadata={"total_entries": 5},
+                )
             )
         )
 
@@ -445,9 +453,11 @@ class TestBackupEntries:
         assert result.success is False
         assert "Backup file path" in result.error
 
-    def test_backup_manager_error_is_translated_not_reraised(self):
+    def test_backup_manager_error_is_surfaced_not_reraised(self):
         interface = _interface(
-            backup=_FakeBackupManager(create_error=OSError("disk full"))
+            backup=_FakeBackupManager(
+                create_result=BackupFileResult(success=False, error="disk full")
+            )
         )
 
         result = interface.backup_entries("backup.json")
@@ -457,7 +467,9 @@ class TestBackupEntries:
 
     def test_backup_creation_failure_is_reported(self):
         interface = _interface(
-            backup=_FakeBackupManager(create_result=(False, "error detail", {}))
+            backup=_FakeBackupManager(
+                create_result=BackupFileResult(success=False, error="error detail")
+            )
         )
 
         result = interface.backup_entries("backup.json")
@@ -472,7 +484,9 @@ class TestRestoreEntries:
     def test_success_returns_restore_result(self):
         interface = _interface(
             backup=_FakeBackupManager(
-                load_result=(True, {"metadata": {"total_entries": 4}}, {})
+                load_result=BackupDataResult(
+                    success=True, data={"metadata": {"total_entries": 4}}
+                )
             ),
             registry=_FakeRegistryService(
                 restore_result=ContextRegistryResult(success=True)
@@ -493,9 +507,11 @@ class TestRestoreEntries:
         assert result.success is False
         assert "Backup file path" in result.error
 
-    def test_load_failure_is_translated_not_reraised(self):
+    def test_load_failure_is_surfaced_not_reraised(self):
         interface = _interface(
-            backup=_FakeBackupManager(load_error=FileNotFoundError("missing"))
+            backup=_FakeBackupManager(
+                load_result=BackupDataResult(success=False, error="missing")
+            )
         )
 
         result = interface.restore_entries("backup.json")

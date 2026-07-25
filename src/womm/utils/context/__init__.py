@@ -31,12 +31,14 @@ from .core_utils import (
     validate_label,
     validate_registry_key,
 )
+from .icon_utils import ContextIconResolver
 
 # ///////////////////////////////////////////////////////////////
 # PUBLIC API
 # ///////////////////////////////////////////////////////////////
 
 __all__ = [
+    "ContextIconResolver",
     "build_command_with_parameter",
     "generate_registry_key_name",
     "get_available_file_types",

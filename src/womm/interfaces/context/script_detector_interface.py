@@ -9,6 +9,9 @@ Script type detection and configuration for context menu entries.
 
 This module provides automatic detection of script types and appropriate
 configuration including icons and command building.
+
+This interface never raises: :meth:`get_script_info` returns a typed Result.
+The lookup helpers it composes are total functions over ``ScriptConfig``.
 """
 
 from __future__ import annotations
@@ -21,11 +24,13 @@ import logging
 import os
 import shutil
 from pathlib import Path
-from typing import Any, ClassVar
+from typing import ClassVar
 
 # Local imports
+from ...exceptions.common import CommandServiceError
 from ...services import CommandRunnerService
 from ...shared.configs.context import ScriptConfig
+from ...shared.results import ScriptInfoResult
 
 # ///////////////////////////////////////////////////////////////
 # MAIN CLASS
@@ -59,22 +64,16 @@ class ContextScriptDetectorInterface:
         """
         Detect script type from file extension.
 
+        Total function: an empty or unrecognized path yields ``ScriptType.UNKNOWN``.
+
         Args:
             file_path: Path to the script file
 
         Returns:
             Script type string
-
-        Raises:
-            ValueError: If file_path is invalid
         """
         if not file_path:
-            raise ValueError("File path cannot be None or empty")
-
-        if not isinstance(file_path, str):
-            raise ValueError(
-                f"File path must be a string, got {type(file_path).__name__}"
-            )
+            return ScriptType.UNKNOWN
 
         ext = Path(file_path).suffix.lower()
         return cls.EXTENSIONS.get(ext, ScriptType.UNKNOWN)
@@ -88,19 +87,8 @@ class ContextScriptDetectorInterface:
             script_type: Type of script
 
         Returns:
-            Default icon path or None
-
-        Raises:
-            ValueError: If script_type is invalid
+            Default icon path, or None when the type has no default
         """
-        if not script_type:
-            raise ValueError("Script type cannot be None or empty")
-
-        if not isinstance(script_type, str):
-            raise ValueError(
-                f"Script type must be a string, got {type(script_type).__name__}"
-            )
-
         return cls.DEFAULT_ICONS.get(script_type)
 
     @classmethod
@@ -112,110 +100,12 @@ class ContextScriptDetectorInterface:
             script_type: Type of script
 
         Returns:
-            Context parameters string
-
-        Raises:
-            ValueError: If script_type is invalid
+            Context parameters string (``%V`` when the type is unknown)
         """
-        if not script_type:
-            raise ValueError("Script type cannot be None or empty")
-
-        if not isinstance(script_type, str):
-            raise ValueError(
-                f"Script type must be a string, got {type(script_type).__name__}"
-            )
-
         return cls.CONTEXT_PARAMS.get(script_type, "%V")
 
     @classmethod
-    def build_command(
-        cls, script_type: str, script_path: str, context_params: str | None = None
-    ) -> str:
-        """
-        Build appropriate command for script type.
-
-        Args:
-            script_type: Type of script
-            script_path: Path to the script
-            context_params: Context parameters (optional)
-
-        Returns:
-            Built command string
-
-        Raises:
-            ValueError: If parameters are invalid
-            OSError: If the script path cannot be resolved
-        """
-        if not script_type:
-            raise ValueError("Script type cannot be None or empty")
-
-        if not script_path:
-            raise ValueError("Script path cannot be None or empty")
-
-        if not isinstance(script_type, str):
-            raise ValueError(
-                f"Script type must be a string, got {type(script_type).__name__}"
-            )
-
-        if not isinstance(script_path, str):
-            raise ValueError(
-                f"Script path must be a string, got {type(script_path).__name__}"
-            )
-
-        if context_params is not None and not isinstance(context_params, str):
-            raise ValueError(
-                f"Context params must be a string, got {type(context_params).__name__}"
-            )
-
-        if context_params is None:
-            context_params = cls.get_context_params(script_type)
-
-        # Convert relative path to absolute path
-        script_abs_path = os.path.abspath(script_path)
-
-        if script_type == ScriptType.PYTHON:
-            # Use the same logic as RuntimeManager to find Python
-            command_runner = CommandRunnerService()
-
-            for cmd in ScriptConfig.PYTHON_INTERPRETERS:
-                try:
-                    availability_result = command_runner.check_command_available(cmd)
-                    if availability_result.is_available:
-                        try:
-                            result = command_runner.run([cmd, "--version"])
-                            if result.returncode == 0 and result.stdout.strip():
-                                version = result.stdout.strip().split()[1]
-                                version_parts = [int(x) for x in version.split(".")]
-                                if version_parts >= ScriptConfig.MINIMUM_PYTHON_VERSION:
-                                    python_exe = shutil.which(cmd)
-                                    if python_exe:
-                                        return f'"{python_exe}" "{script_abs_path}" "{context_params}"'
-                        except (IndexError, ValueError) as e:
-                            logging.getLogger(__name__).warning(
-                                f"Failed to parse Python version for {cmd}: {e}"
-                            )
-                            continue
-                except Exception as e:
-                    logging.getLogger(__name__).warning(
-                        f"Failed to check command availability for {cmd}: {e}"
-                    )
-                    continue
-
-            # Fallback: try py launcher directly
-            return f'{ScriptConfig.PYTHON_LAUNCHER_FALLBACK} "{script_abs_path}" "{context_params}"'
-
-        elif script_type == ScriptType.POWERSHELL:
-            return f'{ScriptConfig.POWERSHELL_COMMAND_TEMPLATE} "{script_abs_path}" "{context_params}"'
-
-        elif script_type in (ScriptType.BATCH, ScriptType.EXECUTABLE):
-            return f'"{script_abs_path}" "{context_params}"'
-
-        else:
-            # Unknown type, try to execute directly
-            return f'"{script_abs_path}" "{context_params}"'
-
-    @classmethod
-    def get_script_info(cls, file_path: str) -> dict[str, Any]:
+    def get_script_info(cls, file_path: str) -> ScriptInfoResult:
         """
         Get comprehensive script information.
 
@@ -223,26 +113,96 @@ class ContextScriptDetectorInterface:
             file_path: Path to the script file
 
         Returns:
-            Dictionary containing script information
-
-        Raises:
-            ValueError: If file_path is invalid
-            OSError: If the script path cannot be resolved
+            ScriptInfoResult: detected type, icon, context params and the
+            execution command; failure carries the error.
         """
         if not file_path:
-            raise ValueError("File path cannot be None or empty")
-
-        if not isinstance(file_path, str):
-            raise ValueError(
-                f"File path must be a string, got {type(file_path).__name__}"
+            return ScriptInfoResult(
+                success=False, error="File path cannot be None or empty"
             )
 
         script_type = cls.detect_type(file_path)
+        context_params = cls.get_context_params(script_type)
 
-        return {
-            "type": script_type,
-            "extension": Path(file_path).suffix.lower(),
-            "default_icon": cls.get_default_icon(script_type),
-            "context_params": cls.get_context_params(script_type),
-            "command": cls.build_command(script_type, file_path),
-        }
+        try:
+            command = cls._build_command(script_type, file_path, context_params)
+        except OSError as e:
+            return ScriptInfoResult(
+                success=False,
+                script_path=file_path,
+                script_type=script_type,
+                error=f"Could not resolve script path: {e}",
+            )
+
+        return ScriptInfoResult(
+            success=True,
+            message=f"Detected {script_type} script",
+            script_path=file_path,
+            script_type=script_type,
+            extension=Path(file_path).suffix.lower(),
+            default_icon=cls.get_default_icon(script_type),
+            context_params=context_params,
+            command=command,
+        )
+
+    # ///////////////////////////////////////////////////////////////
+    # PRIVATE METHODS
+    # ///////////////////////////////////////////////////////////////
+
+    @classmethod
+    def _resolve_python_interpreter(cls) -> str | None:
+        """Return the first configured interpreter meeting the minimum version."""
+        command_runner = CommandRunnerService()
+
+        for cmd in ScriptConfig.PYTHON_INTERPRETERS:
+            try:
+                if not command_runner.check_command_available(cmd).is_available:
+                    continue
+                result = command_runner.run([cmd, "--version"])
+                if result.returncode != 0 or not result.stdout.strip():
+                    continue
+                version = result.stdout.strip().split()[1]
+                version_parts = [int(x) for x in version.split(".")]
+            except (CommandServiceError, IndexError, ValueError) as e:
+                logging.getLogger(__name__).warning(
+                    f"Failed to probe Python interpreter {cmd}: {e}"
+                )
+                continue
+
+            if version_parts >= ScriptConfig.MINIMUM_PYTHON_VERSION:
+                python_exe = shutil.which(cmd)
+                if python_exe:
+                    return python_exe
+
+        return None
+
+    @classmethod
+    def _build_command(
+        cls, script_type: str, script_path: str, context_params: str
+    ) -> str:
+        """
+        Build the execution command for a script type.
+
+        Raises:
+            OSError: If the script path cannot be resolved to an absolute path.
+        """
+        script_abs_path = os.path.abspath(script_path)
+
+        if script_type == ScriptType.PYTHON:
+            python_exe = cls._resolve_python_interpreter()
+            if python_exe:
+                return f'"{python_exe}" "{script_abs_path}" "{context_params}"'
+            # Fallback: try py launcher directly
+            return (
+                f"{ScriptConfig.PYTHON_LAUNCHER_FALLBACK} "
+                f'"{script_abs_path}" "{context_params}"'
+            )
+
+        if script_type == ScriptType.POWERSHELL:
+            return (
+                f"{ScriptConfig.POWERSHELL_COMMAND_TEMPLATE} "
+                f'"{script_abs_path}" "{context_params}"'
+            )
+
+        # Batch, executable, and unknown types are executed directly
+        return f'"{script_abs_path}" "{context_params}"'

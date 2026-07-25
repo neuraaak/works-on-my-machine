@@ -1,14 +1,17 @@
 #!/usr/bin/env python3
 # ///////////////////////////////////////////////////////////////
-# ICON INTERFACE - Context Icon Management
+# ICON UTILS - Context Icon Resolution
 # Project: works-on-my-machine
 # ///////////////////////////////////////////////////////////////
 
 """
-Icon management for context menu entries.
+Icon resolution for context menu entries.
 
 This module provides icon detection, validation, and management for
 context menu entries with automatic icon selection based on file extensions.
+
+Pure lookup over :class:`IconConfig` plus filesystem probes; raises stdlib
+exceptions on invalid input, per the utils-layer contract.
 """
 
 from __future__ import annotations
@@ -31,7 +34,7 @@ from ...shared.configs.context import IconConfig
 # ///////////////////////////////////////////////////////////////
 
 
-class ContextIconInterface:
+class ContextIconResolver:
     """Manage icons for context menu entries."""
 
     # Use configuration from IconConfig
@@ -134,7 +137,7 @@ class ContextIconInterface:
                 full_path = os.path.join(system_path, file_path)
                 if os.path.exists(full_path):
                     return True
-            except (OSError, PermissionError) as e:
+            except OSError as e:
                 # Log warning but continue checking other paths
                 logging.getLogger(__name__).warning(
                     f"Failed to check system path {system_path}: {e}"
@@ -179,7 +182,7 @@ class ContextIconInterface:
             system_icon = cls.get_system_icon(icon_input)
             if system_icon:
                 return system_icon
-        except Exception as e:
+        except ValueError as e:
             # Log warning but continue with other resolution methods
             logging.getLogger(__name__).warning(
                 f"Failed to get system icon '{icon_input}': {e}"
@@ -189,7 +192,7 @@ class ContextIconInterface:
         try:
             if cls.validate_icon_path(icon_input):
                 return icon_input
-        except Exception as e:
+        except (ValueError, OSError) as e:
             # Log warning but continue with system path search
             logging.getLogger(__name__).warning(
                 f"Failed to validate icon path '{icon_input}': {e}"
@@ -201,7 +204,7 @@ class ContextIconInterface:
                 full_path = os.path.join(system_path, icon_input)
                 if os.path.exists(full_path):
                     return full_path
-            except (OSError, PermissionError) as e:
+            except OSError as e:
                 # Log warning but continue checking other paths
                 logging.getLogger(__name__).warning(
                     f"Failed to check system path {system_path}: {e}"

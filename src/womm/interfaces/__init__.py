@@ -18,7 +18,6 @@ from __future__ import annotations
 # ///////////////////////////////////////////////////////////////
 # Local imports - Context interfaces
 from .context import (
-    ContextIconInterface,
     ContextMenuInterface,
     ContextRegistryInterface,
     ContextScriptDetectorInterface,
@@ -55,7 +54,6 @@ from .womm_setup import WommInstallerInterface, WommUninstallerInterface
 
 __all__ = [
     # Context interfaces
-    "ContextIconInterface",
     "ContextMenuInterface",
     "ContextRegistryInterface",
     "ContextScriptDetectorInterface",
