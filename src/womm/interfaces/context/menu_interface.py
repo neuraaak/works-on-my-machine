@@ -27,13 +27,7 @@ from typing import Any, cast
 from rich.progress import TaskID
 
 # Local imports
-from ...exceptions.context import (
-    ContextUtilityError,
-    MenuInterfaceError,
-    ScriptDetectorInterfaceError,
-    ValidationInterfaceError,
-)
-from ...exceptions.system import RegistryServiceError
+from ...exceptions.context import ContextServiceError
 from ...services import (
     ContextParametersService,
     ContextRegistryService,
@@ -128,27 +122,16 @@ class ContextMenuInterface:
             Dict containing operation result and details
 
         Raises:
-            ValidationError: If parameters are invalid
-            ScriptError: If script detection fails
-            RegistryError: If registry operations fail
-            ContextMenuError: If registration fails
-            ContextUtilityError: For unexpected errors
+            ValueError: If parameters are invalid
+            RuntimeError: If registration fails
         """
         try:
             # Input validation
             if not script_path:
-                raise ValidationInterfaceError(
-                    "Script path cannot be None or empty",
-                    operation="script_registration",
-                    field="script_path",
-                )
+                raise ValueError("Script path cannot be None or empty")
 
             if not label:
-                raise ValidationInterfaceError(
-                    "Label cannot be None or empty",
-                    operation="script_registration",
-                    field="label",
-                )
+                raise ValueError("Label cannot be None or empty")
 
             # Comprehensive validation using ContextValidationService
             try:
@@ -157,20 +140,12 @@ class ContextMenuInterface:
                 )
                 if not validation_result.success:
                     error_message = validation_result.error or "Validation failed"
-                    raise ValidationInterfaceError(
-                        error_message,
-                        operation="script_registration",
-                        field="validation",
-                    )
-            except ValidationInterfaceError:
+                    raise ValueError(error_message)
+            except ValueError:
                 # Re-raise validation errors as-is
                 raise
             except Exception as e:
-                raise ValidationInterfaceError(
-                    f"Validation process failed: {e}",
-                    operation="script_registration",
-                    field="validation",
-                ) from e
+                raise ValueError(f"Validation process failed: {e}") from e
 
             # Detect script type and get info
             try:
@@ -179,9 +154,7 @@ class ContextMenuInterface:
                 )
                 script_type = script_info["type"]
             except Exception as e:
-                raise ScriptDetectorInterfaceError(
-                    "detect", script_path, f"Failed to detect script type: {e}"
-                ) from e
+                raise RuntimeError(f"Failed to detect script type: {e}") from e
 
             # Resolve icon
             try:
@@ -199,11 +172,7 @@ class ContextMenuInterface:
                     script_path
                 )
             except Exception as e:
-                raise RegistryServiceError(
-                    "generate_key",
-                    script_path,
-                    f"Failed to generate registry key name: {e}",
-                ) from e
+                raise RuntimeError(f"Failed to generate registry key name: {e}") from e
 
             # Build command
             command = script_info["command"]
@@ -213,9 +182,8 @@ class ContextMenuInterface:
                 try:
                     context_params = ContextParametersService.from_flags()
                 except Exception as e:
-                    raise ContextUtilityError(
-                        f"Failed to create default context parameters: {e}",
-                        details=f"Script path: {script_path}",
+                    raise RuntimeError(
+                        f"Failed to create default context parameters: {e}"
                     ) from e
 
             # Validate context parameters (if provided, otherwise create defaults)
@@ -235,10 +203,8 @@ class ContextMenuInterface:
                 is_valid = cast(bool, validation.get("valid", False))
                 if not is_valid:
                     errors = cast(list[str], validation.get("errors", []))
-                    raise ValidationInterfaceError(
-                        f"Context parameter validation failed: {'; '.join(errors)}",
-                        operation="context_parameters",
-                        field="validation",
+                    raise ValueError(
+                        f"Context parameter validation failed: {'; '.join(errors)}"
                     )
 
                 # Show warnings if any
@@ -247,13 +213,11 @@ class ContextMenuInterface:
                     self.logger.warning(
                         f"Context parameter warnings: {'; '.join(warnings)}"
                     )
-            except ValidationInterfaceError:
+            except ValueError:
                 raise
             except Exception as e:
-                raise ValidationInterfaceError(
-                    f"Context parameter validation process failed: {e}",
-                    operation="context_parameters",
-                    field="validation",
+                raise ValueError(
+                    f"Context parameter validation process failed: {e}"
                 ) from e
 
             # Build final command for display (use first context type for dry-run)
@@ -285,9 +249,7 @@ class ContextMenuInterface:
             try:
                 registry_paths = context_params.get_registry_paths()
             except Exception as e:
-                raise RegistryServiceError(
-                    "get_paths", "context_params", f"Failed to get registry paths: {e}"
-                ) from e
+                raise RuntimeError(f"Failed to get registry paths: {e}") from e
 
             success_count = 0
             total_paths = len(registry_paths)
@@ -321,23 +283,15 @@ class ContextMenuInterface:
                     "info": result_info,
                 }
             else:
-                raise MenuInterfaceError(
-                    "register",
-                    script_path,
-                    f"Failed to add registry entries ({success_count}/{total_paths} succeeded)",
+                raise RuntimeError(
+                    f"Failed to add registry entries ({success_count}/{total_paths} succeeded)"
                 )
 
-        except (
-            ValidationInterfaceError,
-            ScriptDetectorInterfaceError,
-            RegistryServiceError,
-            MenuInterfaceError,
-        ):
+        except (ValueError, RuntimeError):
             raise
         except Exception as e:
-            raise ContextUtilityError(
-                f"Unexpected error during script registration: {e}",
-                details=f"Script path: {script_path}, Label: {label}",
+            raise RuntimeError(
+                f"Unexpected error during script registration: {e}"
             ) from e
 
     # ///////////////////////////////////////////////////////////////
@@ -353,32 +307,20 @@ class ContextMenuInterface:
 
         Returns:
             ContextType enum value
-
-        Raises:
-            ContextUtilityError: For unexpected errors
         """
-        try:
-            if (
-                ContextTypesConfig.REGISTRY_PATTERN_DIRECTORY_SHELL in registry_path
-                and "background" not in registry_path
-            ):
-                return ContextType.DIRECTORY
-            elif (
-                ContextTypesConfig.REGISTRY_PATTERN_DIRECTORY_BACKGROUND
-                in registry_path
-            ):
-                return ContextType.BACKGROUND
-            elif ContextTypesConfig.REGISTRY_PATTERN_DRIVE_SHELL in registry_path:
-                return ContextType.ROOT
-            elif ContextTypesConfig.REGISTRY_PATTERN_FILE_SHELL in registry_path:
-                return ContextType.FILE
-            else:
-                return ContextType.DIRECTORY  # Default fallback
-        except Exception as e:
-            raise ContextUtilityError(
-                f"Failed to determine context type from registry path: {e}",
-                details=f"Registry path: {registry_path}",
-            ) from e
+        if (
+            ContextTypesConfig.REGISTRY_PATTERN_DIRECTORY_SHELL in registry_path
+            and "background" not in registry_path
+        ):
+            return ContextType.DIRECTORY
+        elif ContextTypesConfig.REGISTRY_PATTERN_DIRECTORY_BACKGROUND in registry_path:
+            return ContextType.BACKGROUND
+        elif ContextTypesConfig.REGISTRY_PATTERN_DRIVE_SHELL in registry_path:
+            return ContextType.ROOT
+        elif ContextTypesConfig.REGISTRY_PATTERN_FILE_SHELL in registry_path:
+            return ContextType.FILE
+        else:
+            return ContextType.DIRECTORY  # Default fallback
 
     def unregister_script(
         self, key_name: str, dry_run: bool = False
@@ -394,19 +336,13 @@ class ContextMenuInterface:
             Dict containing operation result
 
         Raises:
-            ValidationError: If key_name is invalid
-            RegistryError: If registry operations fail
-            ContextMenuError: If unregistration fails
-            ContextUtilityError: For unexpected errors
+            ValueError: If key_name is invalid
+            RuntimeError: If unregistration fails
         """
         try:
             # Input validation
             if not key_name:
-                raise ValidationInterfaceError(
-                    "script_unregistration",
-                    "key_name",
-                    "Registry key name cannot be None or empty",
-                )
+                raise ValueError("Registry key name cannot be None or empty")
 
             if dry_run:
                 return {
@@ -436,7 +372,7 @@ class ContextMenuInterface:
                             self.logger.debug(
                                 f"Entry not found in {context_type}: {result.error}"
                             )
-                except RegistryServiceError as e:
+                except ContextServiceError as e:
                     # Check if it's a permission error
                     error_str = str(e)
                     if (
@@ -462,26 +398,17 @@ class ContextMenuInterface:
             elif permission_errors:
                 # If we have permission errors, raise a specific error
                 error_msg = "; ".join(permission_errors)
-                raise MenuInterfaceError(
-                    "unregister",
-                    key_name,
-                    f"Permission denied: {error_msg}. Try running as administrator.",
+                raise RuntimeError(
+                    f"Permission denied: {error_msg}. Try running as administrator."
                 )
             else:
-                raise MenuInterfaceError(
-                    "unregister", key_name, "Entry not found in any context type"
-                )
+                raise RuntimeError("Entry not found in any context type")
 
-        except (
-            ValidationInterfaceError,
-            RegistryServiceError,
-            MenuInterfaceError,
-        ):
+        except (ValueError, RuntimeError):
             raise
         except Exception as e:
-            raise ContextUtilityError(
-                f"Unexpected error during script unregistration: {e}",
-                details=f"Key name: {key_name}",
+            raise RuntimeError(
+                f"Unexpected error during script unregistration: {e}"
             ) from e
 
     def register_with_display(
@@ -565,24 +492,9 @@ class ContextMenuInterface:
                     ezprinter.info(f"Registry key: {info.get('registry_key')}")
 
             return result
-        except ValidationInterfaceError as e:
-            # Convert validation errors to result dict
-            error_msg = str(e)
-            ezprinter.error(f"Registration failed: {error_msg}")
-            return {"success": False, "error": error_msg}
-        except (
-            ScriptDetectorInterfaceError,
-            RegistryServiceError,
-            MenuInterfaceError,
-        ) as e:
-            # Convert other interface errors to result dict
-            error_msg = str(e)
-            ezprinter.error(f"Registration failed: {error_msg}")
-            return {"success": False, "error": error_msg}
         except Exception as e:
-            # Wrap unexpected errors
-            error_msg = f"Unexpected error during registration: {e}"
-            self.logger.error(error_msg)
+            error_msg = str(e)
+            self.logger.error(f"Registration failed: {error_msg}")
             ezprinter.error(f"Registration failed: {error_msg}")
             return {"success": False, "error": error_msg}
 
@@ -1022,37 +934,22 @@ class ContextMenuInterface:
 
         Returns:
             Dict containing all entries organized by context type
-
-        Raises:
-            RegistryError: If registry access fails
-            ContextUtilityError: For unexpected errors
         """
-        try:
-            all_entries = {}
+        all_entries = {}
 
-            for context_type in ContextTypesConfig.ALL_TYPES:
-                try:
-                    result = self.registry_service.list_context_menu_entries(
-                        context_type
-                    )
-                    # Extract entries list from ContextRegistryResult
-                    all_entries[context_type] = result.entries if result.success else []
-                except Exception as e:
-                    self.logger.warning(
-                        f"Failed to list entries for {context_type}: {e}"
-                    )
-                    all_entries[context_type] = []
+        for context_type in ContextTypesConfig.ALL_TYPES:
+            try:
+                result = self.registry_service.list_context_menu_entries(context_type)
+                # Extract entries list from ContextRegistryResult
+                all_entries[context_type] = result.entries if result.success else []
+            except Exception as e:
+                self.logger.warning(f"Failed to list entries for {context_type}: {e}")
+                all_entries[context_type] = []
 
-            return {
-                "success": True,
-                "entries": all_entries,
-            }
-
-        except Exception as e:
-            raise ContextUtilityError(
-                f"Unexpected error listing context menu entries: {e}",
-                details="Registry access failed",
-            ) from e
+        return {
+            "success": True,
+            "entries": all_entries,
+        }
 
     def backup_entries(self, backup_file: str) -> dict[str, object]:
         """
@@ -1065,18 +962,13 @@ class ContextMenuInterface:
             Dict containing operation result
 
         Raises:
-            ValidationError: If backup_file is invalid
-            ContextMenuError: If backup operation fails
-            ContextUtilityError: For unexpected errors
+            ValueError: If backup_file is invalid
+            RuntimeError: If backup operation fails
         """
         try:
             # Input validation
             if not backup_file:
-                raise ValidationInterfaceError(
-                    "backup_operation",
-                    "backup_file",
-                    "Backup file path cannot be None or empty",
-                )
+                raise ValueError("Backup file path cannot be None or empty")
 
             # Get current entries
             try:
@@ -1086,9 +978,7 @@ class ContextMenuInterface:
                     entries_result.get("entries", {}),
                 )
             except Exception as e:
-                raise MenuInterfaceError(
-                    "backup", "entries", f"Failed to get current entries: {e}"
-                ) from e
+                raise RuntimeError(f"Failed to get current entries: {e}") from e
 
             # Use BackupManager to create backup
             try:
@@ -1096,9 +986,7 @@ class ContextMenuInterface:
                     entries, custom_filename=Path(backup_file).stem, add_timestamp=False
                 )
             except Exception as e:
-                raise MenuInterfaceError(
-                    "backup", backup_file, f"Failed to create backup: {e}"
-                ) from e
+                raise RuntimeError(f"Failed to create backup: {e}") from e
 
             if success:
                 return {
@@ -1107,17 +995,12 @@ class ContextMenuInterface:
                     "entry_count": metadata.get("total_entries", 0),
                 }
             else:
-                raise MenuInterfaceError(
-                    "backup", backup_file, f"Backup creation failed: {filepath}"
-                )
+                raise RuntimeError(f"Backup creation failed: {filepath}")
 
-        except (ValidationInterfaceError, MenuInterfaceError):
+        except (ValueError, RuntimeError):
             raise
         except Exception as e:
-            raise ContextUtilityError(
-                f"Unexpected error during backup operation: {e}",
-                details=f"Backup file: {backup_file}",
-            ) from e
+            raise RuntimeError(f"Unexpected error during backup operation: {e}") from e
 
     def restore_entries(self, backup_file: str) -> dict[str, object]:
         """
@@ -1130,40 +1013,25 @@ class ContextMenuInterface:
             Dict containing operation result
 
         Raises:
-            ValidationError: If backup_file is invalid
-            ContextMenuError: If restore operation fails
-            ContextUtilityError: For unexpected errors
+            ValueError: If backup_file is invalid
+            RuntimeError: If restore operation fails
         """
         try:
             # Input validation
             if not backup_file:
-                raise ValidationInterfaceError(
-                    "restore_operation",
-                    "backup_file",
-                    "Backup file path cannot be None or empty",
-                )
+                raise ValueError("Backup file path cannot be None or empty")
 
             # Use BackupManager to load and validate backup
             try:
-                success, data, error = self.backup_manager.load_backup_file(backup_file)
-                if not success:
-                    raise MenuInterfaceError(
-                        "restore", backup_file, f"Failed to load backup: {error}"
-                    )
+                _, data, _ = self.backup_manager.load_backup_file(backup_file)
             except Exception as e:
-                if isinstance(e, MenuInterfaceError):
-                    raise
-                raise MenuInterfaceError(
-                    "restore", backup_file, f"Backup loading failed: {e}"
-                ) from e
+                raise RuntimeError(f"Backup loading failed: {e}") from e
 
             # Restore entries using RegistryService
             try:
                 success = self.registry_service.restore_registry_entries(data)
             except Exception as e:
-                raise MenuInterfaceError(
-                    "restore", backup_file, f"Failed to restore registry entries: {e}"
-                ) from e
+                raise RuntimeError(f"Failed to restore registry entries: {e}") from e
 
             if success:
                 return {
@@ -1172,17 +1040,12 @@ class ContextMenuInterface:
                     "entry_count": data.get("metadata", {}).get("total_entries", 0),
                 }
             else:
-                raise MenuInterfaceError(
-                    "restore", backup_file, "Registry restoration failed"
-                )
+                raise RuntimeError("Registry restoration failed")
 
-        except (ValidationInterfaceError, MenuInterfaceError):
+        except (ValueError, RuntimeError):
             raise
         except Exception as e:
-            raise ContextUtilityError(
-                f"Unexpected error during restore operation: {e}",
-                details=f"Backup file: {backup_file}",
-            ) from e
+            raise RuntimeError(f"Unexpected error during restore operation: {e}") from e
 
     def get_script_info(self, script_path: str) -> dict[str, object]:
         """
@@ -1195,16 +1058,12 @@ class ContextMenuInterface:
             Dict containing script information
 
         Raises:
-            ValidationError: If script_path is invalid
-            ScriptError: If script detection fails
-            ContextUtilityError: For unexpected errors
+            ValueError: If script_path is invalid or script detection fails
         """
         try:
             # Input validation
             if not script_path:
-                raise ValidationInterfaceError(
-                    "script_info", "script_path", "Script path cannot be None or empty"
-                )
+                raise ValueError("Script path cannot be None or empty")
 
             # Get script info
             try:
@@ -1212,9 +1071,7 @@ class ContextMenuInterface:
                     script_path
                 )
             except Exception as e:
-                raise ScriptDetectorInterfaceError(
-                    "get_info", script_path, f"Failed to get script information: {e}"
-                ) from e
+                raise ValueError(f"Failed to get script information: {e}") from e
 
             # Add icon information
             try:
@@ -1241,13 +1098,10 @@ class ContextMenuInterface:
                 "info": script_info,
             }
 
-        except (ValidationInterfaceError, ScriptDetectorInterfaceError):
+        except ValueError:
             raise
         except Exception as e:
-            raise ContextUtilityError(
-                f"Unexpected error getting script info: {e}",
-                details=f"Script path: {script_path}",
-            ) from e
+            raise ValueError(f"Unexpected error getting script info: {e}") from e
 
     def validate_script(self, script_path: str) -> dict[str, object]:
         """
@@ -1260,18 +1114,12 @@ class ContextMenuInterface:
             Dict containing validation result
 
         Raises:
-            ValidationError: If script_path is invalid or validation fails
-            ScriptError: If script detection fails
-            ContextUtilityError: For unexpected errors
+            ValueError: If script_path is invalid or validation fails
         """
         try:
             # Input validation
             if not script_path:
-                raise ValidationInterfaceError(
-                    "script_validation",
-                    "script_path",
-                    "Script path cannot be None or empty",
-                )
+                raise ValueError("Script path cannot be None or empty")
 
             # Use ContextValidationService for comprehensive validation
             try:
@@ -1279,19 +1127,11 @@ class ContextMenuInterface:
                     script_path
                 )
                 if not validation_result.success:
-                    raise ValidationInterfaceError(
-                        "script_validation",
-                        "script_path",
-                        validation_result.error or "Validation failed",
-                    )
+                    raise ValueError(validation_result.error or "Validation failed")
             except Exception as e:
-                if isinstance(e, ValidationInterfaceError):
+                if isinstance(e, ValueError):
                     raise
-                raise ValidationInterfaceError(
-                    "script_validation",
-                    "validation_process",
-                    f"Validation process failed: {e}",
-                ) from e
+                raise ValueError(f"Validation process failed: {e}") from e
 
             # Get script info
             try:
@@ -1300,26 +1140,18 @@ class ContextMenuInterface:
                 )
                 script_type = script_info["type"]
             except Exception as e:
-                raise ScriptDetectorInterfaceError(
-                    "validate",
-                    script_path,
-                    f"Failed to get script info during validation: {e}",
+                raise ValueError(
+                    f"Failed to get script info during validation: {e}"
                 ) from e
 
             # Check if script type is supported
             if script_type == ScriptType.UNKNOWN:
-                raise ValidationInterfaceError(
-                    "script_validation",
-                    "script_type",
-                    f"Unsupported script type: {Path(script_path).suffix}",
-                )
+                raise ValueError(f"Unsupported script type: {Path(script_path).suffix}")
 
             # Check if command can be built
             command = script_info["command"]
             if not command:
-                raise ValidationInterfaceError(
-                    "script_validation", "command", "Could not build execution command"
-                )
+                raise ValueError("Could not build execution command")
 
             # Check permissions and compatibility
             try:
@@ -1343,13 +1175,10 @@ class ContextMenuInterface:
                 "compatibility": compatibility_check,
             }
 
-        except (ValidationInterfaceError, ScriptDetectorInterfaceError):
+        except ValueError:
             raise
         except Exception as e:
-            raise ContextUtilityError(
-                f"Unexpected error during script validation: {e}",
-                details=f"Script path: {script_path}",
-            ) from e
+            raise ValueError(f"Unexpected error during script validation: {e}") from e
 
     # ///////////////////////////////////////////////////////////////
     # PLATFORM AND UTILITY METHODS
