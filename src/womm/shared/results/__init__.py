@@ -20,6 +20,11 @@ from __future__ import annotations
 from .base import BaseResult, CommandResult
 from .command_results import CommandAvailabilityResult, CommandVersionResult
 from .context_results import (
+    BackupCleanupResult,
+    BackupDataResult,
+    BackupFileInfo,
+    BackupFileListResult,
+    BackupFileResult,
     ContextBackupResult,
     ContextCherryPickResult,
     ContextEntriesResult,
@@ -28,8 +33,18 @@ from .context_results import (
     ContextSetupResult,
     ContextStatusResult,
     ContextValidationResult,
+    ScriptInfoResult,
     ScriptRegistrationResult,
     ScriptUnregistrationResult,
+    ScriptValidationResult,
+)
+from .dependency_results import (
+    DependencyCheckResult,
+    DependencyInventoryEntry,
+    DependencyInventoryResult,
+    DependencyManagerStatus,
+    DependencyProbe,
+    DependencyStatusResult,
 )
 from .file_results import FileOperationResult, FileScanResult, FileSearchResult
 from .installation_results import (
@@ -73,6 +88,11 @@ from .system_results import (
 # ///////////////////////////////////////////////////////////////
 
 __all__ = [
+    "BackupCleanupResult",
+    "BackupDataResult",
+    "BackupFileInfo",
+    "BackupFileListResult",
+    "BackupFileResult",
     "BaseResult",
     "CommandAvailabilityResult",
     "CommandResult",
@@ -87,6 +107,12 @@ __all__ = [
     "ContextSetupResult",
     "ContextStatusResult",
     "ContextValidationResult",
+    "DependencyCheckResult",
+    "DependencyInventoryEntry",
+    "DependencyInventoryResult",
+    "DependencyManagerStatus",
+    "DependencyProbe",
+    "DependencyStatusResult",
     "EnvironmentRefreshResult",
     "EnvironmentVerificationResult",
     "FileOperationResult",
@@ -105,8 +131,10 @@ __all__ = [
     "ProjectCreationResult",
     "ProjectDetectionResult",
     "ProjectSetupResult",
+    "ScriptInfoResult",
     "ScriptRegistrationResult",
     "ScriptUnregistrationResult",
+    "ScriptValidationResult",
     "SecurityReportResult",
     "SecurityResult",
     "SetupResult",
