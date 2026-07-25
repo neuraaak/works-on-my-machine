@@ -23,6 +23,9 @@ from rich.table import Table
 
 # Local imports
 from ...shared.results import (
+    DependencyCheckResult,
+    DependencyInventoryResult,
+    DependencyStatusResult,
     EnvironmentRefreshResult,
     PathBackupListResult,
     PathBackupResult,
@@ -331,42 +334,37 @@ def render_path_backup_list_result(result: PathBackupListResult) -> None:
 
 
 def display_deps_check_results(
-    system_results: dict,
-    runtime_results: dict,
-    tool_results: dict,
+    result: DependencyCheckResult,
     verbose: bool = False,
 ) -> None:
     """
     Display dependency check results (all strata).
 
     Args:
-        system_results: System package manager results
-        runtime_results: Runtime check results
-        tool_results: Development tool check results
+        result: Probe results collected by ``DepsInterface.check_all()``
         verbose: Whether to show additional details
     """
     ezprinter.info("Checking all dependencies...\n")
 
     # Strata 1
     ezprinter.info("\n=== System Package Managers (Strata 1) ===")
-    available = [name for name, res in system_results.items() if res.success]
+    available = [entry for entry in result.system if entry.available]
     if available:
-        ezprinter.success(f"Available: {', '.join(available)}")
+        ezprinter.success(f"Available: {', '.join(e.name for e in available)}")
         if verbose:
-            for name in available:
-                res = system_results[name]
-                ezprinter.info(f"  • {name}: v{res.version}")
+            for entry in available:
+                ezprinter.info(f"  • {entry.name}: v{entry.version}")
     else:
         ezprinter.warning("No system package managers available")
     ezconsole.print("")
 
     # Strata 2
     ezprinter.info("\n=== Runtimes (Strata 2) ===")
-    for runtime, result in runtime_results.items():
-        status = "✓" if result.success else "✗"
-        version = f"v{result.version}" if result.version else "N/A"
-        msg = f"{status} {runtime}: {version}"
-        if result.success:
+    for entry in result.runtime:
+        status = "✓" if entry.available else "✗"
+        version = f"v{entry.version}" if entry.version else "N/A"
+        msg = f"{status} {entry.name}: {version}"
+        if entry.available:
             ezprinter.success(msg)
         else:
             ezprinter.warning(msg)
@@ -374,29 +372,25 @@ def display_deps_check_results(
 
     # Strata 3
     ezprinter.info("\n=== Development Tools (Strata 3) ===")
-    for tool, result in tool_results.items():
-        status = "✓" if result.success else "✗"
+    for entry in result.tools:
+        status = "✓" if entry.available else "✗"
         prefix = "  " if verbose else ""
-        msg = f"{prefix}{status} {tool}"
-        if result.success:
+        msg = f"{prefix}{status} {entry.name}"
+        if entry.available:
             ezprinter.success(msg)
         else:
             ezprinter.warning(msg)
 
 
 def display_deps_status_table(
-    system_status: dict,
-    runtime_results: dict,
-    tool_results: dict,
+    result: DependencyStatusResult,
     verbose: bool = False,
 ) -> None:
     """
     Display comprehensive dependency status in a table.
 
     Args:
-        system_status: System manager status data
-        runtime_results: Runtime check results
-        tool_results: Development tool check results (tool name -> result)
+        result: Status data collected by ``DepsInterface.show_status()``
         verbose: Whether to show additional details column
     """
     table = Table(title="WOMM Dependency Status", show_header=True)
@@ -409,38 +403,58 @@ def display_deps_status_table(
         table.add_column("Details", style="blue", width=30)
 
     # Strata 1
-    for name, info in system_status.items():
-        if info.get("supported_on_current_platform"):
+    for manager in result.system:
+        if manager.supported_on_current_platform:
             row = [
                 "System PKG MGR",
-                name,
-                "✓" if info.get("available") else "✗",
-                info.get("version") or "N/A",
+                manager.name,
+                "✓" if manager.available else "✗",
+                manager.version or "N/A",
             ]
             if verbose:
-                row.append(f"Priority: {info.get('priority', 'N/A')}")
+                row.append(f"Priority: {manager.priority}")
             table.add_row(*row)
 
     # Strata 2
-    for runtime, result in runtime_results.items():
+    for entry in result.runtime:
         row = [
             "Runtime",
-            runtime,
-            "✓" if result.success else "✗",
-            result.version or "N/A",
+            entry.name,
+            "✓" if entry.available else "✗",
+            entry.version or "N/A",
         ]
         if verbose:
             row.append("Min: Any")
         table.add_row(*row)
 
     # Strata 3
-    for tool, result in tool_results.items():
-        row = ["DevTool", tool, "✓" if result.success else "✗", "N/A"]
+    for entry in result.tools:
+        row = ["DevTool", entry.name, "✓" if entry.available else "✗", "N/A"]
         if verbose:
             row.append("N/A")
         table.add_row(*row)
 
     ezconsole.print(table)
+
+
+def display_deps_inventory(result: DependencyInventoryResult) -> None:
+    """
+    Display the static dependency inventory (no probing).
+
+    Args:
+        result: Inventory collected by ``DepsInterface.list_all()``
+    """
+    ezprinter.info("=== System Package Managers (Strata 1) ===")
+    for entry in result.system:
+        ezprinter.info(f"  • {entry.name} ({entry.detail})")
+
+    ezprinter.info("\n=== Runtimes (Strata 2) ===")
+    for entry in result.runtime:
+        ezprinter.info(f"  • {entry.name} ({entry.detail})")
+
+    ezprinter.info("\n=== Development Tools (Strata 3) ===")
+    for entry in result.tools:
+        ezprinter.info(f"  • {entry.name}: {entry.detail}")
 
 
 # ///////////////////////////////////////////////////////////////
@@ -451,6 +465,7 @@ __all__ = [
     "display_available_managers",
     "display_best_manager",
     "display_deps_check_results",
+    "display_deps_inventory",
     "display_deps_status_table",
     "display_system_detection_results",
     "display_system_managers_list",

@@ -32,6 +32,11 @@ from ezpl import LogLevel
 # Local imports
 from ...interfaces import DepsInterface
 from ...ui.common import ezpl_bridge, ezprinter
+from ...ui.system import (
+    display_deps_check_results,
+    display_deps_inventory,
+    display_deps_status_table,
+)
 
 # ///////////////////////////////////////////////////////////////
 # LOGGER SETUP
@@ -97,18 +102,14 @@ def deps_check(verbose: bool) -> None:
 
     ezprinter.print_header("Dependencies Check")
 
-    try:
-        interface = DepsInterface()
-        results = interface.check_all(verbose)
+    result = DepsInterface().check_all(detect_versions=verbose)
+    if not result.success:
+        logger.error(f"Failed to check dependencies: {result.error}")
+        ezprinter.error(f"Check failed: {result.error}")
+        raise click.Abort()
 
-        system_ok = any(r.available for r in results["system"].values())
-        runtime_ok = all(r.available for r in results["runtime"].values())
-        sys.exit(0 if (system_ok and runtime_ok) else 1)
-
-    except Exception as e:
-        logger.error(f"Failed to check dependencies: {e}")
-        ezprinter.error(f"Check failed: {e}")
-        raise click.Abort() from e
+    display_deps_check_results(result, verbose)
+    sys.exit(0 if (result.system_ok and result.runtime_ok) else 1)
 
 
 @deps_group.command(name="status")
@@ -136,15 +137,14 @@ def deps_status(verbose: bool) -> None:
 
     ezprinter.print_header("Dependency Status")
 
-    try:
-        interface = DepsInterface()
-        interface.show_status(verbose)
-        sys.exit(0)
+    result = DepsInterface().show_status(detect_versions=verbose)
+    if not result.success:
+        logger.error(f"Failed to generate status report: {result.error}")
+        ezprinter.error(f"Status failed: {result.error}")
+        raise click.Abort()
 
-    except Exception as e:
-        logger.error(f"Failed to generate status report: {e}")
-        ezprinter.error(f"Status failed: {e}")
-        raise click.Abort() from e
+    display_deps_status_table(result, verbose)
+    sys.exit(0)
 
 
 @deps_group.command(name="list")
@@ -171,15 +171,14 @@ def deps_list(verbose: bool) -> None:
 
     ezprinter.print_header("Dependency Inventory")
 
-    try:
-        interface = DepsInterface()
-        interface.list_all(verbose)
-        sys.exit(0)
+    result = DepsInterface().list_all()
+    if not result.success:
+        logger.error(f"Failed to list dependencies: {result.error}")
+        ezprinter.error(f"List failed: {result.error}")
+        raise click.Abort()
 
-    except Exception as e:
-        logger.error(f"Failed to list dependencies: {e}")
-        ezprinter.error(f"List failed: {e}")
-        raise click.Abort() from e
+    display_deps_inventory(result)
+    sys.exit(0)
 
 
 # ///////////////////////////////////////////////////////////////

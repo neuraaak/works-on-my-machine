@@ -10,6 +10,9 @@ Global dependencies interface for Works On My Machine.
 Provides read-only diagnostic operations across the three dependency strata
 (system package managers, runtimes, dev tools). Backed by the lightweight
 :func:`probe` primitive — no installation, resolution, or god-object machinery.
+
+This interface never raises and never renders: every public method returns a
+typed Result, and presentation is left to the ``ui`` layer.
 """
 
 from __future__ import annotations
@@ -26,6 +29,14 @@ from ...shared.configs.dependencies import (
     DevToolsConfig,
     RuntimeConfig,
     SystemPackageManagerConfig,
+)
+from ...shared.results import (
+    DependencyCheckResult,
+    DependencyInventoryEntry,
+    DependencyInventoryResult,
+    DependencyManagerStatus,
+    DependencyProbe,
+    DependencyStatusResult,
 )
 from ...utils.dependencies import ProbeResult, probe
 
@@ -50,29 +61,39 @@ def _current_platform() -> str:
     return "linux"
 
 
-def _probe_managers(detect_version: bool) -> dict[str, ProbeResult]:
+def _as_entry(name: str, result: ProbeResult) -> DependencyProbe:
+    """Adapt a :class:`ProbeResult` to the transport-level record."""
+    return DependencyProbe(
+        name=name,
+        available=result.available,
+        path=result.path,
+        version=result.version,
+    )
+
+
+def _probe_managers(detect_version: bool) -> list[DependencyProbe]:
     """Probe the system package managers supported on the current platform."""
     platform = _current_platform()
-    return {
-        name: probe(str(info["command"]), detect_version=detect_version)
+    return [
+        _as_entry(name, probe(str(info["command"]), detect_version=detect_version))
         for name, info in SystemPackageManagerConfig.SYSTEM_PACKAGE_MANAGERS.items()
         if info["platform"] == platform
-    }
+    ]
 
 
-def _probe_runtimes() -> dict[str, ProbeResult]:
+def _probe_runtimes() -> list[DependencyProbe]:
     """Probe every configured runtime (python, node, git)."""
-    return {runtime: probe(runtime) for runtime in RuntimeConfig.RUNTIMES}
+    return [_as_entry(runtime, probe(runtime)) for runtime in RuntimeConfig.RUNTIMES]
 
 
-def _probe_tools() -> dict[str, ProbeResult]:
+def _probe_tools() -> list[DependencyProbe]:
     """Probe every configured dev tool (availability only)."""
-    return {
-        tool: probe(tool, detect_version=False)
+    return [
+        _as_entry(tool, probe(tool, detect_version=False))
         for tools in DevToolsConfig.DEVTOOLS_DEPENDENCIES.values()
         for tool_list in tools.values()
         for tool in tool_list
-    }
+    ]
 
 
 # ///////////////////////////////////////////////////////////////
@@ -87,95 +108,100 @@ class DepsInterface:
     # PUBLIC METHODS
     # ///////////////////////////////////////////////////////////////
 
-    def check_all(self, verbose: bool = False) -> dict:
+    def check_all(self, detect_versions: bool = False) -> DependencyCheckResult:
         """
         Check availability of every dependency across all strata.
 
         Args:
-            verbose: Whether to show per-component version details.
+            detect_versions: Whether to resolve per-component version strings.
 
         Returns:
-            dict: Probe results keyed by strata (``system``/``runtime``/``tools``).
+            DependencyCheckResult: Probe results per strata. Always successful —
+            a missing dependency is data, not a failure of the check itself.
         """
-        from ...ui.system import display_deps_check_results
-
-        system_results = _probe_managers(detect_version=verbose)
-        runtime_results = _probe_runtimes()
-        tool_results = _probe_tools()
-
-        display_deps_check_results(
-            system_results, runtime_results, tool_results, verbose
+        return DependencyCheckResult(
+            success=True,
+            message="Dependency check completed",
+            system=_probe_managers(detect_version=detect_versions),
+            runtime=_probe_runtimes(),
+            tools=_probe_tools(),
         )
 
-        return {
-            "system": system_results,
-            "runtime": runtime_results,
-            "tools": tool_results,
-        }
-
-    def show_status(self, verbose: bool = False) -> dict:
+    def show_status(self, detect_versions: bool = False) -> DependencyStatusResult:
         """
-        Render a comprehensive status table across all strata.
+        Collect a comprehensive status report across all strata.
+
+        Unlike :meth:`check_all`, this reports every configured package manager,
+        including those unsupported on the current platform.
 
         Args:
-            verbose: Whether to show additional detail columns.
+            detect_versions: Whether to resolve per-component version strings.
 
         Returns:
-            dict: Status data keyed by strata.
+            DependencyStatusResult: Status data per strata.
         """
-        from ...ui.system import display_deps_status_table
-
         platform = _current_platform()
-        system_status: dict[str, dict] = {}
+        system_status: list[DependencyManagerStatus] = []
         for name, info in SystemPackageManagerConfig.SYSTEM_PACKAGE_MANAGERS.items():
             supported = info["platform"] == platform
             result = (
-                probe(str(info["command"]), detect_version=verbose)
+                probe(str(info["command"]), detect_version=detect_versions)
                 if supported
                 else None
             )
-            system_status[name] = {
-                "supported_on_current_platform": supported,
-                "available": bool(result and result.available),
-                "version": result.version if result else None,
-                "priority": info.get("priority", "N/A"),
-            }
+            system_status.append(
+                DependencyManagerStatus(
+                    name=name,
+                    supported_on_current_platform=supported,
+                    available=bool(result and result.available),
+                    version=result.version if result else None,
+                    priority=str(info.get("priority", "N/A")),
+                )
+            )
 
-        runtime_results = _probe_runtimes()
-        tool_results = _probe_tools()
+        return DependencyStatusResult(
+            success=True,
+            message="Dependency status collected",
+            system=system_status,
+            runtime=_probe_runtimes(),
+            tools=_probe_tools(),
+        )
 
-        display_deps_status_table(system_status, runtime_results, tool_results, verbose)
-
-        return {
-            "system": system_status,
-            "runtime": runtime_results,
-            "tools": tool_results,
-        }
-
-    def list_all(self, verbose: bool = False) -> None:  # noqa: ARG002
+    def list_all(self) -> DependencyInventoryResult:
         """
         List the dependencies WOMM knows about (static inventory, no probing).
 
-        Args:
-            verbose: Unused; kept for CLI symmetry.
+        Returns:
+            DependencyInventoryResult: Configured dependencies per strata for the
+            current platform.
         """
-        from ...ui.common import ezprinter
-
         platform = _current_platform()
 
-        ezprinter.info("=== System Package Managers (Strata 1) ===")
-        for name, info in SystemPackageManagerConfig.SYSTEM_PACKAGE_MANAGERS.items():
-            if info["platform"] == platform:
-                ezprinter.info(f"  • {name} ({info['command']})")
+        system = [
+            DependencyInventoryEntry(name=name, detail=str(info["command"]))
+            for name, info in SystemPackageManagerConfig.SYSTEM_PACKAGE_MANAGERS.items()
+            if info["platform"] == platform
+        ]
+        runtime = [
+            DependencyInventoryEntry(name=name, detail=f">= {info['version']}")
+            for name, info in RuntimeConfig.RUNTIMES.items()
+        ]
+        tools = [
+            DependencyInventoryEntry(
+                name=f"{language}/{category}", detail=", ".join(tool_list)
+            )
+            for language, categories in DevToolsConfig.DEVTOOLS_DEPENDENCIES.items()
+            for category, tool_list in categories.items()
+        ]
 
-        ezprinter.info("\n=== Runtimes (Strata 2) ===")
-        for runtime, info in RuntimeConfig.RUNTIMES.items():
-            ezprinter.info(f"  • {runtime} (>= {info['version']})")
-
-        ezprinter.info("\n=== Development Tools (Strata 3) ===")
-        for language, categories in DevToolsConfig.DEVTOOLS_DEPENDENCIES.items():
-            for category, tools in categories.items():
-                ezprinter.info(f"  • {language}/{category}: {', '.join(tools)}")
+        return DependencyInventoryResult(
+            success=True,
+            message="Dependency inventory collected",
+            platform=platform,
+            system=system,
+            runtime=runtime,
+            tools=tools,
+        )
 
 
 # ///////////////////////////////////////////////////////////////
