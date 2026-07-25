@@ -16,24 +16,10 @@ from __future__ import annotations
 # IMPORTS
 # ///////////////////////////////////////////////////////////////
 # Local imports
-from .system_service import (
-    DetectorServiceError,
-    EnvironmentServiceError,
-    FileSystemServiceError,
-    RegistryServiceError,
-    SystemServiceError,
-    UserPathServiceError,
-)
+from .system_service import SystemServiceError
 
 # ///////////////////////////////////////////////////////////////
 # PUBLIC API
 # ///////////////////////////////////////////////////////////////
 
-__all__ = [
-    "DetectorServiceError",
-    "EnvironmentServiceError",
-    "FileSystemServiceError",
-    "RegistryServiceError",
-    "SystemServiceError",
-    "UserPathServiceError",
-]
+__all__ = ["SystemServiceError"]

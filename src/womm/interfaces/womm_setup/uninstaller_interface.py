@@ -32,7 +32,7 @@ from threading import Lock
 from typing import ClassVar
 
 # Local imports
-from ...exceptions.common import DirectoryAccessError, FileScanError
+from ...exceptions.common import FileServiceError
 from ...exceptions.womm_deployment import WommDeploymentServiceError
 from ...services import WommUninstallerService
 from ...services.system.path_service import SystemPathService
@@ -118,12 +118,7 @@ class WommUninstallerInterface:
 
         try:
             files_to_remove = get_files_to_remove(self.target_path)
-        except (
-            OSError,
-            ValueError,
-            FileScanError,
-            DirectoryAccessError,
-        ) as e:
+        except (OSError, ValueError, FileServiceError) as e:
             return UninstallPlanResult(
                 success=False,
                 error=f"Failed to scan installation directory: {e}",

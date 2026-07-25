@@ -27,11 +27,7 @@ from pathlib import Path
 import pytest
 
 # Local imports
-from womm.exceptions.system import (
-    DetectorServiceError,
-    EnvironmentServiceError,
-    UserPathServiceError,
-)
+from womm.exceptions.system import SystemServiceError
 from womm.interfaces.system.detector_interface import SystemDetectorInterface
 from womm.interfaces.system.environment_interface import SystemEnvironmentInterface
 from womm.interfaces.system.path_interface import SystemPathInterface
@@ -106,10 +102,10 @@ class TestSystemDetectorInterface:
         assert result.system_data == {"system_info": {"x": 1}}
 
     def test_service_error_is_translated_to_failure_result(self):
-        """A DetectorServiceError becomes a failed Result, never re-raised."""
+        """A SystemServiceError becomes a failed Result, never re-raised."""
         interface = SystemDetectorInterface()
         interface._detector = _FakeDetectorService(
-            error=DetectorServiceError(
+            error=SystemServiceError(
                 operation="platform_info", reason="boom", details="ctx"
             )
         )
@@ -144,10 +140,10 @@ class TestSystemEnvironmentInterface:
         assert result.refresh_method == "registry"
 
     def test_refresh_service_error_is_translated_to_failure_result(self):
-        """An EnvironmentServiceError becomes a failed Result, never re-raised."""
+        """A SystemServiceError becomes a failed Result, never re-raised."""
         interface = SystemEnvironmentInterface()
         interface._environment_service = _FakeEnvironmentService(
-            error=EnvironmentServiceError(
+            error=SystemServiceError(
                 operation="refresh_windows_environment", reason="boom"
             )
         )
@@ -171,7 +167,7 @@ class TestSystemEnvironmentInterface:
         """Verification is best-effort: a service error yields False, not a raise."""
         interface = SystemEnvironmentInterface()
         interface._environment_service = _FakeEnvironmentService(
-            error=EnvironmentServiceError(operation="verify", reason="boom")
+            error=SystemServiceError(operation="verify", reason="boom")
         )
 
         assert interface.verify_environment_refresh("womm") is False
@@ -259,10 +255,10 @@ class TestSystemPathInterfaceModify:
         assert result.path_modified is True
 
     def test_add_to_path_service_error_is_translated_to_failure_result(self, tmp_path):
-        """A UserPathServiceError from get_current_system_path becomes a failed Result."""
+        """A SystemServiceError from get_current_system_path becomes a failed Result."""
         interface = _make_path_interface(tmp_path)
         interface._path_service = _FakePathService(
-            error=UserPathServiceError(message="boom")
+            error=SystemServiceError(operation="path_get", reason="boom")
         )
 
         result = interface.add_to_path()
@@ -305,7 +301,7 @@ class TestSystemPathInterfaceModify:
         """A service error during removal becomes a failed Result, never re-raised."""
         interface = _make_path_interface(tmp_path)
         interface._path_service = _FakePathService(
-            error=UserPathServiceError(message="boom")
+            error=SystemServiceError(operation="path_get", reason="boom")
         )
 
         result = interface.remove_from_path()
@@ -377,7 +373,7 @@ class TestSystemPathInterfaceBackups:
         """A service error during backup creation becomes a failed Result."""
         interface = _make_path_interface(tmp_path)
         interface._path_service = _FakePathService(
-            error=UserPathServiceError(message="boom")
+            error=SystemServiceError(operation="path_get", reason="boom")
         )
 
         result = interface.create_backup()

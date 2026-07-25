@@ -27,11 +27,7 @@ from typing import ClassVar
 
 # Local imports
 from ...exceptions.common import ValidationServiceError
-from ...exceptions.system import (
-    FileSystemServiceError,
-    RegistryServiceError,
-    UserPathServiceError,
-)
+from ...exceptions.system import SystemServiceError
 from ...shared.results import PathOperationResult
 from ...shared.results.base import CommandResult
 from ...utils.system import deduplicate_path_entries, extract_path_from_reg_output
@@ -126,13 +122,14 @@ class SystemPathService:
                 modification_time=time.time() - start_time,
             )
 
-        except (RegistryServiceError, ValidationServiceError):
+        except (SystemServiceError, ValidationServiceError):
             # Re-raise programming errors and critical errors
             raise
         except Exception as e:
             # Wrap unexpected external exceptions - critical error
-            raise UserPathServiceError(
-                message=f"Failed to get current system PATH: {e}",
+            raise SystemServiceError(
+                operation="path_get",
+                reason=f"Failed to get current system PATH: {e}",
                 details=f"Exception type: {type(e).__name__}",
             ) from e
 
@@ -201,13 +198,14 @@ class SystemPathService:
                 modification_time=time.time() - start_time,
             )
 
-        except (ValidationServiceError, RegistryServiceError):
+        except (ValidationServiceError, SystemServiceError):
             # Re-raise programming errors and critical errors
             raise
         except Exception as e:
             # Wrap unexpected external exceptions - critical error
-            raise UserPathServiceError(
-                message=f"Unexpected error during Windows PATH setup: {e}",
+            raise SystemServiceError(
+                operation="path_add_windows",
+                reason=f"Unexpected error during Windows PATH setup: {e}",
                 details=(
                     f"Exception type: {type(e).__name__}, "
                     f"Entry path: {entry_path}, Original PATH: {original_path}"
@@ -284,13 +282,14 @@ class SystemPathService:
                 modification_time=time.time() - start_time,
             )
 
-        except (ValidationServiceError, RegistryServiceError):
+        except (ValidationServiceError, SystemServiceError):
             # Re-raise programming errors and critical errors
             raise
         except Exception as e:
             # Wrap unexpected external exceptions - critical error
-            raise UserPathServiceError(
-                message=f"Unexpected error during Windows PATH removal: {e}",
+            raise SystemServiceError(
+                operation="path_remove_windows",
+                reason=f"Unexpected error during Windows PATH removal: {e}",
                 details=(
                     f"Exception type: {type(e).__name__}, Entry path: {entry_path}"
                 ),
@@ -360,11 +359,10 @@ class SystemPathService:
                     f.write(f"\n{womm_path_comment}\n{womm_export_line}\n")
             except (PermissionError, OSError) as e:
                 # Critical file system error - raise exception
-                raise FileSystemServiceError(
-                    operation="write",
-                    path=str(target_rc),
+                raise SystemServiceError(
+                    operation="shell_rc_write",
                     reason="Cannot write to shell configuration file",
-                    details=f"Error: {e}",
+                    details=f"path={target_rc} | Error: {e}",
                 ) from e
 
             return PathOperationResult(
@@ -377,13 +375,14 @@ class SystemPathService:
                 modification_time=time.time() - start_time,
             )
 
-        except (ValidationServiceError, FileSystemServiceError):
+        except (ValidationServiceError, SystemServiceError):
             # Re-raise programming errors and critical errors
             raise
         except Exception as e:
             # Wrap unexpected external exceptions - critical error
-            raise UserPathServiceError(
-                message=f"Unexpected error during Unix PATH setup: {e}",
+            raise SystemServiceError(
+                operation="path_add_unix",
+                reason=f"Unexpected error during Unix PATH setup: {e}",
                 details=(
                     f"Exception type: {type(e).__name__}, "
                     f"Entry path: {entry_path}, Original PATH: {original_path}"
@@ -429,11 +428,10 @@ class SystemPathService:
                         lines = f.readlines()
                 except (PermissionError, OSError) as e:
                     # Critical file system error - raise exception
-                    raise FileSystemServiceError(
-                        operation="read",
-                        path=str(rc_file),
+                    raise SystemServiceError(
+                        operation="shell_rc_read",
                         reason="Cannot read shell configuration file",
-                        details=f"Error: {e}",
+                        details=f"path={rc_file} | Error: {e}",
                     ) from e
 
                 updated_lines: list[str] = []
@@ -466,11 +464,10 @@ class SystemPathService:
                             f.writelines(updated_lines)
                     except (PermissionError, OSError) as e:
                         # Critical file system error - raise exception
-                        raise FileSystemServiceError(
-                            operation="write",
-                            path=str(rc_file),
+                        raise SystemServiceError(
+                            operation="shell_rc_write",
                             reason="Cannot write to shell configuration file",
-                            details=f"Error: {e}",
+                            details=f"path={rc_file} | Error: {e}",
                         ) from e
 
                     removed_from_files.append(str(rc_file))
@@ -498,13 +495,14 @@ class SystemPathService:
                 modification_time=time.time() - start_time,
             )
 
-        except (ValidationServiceError, FileSystemServiceError):
+        except (ValidationServiceError, SystemServiceError):
             # Re-raise programming errors and critical errors
             raise
         except Exception as e:
             # Wrap unexpected external exceptions - critical error
-            raise UserPathServiceError(
-                message=f"Unexpected error during Unix PATH removal: {e}",
+            raise SystemServiceError(
+                operation="path_remove_unix",
+                reason=f"Unexpected error during Unix PATH removal: {e}",
                 details=(
                     f"Exception type: {type(e).__name__}, Entry path: {entry_path}"
                 ),
@@ -536,15 +534,15 @@ class SystemPathService:
 
         except (
             ValidationServiceError,
-            RegistryServiceError,
-            FileSystemServiceError,
+            SystemServiceError,
         ):
             # Re-raise programming errors and critical errors
             raise
         except Exception as e:
             # Wrap unexpected external exceptions - critical error
-            raise UserPathServiceError(
-                message=f"Unexpected error during PATH removal: {e}",
+            raise SystemServiceError(
+                operation="path_remove",
+                reason=f"Unexpected error during PATH removal: {e}",
                 details=(
                     f"Exception type: {type(e).__name__}, Entry path: {entry_path}, "
                     f"Platform: {platform.system()}"
@@ -570,19 +568,22 @@ class SystemPathService:
                 capture_output=True,
             )
         except Exception as e:
-            raise RegistryServiceError(
-                registry_key="HKCU\\Environment",
-                operation="query",
+            raise SystemServiceError(
+                operation="registry_query",
                 reason=f"Failed to execute registry query: {e}",
-                details=f"Exception type: {type(e).__name__}",
+                details=(
+                    f"registry_key=HKCU\\Environment | "
+                    f"Exception type: {type(e).__name__}"
+                ),
             ) from e
 
         if result.returncode != 0:
-            raise RegistryServiceError(
-                registry_key="HKCU\\Environment",
-                operation="query",
+            raise SystemServiceError(
+                operation="registry_query",
                 reason="Failed to query Windows user PATH from registry",
-                details=f"Return code: {result.returncode}",
+                details=(
+                    f"registry_key=HKCU\\Environment | Return code: {result.returncode}"
+                ),
             )
 
         return result
@@ -607,11 +608,14 @@ class SystemPathService:
 
         if reg_result.returncode != 0:
             stderr_str = self._ensure_str(reg_result.stderr)
-            raise RegistryServiceError(
-                registry_key="HKCU\\Environment",
-                operation="update",
+            raise SystemServiceError(
+                operation="registry_update",
                 reason="Failed to update PATH in registry",
-                details=f"Return code: {reg_result.returncode}, Stderr: {stderr_str}",
+                details=(
+                    f"registry_key=HKCU\\Environment | "
+                    f"Return code: {reg_result.returncode}, "
+                    f"Stderr: {stderr_str}"
+                ),
             )
 
     @staticmethod
@@ -621,8 +625,9 @@ class SystemPathService:
             entries = [p.strip() for p in path_str.split(";") if p.strip()]
             return [str(Path(p)) for p in entries]
         except Exception as e:
-            raise UserPathServiceError(
-                message="Failed to normalize PATH entries",
+            raise SystemServiceError(
+                operation="path_normalize",
+                reason="Failed to normalize PATH entries",
                 details=f"Exception type: {type(e).__name__}, Path string: {path_str}",
             ) from e
 

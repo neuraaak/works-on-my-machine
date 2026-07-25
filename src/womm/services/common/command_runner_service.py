@@ -30,9 +30,9 @@ from typing import Any, ClassVar
 from ...exceptions.common import (
     CommandExecutionError,
     CommandServiceError,
+    CommandTimeoutError,
     CommandUtilityError,
-    CommandValidationError,
-    TimeoutError,
+    SecurityServiceError,
 )
 from ...shared.result_models import CommandResult
 from ...shared.results import CommandAvailabilityResult, CommandVersionResult
@@ -91,8 +91,8 @@ class CommandRunnerService:
         except (
             CommandUtilityError,
             CommandExecutionError,
-            CommandValidationError,
-            TimeoutError,
+            SecurityServiceError,
+            CommandTimeoutError,
         ):
             # Re-raise specialized exceptions as-is
             raise
@@ -129,8 +129,8 @@ class CommandRunnerService:
 
         Raises:
             CommandUtilityError: If command validation fails
-            CommandValidationError: If security validation fails
-            TimeoutError: If command times out
+            SecurityServiceError: If security validation fails
+            CommandTimeoutError: If command times out
             CommandExecutionError: If command execution fails
         """
         try:
@@ -177,7 +177,7 @@ class CommandRunnerService:
                     )
 
                 except subprocess.TimeoutExpired as e:
-                    last_error = TimeoutError(
+                    last_error = CommandTimeoutError(
                         command=str(command),
                         timeout_seconds=self.timeout,
                         details=f"Attempt {attempt + 1}/{self.max_retries + 1}",
@@ -224,8 +224,8 @@ class CommandRunnerService:
 
         except (
             CommandUtilityError,
-            CommandValidationError,
-            TimeoutError,
+            SecurityServiceError,
+            CommandTimeoutError,
             CommandExecutionError,
         ):
             # Re-raise specialized exceptions as-is
@@ -564,7 +564,7 @@ class CommandRunnerService:
             command: Command to validate
 
         Raises:
-            CommandValidationError: If security validation fails
+            SecurityServiceError: If security validation fails
         """
         try:
             from .security_validator_service import SecurityValidatorService
@@ -572,18 +572,25 @@ class CommandRunnerService:
             validator = SecurityValidatorService()
             validation_result = validator.validate_command(command)
             if not validation_result.is_valid:
-                raise CommandValidationError(
-                    command=str(command),
-                    reason=f"Security validation failed: {validation_result.validation_reason}",
-                    details="Command contains potentially dangerous patterns",
+                raise SecurityServiceError(
+                    message=(
+                        "Security validation failed: "
+                        f"{validation_result.validation_reason}"
+                    ),
+                    details=(
+                        f"command={command} | "
+                        "Command contains potentially dangerous patterns"
+                    ),
                 )
-        except CommandValidationError:
+        except SecurityServiceError:
             raise
         except ImportError:
             self.logger.warning("Security validator not available, skipping validation")
         except Exception as e:
-            raise CommandValidationError(
-                command=str(command),
-                reason=f"Security validation failed: {e}",
-                details="Command contains potentially dangerous patterns",
+            raise SecurityServiceError(
+                message=f"Security validation failed: {e}",
+                details=(
+                    f"command={command} | "
+                    "Command contains potentially dangerous patterns"
+                ),
             ) from e

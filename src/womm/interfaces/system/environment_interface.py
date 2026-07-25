@@ -23,7 +23,7 @@ from __future__ import annotations
 import platform
 
 # Local imports
-from ...exceptions.system import EnvironmentServiceError
+from ...exceptions.system import SystemServiceError
 from ...services import SystemEnvironmentService
 from ...shared.results import EnvironmentRefreshResult
 
@@ -36,7 +36,7 @@ class SystemEnvironmentInterface:
     """Orchestrates SystemEnvironmentService and returns a Result.
 
     Pure orchestration: no UI, no re-raise. The service's
-    ``EnvironmentServiceError`` is translated into an ``EnvironmentRefreshResult``
+    ``SystemServiceError`` is translated into an ``EnvironmentRefreshResult``
     (the single exception→Result conversion point). Unexpected errors are not
     swallowed — they propagate.
     """
@@ -66,7 +66,7 @@ class SystemEnvironmentInterface:
         """
         try:
             return self.environment_service.refresh_environment()
-        except EnvironmentServiceError as e:
+        except SystemServiceError as e:
             return EnvironmentRefreshResult(
                 success=False,
                 message="Environment refresh failed",
@@ -90,7 +90,7 @@ class SystemEnvironmentInterface:
         try:
             result = self.environment_service.verify_environment_refresh(command)
             return result.success and result.command_accessible
-        except EnvironmentServiceError:
+        except SystemServiceError:
             return False
 
     def get_environment_info(self) -> dict[str, str]:

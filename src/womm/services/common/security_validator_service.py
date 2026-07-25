@@ -23,11 +23,7 @@ from threading import Lock
 from typing import ClassVar
 
 # Local imports
-from ...exceptions.common import (
-    CommandValidationError,
-    PathValidationError,
-    SecurityServiceError,
-)
+from ...exceptions.common import SecurityServiceError
 from ...shared.configs.security import SecurityPatternsConfig
 from ...shared.results import (
     CommandValidationResult,
@@ -88,7 +84,7 @@ class SecurityValidatorService:
             CommandValidationResult: Result with validation status and reason
 
         Raises:
-            CommandValidationError: If command validation fails
+            SecurityServiceError: If command validation fails
             SecurityServiceError: If unexpected error occurs during validation
         """
         try:
@@ -173,7 +169,7 @@ class SecurityValidatorService:
                 validation_reason="Command passed all security checks",
             )
 
-        except (CommandValidationError, SecurityServiceError):
+        except SecurityServiceError:
             # Re-raise security exceptions as-is
             raise
         except Exception as e:
@@ -193,7 +189,7 @@ class SecurityValidatorService:
             PathValidationResult: Result with validation status and reason
 
         Raises:
-            PathValidationError: If file path validation fails
+            SecurityServiceError: If file path validation fails
             SecurityServiceError: If unexpected error occurs during validation
         """
         try:
@@ -264,7 +260,7 @@ class SecurityValidatorService:
                 validation_reason="Path passed all security checks",
             )
 
-        except (PathValidationError, SecurityServiceError):
+        except SecurityServiceError:
             # Re-raise security exceptions as-is
             raise
         except Exception as e:
@@ -284,7 +280,7 @@ class SecurityValidatorService:
             PathValidationResult: Result with validation status and reason
 
         Raises:
-            PathValidationError: If directory path validation fails
+            SecurityServiceError: If directory path validation fails
             SecurityUtilityError: If unexpected error occurs during validation
         """
         # Use the same validation as file paths

@@ -25,7 +25,7 @@ from threading import Lock
 from typing import ClassVar
 
 # Local imports
-from ...exceptions.common import TimeoutError as CommandTimeoutError
+from ...exceptions.common import CommandTimeoutError
 from ...exceptions.lint import LintServiceError
 from ...shared.result_models import ToolResult
 from ...shared.results import CommandResult

@@ -27,7 +27,7 @@ from typing import ClassVar
 
 # Local imports
 from ...exceptions.common import CommandExecutionError, ValidationServiceError
-from ...exceptions.system import RegistryServiceError
+from ...exceptions.system import SystemServiceError
 from ...exceptions.womm_deployment import WommDeploymentServiceError
 from ...shared.results import WOMMInstallerVerificationResult
 from ..common.command_runner_service import CommandRunnerService
@@ -103,7 +103,7 @@ class WommInstallerService:
             # Query Windows registry for PATH using SystemPathService
             try:
                 path_result = self._path_service.get_current_system_path()
-            except (RegistryServiceError, ValidationServiceError) as e:
+            except (SystemServiceError, ValidationServiceError) as e:
                 raise WommDeploymentServiceError(
                     operation="path_verification",
                     reason="Failed to query Windows registry",

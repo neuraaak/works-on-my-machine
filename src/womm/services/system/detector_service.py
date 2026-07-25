@@ -26,7 +26,7 @@ from pathlib import Path
 
 # Local imports
 from ...exceptions.common import ValidationServiceError
-from ...exceptions.system import DetectorServiceError
+from ...exceptions.system import SystemServiceError
 from ...shared.configs.system import SystemDetectorConfig
 from ...shared.results import SystemInfoResult
 from ...utils.system import (
@@ -65,7 +65,7 @@ class SystemDetectorService:
             # Initialization is critical - raise exceptions on failure
             system_info_result = self.get_system_info()
             if not system_info_result.success:
-                raise DetectorServiceError(
+                raise SystemServiceError(
                     operation="initialization",
                     reason=system_info_result.message or "Failed to get system info",
                     details=system_info_result.error or "",
@@ -88,12 +88,12 @@ class SystemDetectorService:
             }
             self.package_managers = self.detect_package_managers()
             self.dev_environments = self.detect_development_environments()
-        except (DetectorServiceError, ValidationServiceError):
+        except (SystemServiceError, ValidationServiceError):
             # Re-raise programming errors and critical errors
             raise
         except Exception as e:
             # Wrap unexpected external exceptions - critical init error
-            raise DetectorServiceError(
+            raise SystemServiceError(
                 operation="initialization",
                 reason=f"Failed to initialize system detector: {e}",
                 details=f"Exception type: {type(e).__name__}",
@@ -134,14 +134,14 @@ class SystemDetectorService:
             )
         except OSError as e:
             # Critical system errors - raise exception
-            raise DetectorServiceError(
+            raise SystemServiceError(
                 operation="platform_info",
                 reason=f"Failed to gather system information: {e}",
                 details=f"Exception type: {type(e).__name__}",
             ) from e
         except Exception as e:
             # Wrap unexpected external exceptions - critical error
-            raise DetectorServiceError(
+            raise SystemServiceError(
                 operation="platform_info",
                 reason=f"Failed to gather system information: {e}",
                 details=f"Exception type: {type(e).__name__}",
@@ -176,12 +176,12 @@ class SystemDetectorService:
 
             return managers
 
-        except DetectorServiceError:
+        except SystemServiceError:
             # Re-raise specialized exceptions as-is
             raise
         except Exception as e:
             # Wrap unexpected external exceptions
-            raise DetectorServiceError(
+            raise SystemServiceError(
                 operation="package_manager_detection",
                 reason=f"Failed to detect package managers: {e}",
                 details=f"Exception type: {type(e).__name__}",
@@ -236,7 +236,7 @@ class SystemDetectorService:
 
         except Exception as e:
             # Wrap unexpected external exceptions
-            raise DetectorServiceError(
+            raise SystemServiceError(
                 operation="package_manager_detection:windows",
                 reason=f"Failed to detect Windows package managers: {e}",
                 details=f"Exception type: {type(e).__name__}",
@@ -306,7 +306,7 @@ class SystemDetectorService:
 
         except Exception as e:
             # Wrap unexpected external exceptions
-            raise DetectorServiceError(
+            raise SystemServiceError(
                 operation="package_manager_detection:macos",
                 reason=f"Failed to detect macOS package managers: {e}",
                 details=f"Exception type: {type(e).__name__}",
@@ -367,7 +367,7 @@ class SystemDetectorService:
 
         except Exception as e:
             # Wrap unexpected external exceptions
-            raise DetectorServiceError(
+            raise SystemServiceError(
                 operation="package_manager_detection:linux",
                 reason=f"Failed to detect Linux package managers: {e}",
                 details=f"Exception type: {type(e).__name__}",
@@ -425,7 +425,7 @@ class SystemDetectorService:
 
         except Exception as e:
             # Wrap unexpected external exceptions
-            raise DetectorServiceError(
+            raise SystemServiceError(
                 operation="development_environment_detection",
                 reason=f"Failed to detect development environments: {e}",
                 details=f"Exception type: {type(e).__name__}",
@@ -503,7 +503,7 @@ class SystemDetectorService:
             return get_best_package_manager(self.package_managers)
         except Exception as e:
             # Wrap unexpected external exceptions
-            raise DetectorServiceError(
+            raise SystemServiceError(
                 operation="best_package_manager",
                 reason=f"Failed to select best package manager: {e}",
                 details=f"Exception type: {type(e).__name__}",
@@ -579,7 +579,7 @@ class SystemDetectorService:
 
         except Exception as e:
             # Wrap unexpected external exceptions
-            raise DetectorServiceError(
+            raise SystemServiceError(
                 operation="package_manager_install_check",
                 reason=f"Failed to check package manager installation capability: {e}",
                 details=f"Exception type: {type(e).__name__}",
@@ -601,7 +601,7 @@ class SystemDetectorService:
         try:
             # Input validation
             if output_path is not None and not isinstance(output_path, Path):
-                raise DetectorServiceError(
+                raise SystemServiceError(
                     operation="report_validation",
                     reason="Output path must be a Path object",
                     details=f"Invalid output_path type: {type(output_path)}",
@@ -621,13 +621,13 @@ class SystemDetectorService:
                 with open(output_path, "w", encoding="utf-8") as f:
                     json.dump(report, f, indent=2, ensure_ascii=False)
             except OSError as e:
-                raise DetectorServiceError(
+                raise SystemServiceError(
                     operation="report_write",
                     reason="Cannot write report file",
                     details=f"File: {output_path} | Error: {e}",
                 ) from e
             except (TypeError, ValueError) as e:
-                raise DetectorServiceError(
+                raise SystemServiceError(
                     operation="report_serialization",
                     reason="Cannot serialize report data",
                     details=f"File: {output_path} | Error: {e}",
@@ -635,12 +635,12 @@ class SystemDetectorService:
 
             return output_path
 
-        except DetectorServiceError:
+        except SystemServiceError:
             # Re-raise specialized exceptions as-is
             raise
         except Exception as e:
             # Wrap unexpected external exceptions
-            raise DetectorServiceError(
+            raise SystemServiceError(
                 operation="report_generation",
                 reason=f"Failed to generate system report: {e}",
                 details=(
@@ -672,7 +672,7 @@ class SystemDetectorService:
 
         except Exception as e:
             # Wrap unexpected external exceptions
-            raise DetectorServiceError(
+            raise SystemServiceError(
                 operation="recommendations",
                 reason=f"Failed to generate recommendations: {e}",
                 details=f"Exception type: {type(e).__name__}",
@@ -697,7 +697,7 @@ class SystemDetectorService:
             }
         except Exception as e:
             # Wrap unexpected external exceptions
-            raise DetectorServiceError(
+            raise SystemServiceError(
                 operation="system_data",
                 reason=f"Failed to retrieve system data: {e}",
                 details=f"Exception type: {type(e).__name__}",

@@ -26,10 +26,7 @@ from typing import ClassVar
 
 # Local imports
 from ...exceptions.common import (
-    FileAccessError,
-    FileScanError,
-    FileValidationError,
-    SecurityFilterError,
+    FileServiceError,
 )
 from ...shared.configs.security import FileScannerConfig
 from ...shared.result_models import FileScanResult
@@ -90,10 +87,10 @@ class FileScannerService:
             FileSearchResult: Result with list of Python file paths
 
         Raises:
-            FileValidationError: If input validation fails
-            FileScanError: If target path does not exist
-            FileAccessError: If directory access fails
-            SecurityFilterError: If security filtering fails
+            FileServiceError: If input validation fails
+            FileServiceError: If target path does not exist
+            FileServiceError: If directory access fails
+            FileServiceError: If security filtering fails
         """
         start_time = time.time()
         try:
@@ -108,7 +105,7 @@ class FileScannerService:
             elif target_path.is_dir():
                 python_files.extend(self._scan_directory(target_path, recursive))
             else:
-                raise FileScanError(
+                raise FileServiceError(
                     message="Path is neither a file nor a directory",
                     operation="find_python_files",
                     target_path=str(target_path),
@@ -133,12 +130,7 @@ class FileScannerService:
                 search_time=search_time,
             )
 
-        except (
-            FileValidationError,
-            FileScanError,
-            FileAccessError,
-            SecurityFilterError,
-        ) as e:
+        except FileServiceError as e:
             search_time = time.time() - start_time
             # Re-raise specialized exceptions as-is but return result
             return FileSearchResult(
@@ -171,10 +163,10 @@ class FileScannerService:
             FileSearchResult: Result with list of Python source files
 
         Raises:
-            FileValidationError: If input validation fails
-            FileScanError: If project root is invalid
-            FileAccessError: If directory access fails
-            SecurityFilterError: If security filtering fails
+            FileServiceError: If input validation fails
+            FileServiceError: If project root is invalid
+            FileServiceError: If directory access fails
+            FileServiceError: If security filtering fails
         """
         start_time = time.time()
         try:
@@ -221,12 +213,7 @@ class FileScannerService:
                 search_time=search_time,
             )
 
-        except (
-            FileValidationError,
-            FileScanError,
-            FileAccessError,
-            SecurityFilterError,
-        ) as e:
+        except FileServiceError as e:
             search_time = time.time() - start_time
             return FileSearchResult(
                 success=False,
@@ -323,12 +310,12 @@ class FileScannerService:
             List[Path]: List of Python files found
 
         Raises:
-            FileScanError: If directory does not exist
-            FileAccessError: If directory access fails
+            FileServiceError: If directory does not exist
+            FileServiceError: If directory access fails
         """
         try:
             if not directory.exists():
-                raise FileScanError(
+                raise FileServiceError(
                     message="Directory does not exist",
                     operation="scan_directory",
                     target_path=str(directory),
@@ -348,11 +335,10 @@ class FileScannerService:
                             if item.is_file():
                                 python_files.append(item)
                 except (PermissionError, OSError) as e:
-                    raise FileAccessError(
+                    raise FileServiceError(
                         message=f"Permission or OS error during recursive scan: {e}",
                         operation="recursive_scan",
-                        file_path=str(directory),
-                        reason=f"Permission or OS error during recursive scan: {e}",
+                        target_path=str(directory),
                         details=f"Failed to recursively scan directory {directory}",
                     ) from e
             else:
@@ -365,22 +351,21 @@ class FileScannerService:
                         if item.is_file() and is_python_file(item):
                             python_files.append(item)
                 except (PermissionError, OSError) as e:
-                    raise FileAccessError(
+                    raise FileServiceError(
                         message=f"Permission or OS error during directory scan: {e}",
                         operation="directory_scan",
-                        file_path=str(directory),
-                        reason=f"Permission or OS error during directory scan: {e}",
+                        target_path=str(directory),
                         details=f"Failed to scan directory {directory}",
                     ) from e
 
             return python_files
 
-        except (FileScanError, FileAccessError):
+        except FileServiceError:
             # Re-raise specialized exceptions as-is
             raise
         except Exception as e:
             # Wrap unexpected external exceptions
-            raise FileScanError(
+            raise FileServiceError(
                 message=f"Unexpected error during directory scanning: {e}",
                 operation="scan_directory",
                 target_path=str(directory),
@@ -394,11 +379,11 @@ class FileScannerService:
             target_path: Path to validate
 
         Raises:
-            FileValidationError: If target path is invalid
-            FileScanError: If target path does not exist
+            FileServiceError: If target path is invalid
+            FileServiceError: If target path does not exist
         """
         if not target_path:
-            raise FileValidationError(
+            raise FileServiceError(
                 message="Target path cannot be None",
                 operation="validate_target_path",
                 target_path="",
@@ -406,7 +391,7 @@ class FileScannerService:
             )
 
         if not target_path.exists():
-            raise FileScanError(
+            raise FileServiceError(
                 message="Path does not exist",
                 operation="validate_target_path",
                 target_path=str(target_path),
@@ -420,11 +405,11 @@ class FileScannerService:
             project_root: Project root to validate
 
         Raises:
-            FileValidationError: If project root is invalid
-            FileScanError: If project root does not exist or is not a directory
+            FileServiceError: If project root is invalid
+            FileServiceError: If project root does not exist or is not a directory
         """
         if not project_root:
-            raise FileValidationError(
+            raise FileServiceError(
                 message="Project root cannot be None",
                 operation="validate_project_root",
                 target_path="",
@@ -432,7 +417,7 @@ class FileScannerService:
             )
 
         if not project_root.exists() or not project_root.is_dir():
-            raise FileScanError(
+            raise FileServiceError(
                 message="Invalid project root",
                 operation="validate_project_root",
                 target_path=str(project_root),
@@ -451,7 +436,7 @@ class FileScannerService:
             List[Path]: Filtered list of files
 
         Raises:
-            SecurityFilterError: If security filtering fails
+            FileServiceError: If security filtering fails
         """
         try:
             filtered_files = []
@@ -492,7 +477,7 @@ class FileScannerService:
             return filtered_files
 
         except Exception as e:
-            raise SecurityFilterError(
+            raise FileServiceError(
                 message=f"Security filtering failed: {e}",
                 operation="filter_files",
                 target_path="multiple",

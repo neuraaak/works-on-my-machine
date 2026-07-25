@@ -29,11 +29,7 @@ from pathlib import Path
 
 # Local imports
 from ...exceptions.common import ValidationServiceError
-from ...exceptions.system import (
-    FileSystemServiceError,
-    RegistryServiceError,
-    UserPathServiceError,
-)
+from ...exceptions.system import SystemServiceError
 from ...services import CommandRunnerService, SystemPathService
 from ...shared.results import (
     PathBackupInfo,
@@ -58,8 +54,7 @@ class SystemPathInterface:
     """Orchestrates SystemPathService and returns a Result.
 
     Pure orchestration: no UI, no re-raise. Service exceptions
-    (``UserPathServiceError``, ``RegistryServiceError``,
-    ``FileSystemServiceError``, ``ValidationServiceError``) are translated
+    (``SystemServiceError``, ``ValidationServiceError``) are translated
     into the relevant Result. Unexpected errors are not swallowed — they
     propagate.
     """
@@ -97,11 +92,7 @@ class SystemPathInterface:
 
         try:
             current_path_result = self._path_service.get_current_system_path()
-        except (
-            UserPathServiceError,
-            RegistryServiceError,
-            ValidationServiceError,
-        ) as e:
+        except (SystemServiceError, ValidationServiceError) as e:
             return PathOperationResult(
                 success=False,
                 message="Failed to get current PATH",
@@ -126,12 +117,7 @@ class SystemPathInterface:
             if self.platform == "Windows":
                 return self._path_service.setup_windows_path(womm_path, original_path)
             return self._path_service.setup_unix_path(womm_path, original_path)
-        except (
-            RegistryServiceError,
-            FileSystemServiceError,
-            ValidationServiceError,
-            UserPathServiceError,
-        ) as e:
+        except (SystemServiceError, ValidationServiceError) as e:
             return PathOperationResult(
                 success=False,
                 message="Failed to add WOMM to PATH",
@@ -153,12 +139,7 @@ class SystemPathInterface:
             if self.platform == "Windows":
                 return self._path_service.remove_from_windows_path(womm_path)
             return self._path_service.remove_from_unix_path(womm_path)
-        except (
-            RegistryServiceError,
-            FileSystemServiceError,
-            ValidationServiceError,
-            UserPathServiceError,
-        ) as e:
+        except (SystemServiceError, ValidationServiceError) as e:
             return PathOperationResult(
                 success=False,
                 message="Failed to remove WOMM from PATH",
@@ -248,11 +229,7 @@ class SystemPathInterface:
 
         try:
             path_result = self._path_service.get_current_system_path()
-        except (
-            UserPathServiceError,
-            RegistryServiceError,
-            ValidationServiceError,
-        ) as e:
+        except (SystemServiceError, ValidationServiceError) as e:
             return PathBackupResult(
                 success=False,
                 message="Failed to get current PATH",

@@ -19,7 +19,7 @@ from __future__ import annotations
 # IMPORTS
 # ///////////////////////////////////////////////////////////////
 # Local imports
-from ...exceptions.system import DetectorServiceError
+from ...exceptions.system import SystemServiceError
 from ...services import SystemDetectorService
 from ...shared.results import SystemDetectionResult
 
@@ -31,7 +31,7 @@ from ...shared.results import SystemDetectionResult
 class SystemDetectorInterface:
     """Orchestrates SystemDetectorService and returns a Result.
 
-    Pure orchestration: no UI, no re-raise. The service's ``DetectorServiceError``
+    Pure orchestration: no UI, no re-raise. The service's ``SystemServiceError``
     is translated into a ``SystemDetectionResult`` (the single exception→Result
     conversion point). Unexpected errors are not swallowed — they propagate.
     """
@@ -62,7 +62,7 @@ class SystemDetectorInterface:
         """
         try:
             data = self.detector.get_system_data()
-        except DetectorServiceError as e:
+        except SystemServiceError as e:
             return SystemDetectionResult(
                 success=False,
                 message="System detection failed",

@@ -5,183 +5,49 @@
 # ///////////////////////////////////////////////////////////////
 
 """
-System service exceptions for Works On My Machine.
+System service exception for Works On My Machine.
 
-This module contains custom exceptions used specifically by the system
-services, such as:
-- SystemDetectorService (womm/services/system/system_detector_service.py)
+A single exception covers every system-service failure — detection, PATH
+management, registry access, filesystem operations and environment refresh.
+The failing step is carried by ``operation`` and any extra context by
+``details``, rather than by per-step subclasses: no caller branches on the
+specific failure kind, they only distinguish "ours" from "unexpected".
 """
 
 from __future__ import annotations
 
 # ///////////////////////////////////////////////////////////////
-# BASE EXCEPTION
+# SYSTEM SERVICE EXCEPTION
 # ///////////////////////////////////////////////////////////////
 
 
 class SystemServiceError(Exception):
-    """Base exception for all system service errors.
+    """Single exception for all system service errors.
 
-    This is the main exception class for all system service operations.
-    Used for general errors like unexpected failures during system operations.
+    Args:
+        operation: Step that failed (e.g. ``"platform_info"``, ``"path_add"``,
+            ``"registry_read"``, ``"environment_refresh"``)
+        reason: Human-readable reason for the failure
+        details: Optional technical context for debugging (paths, registry
+            keys, exception types — conventionally ``"key=value | note"``)
     """
 
-    def __init__(self, message: str, details: str | None = None) -> None:
-        """Initialize the exception with a message and optional details.
-
-        Args:
-            message: Human-readable error message
-            details: Optional technical details for debugging
-        """
-        self.message = message
+    def __init__(
+        self,
+        operation: str,
+        reason: str,
+        details: str | None = None,
+    ) -> None:
+        """Initialize a system service error."""
+        self.operation = operation
+        self.reason = reason
         self.details = details
+        self.message = f"System service error during {operation}: {reason}"
         super().__init__(self.message)
 
 
 # ///////////////////////////////////////////////////////////////
-# SYSTEM DETECTION EXCEPTIONS
+# PUBLIC API
 # ///////////////////////////////////////////////////////////////
 
-
-class DetectorServiceError(SystemServiceError):
-    """Single exception for the SystemDetectorService.
-
-    Covers every detection failure (platform info, package-manager detection,
-    development-environment detection, report generation, …). The failing step is
-    carried by the ``operation`` field rather than by per-step subclasses, since
-    no caller branches on the specific failure kind.
-    """
-
-    def __init__(
-        self,
-        operation: str,
-        reason: str,
-        details: str | None = None,
-    ) -> None:
-        """Initialize a detector service error.
-
-        Args:
-            operation: Detection step that failed (e.g. "platform_info",
-                "package_manager_detection", "report_generation")
-            reason: Human-readable reason for the failure
-            details: Optional technical details for debugging
-        """
-        self.operation = operation
-        self.reason = reason
-        message = f"System detection error during {operation}: {reason}"
-        super().__init__(message, details)
-
-
-# ///////////////////////////////////////////////////////////////
-# PATH MANAGEMENT EXCEPTIONS
-# ///////////////////////////////////////////////////////////////
-
-
-class FileSystemServiceError(SystemServiceError):
-    """Exception raised when file system operations fail.
-
-    This exception is raised when file or directory operations
-    cannot be completed successfully.
-    """
-
-    def __init__(
-        self,
-        operation: str,
-        path: str,
-        reason: str,
-        details: str | None = None,
-    ) -> None:
-        """Initialize file system error.
-
-        Args:
-            operation: Operation that failed
-            path: Path that failed
-            reason: Human-readable reason for the failure
-            details: Optional technical details for debugging
-        """
-        self.operation = operation
-        self.path = path
-        self.reason = reason
-        message = f"File system error during {operation} on {path}: {reason}"
-        super().__init__(message, details)
-
-
-class RegistryServiceError(SystemServiceError):
-    """Exception raised when Windows registry operations fail.
-
-    This exception is raised when registry queries or modifications
-    cannot be completed successfully.
-    """
-
-    def __init__(
-        self,
-        registry_key: str,
-        operation: str,
-        reason: str,
-        details: str | None = None,
-    ) -> None:
-        """Initialize registry error.
-
-        Args:
-            registry_key: Registry key that failed
-            operation: Operation that failed
-            reason: Human-readable reason for the failure
-            details: Optional technical details for debugging
-        """
-        self.registry_key = registry_key
-        self.operation = operation
-        self.reason = reason
-        message = f"Registry error for {registry_key} during {operation}: {reason}"
-        super().__init__(message, details)
-
-
-class UserPathServiceError(SystemServiceError):
-    """Exception raised when PATH operations fail.
-
-    This exception is raised when PATH environment variable operations
-    cannot be completed successfully.
-    """
-
-    def __init__(
-        self,
-        message: str,
-        details: str | None = None,
-    ) -> None:
-        """Initialize user path error.
-
-        Args:
-            message: Human-readable error message
-            details: Optional technical details for debugging
-        """
-        super().__init__(message, details)
-
-
-# ///////////////////////////////////////////////////////////////
-# ENVIRONMENT MANAGEMENT EXCEPTIONS
-# ///////////////////////////////////////////////////////////////
-
-
-class EnvironmentServiceError(SystemServiceError):
-    """Exception raised when environment refresh operations fail.
-
-    This exception is raised when environment variables cannot be refreshed
-    from the registry or system configuration.
-    """
-
-    def __init__(
-        self,
-        operation: str,
-        reason: str,
-        details: str | None = None,
-    ) -> None:
-        """Initialize environment refresh error.
-
-        Args:
-            operation: Operation that failed
-            reason: Human-readable reason for the failure
-            details: Optional technical details for debugging
-        """
-        self.operation = operation
-        self.reason = reason
-        message = f"Environment refresh error during {operation}: {reason}"
-        super().__init__(message, details)
+__all__ = ["SystemServiceError"]

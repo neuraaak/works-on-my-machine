@@ -26,7 +26,7 @@ from pathlib import Path
 import pytest
 
 # Local imports
-from womm.exceptions.common import TimeoutError as CommandTimeoutError
+from womm.exceptions.common import CommandTimeoutError
 from womm.exceptions.lint import LintServiceError
 from womm.services.lint.core_service import LintService
 from womm.services.lint.python_lint_service import PythonLintService

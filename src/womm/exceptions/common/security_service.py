@@ -38,64 +38,7 @@ class SecurityServiceError(Exception):
 
 
 # ///////////////////////////////////////////////////////////////
-# COMMAND VALIDATION EXCEPTIONS
+# PUBLIC API
 # ///////////////////////////////////////////////////////////////
 
-
-class CommandValidationError(SecurityServiceError):
-    """Exception raised when command validation fails.
-
-    This exception is raised when a command does not pass security validation,
-    such as when it's not in the whitelist, contains dangerous patterns, or has
-    invalid arguments.
-    """
-
-    def __init__(
-        self,
-        command: str,
-        reason: str,
-        details: str | None = None,
-    ) -> None:
-        """Initialize command validation error.
-
-        Args:
-            command: The command that failed validation
-            reason: Human-readable reason for the failure
-            details: Optional technical details for debugging
-        """
-        self.command = command
-        self.reason = reason
-        message = f"Command validation failed: {reason}"
-        super().__init__(message, details)
-
-
-# ///////////////////////////////////////////////////////////////
-# PATH VALIDATION EXCEPTIONS
-# ///////////////////////////////////////////////////////////////
-
-
-class PathValidationError(SecurityServiceError):
-    """Exception raised when path validation fails.
-
-    This exception is raised when a file or directory path does not pass
-    security validation, such as when it contains dangerous patterns,
-    excessive directory traversal, or points to system directories.
-    """
-
-    def __init__(
-        self,
-        path: str,
-        reason: str,
-        details: str | None = None,
-    ) -> None:
-        """Initialize path validation error.
-
-        Args:
-            path: The path that failed validation
-            reason: Human-readable reason for the failure
-            details: Optional technical details for debugging
-        """
-        self.path = path
-        self.reason = reason
-        message = f"Path validation failed: {reason}"
-        super().__init__(message, details)
+__all__ = ["SecurityServiceError"]

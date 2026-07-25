@@ -25,20 +25,13 @@ from __future__ import annotations
 from .command_service import (
     CommandExecutionError,
     CommandServiceError,
+    CommandTimeoutError,
     CommandUtilityError,
-    TimeoutError,
 )
 from .file_service import (
-    DirectoryAccessError,
-    FileAccessError,
-    FileScanError,
     FileServiceError,
-    FileValidationError,
-    SecurityFilterError,
 )
 from .security_service import (
-    CommandValidationError,
-    PathValidationError,
     SecurityServiceError,
 )
 from .validation_service import ValidationServiceError
@@ -52,17 +45,10 @@ __all__ = [  # noqa: RUF022
     "CommandExecutionError",
     "CommandServiceError",
     "CommandUtilityError",
-    "TimeoutError",
+    "CommandTimeoutError",
     # file_service
-    "DirectoryAccessError",
-    "FileAccessError",
-    "FileScanError",
     "FileServiceError",
-    "FileValidationError",
-    "SecurityFilterError",
     # security_service
-    "CommandValidationError",
-    "PathValidationError",
     "SecurityServiceError",
     # validation_service
     "ValidationServiceError",

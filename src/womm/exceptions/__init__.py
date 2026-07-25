@@ -14,7 +14,7 @@ Import exceptions from the appropriate domain:
     from exceptions.context import ContextServiceError
     from exceptions.lint import LintServiceError
     from exceptions.project import ProjectServiceError
-    from exceptions.system import SystemServiceError, FileSystemError
+    from exceptions.system import SystemServiceError
     from exceptions.womm_deployment import WommDeploymentServiceError
 
 Available domains:
@@ -35,17 +35,10 @@ from __future__ import annotations
 from .common import (
     CommandExecutionError,
     CommandServiceError,
+    CommandTimeoutError,
     CommandUtilityError,
-    CommandValidationError,
-    DirectoryAccessError,
-    FileAccessError,
-    FileScanError,
     FileServiceError,
-    FileValidationError,
-    PathValidationError,
-    SecurityFilterError,
     SecurityServiceError,
-    TimeoutError,
     ValidationServiceError,
 )
 
@@ -59,14 +52,7 @@ from .lint import LintServiceError
 from .project import ProjectServiceError
 
 # Local imports - System exceptions
-from .system import (
-    DetectorServiceError,
-    EnvironmentServiceError,
-    FileSystemServiceError,
-    RegistryServiceError,
-    SystemServiceError,
-    UserPathServiceError,
-)
+from .system import SystemServiceError
 
 # Local imports - WOMM Deployment exceptions
 from .womm_deployment import WommDeploymentServiceError
@@ -80,16 +66,9 @@ __all__ = [  # noqa: RUF022
     "CommandExecutionError",
     "CommandServiceError",
     "CommandUtilityError",
-    "CommandValidationError",
-    "DirectoryAccessError",
-    "FileAccessError",
-    "FileScanError",
     "FileServiceError",
-    "FileValidationError",
-    "PathValidationError",
-    "SecurityFilterError",
     "SecurityServiceError",
-    "TimeoutError",
+    "CommandTimeoutError",
     "ValidationServiceError",
     # Context exceptions
     "ContextServiceError",
@@ -98,12 +77,7 @@ __all__ = [  # noqa: RUF022
     # Project exceptions
     "ProjectServiceError",
     # System exceptions
-    "DetectorServiceError",
-    "EnvironmentServiceError",
-    "FileSystemServiceError",
-    "RegistryServiceError",
     "SystemServiceError",
-    "UserPathServiceError",
     # WOMM Deployment exceptions
     "WommDeploymentServiceError",
 ]

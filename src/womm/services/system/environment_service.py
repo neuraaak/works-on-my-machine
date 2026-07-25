@@ -31,7 +31,7 @@ from threading import Lock
 from typing import ClassVar
 
 # Local imports
-from ...exceptions.system import EnvironmentServiceError
+from ...exceptions.system import SystemServiceError
 from ...shared.configs.system import SystemEnvironmentConfig
 from ...shared.results.system_results import (
     EnvironmentRefreshResult,
@@ -99,10 +99,10 @@ class SystemEnvironmentService:
                 return self._refresh_windows_environment(start_time)
             else:
                 return self._refresh_unix_environment(start_time)
-        except EnvironmentServiceError:
+        except SystemServiceError:
             raise
         except Exception as e:
-            raise EnvironmentServiceError(
+            raise SystemServiceError(
                 operation="refresh_environment",
                 reason=f"Unexpected error during environment refresh: {e}",
                 details=f"Exception type: {type(e).__name__}",
@@ -135,7 +135,7 @@ class SystemEnvironmentService:
                 return self._verify_windows_environment(command, start_time)
             else:
                 return self._verify_unix_environment(command, start_time)
-        except EnvironmentServiceError:
+        except SystemServiceError:
             raise
         except Exception as e:
             logger.warning(f"Could not verify environment refresh: {e}")
@@ -210,14 +210,14 @@ class SystemEnvironmentService:
 
         except OSError as e:
             # Critical system errors - raise exception
-            raise EnvironmentServiceError(
+            raise SystemServiceError(
                 operation="refresh_windows_environment",
                 reason=f"Windows environment refresh failed: {e}",
                 details=f"Exception type: {type(e).__name__}",
             ) from e
         except Exception as e:
             # Wrap unexpected external exceptions - critical error
-            raise EnvironmentServiceError(
+            raise SystemServiceError(
                 operation="refresh_windows_environment",
                 reason=f"Windows environment refresh failed: {e}",
                 details=f"Exception type: {type(e).__name__}",
@@ -424,7 +424,7 @@ class SystemEnvironmentService:
             )
 
         except Exception as e:
-            raise EnvironmentServiceError(
+            raise SystemServiceError(
                 operation="refresh_unix_environment",
                 reason=f"Unix environment refresh failed: {e}",
                 details=f"Exception type: {type(e).__name__}",

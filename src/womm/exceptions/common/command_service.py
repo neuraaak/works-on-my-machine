@@ -44,7 +44,7 @@ class CommandUtilityError(CommandServiceError):
         super().__init__(message, details)
 
 
-class TimeoutError(CommandServiceError):
+class CommandTimeoutError(CommandServiceError):
     """Exception raised when a command execution times out."""
 
     def __init__(
@@ -87,5 +87,5 @@ __all__ = [
     "CommandExecutionError",
     "CommandServiceError",
     "CommandUtilityError",
-    "TimeoutError",
+    "CommandTimeoutError",
 ]
