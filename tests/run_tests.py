@@ -130,7 +130,10 @@ def main() -> None:
         sys.exit(1)
 
     # Build pytest command
-    cmd_parts = [sys.executable, "-m", "pytest"]
+    # -P disables Python's automatic sys.path[0]=cwd insertion for -m: without
+    # it, running from the project root shadows the installed womm package
+    # with the root-level womm.py installer launcher (same module name).
+    cmd_parts = [sys.executable, "-P", "-m", "pytest"]
 
     # Add verbosity flag
     if args.verbose:
