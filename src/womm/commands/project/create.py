@@ -340,14 +340,16 @@ def _run_interactive_python_setup(
         if key not in {"project_type", "project_name", "project_path", "current_dir"}
     }
     options["minimal"] = minimal
-    success = project_manager.create_project(
+    result = project_manager.create_project(
         project_type="python",
         project_name=project_name,
         target=str(project_path.parent),
         **options,
     )
 
-    return bool(success)
+    if not result.success:
+        ezprinter.error(f"Error creating Python project: {result.error}")
+    return bool(result)
 
 
 def _run_interactive_javascript_setup(
@@ -407,14 +409,16 @@ def _run_interactive_javascript_setup(
     options["minimal"] = minimal
 
     # Create project
-    success = project_manager.create_project(
+    result = project_manager.create_project(
         project_type=pm_project_type,
         project_name=project_name,
         target=str(project_path.parent),
         **options,
     )
 
-    return bool(success)
+    if not result.success:
+        ezprinter.error(f"Error creating JavaScript project: {result.error}")
+    return bool(result)
 
 
 # ///////////////////////////////////////////////////////////////
@@ -461,7 +465,7 @@ def _run_direct_python_setup(
     options["minimal"] = minimal
 
     # Create project
-    success = project_manager.create_project(
+    result = project_manager.create_project(
         project_type="python",
         project_name=project_name,
         current_dir=current_dir,
@@ -469,7 +473,9 @@ def _run_direct_python_setup(
         **options,
     )
 
-    return bool(success)
+    if not result.success:
+        ezprinter.error(f"Error creating Python project: {result.error}")
+    return bool(result)
 
 
 def _run_direct_javascript_setup(
@@ -512,7 +518,7 @@ def _run_direct_javascript_setup(
 
     # Create project
     # Use "javascript" as the base type, type will be handled by the manager
-    success = project_manager.create_project(
+    result = project_manager.create_project(
         project_type="javascript",
         project_name=project_name,
         current_dir=current_dir,
@@ -520,4 +526,6 @@ def _run_direct_javascript_setup(
         **options,
     )
 
-    return bool(success)
+    if not result.success:
+        ezprinter.error(f"Error creating JavaScript project: {result.error}")
+    return bool(result)

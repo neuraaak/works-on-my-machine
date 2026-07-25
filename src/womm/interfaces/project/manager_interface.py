@@ -10,6 +10,8 @@ Main project manager for WOMM CLI.
 Orchestrates project creation and management operations.
 Provides unified interface for creating and managing projects
 across different languages and frameworks.
+
+This interface never raises: every public method returns a typed Result.
 """
 
 from __future__ import annotations
@@ -22,8 +24,6 @@ import logging
 from pathlib import Path
 
 # Local imports
-from ...exceptions.common import ValidationServiceError
-from ...exceptions.project import ProjectServiceError
 from ...shared.configs.project import ProjectConfig
 from ...shared.results import (
     ProjectCreationResult,
@@ -46,23 +46,12 @@ class ProjectManagerInterface:
     """Main project manager for WOMM CLI."""
 
     def __init__(self):
-        """Initialize the project manager.
-
-        Raises:
-            ProjectServiceError: If initialization fails
-        """
-        try:
-            self._create_interface = ProjectCreateInterface()
-            self._setup_interface = ProjectSetupInterface()
-            self._detection_interface = ProjectDetectionInterface()
-            self.template_manager = TemplateInterface()
-            self.logger = logging.getLogger(__name__)
-        except Exception as e:
-            raise ProjectServiceError(
-                operation="initialization",
-                reason=str(e),
-                details="Error creating component managers",
-            ) from e
+        """Initialize the project manager."""
+        self._create_interface = ProjectCreateInterface()
+        self._setup_interface = ProjectSetupInterface()
+        self._detection_interface = ProjectDetectionInterface()
+        self.template_manager = TemplateInterface()
+        self.logger = logging.getLogger(__name__)
 
     # ///////////////////////////////////////////////////////////////
     # PUBLIC METHODS
@@ -88,123 +77,117 @@ class ProjectManagerInterface:
 
         Returns:
             ProjectCreationResult: Result of project creation
-
-        Raises:
-            ProjectValidationError: If project parameters are invalid
-            ProjectServiceError: If project creation fails
         """
-        try:
-            # Input validation
-            if not project_type or not isinstance(project_type, str):
-                raise ValidationServiceError(
-                    operation="project_creation",
-                    field="project_type",
-                    reason="Project type is required and must be a string",
-                    details="Project type is required and must be a string",
-                )
-
-            # Determine project path
-            target = kwargs.get("target")
-
-            if current_dir:
-                project_path = Path.cwd()
-                project_name = project_path.name
-            elif target:
-                # Use specified target directory
-                target_path = Path(target)
-                if project_name:
-                    project_path = target_path / project_name
-                else:
-                    raise ValidationServiceError(
-                        operation="project_creation",
-                        field="project_name",
-                        reason="Project name is required when using target directory",
-                        details="Project name is required when using target directory",
-                    )
-            elif project_name:
-                project_path = Path.cwd() / project_name
-            else:
-                raise ValidationServiceError(
-                    operation="project_creation",
-                    field="project_name",
-                    reason="Project name is required when not using current directory",
-                    details="Project name is required when not using current directory",
-                )
-
-            # Validate project type
-            self._validate_project_type(project_type)
-
-            # Check dependencies
-            self._check_dependencies(project_type)
-
-            # Handle dry-run mode
-            if dry_run:
-                ezprinter.print_dry_run_message(
-                    "create project", f"{project_type} project '{project_name}'"
-                )
-                ezprinter.print_dry_run_message(
-                    "create project structure", f"at {project_path}"
-                )
-                ezprinter.print_dry_run_message(
-                    "setup development environment", f"for {project_type}"
-                )
-                ezprinter.print_dry_run_message(
-                    "install development tools", f"for {project_type}"
-                )
-                ezprinter.print_dry_run_message(
-                    "configure VSCode settings", f"for {project_type}"
-                )
-                ezprinter.print_dry_run_success()
-                return ProjectCreationResult(
-                    success=True,
-                    project_path=Path.cwd(),
-                    project_name=project_name or "<project>",
-                    project_type=project_type,
-                    files_created=[],
-                    tools_configured=[],
-                    warnings=["Dry-run mode: no actual changes were made"],
-                )
-
-            # Use new creation interface
-            # Map JavaScript types correctly
-            if project_type == "javascript":
-                # Get type from kwargs (e.g., "js", "react", "vue")
-                js_type_option = kwargs.get("type", "js")
-                # Map type to actual project type
-                type_map = {
-                    "js": "node",
-                    "ts": "node",
-                    "react": "react",
-                    "vue": "vue",
-                    "react-ts": "react",
-                    "vue-ts": "vue",
-                    "node": "node",
-                }
-                js_type = type_map.get(js_type_option, "node")
-            else:
-                js_type = project_type
-
-            resolved_project_name = project_name or project_path.name
-            result = self._create_interface.create_project(
-                project_type=js_type,
-                project_name=resolved_project_name,
-                project_path=project_path,
-                dry_run=dry_run,
-                force=kwargs.get("force", False),
-                minimal=minimal,
-                **kwargs,
+        # Input validation
+        if not project_type or not isinstance(project_type, str):
+            return ProjectCreationResult(
+                success=False,
+                error="Project type is required and must be a string",
             )
-            return result
 
-        except (ValidationServiceError, ProjectServiceError):
-            # Re-raise our custom exceptions as-is
-            raise
-        except Exception as e:
-            raise ProjectServiceError(
-                operation="create_project",
-                reason=str(e),
-                details=f"Project type: {project_type}, Project name: {project_name}",
-            ) from e
+        # Determine project path
+        target = kwargs.get("target")
+
+        if current_dir:
+            project_path = Path.cwd()
+            project_name = project_path.name
+        elif target:
+            # Use specified target directory
+            target_path = Path(target)
+            if project_name:
+                project_path = target_path / project_name
+            else:
+                return ProjectCreationResult(
+                    success=False,
+                    project_type=project_type,
+                    error="Project name is required when using target directory",
+                )
+        elif project_name:
+            project_path = Path.cwd() / project_name
+        else:
+            return ProjectCreationResult(
+                success=False,
+                project_type=project_type,
+                error="Project name is required when not using current directory",
+            )
+
+        # Validate project type
+        type_error = self._validate_project_type(project_type)
+        if type_error:
+            return ProjectCreationResult(
+                success=False,
+                project_path=project_path,
+                project_type=project_type,
+                error=type_error,
+            )
+
+        # Check dependencies
+        deps_error = self._check_dependencies(project_type)
+        if deps_error:
+            return ProjectCreationResult(
+                success=False,
+                project_path=project_path,
+                project_type=project_type,
+                error=deps_error,
+            )
+
+        # Handle dry-run mode
+        if dry_run:
+            ezprinter.print_dry_run_message(
+                "create project", f"{project_type} project '{project_name}'"
+            )
+            ezprinter.print_dry_run_message(
+                "create project structure", f"at {project_path}"
+            )
+            ezprinter.print_dry_run_message(
+                "setup development environment", f"for {project_type}"
+            )
+            ezprinter.print_dry_run_message(
+                "install development tools", f"for {project_type}"
+            )
+            ezprinter.print_dry_run_message(
+                "configure VSCode settings", f"for {project_type}"
+            )
+            ezprinter.print_dry_run_success()
+            return ProjectCreationResult(
+                success=True,
+                project_path=Path.cwd(),
+                project_name=project_name or "<project>",
+                project_type=project_type,
+                files_created=[],
+                tools_configured=[],
+                warnings=["Dry-run mode: no actual changes were made"],
+            )
+
+        # Use new creation interface
+        # Map JavaScript types correctly
+        if project_type == "javascript":
+            # Get type from kwargs (e.g., "js", "react", "vue")
+            js_type_option = kwargs.get("type", "js")
+            # Map type to actual project type
+            type_map = {
+                "js": "node",
+                "ts": "node",
+                "react": "react",
+                "vue": "vue",
+                "react-ts": "react",
+                "vue-ts": "vue",
+                "node": "node",
+            }
+            js_type = type_map.get(js_type_option, "node")
+        else:
+            js_type = project_type
+
+        resolved_project_name = project_name or project_path.name
+        return self._create_interface.create_project(
+            project_type=js_type,
+            project_name=resolved_project_name,
+            project_path=project_path,
+            dry_run=dry_run,
+            force=kwargs.get("force", False),
+            minimal=minimal,
+            **kwargs,
+        )
 
     def detect_project_type(
         self, project_path: Path | None = None
@@ -218,8 +201,7 @@ class ProjectManagerInterface:
         Returns:
             ProjectDetectionResult: Detection result with project type and confidence
         """
-        result = self._detection_interface.detect_project_type(project_path)
-        return result
+        return self._detection_interface.detect_project_type(project_path)
 
     def setup_development_environment(
         self, project_path: Path, project_type: str
@@ -234,56 +216,42 @@ class ProjectManagerInterface:
         Returns:
             ProjectSetupResult: Result of the setup operation
         """
-        result = self._setup_interface.setup_development_environment(
+        return self._setup_interface.setup_development_environment(
             project_path, project_type
         )
-        return result
 
     # ///////////////////////////////////////////////////////////////
     # PRIVATE METHODS
     # ///////////////////////////////////////////////////////////////
 
-    def _validate_project_type(self, project_type: str) -> bool:
-        """Validate that the project type is supported."""
+    def _validate_project_type(self, project_type: str) -> str:
+        """Validate that the project type is supported.
+
+        Returns:
+            Empty string if valid, otherwise an error message.
+        """
         supported_types = ["python", "javascript", "react", "vue"]
         if project_type not in supported_types:
-            raise ValidationServiceError(
-                operation="project_creation",
-                field="project_type",
-                reason=f"Unsupported project type: {project_type}",
-                details=f"Unsupported project type: {project_type}",
-            )
-        return True
+            return f"Unsupported project type: {project_type}"
+        return ""
 
-    def _check_dependencies(self, project_type: str) -> bool:
-        """Check if required dependencies are available."""
-        try:
-            if project_type == "python":
-                result = probe("python")
-                if not result.success:
-                    raise ProjectServiceError(
-                        operation="check_dependencies",
-                        reason="Python runtime not found, attempting to install...",
-                        details="Python runtime not found",
-                    )
+    def _check_dependencies(self, project_type: str) -> str:
+        """Check if required dependencies are available.
 
-            elif project_type in ["javascript", "react", "vue"]:
-                result = probe("node")
-                if not result.success:
-                    raise ProjectServiceError(
-                        operation="check_dependencies",
-                        reason="Node.js runtime not found, attempting to install...",
-                        details="Node.js runtime not found",
-                    )
+        Returns:
+            Empty string if dependencies are satisfied, otherwise an error message.
+        """
+        if project_type == "python":
+            result = probe("python")
+            if not result.success:
+                return "Python runtime not found, attempting to install..."
 
-            return True
+        elif project_type in ["javascript", "react", "vue"]:
+            result = probe("node")
+            if not result.success:
+                return "Node.js runtime not found, attempting to install..."
 
-        except Exception as e:
-            raise ProjectServiceError(
-                operation="check_dependencies",
-                reason=str(e),
-                details=f"Project type: {project_type}",
-            ) from e
+        return ""
 
     def get_available_project_types(self) -> list[tuple[str, str]]:
         """Get list of available project types with descriptions.
@@ -325,7 +293,7 @@ class ProjectManagerInterface:
         Returns:
             ProjectSetupResult: Result of the setup operation
         """
-        result = self._setup_interface.setup_project(
+        return self._setup_interface.setup_project(
             project_path=project_path,
             project_type=project_type,
             virtual_env=virtual_env,
@@ -334,4 +302,3 @@ class ProjectManagerInterface:
             setup_git_hooks=setup_git_hooks,
             **kwargs,
         )
-        return result

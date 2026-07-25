@@ -7,7 +7,9 @@
 """
 Project service exceptions for Works On My Machine.
 
-This package exports all exceptions for project operations.
+This package exports all exceptions for project operations. Interfaces
+under ``interfaces/project`` never raise: they catch ``ProjectServiceError``
+and translate it into a typed Result.
 """
 
 from __future__ import annotations
@@ -15,30 +17,13 @@ from __future__ import annotations
 # ///////////////////////////////////////////////////////////////
 # IMPORTS
 # ///////////////////////////////////////////////////////////////
-# ///////////////////////////////////////////////////////////////
-# IMPORTS
-# ///////////////////////////////////////////////////////////////
 # Local imports
-from .project_interface import (
-    CreateInterfaceError,
-    ProjectDetectionInterfaceError,
-    ProjectInterfaceError,
-    SetupInterfaceError,
-    TemplateInterfaceError,
-)
 from .project_service import ProjectServiceError
 
 # ///////////////////////////////////////////////////////////////
 # PUBLIC API
 # ///////////////////////////////////////////////////////////////
 
-__all__ = [  # noqa: RUF022
-    # project_interface
-    "CreateInterfaceError",
-    "ProjectDetectionInterfaceError",
-    "ProjectInterfaceError",
-    "SetupInterfaceError",
-    "TemplateInterfaceError",
-    # project_service
+__all__ = [
     "ProjectServiceError",
 ]

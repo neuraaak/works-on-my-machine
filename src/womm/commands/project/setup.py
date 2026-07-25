@@ -101,10 +101,17 @@ def setup_detect(
         confidence = detection_result.confidence
 
         if detected_type == "unknown" or not detected_type:
-            ezprinter.error(
-                "No suitable project type detected in the specified directory"
-            )
-            ezprinter.info("Supported project types: python, javascript, react, vue")
+            if not detection_result.success and detection_result.error:
+                ezprinter.error(
+                    f"Error detecting project type: {detection_result.error}"
+                )
+            else:
+                ezprinter.error(
+                    "No suitable project type detected in the specified directory"
+                )
+                ezprinter.info(
+                    "Supported project types: python, javascript, react, vue"
+                )
             sys.exit(1)
 
         ezprinter.success(
@@ -370,7 +377,7 @@ def _run_interactive_setup(
     setup_dev_tools = _coerce_bool(options.get("setup_dev_tools", False))
     setup_git_hooks = _coerce_bool(options.get("setup_git_hooks", False))
 
-    success = project_manager.setup_project(
+    result = project_manager.setup_project(
         project_type=project_type,
         project_path=project_path,
         virtual_env=virtual_env,
@@ -379,9 +386,9 @@ def _run_interactive_setup(
         setup_git_hooks=setup_git_hooks,
     )
 
-    if success:
+    if result.success:
         return True
-    ezprinter.error(f"Failed to configure {project_type} project")
+    ezprinter.error(f"Failed to configure {project_type} project: {result.error}")
     return False
 
 
@@ -412,7 +419,7 @@ def _run_direct_setup(
     setup_git_hooks = _coerce_bool(options.get("setup_git_hooks", False))
 
     # Configure project
-    success = project_manager.setup_project(
+    result = project_manager.setup_project(
         project_type=project_type,
         project_path=project_path,
         virtual_env=virtual_env,
@@ -421,7 +428,7 @@ def _run_direct_setup(
         setup_git_hooks=setup_git_hooks,
     )
 
-    if success:
+    if result.success:
         return True
-    ezprinter.error(f"Failed to configure {project_type} project")
+    ezprinter.error(f"Failed to configure {project_type} project: {result.error}")
     return False

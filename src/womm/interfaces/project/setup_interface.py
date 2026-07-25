@@ -10,8 +10,8 @@ Project setup interface for WOMM CLI.
 Handles project setup operations following the MEF pattern.
 Provides unified interface for setting up existing projects with development tools.
 
-This interface orchestrates project creation services and converts service exceptions
-to interface exceptions.
+This interface orchestrates project creation services and converts service
+exceptions into a typed ``ProjectSetupResult`` — it never raises.
 """
 
 from __future__ import annotations
@@ -28,7 +28,7 @@ from rich.progress import TaskID
 
 # Local imports
 from ...exceptions.common import ValidationServiceError
-from ...exceptions.project import ProjectServiceError, SetupInterfaceError
+from ...exceptions.project import ProjectServiceError
 from ...services import (
     JavaScriptProjectCreationService,
     ProjectDetectionService,
@@ -63,25 +63,11 @@ class ProjectSetupInterface:
     """
 
     def __init__(self):
-        """Initialize the project setup interface.
-
-        Raises:
-            ProjectSetupInterfaceError: If interface initialization fails
-        """
-        try:
-            self._detection_service = ProjectDetectionService()
-            self._python_service = PythonProjectCreationService()
-            self._javascript_service = JavaScriptProjectCreationService()
-            self.logger = logging.getLogger(__name__)
-        except Exception as e:
-            logger.error(
-                f"Failed to initialize ProjectSetupInterface: {e}", exc_info=True
-            )
-            raise SetupInterfaceError(
-                message=f"Failed to initialize project setup interface: {e}",
-                operation="initialization",
-                details=f"Exception type: {type(e).__name__}",
-            ) from e
+        """Initialize the project setup interface."""
+        self._detection_service = ProjectDetectionService()
+        self._python_service = PythonProjectCreationService()
+        self._javascript_service = JavaScriptProjectCreationService()
+        self.logger = logging.getLogger(__name__)
 
     # ///////////////////////////////////////////////////////////////
     # PUBLIC METHODS
@@ -110,9 +96,6 @@ class ProjectSetupInterface:
 
         Returns:
             ProjectSetupResult: Result containing setup information
-
-        Raises:
-            ProjectSetupInterfaceError: If project setup fails
         """
         try:
             # Validate project path
@@ -133,29 +116,35 @@ class ProjectSetupInterface:
                         project_type = detected_type
                         progress.update(task_id, status=f"Detected: {project_type}")
                     else:
-                        raise SetupInterfaceError(
-                            message="Could not detect project type",
-                            operation="setup_project",
-                            project_path=str(project_path),
-                            details=(
-                                "Project type detection failed. "
-                                "Please specify project type manually."
+                        return ProjectSetupResult(
+                            success=False,
+                            project_path=project_path,
+                            error=(
+                                "Could not detect project type. Project type "
+                                "detection failed. Please specify project type "
+                                "manually."
                             ),
                         )
 
-            if project_type is None or project_type == "":
-                raise SetupInterfaceError(
-                    message="Project type is required",
-                    operation="setup_project",
-                    project_path=str(project_path),
-                    details="Project type is missing or invalid",
+            if not project_type:
+                return ProjectSetupResult(
+                    success=False,
+                    project_path=project_path,
+                    error="Project type is required",
                 )
 
             # Validate project type
             validate_project_type(project_type)
 
             # Check dependencies
-            self._check_dependencies(project_type)
+            deps_error = self._check_dependencies(project_type)
+            if deps_error:
+                return ProjectSetupResult(
+                    success=False,
+                    project_path=project_path,
+                    project_type=project_type,
+                    error=deps_error,
+                )
 
             ezprinter.print_header(f"Setting up {project_type} project")
 
@@ -200,12 +189,14 @@ class ProjectSetupInterface:
                 tools_configured.extend(result.get("tools_configured", []))
                 warnings.extend(result.get("warnings", []))
             else:
-                raise SetupInterfaceError(
-                    message=f"Unsupported project type for setup: {project_type}",
-                    operation="setup_project",
-                    project_path=str(project_path),
+                return ProjectSetupResult(
+                    success=False,
+                    project_path=project_path,
                     project_type=project_type,
-                    details="Only python, javascript, react, and vue are supported",
+                    error=(
+                        f"Unsupported project type for setup: {project_type}. "
+                        "Only python, javascript, react, and vue are supported"
+                    ),
                 )
 
             ezprinter.success(
@@ -223,26 +214,20 @@ class ProjectSetupInterface:
             )
 
         except (ProjectServiceError, ValidationServiceError) as e:
-            # Convert service exceptions to interface exceptions
-            raise SetupInterfaceError(
-                message=f"Failed to setup project: {e.reason}",
-                operation="setup_project",
-                project_path=str(project_path) if project_path else "",
+            return ProjectSetupResult(
+                success=False,
+                project_path=project_path if project_path else None,
                 project_type=project_type or "",
-                details=e.details or f"Exception type: {type(e).__name__}",
-            ) from e
-        except SetupInterfaceError:
-            raise
+                error=f"Failed to setup project: {e.reason}",
+            )
         except Exception as e:
-            # Wrap unexpected exceptions
             logger.error(f"Unexpected error during project setup: {e}", exc_info=True)
-            raise SetupInterfaceError(
-                message=f"Unexpected error during project setup: {e}",
-                operation="setup_project",
-                project_path=str(project_path) if project_path else "",
+            return ProjectSetupResult(
+                success=False,
+                project_path=project_path if project_path else None,
                 project_type=project_type or "",
-                details=f"Exception type: {type(e).__name__}",
-            ) from e
+                error=f"Unexpected error during project setup: {e}",
+            )
 
     def setup_development_environment(
         self, project_path: Path, project_type: str | None = None
@@ -255,9 +240,6 @@ class ProjectSetupInterface:
 
         Returns:
             ProjectSetupResult: Result containing setup information
-
-        Raises:
-            ProjectSetupInterfaceError: If environment setup fails
         """
         try:
             # Auto-detect project type if not provided
@@ -269,22 +251,21 @@ class ProjectSetupInterface:
                 if detected_type and detected_type != "unknown":
                     project_type = detected_type
                 else:
-                    raise SetupInterfaceError(
-                        message="Could not detect project type",
-                        operation="setup_development_environment",
-                        project_path=str(project_path),
-                        details=(
-                            "Project type detection failed. "
-                            "Please specify project type manually."
+                    return ProjectSetupResult(
+                        success=False,
+                        project_path=project_path,
+                        error=(
+                            "Could not detect project type. Project type "
+                            "detection failed. Please specify project type "
+                            "manually."
                         ),
                     )
 
-            if project_type is None or project_type == "":
-                raise SetupInterfaceError(
-                    message="Project type is required",
-                    operation="setup_development_environment",
-                    project_path=str(project_path),
-                    details="Project type is missing or invalid",
+            if not project_type:
+                return ProjectSetupResult(
+                    success=False,
+                    project_path=project_path,
+                    error="Project type is required",
                 )
 
             # Use setup_project with minimal options
@@ -297,19 +278,16 @@ class ProjectSetupInterface:
                 setup_git_hooks=False,
             )
 
-        except SetupInterfaceError:
-            raise
         except Exception as e:
             logger.error(
                 f"Unexpected error during environment setup: {e}", exc_info=True
             )
-            raise SetupInterfaceError(
-                message=f"Unexpected error during environment setup: {e}",
-                operation="setup_development_environment",
-                project_path=str(project_path) if project_path else "",
+            return ProjectSetupResult(
+                success=False,
+                project_path=project_path if project_path else None,
                 project_type=project_type or "",
-                details=f"Exception type: {type(e).__name__}",
-            ) from e
+                error=f"Unexpected error during environment setup: {e}",
+            )
 
     # ///////////////////////////////////////////////////////////////
     # PRIVATE METHODS
@@ -558,42 +536,27 @@ class ProjectSetupInterface:
                 f"No specific VSCode assets found for project type: {project_type}"
             )
 
-    def _check_dependencies(self, project_type: str) -> None:
+    def _check_dependencies(self, project_type: str) -> str:
         """Check if required dependencies are available.
 
         Args:
             project_type: Type of project
 
-        Raises:
-            ProjectSetupInterfaceError: If required dependencies are not available
+        Returns:
+            Empty string if dependencies are satisfied, otherwise an error message.
         """
         try:
             if project_type == "python":
                 result = probe("python")
                 if not result.success:
-                    raise SetupInterfaceError(
-                        message="Python runtime not found",
-                        operation="check_dependencies",
-                        project_type=project_type,
-                        details="Python runtime is required for Python projects",
-                    )
+                    return "Python runtime not found. Python runtime is required for Python projects"
 
             elif project_type in ["javascript", "react", "vue"]:
                 result = probe("node")
                 if not result.success:
-                    raise SetupInterfaceError(
-                        message="Node.js runtime not found",
-                        operation="check_dependencies",
-                        project_type=project_type,
-                        details="Node.js runtime is required for JavaScript projects",
-                    )
+                    return "Node.js runtime not found. Node.js runtime is required for JavaScript projects"
 
-        except SetupInterfaceError:
-            raise
+            return ""
+
         except Exception as e:
-            raise SetupInterfaceError(
-                message=f"Error checking dependencies: {e}",
-                operation="check_dependencies",
-                project_type=project_type,
-                details=f"Exception type: {type(e).__name__}",
-            ) from e
+            return f"Error checking dependencies: {e}"

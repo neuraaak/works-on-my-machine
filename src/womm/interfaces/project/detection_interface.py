@@ -10,8 +10,8 @@ Project detection interface for WOMM CLI.
 Handles project type detection operations following the MEF pattern.
 Provides unified interface for detecting project types and configurations.
 
-This interface orchestrates ProjectDetectionService and converts service exceptions
-to interface exceptions.
+This interface orchestrates ProjectDetectionService and converts service
+exceptions into a typed ``ProjectDetectionResult`` — it never raises.
 """
 
 from __future__ import annotations
@@ -24,7 +24,7 @@ import logging
 from pathlib import Path
 
 # Local imports
-from ...exceptions.project import ProjectDetectionInterfaceError, ProjectServiceError
+from ...exceptions.project import ProjectServiceError
 from ...services import ProjectDetectionService
 from ...shared.results import ProjectDetectionResult
 from ...ui.common import ezprinter
@@ -49,23 +49,9 @@ class ProjectDetectionInterface:
     """
 
     def __init__(self):
-        """Initialize the project detection interface.
-
-        Raises:
-            ProjectDetectionInterfaceError: If interface initialization fails
-        """
-        try:
-            self._detection_service = ProjectDetectionService()
-            self.logger = logging.getLogger(__name__)
-        except Exception as e:
-            logger.error(
-                f"Failed to initialize ProjectDetectionInterface: {e}", exc_info=True
-            )
-            raise ProjectDetectionInterfaceError(
-                message=f"Failed to initialize project detection interface: {e}",
-                operation="initialization",
-                details=f"Exception type: {type(e).__name__}",
-            ) from e
+        """Initialize the project detection interface."""
+        self._detection_service = ProjectDetectionService()
+        self.logger = logging.getLogger(__name__)
 
     # ///////////////////////////////////////////////////////////////
     # PUBLIC METHODS
@@ -81,22 +67,15 @@ class ProjectDetectionInterface:
 
         Returns:
             ProjectDetectionResult: Result containing detected project type and metadata
-
-        Raises:
-            ProjectDetectionInterfaceError: If project detection fails
         """
         try:
             # Use current directory if no path provided
-            if project_path is None:
-                project_path = Path.cwd()
+            resolved_path = (project_path or Path.cwd()).resolve()
 
-            # Normalize path
-            project_path = project_path.resolve()
-
-            ezprinter.info(f"Detecting project type at: {project_path}")
+            ezprinter.info(f"Detecting project type at: {resolved_path}")
 
             # Call service to detect project type
-            type_result = self._detection_service.detect_project_type(project_path)
+            type_result = self._detection_service.detect_project_type(resolved_path)
             detected_type = (
                 type_result.project_type
                 if isinstance(type_result, ProjectDetectionResult)
@@ -111,7 +90,7 @@ class ProjectDetectionInterface:
             if detected_type and detected_type != "unknown":
                 try:
                     config_result = self._detection_service.detect_project_config(
-                        project_path
+                        resolved_path
                     )
                     if isinstance(config_result, ProjectDetectionResult):
                         config_files = config_result.configuration_files or {}
@@ -127,15 +106,6 @@ class ProjectDetectionInterface:
                 confidence = 0.0
                 ezprinter.warning("Could not detect project type")
 
-            # Build result
-            result = ProjectDetectionResult(
-                success=True,
-                project_type=detected_type or "unknown",
-                confidence=confidence,
-                detected_files=detected_files,
-                configuration_files=config_files,
-            )
-
             if detected_type:
                 ezprinter.success(
                     f"Detected project type: {detected_type} (confidence: {confidence:.0f}%)"
@@ -143,27 +113,27 @@ class ProjectDetectionInterface:
             else:
                 ezprinter.warning("Project type could not be determined")
 
-            return result
+            return ProjectDetectionResult(
+                success=True,
+                project_type=detected_type or "unknown",
+                confidence=confidence,
+                detected_files=detected_files,
+                configuration_files=config_files,
+            )
 
         except ProjectServiceError as e:
-            # Convert service exceptions to interface exceptions
-            raise ProjectDetectionInterfaceError(
-                message=f"Failed to detect project type: {e.reason}",
-                operation="detect_project_type",
-                project_path=str(project_path) if project_path else "",
-                details=e.details or f"Exception type: {type(e).__name__}",
-            ) from e
+            return ProjectDetectionResult(
+                success=False,
+                error=f"Failed to detect project type: {e.reason}",
+            )
         except Exception as e:
-            # Wrap unexpected exceptions
             logger.error(
                 f"Unexpected error during project detection: {e}", exc_info=True
             )
-            raise ProjectDetectionInterfaceError(
-                message=f"Unexpected error during project detection: {e}",
-                operation="detect_project_type",
-                project_path=str(project_path) if project_path else "",
-                details=f"Exception type: {type(e).__name__}",
-            ) from e
+            return ProjectDetectionResult(
+                success=False,
+                error=f"Unexpected error during project detection: {e}",
+            )
 
     def detect_project_config(
         self, project_path: Path | None = None
@@ -175,22 +145,15 @@ class ProjectDetectionInterface:
 
         Returns:
             ProjectDetectionResult: Result containing project configuration information
-
-        Raises:
-            ProjectDetectionInterfaceError: If project configuration detection fails
         """
         try:
             # Use current directory if no path provided
-            if project_path is None:
-                project_path = Path.cwd()
+            resolved_path = (project_path or Path.cwd()).resolve()
 
-            # Normalize path
-            project_path = project_path.resolve()
-
-            ezprinter.info(f"Detecting project configuration at: {project_path}")
+            ezprinter.info(f"Detecting project configuration at: {resolved_path}")
 
             # Call service to detect project configuration
-            config_result = self._detection_service.detect_project_config(project_path)
+            config_result = self._detection_service.detect_project_config(resolved_path)
             detected_type = (
                 config_result.project_type
                 if isinstance(config_result, ProjectDetectionResult)
@@ -207,15 +170,6 @@ class ProjectDetectionInterface:
                 else []
             )
 
-            # Build result
-            result = ProjectDetectionResult(
-                success=True,
-                project_type=str(detected_type) if detected_type else "unknown",
-                confidence=100.0 if detected_type else 0.0,
-                detected_files=detected_files,
-                configuration_files=config_files,
-            )
-
             if detected_type:
                 ezprinter.success(
                     f"Detected {detected_type} project with {len(detected_files)} configuration files"
@@ -223,25 +177,25 @@ class ProjectDetectionInterface:
             else:
                 ezprinter.warning("Project configuration could not be determined")
 
-            return result
+            return ProjectDetectionResult(
+                success=True,
+                project_type=str(detected_type) if detected_type else "unknown",
+                confidence=100.0 if detected_type else 0.0,
+                detected_files=detected_files,
+                configuration_files=config_files,
+            )
 
         except ProjectServiceError as e:
-            # Convert service exceptions to interface exceptions
-            raise ProjectDetectionInterfaceError(
-                message=f"Failed to detect project configuration: {e.reason}",
-                operation="detect_project_config",
-                project_path=str(project_path) if project_path else "",
-                details=e.details or f"Exception type: {type(e).__name__}",
-            ) from e
+            return ProjectDetectionResult(
+                success=False,
+                error=f"Failed to detect project configuration: {e.reason}",
+            )
         except Exception as e:
-            # Wrap unexpected exceptions
             logger.error(
                 f"Unexpected error during project configuration detection: {e}",
                 exc_info=True,
             )
-            raise ProjectDetectionInterfaceError(
-                message=f"Unexpected error during project configuration detection: {e}",
-                operation="detect_project_config",
-                project_path=str(project_path) if project_path else "",
-                details=f"Exception type: {type(e).__name__}",
-            ) from e
+            return ProjectDetectionResult(
+                success=False,
+                error=f"Unexpected error during project configuration detection: {e}",
+            )

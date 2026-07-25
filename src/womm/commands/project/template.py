@@ -239,6 +239,7 @@ def template_use(
         )
 
         if not result.success:
+            ezprinter.error(f"Error using template: {result.error}")
             sys.exit(1)
         return
 
@@ -408,13 +409,15 @@ def _create_template_interactive(project_manager: ProjectManagerInterface) -> bo
         return False
 
     # Create template from project
-    success = project_manager.template_manager.create_template_from_project(
+    result = project_manager.template_manager.create_template_from_project(
         source_project_path=Path(answers["source_project"]),
         template_name=answers["template_name"],
         description=answers["description"],
     )
 
-    return bool(success)
+    if not result.success:
+        ezprinter.error(f"Error creating template: {result.error}")
+    return bool(result)
 
 
 def _create_template_direct(
@@ -441,13 +444,15 @@ def _create_template_direct(
         return False
 
     # Create template from project
-    success = project_manager.template_manager.create_template_from_project(
+    result = project_manager.template_manager.create_template_from_project(
         source_project_path=source_project_path,
         template_name=template_name,
         description=description,
     )
 
-    return bool(success)
+    if not result.success:
+        ezprinter.error(f"Error creating template: {result.error}")
+    return bool(result)
 
 
 def _delete_template_interactive(project_manager: ProjectManagerInterface) -> bool:
@@ -485,4 +490,6 @@ def _delete_template(
 ) -> bool:
     """Delete a single template."""
     result = project_manager.template_manager.delete_template(template_name)
+    if not result.success:
+        ezprinter.error(f"Error deleting template: {result.error}")
     return result.success

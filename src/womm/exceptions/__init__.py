@@ -56,14 +56,7 @@ from .context import ContextServiceError
 from .lint import LintServiceError
 
 # Local imports - Project exceptions
-from .project import (
-    CreateInterfaceError,
-    ProjectDetectionInterfaceError,
-    ProjectInterfaceError,
-    ProjectServiceError,
-    SetupInterfaceError,
-    TemplateInterfaceError,
-)
+from .project import ProjectServiceError
 
 # Local imports - System exceptions
 from .system import (
@@ -103,12 +96,7 @@ __all__ = [  # noqa: RUF022
     # Lint exceptions
     "LintServiceError",
     # Project exceptions
-    "CreateInterfaceError",
-    "ProjectDetectionInterfaceError",
-    "ProjectInterfaceError",
     "ProjectServiceError",
-    "SetupInterfaceError",
-    "TemplateInterfaceError",
     # System exceptions
     "DetectorServiceError",
     "EnvironmentServiceError",

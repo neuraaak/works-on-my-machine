@@ -10,8 +10,8 @@ Project creation interface for WOMM CLI.
 Handles project creation operations following the MEF pattern.
 Provides unified interface for creating Python, JavaScript, React, and Vue projects.
 
-This interface orchestrates project creation services and converts service exceptions
-to interface exceptions.
+This interface orchestrates project creation services and converts service
+exceptions into a typed ``ProjectCreationResult`` — it never raises.
 """
 
 from __future__ import annotations
@@ -28,7 +28,7 @@ from rich.progress import TaskID
 
 # Local imports
 from ...exceptions.common import ValidationServiceError
-from ...exceptions.project import CreateInterfaceError, ProjectServiceError
+from ...exceptions.project import ProjectServiceError
 from ...services import (
     CommandRunnerService,
     ConflictResolutionService,
@@ -64,28 +64,14 @@ class ProjectCreateInterface:
     """
 
     def __init__(self):
-        """Initialize the project creation interface.
-
-        Raises:
-            ProjectCreationInterfaceError: If interface initialization fails
-        """
-        try:
-            self._detection_service = ProjectDetectionService()
-            self._template_service = TemplateService()
-            self._conflict_service = ConflictResolutionService()
-            self._command_runner = CommandRunnerService()
-            self._python_service = PythonProjectCreationService()
-            self._javascript_service = JavaScriptProjectCreationService()
-            self.logger = logging.getLogger(__name__)
-        except Exception as e:
-            logger.error(
-                f"Failed to initialize ProjectCreationInterface: {e}", exc_info=True
-            )
-            raise CreateInterfaceError(
-                message=f"Failed to initialize project creation interface: {e}",
-                operation="initialization",
-                details=f"Exception type: {type(e).__name__}",
-            ) from e
+        """Initialize the project creation interface."""
+        self._detection_service = ProjectDetectionService()
+        self._template_service = TemplateService()
+        self._conflict_service = ConflictResolutionService()
+        self._command_runner = CommandRunnerService()
+        self._python_service = PythonProjectCreationService()
+        self._javascript_service = JavaScriptProjectCreationService()
+        self.logger = logging.getLogger(__name__)
 
     # ///////////////////////////////////////////////////////////////
     # PUBLIC METHODS
@@ -113,9 +99,6 @@ class ProjectCreateInterface:
 
         Returns:
             ProjectCreationResult: Result of the project creation operation
-
-        Raises:
-            ProjectCreationInterfaceError: If project creation fails
         """
         try:
             # Validate inputs
@@ -154,45 +137,41 @@ class ProjectCreateInterface:
                     project_name, project_path, js_type, force, **kwargs
                 )
             else:
-                raise CreateInterfaceError(
-                    message=f"Unsupported project type: {project_type}",
-                    operation="create_project",
+                return ProjectCreationResult(
+                    success=False,
+                    project_path=project_path,
                     project_type=project_type,
-                    details="Supported types: python, javascript, react, vue",
+                    error=(
+                        f"Unsupported project type: {project_type}. "
+                        "Supported types: python, javascript, react, vue"
+                    ),
                 )
 
         except ValidationServiceError as e:
             logger.error(f"Validation error in create_project: {e}", exc_info=True)
-            # Extract meaningful error message
             error_message = e.reason or str(e) or "Project validation failed"
-            raise CreateInterfaceError(
-                message=f"Project validation failed: {error_message}",
-                operation="create_project",
-                project_path=str(project_path),
+            return ProjectCreationResult(
+                success=False,
+                project_path=project_path,
                 project_type=project_type,
-                details=e.details or str(e),
-            ) from e
+                error=f"Project validation failed: {error_message}",
+            )
         except ProjectServiceError as e:
             logger.error(f"Service error in create_project: {e}", exc_info=True)
-            raise CreateInterfaceError(
-                message=f"Project creation failed: {e.reason}",
-                operation="create_project",
-                project_path=str(project_path),
+            return ProjectCreationResult(
+                success=False,
+                project_path=project_path,
                 project_type=project_type,
-                details=e.details or str(e),
-            ) from e
-        except CreateInterfaceError:
-            # Re-raise interface exceptions as-is
-            raise
+                error=f"Project creation failed: {e.reason}",
+            )
         except Exception as e:
             logger.error(f"Unexpected error in create_project: {e}", exc_info=True)
-            raise CreateInterfaceError(
-                message=f"Unexpected error during project creation: {e}",
-                operation="create_project",
-                project_path=str(project_path),
+            return ProjectCreationResult(
+                success=False,
+                project_path=project_path,
                 project_type=project_type,
-                details=f"Exception type: {type(e).__name__}",
-            ) from e
+                error=f"Unexpected error during project creation: {e}",
+            )
 
     # ///////////////////////////////////////////////////////////////
     # PRIVATE METHODS
@@ -252,9 +231,6 @@ class ProjectCreateInterface:
 
         Returns:
             ProjectCreationResult: Result of the project creation operation
-
-        Raises:
-            ProjectCreationInterfaceError: If project creation fails
         """
         try:
             minimal = kwargs.get("minimal", False)
@@ -272,12 +248,11 @@ class ProjectCreateInterface:
                     project_path, project_name
                 )
                 if not structure_result.success:
-                    raise CreateInterfaceError(
-                        message="Failed to create project structure",
-                        operation="create_python_project",
-                        project_path=str(project_path),
+                    return ProjectCreationResult(
+                        success=False,
+                        project_path=project_path,
                         project_type="python",
-                        details="Structure creation returned failure",
+                        error="Failed to create project structure",
                     )
                 progress.update(task_id, status="Project structure created")
 
@@ -291,12 +266,11 @@ class ProjectCreateInterface:
                     project_path, project_name, **kwargs
                 )
                 if not files_result.success:
-                    raise CreateInterfaceError(
-                        message="Failed to create project files",
-                        operation="create_python_project",
-                        project_path=str(project_path),
+                    return ProjectCreationResult(
+                        success=False,
+                        project_path=project_path,
                         project_type="python",
-                        details="File creation returned failure",
+                        error="Failed to create project files",
                     )
                 progress.update(task_id, status="Python files created")
 
@@ -311,12 +285,11 @@ class ProjectCreateInterface:
                         project_path
                     )
                     if not venv_result.success:
-                        raise CreateInterfaceError(
-                            message="Failed to setup virtual environment",
-                            operation="create_python_project",
-                            project_path=str(project_path),
+                        return ProjectCreationResult(
+                            success=False,
+                            project_path=project_path,
                             project_type="python",
-                            details="Venv setup returned failure",
+                            error="Failed to setup virtual environment",
                         )
                     progress.update(task_id, status="Virtual environment ready")
 
@@ -329,12 +302,11 @@ class ProjectCreateInterface:
                         project_path
                     )
                     if not deps_result.success:
-                        raise CreateInterfaceError(
-                            message="Failed to install development dependencies",
-                            operation="create_python_project",
-                            project_path=str(project_path),
+                        return ProjectCreationResult(
+                            success=False,
+                            project_path=project_path,
                             project_type="python",
-                            details="Dependency installation returned failure",
+                            error="Failed to install development dependencies",
                         )
                     progress.update(task_id, status="Dependencies installed")
 
@@ -345,12 +317,11 @@ class ProjectCreateInterface:
                     task_id = TaskID(task)
                     tools_result = self._python_service.setup_dev_tools(project_path)
                     if not tools_result.success:
-                        raise CreateInterfaceError(
-                            message="Failed to setup development tools",
-                            operation="create_python_project",
-                            project_path=str(project_path),
+                        return ProjectCreationResult(
+                            success=False,
+                            project_path=project_path,
                             project_type="python",
-                            details="Dev tools setup returned failure",
+                            error="Failed to setup development tools",
                         )
                     progress.update(task_id, status="Development tools configured")
 
@@ -382,26 +353,22 @@ class ProjectCreateInterface:
                 tools_configured=tools_configured,
             )
 
-        except CreateInterfaceError:
-            raise
         except ProjectServiceError as e:
             logger.error(f"Service error in _create_python_project: {e}", exc_info=True)
-            raise CreateInterfaceError(
-                message=f"Python project creation failed: {e.reason}",
-                operation="create_python_project",
-                project_path=str(project_path),
+            return ProjectCreationResult(
+                success=False,
+                project_path=project_path,
                 project_type="python",
-                details=e.details or str(e),
-            ) from e
+                error=f"Python project creation failed: {e.reason}",
+            )
         except Exception as e:
             logger.error(f"Error creating Python project: {e}", exc_info=True)
-            raise CreateInterfaceError(
-                message=f"Failed to create Python project: {e}",
-                operation="create_python_project",
-                project_path=str(project_path),
+            return ProjectCreationResult(
+                success=False,
+                project_path=project_path,
                 project_type="python",
-                details=f"Exception type: {type(e).__name__}",
-            ) from e
+                error=f"Failed to create Python project: {e}",
+            )
 
     def _create_javascript_project(
         self,
@@ -422,9 +389,6 @@ class ProjectCreateInterface:
 
         Returns:
             ProjectCreationResult: Result of the project creation operation
-
-        Raises:
-            ProjectCreationInterfaceError: If project creation fails
         """
         try:
             minimal = kwargs.get("minimal", False)
@@ -443,12 +407,11 @@ class ProjectCreateInterface:
                     project_path, project_name
                 )
                 if not structure_result.success:
-                    raise CreateInterfaceError(
-                        message="Failed to create project structure",
-                        operation="create_javascript_project",
-                        project_path=str(project_path),
+                    return ProjectCreationResult(
+                        success=False,
+                        project_path=project_path,
                         project_type=project_type,
-                        details="Structure creation returned failure",
+                        error="Failed to create project structure",
                     )
                 progress.update(task_id, status="Project structure created")
 
@@ -461,12 +424,11 @@ class ProjectCreateInterface:
                     project_path, project_name, project_type, **kwargs
                 )
                 if not files_result.success:
-                    raise CreateInterfaceError(
-                        message="Failed to create project files",
-                        operation="create_javascript_project",
-                        project_path=str(project_path),
+                    return ProjectCreationResult(
+                        success=False,
+                        project_path=project_path,
                         project_type=project_type,
-                        details="File creation returned failure",
+                        error="Failed to create project files",
                     )
                 progress.update(task_id, status="JavaScript files created")
 
@@ -481,12 +443,11 @@ class ProjectCreateInterface:
                         project_path, project_name, **kwargs
                     )
                     if not npm_result.success:
-                        raise CreateInterfaceError(
-                            message="Failed to initialize npm project",
-                            operation="create_javascript_project",
-                            project_path=str(project_path),
+                        return ProjectCreationResult(
+                            success=False,
+                            project_path=project_path,
                             project_type=project_type,
-                            details="npm initialization returned failure",
+                            error="Failed to initialize npm project",
                         )
                     progress.update(task_id, status="npm project initialized")
 
@@ -499,12 +460,11 @@ class ProjectCreateInterface:
                         project_path, project_type
                     )
                     if not deps_result.success:
-                        raise CreateInterfaceError(
-                            message="Failed to install dependencies",
-                            operation="create_javascript_project",
-                            project_path=str(project_path),
+                        return ProjectCreationResult(
+                            success=False,
+                            project_path=project_path,
                             project_type=project_type,
-                            details="Dependency installation returned failure",
+                            error="Failed to install dependencies",
                         )
                     progress.update(task_id, status="Dependencies installed")
 
@@ -517,12 +477,11 @@ class ProjectCreateInterface:
                         project_path, project_type
                     )
                     if not tools_result.success:
-                        raise CreateInterfaceError(
-                            message="Failed to setup development tools",
-                            operation="create_javascript_project",
-                            project_path=str(project_path),
+                        return ProjectCreationResult(
+                            success=False,
+                            project_path=project_path,
                             project_type=project_type,
-                            details="Dev tools setup returned failure",
+                            error="Failed to setup development tools",
                         )
                     progress.update(task_id, status="Development tools configured")
 
@@ -558,28 +517,24 @@ class ProjectCreateInterface:
                 tools_configured=tools_configured,
             )
 
-        except CreateInterfaceError:
-            raise
         except ProjectServiceError as e:
             logger.error(
                 f"Service error in _create_javascript_project: {e}", exc_info=True
             )
-            raise CreateInterfaceError(
-                message=f"JavaScript project creation failed: {e.reason}",
-                operation="create_javascript_project",
-                project_path=str(project_path),
+            return ProjectCreationResult(
+                success=False,
+                project_path=project_path,
                 project_type=project_type,
-                details=e.details or str(e),
-            ) from e
+                error=f"JavaScript project creation failed: {e.reason}",
+            )
         except Exception as e:
             logger.error(f"Error creating JavaScript project: {e}", exc_info=True)
-            raise CreateInterfaceError(
-                message=f"Failed to create JavaScript project: {e}",
-                operation="create_javascript_project",
-                project_path=str(project_path),
+            return ProjectCreationResult(
+                success=False,
+                project_path=project_path,
                 project_type=project_type,
-                details=f"Exception type: {type(e).__name__}",
-            ) from e
+                error=f"Failed to create JavaScript project: {e}",
+            )
 
     def _get_created_files(self, project_path: Path) -> list[str]:
         """Get list of created files in the project.

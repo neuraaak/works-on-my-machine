@@ -11,7 +11,10 @@ Handles template generation from existing projects and template management.
 Provides unified interface for template operations following the MEF pattern.
 
 This interface orchestrates TemplateService and converts service exceptions
-to interface exceptions.
+into a typed ``TemplateResult`` — it never raises. Read-only helpers
+(``list_templates``, ``get_template_info``) return safe empty defaults
+(``{}``/``None``) on failure instead of raising, since callers already treat
+those as "nothing found".
 """
 
 from __future__ import annotations
@@ -27,7 +30,6 @@ from pathlib import Path
 
 # Local imports
 from ...exceptions.common import ValidationServiceError
-from ...exceptions.project import TemplateInterfaceError
 from ...services import ProjectDetectionService, TemplateService
 from ...shared.results import ProjectDetectionResult, TemplateResult
 from ...ui.common import ezprinter
@@ -53,26 +55,14 @@ class TemplateInterface:
     """
 
     def __init__(self):
-        """Initialize the template interface.
-
-        Raises:
-            TemplateInterfaceError: If interface initialization fails
-        """
-        try:
-            self._template_service = TemplateService()
-            self._detection_service = ProjectDetectionService()
-            # Use the actual installation path instead of hardcoded ~/.womm
-            installation_path = get_womm_installation_path()
-            self._templates_dir = installation_path / ".templates"
-            self._templates_dir.mkdir(parents=True, exist_ok=True)
-            self.logger = logging.getLogger(__name__)
-        except Exception as e:
-            logger.error(f"Failed to initialize TemplateInterface: {e}", exc_info=True)
-            raise TemplateInterfaceError(
-                message=f"Failed to initialize template interface: {e}",
-                operation="initialization",
-                details=f"Exception type: {type(e).__name__}",
-            ) from e
+        """Initialize the template interface."""
+        self._template_service = TemplateService()
+        self._detection_service = ProjectDetectionService()
+        # Use the actual installation path instead of hardcoded ~/.womm
+        installation_path = get_womm_installation_path()
+        self._templates_dir = installation_path / ".templates"
+        self._templates_dir.mkdir(parents=True, exist_ok=True)
+        self.logger = logging.getLogger(__name__)
 
     # ///////////////////////////////////////////////////////////////
     # PUBLIC METHODS
@@ -96,34 +86,28 @@ class TemplateInterface:
 
         Returns:
             TemplateResult: Result of template creation operation
-
-        Raises:
-            TemplateInterfaceError: If template creation fails
         """
         try:
             # Input validation
             if not source_project_path:
-                raise TemplateInterfaceError(
-                    message="Source project path cannot be None",
-                    operation="create_template_from_project",
+                return TemplateResult(
+                    success=False,
                     template_name=template_name,
-                    details="Source project path is required for template creation",
+                    error="Source project path cannot be None",
                 )
 
             if not template_name:
-                raise TemplateInterfaceError(
-                    message="Template name cannot be None or empty",
-                    operation="create_template_from_project",
+                return TemplateResult(
+                    success=False,
                     template_name="",
-                    details="Template name is required for template creation",
+                    error="Template name cannot be None or empty",
                 )
 
             if not source_project_path.exists():
-                raise TemplateInterfaceError(
-                    message=f"Source project does not exist: {source_project_path}",
-                    operation="create_template_from_project",
+                return TemplateResult(
+                    success=False,
                     template_name=template_name,
-                    details="The specified source project path does not exist",
+                    error=f"Source project does not exist: {source_project_path}",
                 )
 
             if dry_run:
@@ -150,11 +134,10 @@ class TemplateInterface:
             # Create template directory
             template_dir = self._templates_dir / template_name
             if template_dir.exists():
-                raise TemplateInterfaceError(
-                    message=f"Template '{template_name}' already exists",
-                    operation="create_template_from_project",
+                return TemplateResult(
+                    success=False,
                     template_name=template_name,
-                    details=f"Template already exists at {template_dir}",
+                    error=f"Template '{template_name}' already exists at {template_dir}",
                 )
 
             template_dir.mkdir(parents=True, exist_ok=True)
@@ -194,12 +177,11 @@ class TemplateInterface:
                 with open(template_json, "w", encoding="utf-8") as f:
                     json.dump(template_data, f, indent=2, ensure_ascii=False)
             except (PermissionError, OSError, TypeError, ValueError) as e:
-                raise TemplateInterfaceError(
-                    message=f"Failed to create template metadata file: {e}",
-                    operation="create_template_from_project",
+                return TemplateResult(
+                    success=False,
                     template_name=template_name,
-                    details=f"Error writing template.json: {e}",
-                ) from e
+                    error=f"Failed to create template metadata file: {e}",
+                )
 
             file_count = len(template_files)
             ezprinter.success(
@@ -217,25 +199,21 @@ class TemplateInterface:
                 metadata=template_data,
             )
 
-        except TemplateInterfaceError:
-            raise
         except ValidationServiceError as e:
-            raise TemplateInterfaceError(
-                message=f"Template creation failed: {getattr(e, 'message', str(e))}",
-                operation="create_template_from_project",
+            return TemplateResult(
+                success=False,
                 template_name=template_name,
-                details=str(e),
-            ) from e
+                error=f"Template creation failed: {getattr(e, 'message', str(e))}",
+            )
         except Exception as e:
             logger.error(
                 f"Unexpected error in create_template_from_project: {e}", exc_info=True
             )
-            raise TemplateInterfaceError(
-                message=f"Unexpected error during template creation: {e}",
-                operation="create_template_from_project",
+            return TemplateResult(
+                success=False,
                 template_name=template_name,
-                details=f"Exception type: {type(e).__name__}",
-            ) from e
+                error=f"Unexpected error during template creation: {e}",
+            )
 
     def generate_from_template(
         self,
@@ -253,57 +231,49 @@ class TemplateInterface:
 
         Returns:
             TemplateResult: Result of template generation operation
-
-        Raises:
-            TemplateInterfaceError: If template generation fails
         """
         try:
             # Input validation
             if not template_name:
-                raise TemplateInterfaceError(
-                    message="Template name cannot be None or empty",
-                    operation="generate_from_template",
+                return TemplateResult(
+                    success=False,
                     template_name="",
-                    details="Template name is required for project generation",
+                    error="Template name cannot be None or empty",
                 )
 
             if not target_path:
-                raise TemplateInterfaceError(
-                    message="Target path cannot be None",
-                    operation="generate_from_template",
+                return TemplateResult(
+                    success=False,
                     template_name=template_name,
-                    details="Target path is required for project generation",
+                    error="Target path cannot be None",
                 )
 
             template_dir = self._templates_dir / template_name
 
             if not template_dir.exists():
-                raise TemplateInterfaceError(
-                    message=f"Template '{template_name}' not found",
-                    operation="generate_from_template",
+                return TemplateResult(
+                    success=False,
                     template_name=template_name,
-                    details=f"Template does not exist at {template_dir}",
+                    error=f"Template '{template_name}' not found at {template_dir}",
                 )
 
             # Validate template
             if not self._validate_template(template_name):
-                raise TemplateInterfaceError(
-                    message="Template validation failed",
-                    operation="generate_from_template",
+                return TemplateResult(
+                    success=False,
                     template_name=template_name,
-                    details="Template metadata or structure is invalid",
+                    error="Template validation failed: metadata or structure is invalid",
                 )
 
             # Create target directory
             try:
                 target_path.mkdir(parents=True, exist_ok=True)
             except (PermissionError, OSError) as e:
-                raise TemplateInterfaceError(
-                    message=f"Failed to create target directory: {e}",
-                    operation="generate_from_template",
+                return TemplateResult(
+                    success=False,
                     template_name=template_name,
-                    details=f"Error creating target directory: {e}",
-                ) from e
+                    error=f"Failed to create target directory: {e}",
+                )
 
             # Get template files
             template_files = self._get_template_files(template_dir)
@@ -316,11 +286,10 @@ class TemplateInterface:
                 ):
                     files_created.append(template_file)
                 else:
-                    raise TemplateInterfaceError(
-                        message=f"Failed to process template file: {template_file}",
-                        operation="generate_from_template",
+                    return TemplateResult(
+                        success=False,
                         template_name=template_name,
-                        details=f"Error processing template file: {template_file}",
+                        error=f"Failed to process template file: {template_file}",
                     )
 
             ezprinter.success(
@@ -336,38 +305,31 @@ class TemplateInterface:
                 files_processed=len(files_created),
             )
 
-        except TemplateInterfaceError:
-            raise
         except ValidationServiceError as e:
-            raise TemplateInterfaceError(
-                message=f"Template generation failed: {getattr(e, 'message', str(e))}",
-                operation="generate_from_template",
+            return TemplateResult(
+                success=False,
                 template_name=template_name,
-                details=str(e),
-            ) from e
+                error=f"Template generation failed: {getattr(e, 'message', str(e))}",
+            )
         except Exception as e:
             logger.error(
                 f"Unexpected error in generate_from_template: {e}", exc_info=True
             )
-            raise TemplateInterfaceError(
-                message=f"Unexpected error during template generation: {e}",
-                operation="generate_from_template",
+            return TemplateResult(
+                success=False,
                 template_name=template_name,
-                details=f"Exception type: {type(e).__name__}",
-            ) from e
+                error=f"Unexpected error during template generation: {e}",
+            )
 
     def list_templates(self) -> dict[str, list[str]]:
         """
         List all available templates.
 
         Returns:
-            Dictionary mapping project types to template lists
-
-        Raises:
-            TemplateInterfaceError: If listing fails
+            Dictionary mapping project types to template lists, empty on failure.
         """
         try:
-            templates = {}
+            templates: dict[str, list[str]] = {}
 
             for template_dir in self._templates_dir.iterdir():
                 if template_dir.is_dir() and not template_dir.name.startswith("."):
@@ -382,11 +344,7 @@ class TemplateInterface:
 
         except Exception as e:
             logger.error(f"Error listing templates: {e}", exc_info=True)
-            raise TemplateInterfaceError(
-                message=f"Failed to list templates: {e}",
-                operation="list_templates",
-                details=f"Exception type: {type(e).__name__}",
-            ) from e
+            return {}
 
     def get_template_info(self, template_name: str) -> dict | None:
         """
@@ -396,33 +354,13 @@ class TemplateInterface:
             template_name: Name of the template
 
         Returns:
-            Template information dictionary or None if not found
-
-        Raises:
-            TemplateInterfaceError: If template info retrieval fails
+            Template information dictionary or None if not found or on error.
         """
-        try:
-            if not template_name:
-                raise TemplateInterfaceError(
-                    message="Template name cannot be None or empty",
-                    operation="get_template_info",
-                    template_name="",
-                    details="Template name is required to get template info",
-                )
+        if not template_name:
+            logger.warning("Template name cannot be None or empty")
+            return None
 
-            return self._get_template_info(template_name)
-        except TemplateInterfaceError:
-            raise
-        except Exception as e:
-            logger.error(
-                f"Error getting template info for '{template_name}': {e}", exc_info=True
-            )
-            raise TemplateInterfaceError(
-                message=f"Failed to get template info: {e}",
-                operation="get_template_info",
-                template_name=template_name,
-                details=f"Exception type: {type(e).__name__}",
-            ) from e
+        return self._get_template_info(template_name)
 
     def delete_template(self, template_name: str) -> TemplateResult:
         """
@@ -433,39 +371,33 @@ class TemplateInterface:
 
         Returns:
             TemplateResult: Result of template deletion operation
-
-        Raises:
-            TemplateInterfaceError: If template deletion fails
         """
         try:
             if not template_name:
-                raise TemplateInterfaceError(
-                    message="Template name cannot be None or empty",
-                    operation="delete_template",
+                return TemplateResult(
+                    success=False,
                     template_name="",
-                    details="Template name is required for template deletion",
+                    error="Template name cannot be None or empty",
                 )
 
             template_dir = self._templates_dir / template_name
 
             if not template_dir.exists():
-                raise TemplateInterfaceError(
-                    message=f"Template '{template_name}' not found",
-                    operation="delete_template",
+                return TemplateResult(
+                    success=False,
                     template_name=template_name,
-                    details=f"Template does not exist at {template_dir}",
+                    error=f"Template '{template_name}' not found at {template_dir}",
                 )
 
             # Remove template directory
             try:
                 safe_rmtree(template_dir, allowed_parent=self._templates_dir)
             except (PermissionError, OSError) as e:
-                raise TemplateInterfaceError(
-                    message=f"Failed to delete template directory: {e}",
-                    operation="delete_template",
+                return TemplateResult(
+                    success=False,
                     template_name=template_name,
-                    details=f"Error removing template directory: {e}",
-                ) from e
+                    error=f"Failed to delete template directory: {e}",
+                )
 
             ezprinter.success(f"Template '{template_name}' deleted successfully")
 
@@ -476,23 +408,19 @@ class TemplateInterface:
                 template_path=template_dir,
             )
 
-        except TemplateInterfaceError:
-            raise
         except ValidationServiceError as e:
-            raise TemplateInterfaceError(
-                message=f"Template deletion failed: {getattr(e, 'message', str(e))}",
-                operation="delete_template",
+            return TemplateResult(
+                success=False,
                 template_name=template_name,
-                details=str(e),
-            ) from e
+                error=f"Template deletion failed: {getattr(e, 'message', str(e))}",
+            )
         except Exception as e:
             logger.error(f"Unexpected error in delete_template: {e}", exc_info=True)
-            raise TemplateInterfaceError(
-                message=f"Unexpected error during template deletion: {e}",
-                operation="delete_template",
+            return TemplateResult(
+                success=False,
                 template_name=template_name,
-                details=f"Exception type: {type(e).__name__}",
-            ) from e
+                error=f"Unexpected error during template deletion: {e}",
+            )
 
     # ///////////////////////////////////////////////////////////////
     # PRIVATE METHODS
@@ -510,94 +438,73 @@ class TemplateInterface:
 
         Returns:
             list[str]: List of template file paths
-
-        Raises:
-            TemplateInterfaceError: If template file creation fails
         """
-        try:
-            if not source_path or not template_dir:
-                raise TemplateInterfaceError(
-                    message="Source path and template directory cannot be None",
-                    operation="_scan_and_generalize_project",
-                    details="Both source path and template directory are required",
+        template_files = []
+
+        # Files to ignore
+        ignore_patterns = [
+            "__pycache__",
+            ".git",
+            ".venv",
+            "venv",
+            "node_modules",
+            ".pytest_cache",
+            ".mypy_cache",
+            "*.pyc",
+            "*.pyo",
+            ".DS_Store",
+            "Thumbs.db",
+            ".vscode",
+            ".idea",
+        ]
+
+        for item in source_path.rglob("*"):
+            # Skip ignored patterns
+            if any(pattern in str(item) for pattern in ignore_patterns):
+                continue
+
+            if item.is_file():
+                # Get relative path
+                rel_path = item.relative_to(source_path)
+
+                # Generalize the path (replace project name in folder names)
+                rel_path_str = str(rel_path)
+                generalized_path = rel_path_str.replace(
+                    source_path.name, "{{PROJECT_NAME}}"
+                )
+                generalized_path = generalized_path.replace(
+                    source_path.name.replace("-", "_"), "{{PROJECT_NAME}}"
+                )
+                generalized_path = generalized_path.replace(
+                    source_path.name.replace("_", "-"), "{{PROJECT_NAME}}"
                 )
 
-            template_files = []
+                template_file = template_dir / f"{generalized_path}.template"
 
-            # Files to ignore
-            ignore_patterns = [
-                "__pycache__",
-                ".git",
-                ".venv",
-                "venv",
-                "node_modules",
-                ".pytest_cache",
-                ".mypy_cache",
-                "*.pyc",
-                "*.pyo",
-                ".DS_Store",
-                "Thumbs.db",
-                ".vscode",
-                ".idea",
-            ]
-
-            for item in source_path.rglob("*"):
-                # Skip ignored patterns
-                if any(pattern in str(item) for pattern in ignore_patterns):
+                # Create parent directories
+                try:
+                    template_file.parent.mkdir(parents=True, exist_ok=True)
+                except (PermissionError, OSError) as e:
+                    logger.warning(
+                        f"Error creating directory {template_file.parent}: {e}"
+                    )
                     continue
 
-                if item.is_file():
-                    # Get relative path
-                    rel_path = item.relative_to(source_path)
-
-                    # Generalize the path (replace project name in folder names)
-                    rel_path_str = str(rel_path)
-                    generalized_path = rel_path_str.replace(
-                        source_path.name, "{{PROJECT_NAME}}"
-                    )
-                    generalized_path = generalized_path.replace(
-                        source_path.name.replace("-", "_"), "{{PROJECT_NAME}}"
-                    )
-                    generalized_path = generalized_path.replace(
-                        source_path.name.replace("_", "-"), "{{PROJECT_NAME}}"
+                # Read and generalize content
+                try:
+                    content = item.read_text(encoding="utf-8", errors="ignore")
+                    generalized_content = self._generalize_content(
+                        content, source_path.name
                     )
 
-                    template_file = template_dir / f"{generalized_path}.template"
+                    # Write template file
+                    template_file.write_text(generalized_content, encoding="utf-8")
+                    template_files.append(generalized_path)
+                except (PermissionError, OSError, UnicodeDecodeError) as e:
+                    logger.warning(f"Error processing file {item}: {e}")
+                    continue
 
-                    # Create parent directories
-                    try:
-                        template_file.parent.mkdir(parents=True, exist_ok=True)
-                    except (PermissionError, OSError) as e:
-                        logger.warning(
-                            f"Error creating directory {template_file.parent}: {e}"
-                        )
-                        continue
-
-                    # Read and generalize content
-                    try:
-                        content = item.read_text(encoding="utf-8", errors="ignore")
-                        generalized_content = self._generalize_content(
-                            content, source_path.name
-                        )
-
-                        # Write template file
-                        template_file.write_text(generalized_content, encoding="utf-8")
-                        template_files.append(generalized_path)
-                    except (PermissionError, OSError, UnicodeDecodeError) as e:
-                        logger.warning(f"Error processing file {item}: {e}")
-                        continue
-
-            return template_files
-
-        except TemplateInterfaceError:
-            raise
-        except Exception as e:
-            logger.error(f"Error scanning and generalizing project: {e}", exc_info=True)
-            raise TemplateInterfaceError(
-                message=f"Failed to scan and generalize project: {e}",
-                operation="_scan_and_generalize_project",
-                details=f"Error scanning project at {source_path}: {e}",
-            ) from e
+        return template_files
 
     def _generalize_content(self, content: str, source_project_name: str) -> str:
         """
@@ -609,79 +516,58 @@ class TemplateInterface:
 
         Returns:
             str: Generalized content
-
-        Raises:
-            TemplateInterfaceError: If content generalization fails
         """
-        try:
-            if not content:
-                return content
+        if not content or not source_project_name:
+            return content
 
-            if not source_project_name:
-                raise TemplateInterfaceError(
-                    message="Source project name cannot be None",
-                    operation="_generalize_content",
-                    details="Source project name is required for content generalization",
+        # Common patterns to generalize
+        generalizations = [
+            # Project names (common patterns)
+            (r"my-project", "{{PROJECT_NAME}}"),
+            (r"my_project", "{{PROJECT_NAME}}"),
+            (r"MyProject", "{{PROJECT_NAME}}"),
+            # Source project name (most important)
+            (re.escape(source_project_name), "{{PROJECT_NAME}}"),
+            (
+                re.escape(source_project_name.replace("-", "_")),
+                "{{PROJECT_NAME}}",
+            ),
+            (
+                re.escape(source_project_name.replace("_", "-")),
+                "{{PROJECT_NAME}}",
+            ),
+            # Author information
+            (r"John Doe", "{{AUTHOR_NAME}}"),
+            (r"john\.doe@example\.com", "{{AUTHOR_EMAIL}}"),
+            # Common email patterns
+            (
+                r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}",
+                "{{AUTHOR_EMAIL}}",
+            ),
+            # URLs and repositories
+            (
+                r"https://github\.com/[a-zA-Z0-9-]+/[a-zA-Z0-9-]+",
+                "{{PROJECT_REPOSITORY}}",
+            ),
+            (r"https://example\.com", "{{PROJECT_URL}}"),
+            # Version numbers
+            (
+                r'"version":\s*"[0-9]+\.[0-9]+\.[0-9]+"',
+                '"version": "{{PROJECT_VERSION}}"',
+            ),
+        ]
+
+        generalized = content
+        for pattern, replacement in generalizations:
+            try:
+                generalized = re.sub(
+                    pattern, replacement, generalized, flags=re.IGNORECASE
                 )
+            except re.error as e:
+                logger.warning(f"Error applying regex pattern '{pattern}': {e}")
+                continue
 
-            # Common patterns to generalize
-            generalizations = [
-                # Project names (common patterns)
-                (r"my-project", "{{PROJECT_NAME}}"),
-                (r"my_project", "{{PROJECT_NAME}}"),
-                (r"MyProject", "{{PROJECT_NAME}}"),
-                # Source project name (most important)
-                (re.escape(source_project_name), "{{PROJECT_NAME}}"),
-                (
-                    re.escape(source_project_name.replace("-", "_")),
-                    "{{PROJECT_NAME}}",
-                ),
-                (
-                    re.escape(source_project_name.replace("_", "-")),
-                    "{{PROJECT_NAME}}",
-                ),
-                # Author information
-                (r"John Doe", "{{AUTHOR_NAME}}"),
-                (r"john\.doe@example\.com", "{{AUTHOR_EMAIL}}"),
-                # Common email patterns
-                (
-                    r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}",
-                    "{{AUTHOR_EMAIL}}",
-                ),
-                # URLs and repositories
-                (
-                    r"https://github\.com/[a-zA-Z0-9-]+/[a-zA-Z0-9-]+",
-                    "{{PROJECT_REPOSITORY}}",
-                ),
-                (r"https://example\.com", "{{PROJECT_URL}}"),
-                # Version numbers
-                (
-                    r'"version":\s*"[0-9]+\.[0-9]+\.[0-9]+"',
-                    '"version": "{{PROJECT_VERSION}}"',
-                ),
-            ]
-
-            generalized = content
-            for pattern, replacement in generalizations:
-                try:
-                    generalized = re.sub(
-                        pattern, replacement, generalized, flags=re.IGNORECASE
-                    )
-                except re.error as e:
-                    logger.warning(f"Error applying regex pattern '{pattern}': {e}")
-                    continue
-
-            return generalized
-
-        except TemplateInterfaceError:
-            raise
-        except Exception as e:
-            logger.error(f"Error generalizing content: {e}", exc_info=True)
-            raise TemplateInterfaceError(
-                message=f"Failed to generalize content: {e}",
-                operation="_generalize_content",
-                details=f"Error generalizing content for project '{source_project_name}': {e}",
-            ) from e
+        return generalized
 
     def _extract_template_variables(self, template_dir: Path) -> dict[str, str]:
         """
@@ -692,54 +578,36 @@ class TemplateInterface:
 
         Returns:
             dict[str, str]: Dictionary of template variables
-
-        Raises:
-            TemplateInterfaceError: If variable extraction fails
         """
-        try:
-            if not template_dir:
-                raise TemplateInterfaceError(
-                    message="Template directory cannot be None",
-                    operation="_extract_template_variables",
-                    details="Template directory is required for variable extraction",
-                )
+        variables: dict[str, str] = {}
 
-            variables = {}
-
-            # Default variables
-            default_vars = {
-                "PROJECT_NAME": "Project name",
-                "AUTHOR_NAME": "Author name",
-                "AUTHOR_EMAIL": "Author email",
-                "PROJECT_VERSION": "0.1.0",
-                "PROJECT_DESCRIPTION": "Project description",
-                "PROJECT_URL": "Project URL",
-                "PROJECT_REPOSITORY": "Project repository",
-            }
-
-            # Scan template files for variables
-            for template_file in template_dir.rglob("*.template"):
-                try:
-                    content = template_file.read_text(encoding="utf-8")
-                    matches = re.findall(r"\{\{([^}]+)\}\}", content)
-                    for match in matches:
-                        if match not in variables:
-                            variables[match] = default_vars.get(match, f"{match} value")
-                except (PermissionError, OSError, UnicodeDecodeError) as e:
-                    logger.warning(f"Error reading template file {template_file}: {e}")
-                    continue
-
+        if not template_dir:
             return variables
 
-        except TemplateInterfaceError:
-            raise
-        except Exception as e:
-            logger.error(f"Error extracting template variables: {e}", exc_info=True)
-            raise TemplateInterfaceError(
-                message=f"Failed to extract template variables: {e}",
-                operation="_extract_template_variables",
-                details=f"Error extracting variables from template directory: {e}",
-            ) from e
+        # Default variables
+        default_vars = {
+            "PROJECT_NAME": "Project name",
+            "AUTHOR_NAME": "Author name",
+            "AUTHOR_EMAIL": "Author email",
+            "PROJECT_VERSION": "0.1.0",
+            "PROJECT_DESCRIPTION": "Project description",
+            "PROJECT_URL": "Project URL",
+            "PROJECT_REPOSITORY": "Project repository",
+        }
+
+        # Scan template files for variables
+        for template_file in template_dir.rglob("*.template"):
+            try:
+                content = template_file.read_text(encoding="utf-8")
+                matches = re.findall(r"\{\{([^}]+)\}\}", content)
+                for match in matches:
+                    if match not in variables:
+                        variables[match] = default_vars.get(match, f"{match} value")
+            except (PermissionError, OSError, UnicodeDecodeError) as e:
+                logger.warning(f"Error reading template file {template_file}: {e}")
+                continue
+
+        return variables
 
     def _get_template_files(self, template_dir: Path) -> list[str]:
         """
@@ -750,17 +618,10 @@ class TemplateInterface:
 
         Returns:
             list[str]: List of template file paths
-
-        Raises:
-            TemplateInterfaceError: If file listing fails
         """
         try:
             if not template_dir:
-                raise TemplateInterfaceError(
-                    message="Template directory cannot be None",
-                    operation="_get_template_files",
-                    details="Template directory is required for file listing",
-                )
+                return []
 
             files = []
             for item in template_dir.rglob("*.template"):
@@ -772,8 +633,6 @@ class TemplateInterface:
                     files.append(output_path)
             return sorted(files)
 
-        except TemplateInterfaceError:
-            raise
         except Exception as e:
             logger.warning(f"Error listing template files: {e}")
             return []
@@ -796,17 +655,11 @@ class TemplateInterface:
 
         Returns:
             bool: True if processing was successful
-
-        Raises:
-            TemplateInterfaceError: If file processing fails
         """
         try:
             if not template_file:
-                raise TemplateInterfaceError(
-                    message="Template file name cannot be None or empty",
-                    operation="_process_template_file",
-                    details="Template file name is required for processing",
-                )
+                logger.warning("Template file name cannot be None or empty")
+                return False
 
             source_file = template_dir / f"{template_file}.template"
 
@@ -824,24 +677,10 @@ class TemplateInterface:
                 return True  # Skip if template file doesn't exist
 
             # Create target directory if needed
-            try:
-                target_file.parent.mkdir(parents=True, exist_ok=True)
-            except (PermissionError, OSError) as e:
-                raise TemplateInterfaceError(
-                    message=f"Failed to create target directory: {e}",
-                    operation="_process_template_file",
-                    details=f"Error creating target directory: {e}",
-                ) from e
+            target_file.parent.mkdir(parents=True, exist_ok=True)
 
             # Read template content
-            try:
-                content = source_file.read_text(encoding="utf-8")
-            except (PermissionError, OSError, UnicodeDecodeError) as e:
-                raise TemplateInterfaceError(
-                    message=f"Failed to read template file: {e}",
-                    operation="_process_template_file",
-                    details=f"Error reading template file: {e}",
-                ) from e
+            content = source_file.read_text(encoding="utf-8")
 
             # Substitute variables using TemplateService
             if template_vars:
@@ -850,19 +689,10 @@ class TemplateInterface:
                 )
 
             # Write output file
-            try:
-                target_file.write_text(content, encoding="utf-8")
-            except (PermissionError, OSError) as e:
-                raise TemplateInterfaceError(
-                    message=f"Failed to write output file: {e}",
-                    operation="_process_template_file",
-                    details=f"Error writing output file: {e}",
-                ) from e
+            target_file.write_text(content, encoding="utf-8")
 
             return True
 
-        except TemplateInterfaceError:
-            raise
         except Exception as e:
             logger.error(f"Error processing template file {template_file}: {e}")
             return False
@@ -909,56 +739,37 @@ class TemplateInterface:
 
         Returns:
             bool: True if template is valid
-
-        Raises:
-            TemplateInterfaceError: If template validation fails
         """
         try:
             if not template_name:
-                raise TemplateInterfaceError(
-                    message="Template name cannot be None or empty",
-                    operation="_validate_template",
-                    template_name="",
-                    details="Template name is required for validation",
-                )
+                logger.warning("Template name cannot be None or empty")
+                return False
 
             template_dir = self._templates_dir / template_name
             template_json = template_dir / "template.json"
 
             if not template_json.exists():
-                raise TemplateInterfaceError(
-                    message="Template metadata not found",
-                    operation="_validate_template",
-                    template_name=template_name,
-                    details=f"Template metadata file not found: {template_json}",
-                )
+                logger.warning(f"Template metadata file not found: {template_json}")
+                return False
 
             # Validate template.json
             try:
                 with open(template_json, encoding="utf-8") as f:
                     template_data = json.load(f)
             except (PermissionError, OSError, json.JSONDecodeError) as e:
-                raise TemplateInterfaceError(
-                    message=f"Failed to read template metadata: {e}",
-                    operation="_validate_template",
-                    template_name=template_name,
-                    details=f"Error reading template.json: {e}",
-                ) from e
+                logger.warning(f"Error reading template.json: {e}")
+                return False
 
             required_fields = ["name", "project_type"]
             for field in required_fields:
                 if field not in template_data:
-                    raise TemplateInterfaceError(
-                        message=f"Required field missing in template.json: {field}",
-                        operation="_validate_template",
-                        template_name=template_name,
-                        details=f"Template metadata is missing required field: {field}",
+                    logger.warning(
+                        f"Template metadata is missing required field: {field}"
                     )
+                    return False
 
             return True
 
-        except TemplateInterfaceError:
-            raise
         except Exception as e:
             logger.error(f"Error validating template: {e}", exc_info=True)
             return False
