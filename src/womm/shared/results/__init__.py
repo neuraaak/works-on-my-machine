@@ -19,7 +19,18 @@ from __future__ import annotations
 # Local imports
 from .base import BaseResult, CommandResult
 from .command_results import CommandAvailabilityResult, CommandVersionResult
-from .context_results import ContextRegistryResult, ContextValidationResult
+from .context_results import (
+    ContextBackupResult,
+    ContextCherryPickResult,
+    ContextEntriesResult,
+    ContextRegistryResult,
+    ContextRestoreResult,
+    ContextSetupResult,
+    ContextStatusResult,
+    ContextValidationResult,
+    ScriptRegistrationResult,
+    ScriptUnregistrationResult,
+)
 from .file_results import FileOperationResult, FileScanResult, FileSearchResult
 from .installation_results import (
     InstallationResult,
@@ -68,7 +79,13 @@ __all__ = [
     "CommandValidationResult",
     "CommandVersionResult",
     "ConfigurationResult",
+    "ContextBackupResult",
+    "ContextCherryPickResult",
+    "ContextEntriesResult",
     "ContextRegistryResult",
+    "ContextRestoreResult",
+    "ContextSetupResult",
+    "ContextStatusResult",
     "ContextValidationResult",
     "EnvironmentRefreshResult",
     "EnvironmentVerificationResult",
@@ -88,6 +105,8 @@ __all__ = [
     "ProjectCreationResult",
     "ProjectDetectionResult",
     "ProjectSetupResult",
+    "ScriptRegistrationResult",
+    "ScriptUnregistrationResult",
     "SecurityReportResult",
     "SecurityResult",
     "SetupResult",
