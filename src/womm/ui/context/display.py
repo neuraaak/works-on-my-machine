@@ -16,7 +16,6 @@ from __future__ import annotations
 # ///////////////////////////////////////////////////////////////
 # IMPORTS
 # ///////////////////////////////////////////////////////////////
-
 # Third-party imports
 from rich.panel import Panel
 
@@ -32,7 +31,6 @@ from ...shared.results import (
     ScriptUnregistrationResult,
 )
 from ..common.ezpl_bridge import ezconsole, ezprinter
-
 
 # ///////////////////////////////////////////////////////////////
 # SCRIPT REGISTRATION DISPLAY FUNCTIONS
@@ -219,15 +217,15 @@ def render_context_entries_result(result: ContextEntriesResult) -> None:
                 ezconsole.print("  No entries found")
             else:
                 for entry in context_entries:
-                    ezconsole.print(f"  Key: {entry.get("key_name", "Unknown")}")
+                    ezconsole.print(f"  Key: {entry.get('key_name', 'Unknown')}")
                     display_name = entry.get(
                         "display_name", entry.get("key_name", "Unknown")
                     )
                     ezconsole.print(f"    Display: {display_name}")
                     if entry.get("command"):
-                        ezconsole.print(f"    Command: {entry["command"]}")
+                        ezconsole.print(f"    Command: {entry['command']}")
                     if entry.get("icon"):
-                        ezconsole.print(f"    Icon: {entry["icon"]}")
+                        ezconsole.print(f"    Icon: {entry['icon']}")
                     ezconsole.print()
 
         show_list_commands()

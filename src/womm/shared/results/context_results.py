@@ -96,6 +96,7 @@ class ScriptUnregistrationResult(BaseResult):
     """Result for script unregistration from context menu."""
 
     key_name: str = ""
+    dry_run: bool = False
     success_count: int = 0
     total_types: int = 0
     permission_errors: list[str] | None = None

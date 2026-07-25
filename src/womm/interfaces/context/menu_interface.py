@@ -19,12 +19,8 @@ from __future__ import annotations
 # ///////////////////////////////////////////////////////////////
 # Standard library imports
 import logging
-from datetime import datetime
 from pathlib import Path
-from typing import Any, cast
-
-# Third-party imports
-from rich.progress import TaskID
+from typing import cast
 
 # Local imports
 from ...exceptions.context import ContextServiceError
@@ -36,6 +32,15 @@ from ...services import (
 )
 from ...shared.configs.context import ContextTypesConfig
 from ...shared.result_models import ContextValidationResult
+from ...shared.results.context_results import (
+    ContextBackupResult,
+    ContextEntriesResult,
+    ContextRestoreResult,
+    ContextSetupResult,
+    ContextStatusResult,
+    ScriptRegistrationResult,
+    ScriptUnregistrationResult,
+)
 from .icon_interface import ContextIconInterface
 from .registry_interface import ContextRegistryInterface
 from .script_detector_interface import ContextScriptDetectorInterface, ScriptType
@@ -107,7 +112,7 @@ class ContextMenuInterface:
         icon: str | None = None,
         dry_run: bool = False,
         context_params: ContextParametersService | None = None,
-    ) -> dict[str, object]:
+    ) -> ScriptRegistrationResult:
         """
         Register a script in the Windows context menu.
 
@@ -119,17 +124,11 @@ class ContextMenuInterface:
             context_params: Context parameters for registration
 
         Returns:
-            Dict containing operation result and details
-
-        Raises:
-            ValueError: If parameters are invalid
-            RuntimeError: If registration fails
+            ScriptRegistrationResult: Result of the registration attempt
         """
         try:
-            # Input validation
             if not script_path:
                 raise ValueError("Script path cannot be None or empty")
-
             if not label:
                 raise ValueError("Label cannot be None or empty")
 
@@ -139,10 +138,8 @@ class ContextMenuInterface:
                     script_path, label, icon
                 )
                 if not validation_result.success:
-                    error_message = validation_result.error or "Validation failed"
-                    raise ValueError(error_message)
+                    raise ValueError(validation_result.error or "Validation failed")
             except ValueError:
-                # Re-raise validation errors as-is
                 raise
             except Exception as e:
                 raise ValueError(f"Validation process failed: {e}") from e
@@ -177,18 +174,8 @@ class ContextMenuInterface:
             # Build command
             command = script_info["command"]
 
-            # Use context parameters if provided, otherwise use defaults
+            # Default context parameters (directory + background) when none given
             if context_params is None:
-                try:
-                    context_params = ContextParametersService.from_flags()
-                except Exception as e:
-                    raise RuntimeError(
-                        f"Failed to create default context parameters: {e}"
-                    ) from e
-
-            # Validate context parameters (if provided, otherwise create defaults)
-            if context_params is None:
-                # Create default context parameters (directory + background)
                 context_params = ContextParametersService.from_flags(
                     root=False,
                     file=False,
@@ -207,7 +194,6 @@ class ContextMenuInterface:
                         f"Context parameter validation failed: {'; '.join(errors)}"
                     )
 
-                # Show warnings if any
                 warnings = cast(list[str], validation.get("warnings", []))
                 if warnings:
                     self.logger.warning(
@@ -222,28 +208,24 @@ class ContextMenuInterface:
 
             # Build final command for display (use first context type for dry-run)
             context_types = list(context_params.context_types)
-            if context_types:
-                final_command = context_params.build_command(command, context_types[0])
-            else:
-                final_command = command
-
-            # Prepare result info
-            result_info = {
-                "script_path": script_path,
-                "script_type": script_type,
-                "label": label,
-                "icon_path": icon_path,
-                "registry_key": registry_key_name,
-                "command": final_command,
-                "context_info": context_params.get_description(),
-            }
+            final_command = (
+                context_params.build_command(command, context_types[0])
+                if context_types
+                else command
+            )
 
             if dry_run:
-                return {
-                    "success": True,
-                    "dry_run": True,
-                    "info": result_info,
-                }
+                return ScriptRegistrationResult(
+                    success=True,
+                    dry_run=True,
+                    script_path=script_path,
+                    script_type=script_type,
+                    label=label,
+                    icon_path=icon_path,
+                    registry_key=registry_key_name,
+                    command=final_command,
+                    context_info=context_params.get_description(),
+                )
 
             # Get registry paths and add entries
             try:
@@ -259,40 +241,50 @@ class ContextMenuInterface:
 
                 # Build command with appropriate parameters for this context type
                 context_type = self._get_context_type_from_path(registry_path)
-                final_command = context_params.build_command(command, context_type)
+                entry_command = context_params.build_command(command, context_type)
 
                 try:
-                    success = self.registry_service.add_context_menu_entry(
+                    add_result = self.registry_service.add_context_menu_entry(
                         full_path,
-                        final_command,
+                        entry_command,
                         label,
                         icon_path,
                     )
+                    entry_success = add_result.success
                 except Exception as e:
                     self.logger.warning(
                         f"Failed to add registry entry {full_path}: {e}"
                     )
-                    success = False
+                    entry_success = False
 
-                if success:
+                if entry_success:
                     success_count += 1
 
-            if success_count == total_paths:
-                return {
-                    "success": True,
-                    "info": result_info,
-                }
-            else:
+            if success_count != total_paths:
                 raise RuntimeError(
                     f"Failed to add registry entries ({success_count}/{total_paths} succeeded)"
                 )
 
-        except (ValueError, RuntimeError):
-            raise
+            return ScriptRegistrationResult(
+                success=True,
+                script_path=script_path,
+                script_type=script_type,
+                label=label,
+                icon_path=icon_path,
+                registry_key=registry_key_name,
+                command=final_command,
+                context_info=context_params.get_description(),
+                success_count=success_count,
+                total_paths=total_paths,
+            )
+
+        except (ValueError, RuntimeError) as e:
+            return ScriptRegistrationResult(success=False, error=str(e))
         except Exception as e:
-            raise RuntimeError(
-                f"Unexpected error during script registration: {e}"
-            ) from e
+            return ScriptRegistrationResult(
+                success=False,
+                error=f"Unexpected error during script registration: {e}",
+            )
 
     # ///////////////////////////////////////////////////////////////
     # PRIVATE METHODS
@@ -324,7 +316,7 @@ class ContextMenuInterface:
 
     def unregister_script(
         self, key_name: str, dry_run: bool = False
-    ) -> dict[str, object]:
+    ) -> ScriptUnregistrationResult:
         """
         Unregister a script from the Windows context menu.
 
@@ -333,348 +325,154 @@ class ContextMenuInterface:
             dry_run: If True, show what would be done without making changes
 
         Returns:
-            Dict containing operation result
-
-        Raises:
-            ValueError: If key_name is invalid
-            RuntimeError: If unregistration fails
+            ScriptUnregistrationResult: Result of the unregistration attempt
         """
-        try:
-            # Input validation
-            if not key_name:
-                raise ValueError("Registry key name cannot be None or empty")
+        if not key_name:
+            return ScriptUnregistrationResult(
+                success=False, error="Registry key name cannot be None or empty"
+            )
 
-            if dry_run:
-                return {
-                    "success": True,
-                    "dry_run": True,
-                    "key_name": key_name,
-                }
+        if dry_run:
+            return ScriptUnregistrationResult(
+                success=True,
+                dry_run=True,
+                key_name=key_name,
+                message="Dry run - no changes made",
+            )
 
-            # Try to remove from both context types
-            success = False
-            permission_errors = []
-            not_found_count = 0
+        # Try to remove from both context types
+        success = False
+        permission_errors: list[str] = []
+        not_found_count = 0
+        total_types = len(ContextTypesConfig.ALL_TYPES)
 
-            for context_type in ContextTypesConfig.ALL_TYPES:
-                try:
-                    registry_path = self.registry_service.get_context_path(context_type)
-                    if registry_path:
-                        full_path = f"{registry_path}\\{key_name}"
-                        result = self.registry_service.remove_context_menu_entry(
-                            full_path
-                        )
-                        if result.success:
-                            success = True
-                        else:
-                            # Entry not found in this context type
-                            not_found_count += 1
-                            self.logger.debug(
-                                f"Entry not found in {context_type}: {result.error}"
-                            )
-                except ContextServiceError as e:
-                    # Check if it's a permission error
-                    error_str = str(e)
-                    if (
-                        "Accès refusé" in error_str
-                        or "Access denied" in error_str
-                        or "[WinError 5]" in error_str
-                    ):
-                        permission_errors.append(f"{context_type}: {error_str}")
-                        self.logger.warning(
-                            f"Failed to remove from {context_type}: {e}"
-                        )
+        for context_type in ContextTypesConfig.ALL_TYPES:
+            try:
+                registry_path = self.registry_service.get_context_path(context_type)
+                if registry_path:
+                    full_path = f"{registry_path}\\{key_name}"
+                    result = self.registry_service.remove_context_menu_entry(full_path)
+                    if result.success:
+                        success = True
                     else:
-                        # Other registry errors
-                        self.logger.warning(f"Registry error for {context_type}: {e}")
-                except Exception as e:
+                        # Entry not found in this context type
+                        not_found_count += 1
+                        self.logger.debug(
+                            f"Entry not found in {context_type}: {result.error}"
+                        )
+            except ContextServiceError as e:
+                error_str = str(e)
+                if (
+                    "Accès refusé" in error_str
+                    or "Access denied" in error_str
+                    or "[WinError 5]" in error_str
+                ):
+                    permission_errors.append(f"{context_type}: {error_str}")
                     self.logger.warning(f"Failed to remove from {context_type}: {e}")
+                else:
+                    self.logger.warning(f"Registry error for {context_type}: {e}")
+            except Exception as e:
+                self.logger.warning(f"Failed to remove from {context_type}: {e}")
 
-            if success:
-                return {
-                    "success": True,
-                    "key_name": key_name,
-                }
-            elif permission_errors:
-                # If we have permission errors, raise a specific error
-                error_msg = "; ".join(permission_errors)
-                raise RuntimeError(
-                    f"Permission denied: {error_msg}. Try running as administrator."
-                )
-            else:
-                raise RuntimeError("Entry not found in any context type")
-
-        except (ValueError, RuntimeError):
-            raise
-        except Exception as e:
-            raise RuntimeError(
-                f"Unexpected error during script unregistration: {e}"
-            ) from e
-
-    def register_with_display(
-        self,
-        script_path: str,
-        label: str,
-        icon: str | None = None,
-        context_params: ContextParametersService | None = None,
-        verbose: bool = False,
-    ) -> dict[str, object]:
-        """
-        Register a script with backup and UI display.
-
-        Performs the complete registration flow:
-        1. Creates backup before registration
-        2. Registers the script
-        3. Displays appropriate success/error messages
-
-        Args:
-            script_path: Path to the script or executable
-            label: Display name in context menu
-            icon: Icon path or 'auto' for auto-detection
-            context_params: Context parameters for registration
-            verbose: Whether to show detailed information
-
-        Returns:
-            Dict containing operation result and details
-        """
-        from ...ui.common import ezprinter
-        from ...ui.context import ContextMenuUI
-
-        ui = ContextMenuUI()
-
-        # Show verbose params
-        if verbose:
-            ezprinter.info(f"Target: {script_path}")
-            ezprinter.info(f"Label: {label}")
-            ezprinter.info(f"Icon: {icon}")
-            if context_params:
-                ezprinter.info(f"Context: {context_params.get_description()}")
-
-        # Create backup before registration
-        backup_dir = self.get_backup_directory()
-        backup_file = str(backup_dir / "context_menu_backup_before_register.json")
-
-        with ezprinter.create_spinner_with_status(
-            "Creating backup before registration..."
-        ) as (progress, task):
-            progress.update(cast(TaskID, task), status="Creating backup...")
-            backup_result = self.backup_entries(backup_file)
-
-        if not backup_result["success"]:
-            ezprinter.error(f"Backup failed: {backup_result['error']}")
-            return {"success": False, "error": backup_result["error"]}
-
-        if verbose:
-            ezprinter.info(f"Backup created: {backup_file}")
-
-        # Perform registration
-        try:
-            with ezprinter.create_spinner_with_status(
-                "Registering script in context menu..."
-            ) as (progress, task):
-                progress.update(cast(TaskID, task), status="Adding registry entries...")
-                result = self.register_script(
-                    script_path, label, icon, False, context_params
-                )
-
-            # Display result
-            if result["success"]:
-                info = cast(dict[str, Any], result["info"])
-                ui.show_register_success(label, cast(str, info["registry_key"]))
-            else:
-                ezprinter.error(
-                    f"Registration failed: {result.get('error', 'Unknown error')}"
-                )
-                if verbose and "info" in result:
-                    info = cast(dict[str, Any], result["info"])
-                    ezprinter.info(f"Script path: {info.get('script_path')}")
-                    ezprinter.info(f"Script type: {info.get('script_type')}")
-                    ezprinter.info(f"Registry key: {info.get('registry_key')}")
-
-            return result
-        except Exception as e:
-            error_msg = str(e)
-            self.logger.error(f"Registration failed: {error_msg}")
-            ezprinter.error(f"Registration failed: {error_msg}")
-            return {"success": False, "error": error_msg}
-
-    def register_context_entry(
-        self,
-        target_path: str | None,
-        label: str | None,
-        icon: str,
-        root: bool,
-        file: bool,
-        files: bool,
-        background: bool,
-        file_types: tuple[str, ...],
-        extensions: tuple[str, ...],
-        interactive: bool,
-        verbose: bool,
-    ) -> dict[str, object]:
-        """
-        Orchestrate context menu registration with optional wizard and UI.
-
-        Returns:
-            Dict containing operation result (success/error)
-        """
-        from ...ui.common import ezprinter
-        from ...ui.context import ContextMenuWizard
-
-        if not self.is_windows():
-            ezprinter.info("Context menu management is Windows-specific")
-            ezprinter.info("Consider using symbolic links or aliases on Unix systems")
-            return {"success": False, "error": "non_windows"}
-
-        # Interactive wizard
-        if interactive:
-            wizard_target, wizard_label, wizard_icon, context_params = (
-                ContextMenuWizard.run_setup()
+        if success:
+            return ScriptUnregistrationResult(
+                success=True,
+                key_name=key_name,
+                success_count=1,
+                total_types=total_types,
+                permission_errors=permission_errors,
+                not_found_count=not_found_count,
             )
-            if not wizard_target or not wizard_label:
-                return {"success": False, "error": "cancelled"}
-            target_path = wizard_target
-            label = wizard_label
-            icon_value: str = (
-                wizard_icon if isinstance(wizard_icon, str) and wizard_icon else "auto"
+        if permission_errors:
+            error_msg = "; ".join(permission_errors)
+            return ScriptUnregistrationResult(
+                success=False,
+                error=f"Permission denied: {error_msg}. Try running as administrator.",
+                key_name=key_name,
+                total_types=total_types,
+                permission_errors=permission_errors,
+                not_found_count=not_found_count,
             )
-        else:
-            # Validate required parameters in non-interactive mode
-            if not target_path:
-                ezprinter.error("Missing required option: --target")
-                ezprinter.info("Use --interactive for guided setup")
-                return {"success": False, "error": "missing_target"}
-            if not label:
-                ezprinter.error("Missing required option: --label")
-                ezprinter.info("Use --interactive for guided setup")
-                return {"success": False, "error": "missing_label"}
-
-            context_params = ContextParametersService.from_flags(
-                root=root,
-                file=file,
-                files=files,
-                background=background,
-                file_types=list(file_types) if file_types else None,
-                extensions=list(extensions) if extensions else None,
-            )
-            icon_value = icon if isinstance(icon, str) and icon else "auto"
-
-        target_path_value = cast(str, target_path)
-        label_value = cast(str, label)
-
-        # Perform registration with backup and UI display
-        return self.register_with_display(
-            script_path=target_path_value,
-            label=label_value,
-            icon=icon_value,
-            context_params=context_params,
-            verbose=verbose,
+        return ScriptUnregistrationResult(
+            success=False,
+            error="Entry not found in any context type",
+            key_name=key_name,
+            total_types=total_types,
+            not_found_count=not_found_count,
         )
 
-    def show_entries(self, _verbose: bool = False) -> dict[str, object]:
+    def list_entries(self) -> ContextEntriesResult:
         """
-        List context menu entries with UI.
+        List all registered context menu entries.
+
+        Returns:
+            ContextEntriesResult: All entries organized by context type
         """
-        from ...ui.common import ezprinter
-        from ...ui.context import ContextMenuUI
+        all_entries: dict[str, list[dict[str, str | None]]] = {}
 
-        if not self.is_windows():
-            ezprinter.info("Context menu management is Windows-specific")
-            return {"success": False, "error": "non_windows"}
+        for context_type in ContextTypesConfig.ALL_TYPES:
+            try:
+                result = self.registry_service.list_context_menu_entries(context_type)
+                all_entries[context_type] = (
+                    result.entries or [] if result.success else []
+                )
+            except Exception as e:
+                self.logger.warning(f"Failed to list entries for {context_type}: {e}")
+                all_entries[context_type] = []
 
-        with ezprinter.create_spinner_with_status(
-            "Retrieving context menu entries..."
-        ) as (progress, task):
-            progress.update(cast(TaskID, task), status="Reading registry entries...")
-            result = self.list_entries()
+        return ContextEntriesResult(success=True, entries=all_entries)
 
-        if result["success"]:
-            ui = ContextMenuUI()
-            entries = cast(dict[str, Any], result["entries"])
-            ui.show_context_entries(entries)
-            ui.show_list_commands()
-        else:
-            ezprinter.error(
-                f"Failed to retrieve context menu entries: {result['error']}"
-            )
-
-        return result
-
-    def show_status(self, _verbose: bool = False) -> dict[str, object]:
+    def get_status(self) -> ContextStatusResult:
         """
-        Display context menu status with tips/troubleshooting.
+        Compute context menu registration status.
+
+        Returns:
+            ContextStatusResult: Entry counts by context type
         """
-        from ...ui.common import ezprinter
-        from ...ui.context import ContextMenuUI
+        entries_result = self.list_entries()
+        if not entries_result.success:
+            return ContextStatusResult(success=False, error=entries_result.error)
 
-        if not self.is_windows():
-            ezprinter.info("Context menu management is Windows-specific")
-            return {"success": False, "error": "non_windows"}
+        entries = entries_result.entries or {}
+        entries_by_type = {
+            context_type: len(entries.get(context_type, []))
+            for context_type in ("directory", "background")
+        }
+        total_entries = sum(entries_by_type.values())
 
-        with ezprinter.create_spinner_with_status(
-            "Checking context menu registration status..."
-        ) as (progress, task):
-            progress.update(
-                cast(TaskID, task), status="Retrieving context menu entries..."
-            )
-            result = self.list_entries()
+        return ContextStatusResult(
+            success=True,
+            total_entries=total_entries,
+            entries_by_type=entries_by_type,
+        )
 
-        if result["success"]:
-            entries = cast(dict[str, list[dict[str, Any]]], result["entries"])
-            total_entries = sum(
-                len(entries.get(context_type, []))
-                for context_type in ["directory", "background"]
-            )
-
-            ezprinter.success(f"Found {total_entries} context menu entries")
-
-            info_content = """Context menu status information:
-
-• Entries with descriptions are managed by external tools
-• Entries without descriptions are system defaults or unmanaged
-• All entries are shown for both folder and background context menus
-• Backup files are stored in your WOMM installation directory"""
-
-            ContextMenuUI().show_tip_panel(info_content, "Status Information")
-        else:
-            ezprinter.error("Failed to retrieve context menu status")
-
-            troubleshoot_content = """Troubleshooting context menu issues:
-
-• Ensure you have administrator privileges
-• Check if Windows Registry access is blocked
-• Try running from an elevated command prompt
-• Verify WOMM installation is complete"""
-
-            ContextMenuUI().show_tip_panel(troubleshoot_content, "Troubleshooting")
-
-        return result
-
-    def quick_setup_tools(self, verbose: bool = False) -> dict[str, object]:
+    def quick_setup_tools(self, verbose: bool = False) -> ContextSetupResult:
         """
-        Register common WOMM tools with UI feedback.
+        Register common WOMM tools in the context menu.
+
+        Args:
+            verbose: Whether to log per-tool progress
+
+        Returns:
+            ContextSetupResult: Aggregate registration outcome
         """
-        from ...ui.common import ezprinter
         from ...utils.womm_setup.common_utils import get_current_womm_path
 
-        if not self.is_windows():
-            ezprinter.info("Context menu management is Windows-specific")
-            return {"success": False, "error": "non_windows"}
-
-        # Find the actual path to womm.py
         try:
             womm_package_path = get_current_womm_path()
             project_root = womm_package_path.parent
             womm_py_path = project_root / "womm.py"
 
             if not womm_py_path.exists():
-                ezprinter.error(f"Could not find womm.py at {womm_py_path}")
-                return {"success": False, "error": "womm_py_not_found"}
+                return ContextSetupResult(
+                    success=False, error=f"Could not find womm.py at {womm_py_path}"
+                )
 
             womm_py_absolute = str(womm_py_path.resolve())
         except Exception as e:
-            ezprinter.error(f"Failed to locate womm.py: {e}")
-            return {"success": False, "error": f"path_resolution_failed: {e}"}
+            return ContextSetupResult(
+                success=False, error=f"Failed to locate womm.py: {e}"
+            )
 
         tools = [
             {
@@ -684,274 +482,39 @@ class ContextMenuInterface:
             },
         ]
 
-        success_count = 0
-        total_tools = len(tools)
+        context_params = ContextParametersService.from_flags(
+            root=False,
+            file=False,
+            files=False,
+            background=True,
+            file_types=None,
+            extensions=None,
+        )
 
-        with ezprinter.create_spinner_with_status(
-            "Setting up common WOMM tools..."
-        ) as (progress, task):
-            for i, tool in enumerate(tools, 1):
-                progress.update(
-                    cast(TaskID, task),
-                    status=f"Registering {tool['description']} ({i}/{total_tools})...",
-                )
-                if verbose:
-                    ezprinter.info(f"Registering: {tool['description']}")
+        tools_registered: list[str] = []
+        for tool in tools:
+            if verbose:
+                self.logger.info(f"Registering: {tool['description']}")
 
-                # Create default context parameters (directory + background)
-                context_params = ContextParametersService.from_flags(
-                    root=False,
-                    file=False,
-                    files=False,
-                    background=True,
-                    file_types=None,
-                    extensions=None,
-                )
-
-                result = self.register_script(
-                    tool["target"], tool["label"], "auto", False, context_params
-                )
-
-                if result["success"]:
-                    success_count += 1
-                    if verbose:
-                        ezprinter.success(f"Registered: {tool['label']}")
-                elif verbose:
-                    ezprinter.error(
-                        f"Failed to register: {tool['label']} - {result['error']}"
-                    )
-
-        if success_count == total_tools:
-            ezprinter.success(f"All {total_tools} WOMM tools registered successfully!")
-            ezprinter.info("Right-click in any folder to access WOMM tools")
-        else:
-            ezprinter.info(
-                f"Registered {success_count}/{total_tools} tools successfully"
+            result = self.register_script(
+                tool["target"], tool["label"], "auto", False, context_params
             )
 
-        return {
-            "success": success_count == total_tools,
-            "success_count": success_count,
-            "total": total_tools,
-        }
-
-    def backup_with_ui(
-        self, backup_file: str | None = None, _verbose: bool = False
-    ) -> dict[str, object]:
-        """
-        Create a backup with UI feedback.
-        """
-        from ...ui.common import ezprinter
-        from ...ui.context import ContextMenuUI
-
-        if not self.is_windows():
-            ezprinter.info("Context menu management is Windows-specific")
-            return {"success": False, "error": "non_windows"}
-
-        if backup_file:
-            target_backup = backup_file
-            ezprinter.info(f"Backup location: {target_backup}")
-        else:
-            backup_dir = self.get_backup_directory()
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            target_backup = str(backup_dir / f"context_menu_backup_{timestamp}.json")
-            ezprinter.info(f"Backup location: {target_backup}")
-
-        with ezprinter.create_spinner_with_status(
-            "Creating context menu backup..."
-        ) as (progress, task):
-            progress.update(cast(TaskID, task), status="Reading registry entries...")
-            result = self.backup_entries(target_backup)
-
-        if result["success"]:
-            entry_count = result.get("entry_count", 0)
-            ContextMenuUI().show_backup_success(
-                target_backup,
-                int(entry_count) if isinstance(entry_count, int) else 0,
-            )
-        else:
-            ezprinter.error(f"Backup failed: {result['error']}")
-
-        return result
-
-    def restore_with_ui(
-        self, backup_file: str | None = None, verbose: bool = False
-    ) -> dict[str, object]:
-        """
-        Restore context menu entries with UI.
-        """
-        from ...ui.common import ezprinter
-        from ...ui.context import ContextMenuUI
-
-        if not self.is_windows():
-            ezprinter.info("Context menu management is Windows-specific")
-            return {"success": False, "error": "non_windows"}
-
-        ui = ContextMenuUI()
-        backup_dir = self.get_backup_directory()
-
-        if backup_file:
-            backup_path = Path(backup_file)
-            if not backup_path.exists():
-                ezprinter.error(f"Backup file not found: {backup_file}")
-                return {"success": False, "error": "not_found"}
-            selected_file = backup_path
-        else:
-            selected_file = ui.show_backup_selection_menu(backup_dir, verbose)
-            if selected_file is None:
-                return {"success": False, "error": "cancelled"}
-
-        if not ui.confirm_restore_operation(selected_file):
-            ezprinter.info("Restore cancelled")
-            return {"success": False, "error": "cancelled"}
-
-        with ezprinter.create_spinner_with_status(
-            "Restoring context menu from backup..."
-        ) as (progress, task):
-            progress.update(cast(TaskID, task), status="Restoring from backup...")
-            result = self.restore_entries(str(selected_file))
-
-        if result["success"]:
-            entry_count = result.get("entry_count", 0)
-            ui.show_restore_success(
-                selected_file,
-                int(entry_count) if isinstance(entry_count, int) else 0,
-            )
-        else:
-            ezprinter.error(f"Restore failed: {result['error']}")
-
-        return result
-
-    def cherry_pick_with_ui(self, _verbose: bool = False) -> dict[str, object]:
-        """
-        Cherry-pick context menu entries from backups with UI.
-        """
-        from ...ui.common import ezprinter
-        from ...ui.context import ContextMenuUI
-
-        if not self.is_windows():
-            ezprinter.info("Context menu management is Windows-specific")
-            return {"success": False, "error": "non_windows"}
-
-        ui = ContextMenuUI()
-
-        try:
-            backup_dir = self.get_backup_directory()
-            if not backup_dir.exists():
-                ezprinter.error("No backup directory found")
-                ezprinter.info("Create a backup first using 'womm context backup'")
-                return {"success": False, "error": "no_backup_dir"}
-
-            with ezprinter.create_spinner_with_status("Scanning backup files...") as (
-                progress,
-                task,
-            ):
-                progress.update(
-                    cast(TaskID, task), status="Collecting context menu entries..."
+            if result.success:
+                tools_registered.append(tool["label"])
+            elif verbose:
+                self.logger.warning(
+                    f"Failed to register: {tool['label']} - {result.error}"
                 )
-                all_entries = self.collect_entries_from_backups()
 
-            if not all_entries:
-                ezprinter.error("No context menu entries found in backups")
-                return {"success": False, "error": "no_entries"}
+        return ContextSetupResult(
+            success=len(tools_registered) == len(tools),
+            success_count=len(tools_registered),
+            total_tools=len(tools),
+            tools_registered=tools_registered,
+        )
 
-            current_keys = self.get_current_entry_keys()
-            available_entries = self.filter_available_entries(all_entries, current_keys)
-
-            if not available_entries:
-                ezprinter.info(
-                    "All context menu entries from backups are already installed"
-                )
-                return {"success": True, "message": "already_installed"}
-
-            selected_entries = ui.show_cherry_pick_menu(available_entries)
-            if not selected_entries:
-                ezprinter.info("Cherry-pick cancelled")
-                return {"success": False, "error": "cancelled"}
-
-            with ezprinter.create_spinner_with_status(
-                f"Applying {len(selected_entries)} selected entries..."
-            ) as (progress, task):
-                results = self.apply_cherry_picked_entries(selected_entries)
-
-            success_count = sum(1 for success in results.values() if success)
-            ui.show_cherry_pick_complete(success_count)
-
-            return {
-                "success": success_count == len(selected_entries),
-                "success_count": success_count,
-                "total": len(selected_entries),
-            }
-
-        except Exception as e:
-            ezprinter.error(f"Cherry-pick failed: {e}")
-            return {"success": False, "error": str(e)}
-
-    def unregister_with_display(
-        self, key_name: str, verbose: bool = False
-    ) -> dict[str, object]:
-        """
-        Unregister a script with UI display.
-
-        Performs the complete unregistration flow:
-        1. Shows verbose info if requested
-        2. Unregisters the script
-        3. Displays appropriate success/error messages
-
-        Args:
-            key_name: Registry key name to remove
-            verbose: Whether to show detailed information
-
-        Returns:
-            Dict containing operation result
-        """
-        from ...ui.common import ezprinter
-        from ...ui.context import ContextMenuUI
-
-        ui = ContextMenuUI()
-
-        if verbose:
-            ezprinter.info(f"Removing key: {key_name}")
-
-        # Perform unregistration
-        with ezprinter.create_spinner_with_status(
-            "Unregistering script from context menu..."
-        ) as (progress, task):
-            progress.update(cast(TaskID, task), status="Removing registry entries...")
-            result = self.unregister_script(key_name)
-
-        # Display result
-        if result["success"]:
-            ui.show_unregister_success(key_name)
-        else:
-            ezprinter.error(f"Unregistration failed: {result['error']}")
-
-        return result
-
-    def list_entries(self) -> dict[str, object]:
-        """
-        List all registered context menu entries.
-
-        Returns:
-            Dict containing all entries organized by context type
-        """
-        all_entries = {}
-
-        for context_type in ContextTypesConfig.ALL_TYPES:
-            try:
-                result = self.registry_service.list_context_menu_entries(context_type)
-                # Extract entries list from ContextRegistryResult
-                all_entries[context_type] = result.entries if result.success else []
-            except Exception as e:
-                self.logger.warning(f"Failed to list entries for {context_type}: {e}")
-                all_entries[context_type] = []
-
-        return {
-            "success": True,
-            "entries": all_entries,
-        }
-
-    def backup_entries(self, backup_file: str) -> dict[str, object]:
+    def backup_entries(self, backup_file: str) -> ContextBackupResult:
         """
         Backup current context menu entries.
 
@@ -959,50 +522,42 @@ class ContextMenuInterface:
             backup_file: Path to save the backup file
 
         Returns:
-            Dict containing operation result
-
-        Raises:
-            ValueError: If backup_file is invalid
-            RuntimeError: If backup operation fails
+            ContextBackupResult: Result of the backup attempt
         """
+        if not backup_file:
+            return ContextBackupResult(
+                success=False, error="Backup file path cannot be None or empty"
+            )
+
         try:
-            # Input validation
-            if not backup_file:
-                raise ValueError("Backup file path cannot be None or empty")
-
-            # Get current entries
-            try:
-                entries_result = self.list_entries()
-                entries = cast(
-                    dict[str, list[dict[str, str | None]]],
-                    entries_result.get("entries", {}),
-                )
-            except Exception as e:
-                raise RuntimeError(f"Failed to get current entries: {e}") from e
-
-            # Use BackupManager to create backup
-            try:
-                success, filepath, metadata = self.backup_manager.create_backup_file(
-                    entries, custom_filename=Path(backup_file).stem, add_timestamp=False
-                )
-            except Exception as e:
-                raise RuntimeError(f"Failed to create backup: {e}") from e
-
-            if success:
-                return {
-                    "success": True,
-                    "backup_file": filepath,
-                    "entry_count": metadata.get("total_entries", 0),
-                }
-            else:
-                raise RuntimeError(f"Backup creation failed: {filepath}")
-
-        except (ValueError, RuntimeError):
-            raise
+            entries_result = self.list_entries()
+            entries = entries_result.entries or {}
         except Exception as e:
-            raise RuntimeError(f"Unexpected error during backup operation: {e}") from e
+            return ContextBackupResult(
+                success=False, error=f"Failed to get current entries: {e}"
+            )
 
-    def restore_entries(self, backup_file: str) -> dict[str, object]:
+        try:
+            success, filepath, metadata = self.backup_manager.create_backup_file(
+                entries, custom_filename=Path(backup_file).stem, add_timestamp=False
+            )
+        except Exception as e:
+            return ContextBackupResult(
+                success=False, error=f"Failed to create backup: {e}"
+            )
+
+        if not success:
+            return ContextBackupResult(
+                success=False, error=f"Backup creation failed: {filepath}"
+            )
+
+        return ContextBackupResult(
+            success=True,
+            backup_file=filepath,
+            entry_count=metadata.get("total_entries", 0),
+        )
+
+    def restore_entries(self, backup_file: str) -> ContextRestoreResult:
         """
         Restore context menu entries from backup.
 
@@ -1010,42 +565,37 @@ class ContextMenuInterface:
             backup_file: Path to the backup file
 
         Returns:
-            Dict containing operation result
-
-        Raises:
-            ValueError: If backup_file is invalid
-            RuntimeError: If restore operation fails
+            ContextRestoreResult: Result of the restore attempt
         """
+        if not backup_file:
+            return ContextRestoreResult(
+                success=False, error="Backup file path cannot be None or empty"
+            )
+
         try:
-            # Input validation
-            if not backup_file:
-                raise ValueError("Backup file path cannot be None or empty")
-
-            # Use BackupManager to load and validate backup
-            try:
-                _, data, _ = self.backup_manager.load_backup_file(backup_file)
-            except Exception as e:
-                raise RuntimeError(f"Backup loading failed: {e}") from e
-
-            # Restore entries using RegistryService
-            try:
-                success = self.registry_service.restore_registry_entries(data)
-            except Exception as e:
-                raise RuntimeError(f"Failed to restore registry entries: {e}") from e
-
-            if success:
-                return {
-                    "success": True,
-                    "backup_file": backup_file,
-                    "entry_count": data.get("metadata", {}).get("total_entries", 0),
-                }
-            else:
-                raise RuntimeError("Registry restoration failed")
-
-        except (ValueError, RuntimeError):
-            raise
+            _, data, _ = self.backup_manager.load_backup_file(backup_file)
         except Exception as e:
-            raise RuntimeError(f"Unexpected error during restore operation: {e}") from e
+            return ContextRestoreResult(
+                success=False, error=f"Backup loading failed: {e}"
+            )
+
+        try:
+            result = self.registry_service.restore_registry_entries(data)
+        except Exception as e:
+            return ContextRestoreResult(
+                success=False, error=f"Failed to restore registry entries: {e}"
+            )
+
+        if not result.success:
+            return ContextRestoreResult(
+                success=False, error="Registry restoration failed"
+            )
+
+        return ContextRestoreResult(
+            success=True,
+            backup_file=backup_file,
+            entry_count=data.get("metadata", {}).get("total_entries", 0),
+        )
 
     def get_script_info(self, script_path: str) -> dict[str, object]:
         """
@@ -1274,20 +824,18 @@ class ContextMenuInterface:
         Returns:
             Set of key names currently installed
         """
-        try:
-            result = self.list_entries()
-            if result["success"]:
-                entries = cast(dict[str, list[dict[str, Any]]], result["entries"])
-                current_keys = set()
-                for context_type in ["directory", "background"]:
-                    for entry in entries.get(context_type, []):
-                        key_name = entry.get("key_name")
-                        if key_name:
-                            current_keys.add(key_name)
-                return current_keys
-        except Exception as e:
-            self.logger.debug(f"Error checking current entries: {e}")
-        return set()
+        entries_result = self.list_entries()
+        if not entries_result.success:
+            return set()
+
+        entries = entries_result.entries or {}
+        current_keys: set[str] = set()
+        for context_type in ["directory", "background"]:
+            for entry in entries.get(context_type, []):
+                key_name = entry.get("key_name")
+                if key_name:
+                    current_keys.add(key_name)
+        return current_keys
 
     def filter_available_entries(
         self, all_entries: list[dict], current_keys: set[str]
@@ -1323,13 +871,12 @@ class ContextMenuInterface:
         results: dict[str, bool] = {}
 
         for entry in selected_entries:
-            entry_data = cast(dict[str, Any], entry)
-            key_name = entry_data.get("key_name")
+            key_name = entry.get("key_name")
             if not isinstance(key_name, str) or not key_name:
                 self.logger.warning("Skipping entry with missing key_name")
                 continue
 
-            properties = cast(dict[str, Any], entry_data.get("properties", {}))
+            properties = entry.get("properties", {})
             command = properties.get("Command", "")
             muiverb = properties.get("MUIVerb")
             icon = properties.get("Icon")
@@ -1359,6 +906,6 @@ class ContextMenuInterface:
             )
             icon_value = icon if isinstance(icon, str) and icon else "auto"
             result = self.register_script(script_path, muiverb_value, icon_value)
-            results[key_name] = bool(result.get("success", False))
+            results[key_name] = result.success
 
         return results
