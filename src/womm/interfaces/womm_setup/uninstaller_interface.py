@@ -33,12 +33,8 @@ from ...exceptions.system import (
     UserPathServiceError,
 )
 from ...exceptions.womm_deployment import (
-    DeploymentFileServiceError,
-    DeploymentUtilityError,
     UninstallerInterfaceError,
-    VerificationServiceError,
-    WommInstallerError,
-    WommUninstallerError,
+    WommDeploymentServiceError,
 )
 from ...services import WommUninstallerService
 from ...services.system.path_service import SystemPathService
@@ -98,7 +94,7 @@ class WommUninstallerInterface:
             else:
                 try:
                     self.target_path = get_default_womm_path()
-                except (DeploymentUtilityError, WommInstallerError):
+                except (WommDeploymentServiceError, OSError, ValueError):
                     # Re-raise our custom exceptions
                     raise
                 except Exception as e:
@@ -117,18 +113,15 @@ class WommUninstallerInterface:
         except UninstallerInterfaceError:
             # Re-raise interface exceptions
             raise
-        except (
-            WommUninstallerError,
-            DeploymentUtilityError,
-            WommInstallerError,
-        ):
+        except (WommDeploymentServiceError, OSError, ValueError):
             # Convert service exceptions to interface exceptions
             raise UninstallerInterfaceError(
                 message="Failed to initialize uninstallation manager",
                 operation="initialization",
                 details="Exception type: UninstallationManagerError",
-            ) from WommUninstallerError(
-                message="Failed to initialize",
+            ) from WommDeploymentServiceError(
+                operation="uninstall",
+                reason="Failed to initialize",
                 details="Service initialization error",
             )
         except Exception as e:
@@ -266,7 +259,9 @@ class WommUninstallerInterface:
                 try:
                     files_to_remove = get_files_to_remove(self.target_path)
                 except (
-                    DeploymentUtilityError,
+                    WommDeploymentServiceError,
+                    OSError,
+                    ValueError,
                     FileScanError,
                     DirectoryAccessError,
                 ):
@@ -274,8 +269,9 @@ class WommUninstallerInterface:
                     raise
                 except Exception as e:
                     # Wrap unexpected external exceptions
-                    raise WommUninstallerError(
-                        message=f"Failed to get files to remove: {e}",
+                    raise WommDeploymentServiceError(
+                        operation="uninstall",
+                        reason=f"Failed to get files to remove: {e}",
                         details=f"Exception type: {type(e).__name__}",
                     ) from e
 
@@ -361,21 +357,20 @@ class WommUninstallerInterface:
                     try:
                         if not self._cleanup_path():
                             progress.emergency_stop("Failed to remove from PATH")
-                            raise WommUninstallerError(
-                                message="Failed to remove from PATH",
+                            raise WommDeploymentServiceError(
                                 operation="cleanup",
-                                details=(
-                                    "remove_from_path utility returned False. "
-                                    f"Target: {self.target_path}"
-                                ),
+                                reason="Failed to remove from PATH",
+                                details="remove_from_path utility returned False. "
+                                f"Target: {self.target_path}",
                             )
-                    except (WommUninstallerError, DeploymentUtilityError):
+                    except (WommDeploymentServiceError, OSError, ValueError):
                         # Re-raise our custom exceptions
                         raise
                     except Exception as e:
                         # Wrap unexpected external exceptions
-                        raise WommUninstallerError(
-                            message=f"Failed to cleanup PATH: {e}",
+                        raise WommDeploymentServiceError(
+                            operation="uninstall",
+                            reason=f"Failed to cleanup PATH: {e}",
                             details=f"Exception type: {type(e).__name__}",
                         ) from e
 
@@ -396,13 +391,14 @@ class WommUninstallerInterface:
                         self._remove_files_with_progress(
                             files_to_remove, progress, verbose
                         )
-                    except (DeploymentFileServiceError, DeploymentUtilityError):
+                    except (WommDeploymentServiceError, OSError, ValueError):
                         # Re-raise our custom exceptions
                         raise
                     except Exception as e:
                         # Wrap unexpected external exceptions
-                        raise WommUninstallerError(
-                            message=f"Failed to remove files: {e}",
+                        raise WommDeploymentServiceError(
+                            operation="uninstall",
+                            reason=f"Failed to remove files: {e}",
                             details=f"Exception type: {type(e).__name__}",
                         ) from e
 
@@ -416,16 +412,14 @@ class WommUninstallerInterface:
                     # Stage 4: Verification
                     try:
                         self._verify_uninstallation_with_progress(progress)
-                    except (
-                        WommUninstallerError,
-                        DeploymentUtilityError,
-                    ):
+                    except (WommDeploymentServiceError, OSError, ValueError):
                         # Re-raise our custom exceptions
                         raise
                     except Exception as e:
                         # Wrap unexpected external exceptions
-                        raise WommUninstallerError(
-                            message=f"Failed to verify uninstallation: {e}",
+                        raise WommDeploymentServiceError(
+                            operation="uninstall",
+                            reason=f"Failed to verify uninstallation: {e}",
                             details=f"Exception type: {type(e).__name__}",
                         ) from e
 
@@ -442,13 +436,11 @@ class WommUninstallerInterface:
                     progress.complete_layer("main_uninstallation")
 
                 except (
-                    WommInstallerError,
-                    DeploymentFileServiceError,
-                    WommUninstallerError,
-                    DeploymentUtilityError,
+                    WommDeploymentServiceError,
+                    OSError,
+                    ValueError,
                     FileScanError,
                     DirectoryAccessError,
-                    VerificationServiceError,
                     UserPathServiceError,
                     RegistryServiceError,
                     FileSystemServiceError,
@@ -472,8 +464,9 @@ class WommUninstallerInterface:
 
                     ezprinter.error(f"Unexpected error during uninstallation: {e}")
 
-                    raise WommUninstallerError(
-                        message=f"Unexpected error during uninstallation: {e}",
+                    raise WommDeploymentServiceError(
+                        operation="uninstall",
+                        reason=f"Unexpected error during uninstallation: {e}",
                         details="This is an unexpected error that should be reported",
                     ) from e
 
@@ -508,18 +501,15 @@ class WommUninstallerInterface:
                 verification_passed=True,
             )
 
-        except (
-            WommUninstallerError,
-            DeploymentUtilityError,
-            DeploymentFileServiceError,
-        ):
+        except (WommDeploymentServiceError, OSError, ValueError):
             # Re-raise our custom exceptions
             raise
         except Exception as e:
             # Wrap unexpected external exceptions
             logger.error(f"Unexpected error in uninstall: {e}")
-            raise WommUninstallerError(
-                message=f"Uninstallation failed: {e}",
+            raise WommDeploymentServiceError(
+                operation="uninstall",
+                reason=f"Uninstallation failed: {e}",
                 details=f"Exception type: {type(e).__name__}",
             ) from e
 
@@ -535,7 +525,7 @@ class WommUninstallerInterface:
             True if successful, False otherwise
 
         Raises:
-            WommUninstallerError: If PATH cleanup fails
+            WommDeploymentServiceError: If PATH cleanup fails
             UninstallationUtilityError: If utility operations fail
         """
         try:
@@ -550,9 +540,9 @@ class WommUninstallerInterface:
                 raise
             except Exception as e:
                 # Wrap unexpected external exceptions
-                raise WommUninstallerError(
-                    message=f"remove_from_path utility failed: {e}",
+                raise WommDeploymentServiceError(
                     operation="cleanup",
+                    reason=f"remove_from_path utility failed: {e}",
                     details=f"Exception type: {type(e).__name__}",
                 ) from e
 
@@ -561,13 +551,11 @@ class WommUninstallerInterface:
             if not result.success:
                 ezprinter.error("PATH cleanup failed: remove_from_path returned False")
 
-                raise WommUninstallerError(
-                    message="PATH cleanup failed",
+                raise WommDeploymentServiceError(
                     operation="cleanup",
-                    details=(
-                        "remove_from_path utility returned False. "
-                        f"Target: {self.target_path}"
-                    ),
+                    reason="PATH cleanup failed",
+                    details="remove_from_path utility returned False. "
+                    f"Target: {self.target_path}",
                 )
 
             return True
@@ -582,9 +570,9 @@ class WommUninstallerInterface:
         except Exception as e:
             ezprinter.error(f"Unexpected error during PATH cleanup: {e}")
 
-            raise WommUninstallerError(
-                message=f"Unexpected error during PATH cleanup: {e}",
+            raise WommDeploymentServiceError(
                 operation="cleanup",
+                reason=f"Unexpected error during PATH cleanup: {e}",
                 details="This is an unexpected error that should be reported",
             ) from e
 
@@ -644,33 +632,37 @@ class WommUninstallerInterface:
                             ezprinter.system(f"🗑️ Removed directory: {item_path}")
                 except PermissionError as e:
                     if target_item.is_file():
-                        raise DeploymentFileServiceError(
+                        raise WommDeploymentServiceError(
                             operation="remove_file",
-                            file_path=str(target_item),
-                            message=f"Permission denied: {e}",
-                            details=f"Cannot remove file due to permissions: {item_path}",
+                            reason=f"Permission denied: {e}",
+                            details=f"file_path={str(target_item)}"
+                            + " | "
+                            + f"Cannot remove file due to permissions: {item_path}",
                         ) from e
                     else:
-                        raise DeploymentFileServiceError(
+                        raise WommDeploymentServiceError(
                             operation="remove_directory",
-                            file_path=str(target_item),
-                            message=f"Permission denied: {e}",
-                            details=f"Cannot remove directory due to permissions: {item_path}",
+                            reason=f"Permission denied: {e}",
+                            details=f"file_path={str(target_item)}"
+                            + " | "
+                            + f"Cannot remove directory due to permissions: {item_path}",
                         ) from e
                 except OSError as e:
                     if target_item.is_file():
-                        raise DeploymentFileServiceError(
+                        raise WommDeploymentServiceError(
                             operation="remove_file",
-                            file_path=str(target_item),
-                            message=f"OS error: {e}",
-                            details=f"Failed to remove file: {item_path}",
+                            reason=f"OS error: {e}",
+                            details=f"file_path={str(target_item)}"
+                            + " | "
+                            + f"Failed to remove file: {item_path}",
                         ) from e
                     else:
-                        raise DeploymentFileServiceError(
+                        raise WommDeploymentServiceError(
                             operation="remove_directory",
-                            file_path=str(target_item),
-                            message=f"OS error: {e}",
-                            details=f"Failed to remove directory: {item_path}",
+                            reason=f"OS error: {e}",
+                            details=f"file_path={str(target_item)}"
+                            + " | "
+                            + f"Failed to remove directory: {item_path}",
                         ) from e
 
             # Finally remove the root directory itself
@@ -692,32 +684,35 @@ class WommUninstallerInterface:
                             f"🗑️ Removed installation directory: {self.target_path}"
                         )
                 except PermissionError as e:
-                    raise DeploymentFileServiceError(
+                    raise WommDeploymentServiceError(
                         operation="remove_directory",
-                        file_path=str(self.target_path),
-                        message=f"Permission denied: {e}",
-                        details="Cannot remove installation directory due to permissions",
+                        reason=f"Permission denied: {e}",
+                        details=f"file_path={str(self.target_path)}"
+                        + " | "
+                        + "Cannot remove installation directory due to permissions",
                     ) from e
                 except OSError as e:
-                    raise DeploymentFileServiceError(
+                    raise WommDeploymentServiceError(
                         operation="remove_directory",
-                        file_path=str(self.target_path),
-                        message=f"OS error: {e}",
-                        details="Failed to remove installation directory",
+                        reason=f"OS error: {e}",
+                        details=f"file_path={str(self.target_path)}"
+                        + " | "
+                        + "Failed to remove installation directory",
                     ) from e
 
             return True
 
-        except (DeploymentFileServiceError, DeploymentUtilityError):
+        except (WommDeploymentServiceError, OSError, ValueError):
             # Re-raise our custom exceptions
             raise
         except Exception as e:
             # Convert unexpected errors to our exception type
-            raise DeploymentFileServiceError(
+            raise WommDeploymentServiceError(
                 operation="file_removal",
-                file_path=str(self.target_path),
-                message=f"Unexpected error during file removal: {e}",
-                details="This is an unexpected error that should be reported",
+                reason=f"Unexpected error during file removal: {e}",
+                details=f"file_path={str(self.target_path)}"
+                + " | "
+                + "This is an unexpected error that should be reported",
             ) from e
 
     # =============================================================================
@@ -742,14 +737,12 @@ class WommUninstallerInterface:
             # Step 1: File removal check
             progress.update_layer("verification", 0, "Checking file removal...")
             if self.target_path.exists():
-                raise WommUninstallerError(
-                    message=f"Installation directory still exists: {self.target_path}",
+                raise WommDeploymentServiceError(
                     operation="verification",
-                    details=(
-                        "file_removal_check failed. "
-                        "The target directory was not removed during uninstallation. "
-                        f"Target: {self.target_path}"
-                    ),
+                    reason=f"Installation directory still exists: {self.target_path}",
+                    details="file_removal_check failed. "
+                    "The target directory was not removed during uninstallation. "
+                    f"Target: {self.target_path}",
                 )
             sleep(0.2)
 
@@ -765,18 +758,16 @@ class WommUninstallerInterface:
                         self.target_path
                     )
                 )
-            except (VerificationServiceError, DeploymentUtilityError):
+            except (WommDeploymentServiceError, OSError, ValueError):
                 # Re-raise our custom exceptions
                 raise
             except Exception as e:
-                raise WommUninstallerError(
-                    message=f"Verification utility failed: {e}",
+                raise WommDeploymentServiceError(
                     operation="verification",
-                    details=(
-                        "command_accessibility_test failed. "
-                        "The verification utility function raised an exception. "
-                        f"Target: {self.target_path}"
-                    ),
+                    reason=f"Verification utility failed: {e}",
+                    details="command_accessibility_test failed. "
+                    "The verification utility function raised an exception. "
+                    f"Target: {self.target_path}",
                 ) from e
 
             if not verification_result.success:
@@ -785,26 +776,24 @@ class WommUninstallerInterface:
                     or verification_result.error
                     or "Unknown error"
                 )
-                raise WommUninstallerError(
-                    message=f"Verification failed: {failure_message}",
+                raise WommDeploymentServiceError(
                     operation="verification",
-                    details=(
-                        "command_accessibility_test failed. "
-                        "The verification utility returned a failure status. "
-                        f"Target: {self.target_path}"
-                    ),
+                    reason=f"Verification failed: {failure_message}",
+                    details="command_accessibility_test failed. "
+                    "The verification utility returned a failure status. "
+                    f"Target: {self.target_path}",
                 )
             sleep(0.2)
 
             return True
 
-        except (WommUninstallerError, DeploymentUtilityError):
+        except (WommDeploymentServiceError, OSError, ValueError):
             # Re-raise our custom exceptions
             raise
         except Exception as e:
             # Convert unexpected errors to our exception type
-            raise WommUninstallerError(
-                message=f"Unexpected error during verification: {e}",
+            raise WommDeploymentServiceError(
                 operation="verification",
+                reason=f"Unexpected error during verification: {e}",
                 details="This is an unexpected error that should be reported",
             ) from e

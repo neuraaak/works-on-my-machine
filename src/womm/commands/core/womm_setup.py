@@ -25,7 +25,7 @@ import click
 from ezpl import LogLevel
 
 # Local imports
-from ...exceptions.womm_deployment import DeploymentUtilityError, WommUninstallerError
+from ...exceptions.womm_deployment import WommDeploymentServiceError
 from ...interfaces import (
     SystemPathInterface,
     WommInstallerInterface,
@@ -90,10 +90,11 @@ def install(
         manager = WommInstallerInterface()
         manager.install(force=force, target=target, refresh_env=not no_refresh_env)
 
-    except DeploymentUtilityError as e:
-        ezprinter.error(f"Installation error: {e.message}")
-        if e.details:
-            ezprinter.error(f"Details: {e.details}")
+    except (WommDeploymentServiceError, OSError, ValueError) as e:
+        ezprinter.error(f"Installation error: {e}")
+        details = getattr(e, "details", None)
+        if details:
+            ezprinter.error(f"Details: {details}")
         sys.exit(1)
     except Exception as e:
         ezprinter.error(f"Unexpected installation error: {e}")
@@ -140,15 +141,13 @@ def uninstall(force: bool, target: str | None, verbose: bool) -> None:
         manager = WommUninstallerInterface(target)
         manager.uninstall(force=force)
 
-    except WommUninstallerError as e:
+    except WommDeploymentServiceError as e:
         ezprinter.error(f"Uninstallation error: {e.message}")
         if e.details:
             ezprinter.error(f"Details: {e.details}")
         sys.exit(1)
-    except DeploymentUtilityError as e:
-        ezprinter.error(f"Uninstallation utility error: {e.message}")
-        if e.details:
-            ezprinter.error(f"Details: {e.details}")
+    except (OSError, ValueError) as e:
+        ezprinter.error(f"Uninstallation utility error: {e}")
         sys.exit(1)
     except Exception as e:
         ezprinter.error(f"Unexpected uninstallation error: {e}")

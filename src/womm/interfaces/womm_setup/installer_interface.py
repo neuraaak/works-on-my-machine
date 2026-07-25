@@ -39,15 +39,8 @@ from ...exceptions.system import (
     UserPathServiceError,
 )
 from ...exceptions.womm_deployment import (
-    DeploymentFileServiceError,
-    DeploymentUtilityError,
-    ExeVerificationServiceError,
-    FileVerificationServiceError,
     InstallerInterfaceError,
-    PathServiceError,
-    PathUtilityError,
-    VerificationServiceError,
-    WommInstallerError,
+    WommDeploymentServiceError,
 )
 from ...services import CommandRunnerService, WommInstallerService
 from ...shared.configs.womm_setup import WOMMDeploymentConfig
@@ -133,7 +126,7 @@ class WommInstallerInterface:
                     self.source_path = womm_package_path
 
                 self.target_path = get_default_womm_path()
-            except (DeploymentUtilityError, PathUtilityError):
+            except (WommDeploymentServiceError, OSError, ValueError):
                 # Re-raise our custom exceptions
                 raise
             except Exception as e:
@@ -160,14 +153,15 @@ class WommInstallerInterface:
         except InstallerInterfaceError:
             # Re-raise interface exceptions
             raise
-        except (WommInstallerError, DeploymentUtilityError, PathUtilityError):
+        except (WommDeploymentServiceError, OSError, ValueError):
             # Convert service exceptions to interface exceptions
             raise InstallerInterfaceError(
                 message="Failed to initialize installation manager",
                 operation="initialization",
                 details="Exception during initialization",
-            ) from WommInstallerError(
-                message="Failed to initialize",
+            ) from WommDeploymentServiceError(
+                operation="install",
+                reason="Failed to initialize",
                 details="Service initialization error",
             )
         except Exception as e:
@@ -310,8 +304,9 @@ class WommInstallerInterface:
                 try:
                     files_to_copy = self._build_installation_file_list()
                 except Exception as e:
-                    raise WommInstallerError(
-                        message=f"Failed to build file list: {e}",
+                    raise WommDeploymentServiceError(
+                        operation="install",
+                        reason=f"Failed to build file list: {e}",
                         details=f"Exception type: {type(e).__name__}",
                     ) from e
 
@@ -424,16 +419,14 @@ class WommInstallerInterface:
                     )
                     try:
                         executable_result = create_womm_executable(self.target_path)
-                    except (
-                        DeploymentUtilityError,
-                        ExeVerificationServiceError,
-                    ):
+                    except (WommDeploymentServiceError, OSError, ValueError):
                         # Re-raise our custom exceptions
                         raise
                     except Exception as e:
                         # Wrap unexpected external exceptions
-                        raise WommInstallerError(
-                            message=f"Failed to create executable: {e}",
+                        raise WommDeploymentServiceError(
+                            operation="install",
+                            reason=f"Failed to create executable: {e}",
                             details=f"Exception type: {type(e).__name__}",
                         ) from e
 
@@ -445,10 +438,12 @@ class WommInstallerInterface:
                         progress.emergency_stop(
                             f"Failed to create executable: {error_message}"
                         )
-                        raise ExeVerificationServiceError(
-                            executable_name="womm",
-                            message=error_message,
-                            details="Failed to create WOMM executable",
+                        raise WommDeploymentServiceError(
+                            operation="executable_verification",
+                            reason=error_message,
+                            details="executable_name=womm"
+                            + " | "
+                            + "Failed to create WOMM executable",
                         )
 
                     progress.update_layer(
@@ -469,7 +464,7 @@ class WommInstallerInterface:
                         proof_result = create_installation_proof(self.target_path)
                         if not proof_result.get("success"):
                             logger.warning("Failed to create installation proof file")
-                    except DeploymentUtilityError as e:
+                    except (WommDeploymentServiceError, OSError, ValueError) as e:
                         logger.warning(f"Could not create proof file: {e}")
                     except Exception as e:
                         logger.warning(f"Unexpected error creating proof: {e}")
@@ -482,19 +477,21 @@ class WommInstallerInterface:
                     try:
                         if not self._backup_path():
                             progress.emergency_stop("Failed to backup PATH")
-                            raise PathServiceError(
+                            raise WommDeploymentServiceError(
                                 operation="backup",
-                                path=str(self.target_path),
-                                message="Could not create PATH backup before installation",
-                                details="PATH backup operation failed",
+                                reason="Could not create PATH backup before installation",
+                                details=f"path={str(self.target_path)}"
+                                + " | "
+                                + "PATH backup operation failed",
                             )
-                    except (PathServiceError, DeploymentUtilityError):
+                    except (WommDeploymentServiceError, OSError, ValueError):
                         # Re-raise our custom exceptions
                         raise
                     except Exception as e:
                         # Wrap unexpected external exceptions
-                        raise WommInstallerError(
-                            message=f"Failed to backup PATH: {e}",
+                        raise WommDeploymentServiceError(
+                            operation="install",
+                            reason=f"Failed to backup PATH: {e}",
                             details=f"Exception type: {type(e).__name__}",
                         ) from e
 
@@ -516,7 +513,7 @@ class WommInstallerInterface:
                     )
                     try:
                         self._setup_path()  # Always raises exception on failure, never returns False
-                    except PathUtilityError as e:
+                    except WommDeploymentServiceError as e:
                         # Re-raise system exception with full details
                         progress.emergency_stop(
                             f"PATH setup failed: {type(e).__name__}"
@@ -524,22 +521,17 @@ class WommInstallerInterface:
                         ezprinter.error(f"PATH setup error: {e.message}")
                         if e.details and e.details != e.message:
                             ezprinter.error(f"Details: {e.details}")
-                        # Convert to InstallationPathError for consistency
-                        raise PathServiceError(
-                            operation="setup",
-                            path=str(self.target_path),
-                            message=e.message,
-                            details=e.details,
-                        ) from e
-                    except (PathServiceError, DeploymentUtilityError):
-                        # Re-raise our custom exceptions
+                        raise
+                    except (OSError, ValueError):
+                        # Let filesystem/validation errors propagate unwrapped
                         raise
                     except Exception as e:
                         # Wrap unexpected external exceptions
                         progress.emergency_stop("Unexpected error during PATH setup")
                         logger.exception("Unexpected error in PATH setup")
-                        raise WommInstallerError(
-                            message=f"Failed to setup PATH: {e}",
+                        raise WommDeploymentServiceError(
+                            operation="install",
+                            reason=f"Failed to setup PATH: {e}",
                             details=f"Exception type: {type(e).__name__}",
                         ) from e
 
@@ -558,13 +550,14 @@ class WommInstallerInterface:
                     # Stage 5: Verification
                     try:
                         self._verify_installation_with_progress(progress)
-                    except (VerificationServiceError, DeploymentUtilityError):
+                    except (WommDeploymentServiceError, OSError, ValueError):
                         # Re-raise our custom exceptions
                         raise
                     except Exception as e:
                         # Wrap unexpected external exceptions
-                        raise WommInstallerError(
-                            message=f"Failed to verify installation: {e}",
+                        raise WommDeploymentServiceError(
+                            operation="install",
+                            reason=f"Failed to verify installation: {e}",
                             details=f"Exception type: {type(e).__name__}",
                         ) from e
 
@@ -583,24 +576,15 @@ class WommInstallerInterface:
                     # Complete and remove main installation layer
                     progress.complete_layer("main_installation")
 
-                except (
-                    DeploymentUtilityError,
-                    DeploymentFileServiceError,
-                    PathServiceError,
-                    WommInstallerError,
-                    VerificationServiceError,
-                    # Utility exceptions that might be raised by utility functions
-                    FileVerificationServiceError,
-                    PathUtilityError,
-                    ExeVerificationServiceError,
-                ) as e:
+                except (WommDeploymentServiceError, OSError, ValueError) as e:
                     # Stop progress first, then print error details
                     progress.emergency_stop(f"Installation failed: {type(e).__name__}")
 
                     # Now safe to print error details
-                    ezprinter.error(f"Installation failed: {e.message}")
-                    if e.details:
-                        ezprinter.error(f"Details: {e.details}")
+                    ezprinter.error(f"Installation failed: {e}")
+                    details = getattr(e, "details", None)
+                    if details:
+                        ezprinter.error(f"Details: {details}")
 
                     # Re-raise our custom exceptions
                     raise
@@ -611,8 +595,9 @@ class WommInstallerInterface:
                     # Print unexpected error details
                     ezprinter.error(f"Unexpected error during installation: {e}")
 
-                    raise WommInstallerError(
-                        message=f"Unexpected error during installation: {e}",
+                    raise WommDeploymentServiceError(
+                        operation="install",
+                        reason=f"Unexpected error during installation: {e}",
                         details="This is an unexpected error that should be reported",
                     ) from e
 
@@ -662,20 +647,15 @@ class WommInstallerInterface:
                 details={"installed_files": list(self._installed_files)},
             )
 
-        except (
-            WommInstallerError,
-            DeploymentUtilityError,
-            DeploymentFileServiceError,
-            PathServiceError,
-            VerificationServiceError,
-        ):
+        except (WommDeploymentServiceError, OSError, ValueError):
             # Re-raise our custom exceptions
             raise
         except Exception as e:
             # Wrap unexpected external exceptions
             logger.exception("Unexpected error in install")
-            raise WommInstallerError(
-                message=f"Installation failed: {e}",
+            raise WommDeploymentServiceError(
+                operation="install",
+                reason=f"Installation failed: {e}",
                 details=f"Exception type: {type(e).__name__}",
             ) from e
 
@@ -743,21 +723,23 @@ class WommInstallerInterface:
             # Stop progress and raise specific exception
             progress.emergency_stop("File copy failed")
 
-            raise FileVerificationServiceError(
-                verification_type="file_copy",
-                file_path=str(source_file),
-                message=str(e),
-                details=f"Failed at file {i + 1}/{len(files_to_copy)}: {relative_file}",
+            raise WommDeploymentServiceError(
+                operation="file_copy",
+                reason=str(e),
+                details=f"file_path={str(source_file)}"
+                + " | "
+                + f"Failed at file {i + 1}/{len(files_to_copy)}: {relative_file}",
             ) from e
         except Exception as e:
             # Stop progress and raise manager exception
             progress.emergency_stop("Unexpected error during file copy")
 
-            raise DeploymentFileServiceError(
+            raise WommDeploymentServiceError(
                 operation="copy",
-                file_path=str(source_file),
-                message=f"Unexpected error during file copy: {e}",
-                details="This is an unexpected error that should be reported",
+                reason=f"Unexpected error during file copy: {e}",
+                details=f"file_path={str(source_file)}"
+                + " | "
+                + "This is an unexpected error that should be reported",
             ) from e
 
     def _copy_files(
@@ -828,22 +810,24 @@ class WommInstallerInterface:
             if progress:
                 progress.emergency_stop("File copy failed")
 
-            raise FileVerificationServiceError(
-                verification_type="file_copy",
-                file_path=str(source_file),
-                message=str(e),
-                details=f"Failed at file {_i + 1}/{len(files_to_copy)}: {relative_file}",
+            raise WommDeploymentServiceError(
+                operation="file_copy",
+                reason=str(e),
+                details=f"file_path={str(source_file)}"
+                + " | "
+                + f"Failed at file {_i + 1}/{len(files_to_copy)}: {relative_file}",
             ) from e
         except Exception as e:
             # Stop progress and raise manager exception
             if progress:
                 progress.emergency_stop("Unexpected error during file copy")
 
-            raise DeploymentFileServiceError(
+            raise WommDeploymentServiceError(
                 operation="copy",
-                file_path=str(source_file),
-                message=f"Unexpected error during file copy: {e}",
-                details="This is an unexpected error that should be reported",
+                reason=f"Unexpected error during file copy: {e}",
+                details=f"file_path={str(source_file)}"
+                + " | "
+                + "This is an unexpected error that should be reported",
             ) from e
         else:
             return True
@@ -912,7 +896,7 @@ class WommInstallerInterface:
             List of relative file paths to copy
 
         Raises:
-            WommInstallerError: If file list building fails
+            WommDeploymentServiceError: If file list building fails
         """
         files: list[str] = []
 
@@ -938,8 +922,9 @@ class WommInstallerInterface:
 
         except Exception as e:
             logger.exception("Failed to build installation file list")
-            raise WommInstallerError(
-                message=f"Failed to build file list: {e}",
+            raise WommDeploymentServiceError(
+                operation="install",
+                reason=f"Failed to build file list: {e}",
                 details=f"Exception type: {type(e).__name__}",
             ) from e
 
@@ -955,7 +940,7 @@ class WommInstallerInterface:
             True if successful, False otherwise
 
         Raises:
-            PathUtilityError: If PATH setup fails
+            WommDeploymentServiceError: If PATH setup fails
             InstallationPathError: If PATH operations fail
             InstallationUtilityError: If unexpected error occurs
         """
@@ -970,14 +955,15 @@ class WommInstallerInterface:
                 ezprinter.error(f"PATH setup failed: {error_msg}")
                 logger.error(f"PATH setup returned failure: {result}")
 
-                raise PathUtilityError(
+                raise WommDeploymentServiceError(
                     operation="path_setup",
-                    path=str(self.target_path),
-                    message="PATH setup failed",
-                    details=f"PathManager error: {error_msg}",
+                    reason="PATH setup failed",
+                    details=f"path={str(self.target_path)}"
+                    + " | "
+                    + f"PathManager error: {error_msg}",
                 )
 
-        except PathUtilityError as e:
+        except WommDeploymentServiceError as e:
             # Log and re-raise our custom exception with full details
             logger.exception(f"PATH setup failed: {e.message}")
             if e.details:
@@ -991,10 +977,12 @@ class WommInstallerInterface:
             logger.exception("Unexpected error setting up PATH")
             ezprinter.error(f"Unexpected error setting up PATH: {e}")
 
-            raise PathUtilityError(
+            raise WommDeploymentServiceError(
                 operation="path_setup",
-                path=str(self.target_path),
-                details=f"Unexpected error during PATH setup: {e}",
+                reason="",
+                details=f"path={str(self.target_path)}"
+                + " | "
+                + f"Unexpected error during PATH setup: {e}",
             ) from e
         else:
             return True
@@ -1124,15 +1112,15 @@ class WommInstallerInterface:
                 ezprinter.info("User may need to restart terminal to access WOMM")
                 return True
 
-        except (WommInstallerError, DeploymentUtilityError):
+        except (WommDeploymentServiceError, OSError, ValueError):
             # Re-raise our custom exceptions
             raise
         except Exception as e:
             ezprinter.error(f"Error refreshing environment: {e}")
             # Don't fail installation if refresh fails, but raise exception for logging
-            raise WommInstallerError(
+            raise WommDeploymentServiceError(
                 operation="environment_refresh",
-                message=f"Environment refresh failed: {e}",
+                reason=f"Environment refresh failed: {e}",
                 details="EnvironmentManager refresh failed",
             ) from e
 
@@ -1161,24 +1149,26 @@ class WommInstallerInterface:
             else:
                 ezprinter.error(f"PATH backup failed: {backup_result.error}")
 
-                raise PathServiceError(
+                raise WommDeploymentServiceError(
                     operation="backup",
-                    path=str(self.target_path),
-                    message="PATH backup failed",
-                    details=f"PathManager backup error: {backup_result.error}",
+                    reason="PATH backup failed",
+                    details=f"path={str(self.target_path)}"
+                    + " | "
+                    + f"PathManager backup error: {backup_result.error}",
                 )
 
-        except PathServiceError:
+        except WommDeploymentServiceError:
             # Re-raise our custom exception
             raise
         except Exception as e:
             ezprinter.error(f"Unexpected error during PATH backup: {e}")
 
-            raise PathServiceError(
+            raise WommDeploymentServiceError(
                 operation="backup",
-                path=str(self.target_path),
-                message=f"Unexpected error during PATH backup: {e}",
-                details="This is an unexpected error that should be reported",
+                reason=f"Unexpected error during PATH backup: {e}",
+                details=f"path={str(self.target_path)}"
+                + " | "
+                + "This is an unexpected error that should be reported",
             ) from e
 
     def _rollback_path(self) -> bool:
@@ -1196,11 +1186,12 @@ class WommInstallerInterface:
             if not self._path_backup_file:
                 ezprinter.error("No backup file available for rollback")
 
-                raise PathServiceError(
+                raise WommDeploymentServiceError(
                     operation="rollback",
-                    path=str(self.target_path),
-                    message="No backup file available for rollback",
-                    details="PATH backup file not found for rollback",
+                    reason="No backup file available for rollback",
+                    details=f"path={str(self.target_path)}"
+                    + " | "
+                    + "PATH backup file not found for rollback",
                 )
 
             # Use PathManager to restore from specific backup file
@@ -1209,11 +1200,12 @@ class WommInstallerInterface:
             if not backup_file.exists():
                 ezprinter.error(f"Backup file not found: {backup_file}")
 
-                raise PathServiceError(
+                raise WommDeploymentServiceError(
                     operation="rollback",
-                    path=str(backup_file),
-                    message="Backup file not found for rollback",
-                    details=f"Backup file not found at: {backup_file}",
+                    reason="Backup file not found for rollback",
+                    details=f"path={str(backup_file)}"
+                    + " | "
+                    + f"Backup file not found at: {backup_file}",
                 )
 
             # Read backup data to get the PATH string
@@ -1221,22 +1213,24 @@ class WommInstallerInterface:
                 with open(backup_file, encoding="utf-8") as f:
                     backup_data = json.load(f)
             except Exception as e:
-                raise PathServiceError(
+                raise WommDeploymentServiceError(
                     operation="rollback",
-                    path=str(backup_file),
-                    message=f"Failed to read backup file: {e}",
-                    details=f"Exception type: {type(e).__name__}",
+                    reason=f"Failed to read backup file: {e}",
+                    details=f"path={str(backup_file)}"
+                    + " | "
+                    + f"Exception type: {type(e).__name__}",
                 ) from e
 
             restored_path = backup_data.get("path_string", "")
             if not restored_path:
                 ezprinter.error("Invalid backup file: no PATH string found")
 
-                raise PathServiceError(
+                raise WommDeploymentServiceError(
                     operation="rollback",
-                    path=str(backup_file),
-                    message="Invalid backup file for rollback",
-                    details="Backup file contains no PATH string",
+                    reason="Invalid backup file for rollback",
+                    details=f"path={str(backup_file)}"
+                    + " | "
+                    + "Backup file contains no PATH string",
                 )
 
             # Use SystemPathInterface's platform-specific restore logic
@@ -1259,11 +1253,12 @@ class WommInstallerInterface:
                         ]
                     )
                 except Exception as e:
-                    raise PathServiceError(
+                    raise WommDeploymentServiceError(
                         operation="rollback",
-                        path=str(self.target_path),
-                        message=f"Failed to execute registry command: {e}",
-                        details=f"Exception type: {type(e).__name__}",
+                        reason=f"Failed to execute registry command: {e}",
+                        details=f"path={str(self.target_path)}"
+                        + " | "
+                        + f"Exception type: {type(e).__name__}",
                     ) from e
 
                 if bool(result):
@@ -1273,11 +1268,12 @@ class WommInstallerInterface:
                     stderr = getattr(result, "stderr", "")
                     ezprinter.error(f"PATH rollback failed: {stderr}")
 
-                    raise PathServiceError(
+                    raise WommDeploymentServiceError(
                         operation="rollback",
-                        path=str(self.target_path),
-                        message="PATH rollback failed: Registry update failed",
-                        details=f"Windows registry update failed: {stderr}",
+                        reason="PATH rollback failed: Registry update failed",
+                        details=f"path={str(self.target_path)}"
+                        + " | "
+                        + f"Windows registry update failed: {stderr}",
                     )
             else:
                 # Unix rollback - update environment
@@ -1292,27 +1288,18 @@ class WommInstallerInterface:
         ):
             # Re-raise our custom exceptions
             raise
-        except (
-            DeploymentUtilityError,
-            DeploymentFileServiceError,
-            PathServiceError,
-            WommInstallerError,
-            VerificationServiceError,
-            # Utility exceptions that might be raised by utility functions
-            FileVerificationServiceError,
-            PathUtilityError,
-            ExeVerificationServiceError,
-        ):
+        except (WommDeploymentServiceError, OSError, ValueError):
             # Re-raise our custom exceptions
             raise
         except Exception as e:
             ezprinter.error(f"Unexpected error during PATH rollback: {e}")
 
-            raise PathServiceError(
+            raise WommDeploymentServiceError(
                 operation="rollback",
-                path=str(self.target_path),
-                message=f"Unexpected error during PATH rollback: {e}",
-                details="This is an unexpected error that should be reported",
+                reason=f"Unexpected error during PATH rollback: {e}",
+                details=f"path={str(self.target_path)}"
+                + " | "
+                + "This is an unexpected error that should be reported",
             ) from e
 
     # ------------------------------------------------
@@ -1332,7 +1319,7 @@ class WommInstallerInterface:
         Raises:
             FileVerificationError: If file verification fails
             ExecutableVerificationError: If executable verification fails
-            PathUtilityError: If PATH verification fails
+            WommDeploymentServiceError: If PATH verification fails
             InstallationVerificationError: If verification fails
             InstallationUtilityError: If unexpected error occurs
         """
@@ -1345,7 +1332,7 @@ class WommInstallerInterface:
                     self.source_path, self.target_path, self._installed_files
                 )
                 # If we get here, verification passed (no exception raised)
-            except (FileVerificationServiceError, DeploymentUtilityError):
+            except (WommDeploymentServiceError, OSError, ValueError):
                 # Re-raise our custom exceptions
                 raise
             except Exception as e:
@@ -1353,11 +1340,12 @@ class WommInstallerInterface:
                 progress.emergency_stop("File verification failed")
 
                 # Re-raise as file verification error
-                raise FileVerificationServiceError(
-                    verification_type="file_integrity",
-                    file_path=str(self.target_path),
-                    message=str(e),
-                    details="Files are missing or corrupted",
+                raise WommDeploymentServiceError(
+                    operation="file_integrity",
+                    reason=str(e),
+                    details=f"file_path={str(self.target_path)}"
+                    + " | "
+                    + "Files are missing or corrupted",
                 ) from e
 
             sleep(0.2)
@@ -1370,11 +1358,12 @@ class WommInstallerInterface:
                 if not file_path.exists():
                     progress.emergency_stop("Essential file missing")
 
-                    raise FileVerificationServiceError(
-                        verification_type="essential_files",
-                        file_path=str(file_path),
-                        message=f"Essential file missing: {essential_file}",
-                        details=f"Required file not found at {file_path}",
+                    raise WommDeploymentServiceError(
+                        operation="essential_files",
+                        reason=f"Essential file missing: {essential_file}",
+                        details=f"file_path={str(file_path)}"
+                        + " | "
+                        + f"Required file not found at {file_path}",
                     )
             sleep(0.2)
 
@@ -1388,12 +1377,12 @@ class WommInstallerInterface:
                     str(self.target_path)
                 )
                 if not result.success:
-                    raise ExeVerificationServiceError(
-                        executable_name="womm",
-                        message=result.message or "Command verification failed",
-                        details=result.error or "",
+                    raise WommDeploymentServiceError(
+                        operation="executable_verification",
+                        reason=result.message or "Command verification failed",
+                        details=f"executable_name=womm | {result.error or ''}",
                     )
-            except (ExeVerificationServiceError, DeploymentUtilityError):
+            except (WommDeploymentServiceError, OSError, ValueError):
                 # On Windows, be more tolerant of PATH timing issues
                 if self.platform == "Windows":
                     # Don't print during progress - pass message to progress dict
@@ -1428,10 +1417,12 @@ class WommInstallerInterface:
                     # Stop progress and handle the exception
                     progress.emergency_stop("Command verification failed")
 
-                    raise ExeVerificationServiceError(
-                        executable_name="womm",
-                        message=str(e),
-                        details="WOMM commands are not accessible",
+                    raise WommDeploymentServiceError(
+                        operation="executable_verification",
+                        reason=str(e),
+                        details="executable_name=womm"
+                        + " | "
+                        + "WOMM commands are not accessible",
                     ) from e
             sleep(0.2)
 
@@ -1443,38 +1434,35 @@ class WommInstallerInterface:
                     str(self.target_path)
                 )
                 # If we get here, verification passed (no exception raised)
-            except (PathUtilityError, DeploymentUtilityError):
+            except (WommDeploymentServiceError, OSError, ValueError):
                 # Re-raise our custom exceptions
                 raise
             except Exception as e:
                 # Stop progress and handle the exception
                 progress.emergency_stop("PATH verification failed")
 
-                raise PathUtilityError(
+                raise WommDeploymentServiceError(
                     operation="path_configuration",
-                    path=str(self.target_path),
-                    message=str(e),
-                    details="PATH environment variable is not configured correctly",
+                    reason=str(e),
+                    details=f"path={str(self.target_path)}"
+                    + " | "
+                    + "PATH environment variable is not configured correctly",
                 ) from e
             sleep(0.2)
 
-        except (
-            FileVerificationServiceError,
-            ExeVerificationServiceError,
-            PathUtilityError,
-            DeploymentUtilityError,
-        ):
+        except (WommDeploymentServiceError, OSError, ValueError):
             # Re-raise our custom exceptions
             raise
         except Exception as e:
             # Stop progress and handle unexpected errors
             progress.emergency_stop("Unexpected error during verification")
 
-            raise VerificationServiceError(
-                verification_type="unexpected_error",
-                target_path=str(self.target_path),
-                message=f"Unexpected error during verification: {e}",
-                details="This is an unexpected error that should be reported",
+            raise WommDeploymentServiceError(
+                operation="unexpected_error",
+                reason=f"Unexpected error during verification: {e}",
+                details=f"target_path={str(self.target_path)}"
+                + " | "
+                + "This is an unexpected error that should be reported",
             ) from e
         else:
             return True
@@ -1489,7 +1477,7 @@ class WommInstallerInterface:
         Raises:
             FileVerificationError: If file verification fails
             ExecutableVerificationError: If executable verification fails
-            PathUtilityError: If PATH verification fails
+            WommDeploymentServiceError: If PATH verification fails
             InstallationVerificationError: If verification fails
             InstallationUtilityError: If unexpected error occurs
         """
@@ -1500,17 +1488,18 @@ class WommInstallerInterface:
             try:
                 verify_files_copied(self.source_path, self.target_path)
                 # If we get here, verification passed (no exception raised)
-            except (FileVerificationServiceError, DeploymentUtilityError):
+            except (WommDeploymentServiceError, OSError, ValueError):
                 # Re-raise our custom exceptions
                 raise
             except Exception as e:
                 ezprinter.error(f"File verification failed: {e}")
 
-                raise FileVerificationServiceError(
-                    verification_type="file_integrity",
-                    file_path=str(self.target_path),
-                    message=str(e),
-                    details="Files are missing or corrupted",
+                raise WommDeploymentServiceError(
+                    operation="file_integrity",
+                    reason=str(e),
+                    details=f"file_path={str(self.target_path)}"
+                    + " | "
+                    + "Files are missing or corrupted",
                 ) from e
 
             # 1. Verify essential files exist (basic check during installation)
@@ -1520,11 +1509,12 @@ class WommInstallerInterface:
                 if not file_path.exists():
                     ezprinter.error(f"Essential file missing: {essential_file}")
 
-                    raise FileVerificationServiceError(
-                        verification_type="essential_files",
-                        file_path=str(file_path),
-                        message=f"Essential file missing: {essential_file}",
-                        details=f"Required file not found at {file_path}",
+                    raise WommDeploymentServiceError(
+                        operation="essential_files",
+                        reason=f"Essential file missing: {essential_file}",
+                        details=f"file_path={str(file_path)}"
+                        + " | "
+                        + f"Required file not found at {file_path}",
                     )
 
             # 2. Verify commands are accessible in PATH
@@ -1533,16 +1523,18 @@ class WommInstallerInterface:
                     str(self.target_path)
                 )
                 # If we get here, verification passed (no exception raised)
-            except (ExeVerificationServiceError, DeploymentUtilityError):
+            except (WommDeploymentServiceError, OSError, ValueError):
                 # Re-raise our custom exceptions
                 raise
             except Exception as e:
                 ezprinter.error(f"Commands not accessible: {e}")
 
-                raise ExeVerificationServiceError(
-                    executable_name="womm",
-                    message=str(e),
-                    details="WOMM commands are not accessible",
+                raise WommDeploymentServiceError(
+                    operation="executable_verification",
+                    reason=str(e),
+                    details="executable_name=womm"
+                    + " | "
+                    + "WOMM commands are not accessible",
                 ) from e
 
             # 3. Verify PATH configuration
@@ -1551,34 +1543,31 @@ class WommInstallerInterface:
                     str(self.target_path)
                 )
                 # If we get here, verification passed (no exception raised)
-            except (PathUtilityError, DeploymentUtilityError):
+            except (WommDeploymentServiceError, OSError, ValueError):
                 # Re-raise our custom exceptions
                 raise
             except Exception as e:
                 ezprinter.error(f"PATH configuration failed: {e}")
 
-                raise PathUtilityError(
+                raise WommDeploymentServiceError(
                     operation="path_configuration",
-                    path=str(self.target_path),
-                    message=str(e),
-                    details="PATH environment variable is not configured correctly",
+                    reason=str(e),
+                    details=f"path={str(self.target_path)}"
+                    + " | "
+                    + "PATH environment variable is not configured correctly",
                 ) from e
-        except (
-            FileVerificationServiceError,
-            ExeVerificationServiceError,
-            PathUtilityError,
-            DeploymentUtilityError,
-        ):
+        except (WommDeploymentServiceError, OSError, ValueError):
             # Re-raise our custom exceptions
             raise
         except Exception as e:
             ezprinter.error(f"Unexpected error during verification: {e}")
 
-            raise VerificationServiceError(
-                verification_type="unexpected_error",
-                target_path=str(self.target_path),
-                message=f"Unexpected error during verification: {e}",
-                details="This is an unexpected error that should be reported",
+            raise WommDeploymentServiceError(
+                operation="unexpected_error",
+                reason=f"Unexpected error during verification: {e}",
+                details=f"target_path={str(self.target_path)}"
+                + " | "
+                + "This is an unexpected error that should be reported",
             ) from e
         else:
             return True

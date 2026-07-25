@@ -84,20 +84,10 @@ from .system import (
 
 # Local imports - WOMM Deployment exceptions
 from .womm_deployment import (
-    DependencyServiceError,
-    DeploymentFileServiceError,
-    DeploymentUtilityError,
-    ExeVerificationServiceError,
-    FileVerificationServiceError,
     InstallerInterfaceError,
-    PathServiceError,
-    PathUtilityError,
     UninstallerInterfaceError,
-    VerificationServiceError,
     WommDeploymentInterfaceError,
     WommDeploymentServiceError,
-    WommInstallerError,
-    WommUninstallerError,
 )
 
 # ///////////////////////////////////////////////////////////////
@@ -144,20 +134,9 @@ __all__ = [  # noqa: RUF022
     "SystemServiceError",
     "UserPathServiceError",
     # WOMM Deployment exceptions
-    "DeploymentUtilityError",
-    "DependencyServiceError",
-    "ExeVerificationServiceError",
-    "FileVerificationServiceError",
-    "PathUtilityError",
     "WommDeploymentInterfaceError",
     "WommDeploymentServiceError",
-    "WommInstallerError",
-    "DeploymentFileServiceError",
     "InstallerInterfaceError",
-    "PathServiceError",
-    "VerificationServiceError",
     "InstallerInterfaceError",
-    "WommUninstallerError",
     "UninstallerInterfaceError",
-    "VerificationServiceError",
 ]

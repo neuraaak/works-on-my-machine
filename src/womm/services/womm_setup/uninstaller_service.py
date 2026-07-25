@@ -23,7 +23,8 @@ from threading import Lock
 from typing import ClassVar
 
 # Local imports
-from ...exceptions.womm_deployment import VerificationServiceError
+from ...exceptions.common import CommandExecutionError
+from ...exceptions.womm_deployment import WommDeploymentServiceError
 from ...shared.result_models import WOMMInstallerVerificationResult
 from ..common.command_runner_service import CommandRunnerService
 
@@ -82,62 +83,41 @@ class WommUninstallerService:
             InstallationVerificationResult: Result with success status and details
 
         Raises:
-            UninstallationVerificationError: If uninstallation verification fails
+            WommDeploymentServiceError: If `target_path` is empty
         """
+        if not target_path:
+            raise WommDeploymentServiceError(
+                operation="completion_verification",
+                reason="Target path cannot be empty",
+            )
+
+        # The directory removal itself is verified by utils; this service only
+        # checks that the `womm` command is no longer reachable.
         try:
-            # Input validation
-            if not target_path:
-                raise VerificationServiceError(
-                    verification_type="completion_verification",
-                    target_path="",
-                    reason="Target path cannot be empty",
-                    details="Invalid target path provided for completion verification",
-                )
+            cmd_result = self._command_runner.run_silent(
+                ["womm", "--version"], timeout=10
+            )
+        except CommandExecutionError as e:
+            # If command execution fails, that's actually success (command not found)
+            self.logger.info(f"Command execution failed (expected): {e}")
+            return WOMMInstallerVerificationResult(
+                success=True,
+                message="WOMM command no longer accessible (execution failed)",
+                entry_path=str(target_path),
+                executable_works=False,
+            )
 
-            # Check that target directory is gone (handled by utils)
-            # This service only handles command verification
-
-            # Simple check that womm command is no longer accessible
-            try:
-                cmd_result = self._command_runner.run_silent(
-                    ["womm", "--version"], timeout=10
-                )
-            except Exception as e:
-                # If command execution fails, that's actually success (command not found)
-                self.logger.info(f"Command execution failed (expected): {e}")
-                return WOMMInstallerVerificationResult(
-                    success=True,
-                    message="WOMM command no longer accessible (execution failed)",
-                    entry_path=str(target_path),
-                    executable_works=False,
-                )
-
-            # If command is not found (exit code 9009 on Windows), that's success
-            if cmd_result.returncode == 9009:  # Command not found on Windows
-                return WOMMInstallerVerificationResult(
-                    success=True,
-                    message="WOMM command no longer accessible",
-                    entry_path=str(target_path),
-                    executable_works=False,
-                )
-            else:
-                # Command still found, but this might be from another installation
-                return WOMMInstallerVerificationResult(
-                    success=True,  # Don't fail uninstallation for this
-                    message="WOMM command still accessible (may be from another installation)",
-                    entry_path=str(target_path),
-                    executable_works=True,
-                )
-
-        except VerificationServiceError:
-            # Re-raise our custom exceptions
-            raise
-        except Exception as e:
-            logger.error(f"verify_uninstallation_complete failed: {e}")
-            # Wrap unexpected external exceptions
-            raise VerificationServiceError(
-                message=f"Uninstallation verification error: {e}",
-                verification_type="unexpected_error",
-                target_path=str(target_path),
-                details=f"Exception type: {type(e).__name__}",
-            ) from e
+        # Exit code 9009 is "command not found" on Windows, i.e. success here.
+        command_gone = cmd_result.returncode == 9009
+        return WOMMInstallerVerificationResult(
+            # A command that is still reachable may belong to another
+            # installation, so it never fails the uninstall.
+            success=True,
+            message=(
+                "WOMM command no longer accessible"
+                if command_gone
+                else "WOMM command still accessible (may be from another installation)"
+            ),
+            entry_path=str(target_path),
+            executable_works=not command_gone,
+        )
