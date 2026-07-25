@@ -53,21 +53,17 @@ def create_group(ctx: click.Context, verbose: bool) -> None:
 
     if ctx.invoked_subcommand is None:
         # Auto-detect project type if no subcommand specified
-        try:
-            project_manager = ProjectManagerInterface()
-            detection_result = project_manager.detect_project_type(Path.cwd())
-            detected_type = detection_result.project_type
-            confidence = detection_result.confidence
-            if detected_type and detected_type != "unknown":
-                ezprinter.success(
-                    f"Detected project type: {detected_type} (confidence: {confidence}%)"
-                )
-                ezprinter.info(
-                    f"Use 'womm create {detected_type} <project_name>' to create a project"
-                )
-            else:
-                click.echo(ctx.get_help())
-        except Exception:
+        detection_result = ProjectManagerInterface().detect_project_type(Path.cwd())
+        detected_type = detection_result.project_type
+        if detection_result.success and detected_type and detected_type != "unknown":
+            ezprinter.success(
+                f"Detected project type: {detected_type} "
+                f"(confidence: {detection_result.confidence}%)"
+            )
+            ezprinter.info(
+                f"Use 'womm create {detected_type} <project_name>' to create a project"
+            )
+        else:
             click.echo(ctx.get_help())
 
 
