@@ -91,7 +91,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--type",
-        choices=["unit", "integration", "all"],
+        choices=["unit", "integration", "robustness", "all"],
         default="all",
         help="Test type to run (default: all)",
     )
@@ -155,6 +155,12 @@ def main() -> None:
         cmd_parts.append("tests/robustness/")
     else:
         cmd_parts.append("tests/")
+
+    # The project-wide coverage threshold applies to the complete suite. A
+    # selected test group is intentionally partial, so skip coverage unless
+    # the caller explicitly asks for its report.
+    if args.type != "all" and not args.coverage:
+        cmd_parts.append("--no-cov")
 
     # Add coverage options
     if args.coverage:
