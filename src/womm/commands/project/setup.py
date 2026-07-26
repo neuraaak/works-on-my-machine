@@ -28,7 +28,7 @@ from ezpl import LogLevel
 # Local imports
 from ...interfaces import ProjectManagerInterface
 from ...ui.common import ezpl_bridge, ezprinter
-from ...ui.project import ProjectWizard
+from ...ui.project import ProjectWizard, print_project_setup_result
 
 # ///////////////////////////////////////////////////////////////
 # COMMAND GROUPS
@@ -387,6 +387,7 @@ def _run_interactive_setup(
     )
 
     if result.success:
+        print_project_setup_result(result)
         return True
     ezprinter.error(f"Failed to configure {project_type} project: {result.error}")
     return False
@@ -429,6 +430,7 @@ def _run_direct_setup(
     )
 
     if result.success:
+        print_project_setup_result(result)
         return True
     ezprinter.error(f"Failed to configure {project_type} project: {result.error}")
     return False

@@ -30,6 +30,7 @@ from click.testing import CliRunner
 
 # Local imports
 from womm.commands.project.create import create_group
+from womm.commands.project.setup import setup_group
 from womm.exceptions.project import ProjectServiceError
 from womm.interfaces.project.create_interface import ProjectCreateInterface
 from womm.interfaces.project.detection_interface import ProjectDetectionInterface
@@ -92,6 +93,16 @@ class _FakeProjectManager:
             success=True,
             project_path=target / project_name,
             project_name=project_name,
+            project_type=str(kwargs["project_type"]),
+        )
+
+    def setup_project(self, **kwargs: object) -> ProjectSetupResult:
+        self.calls.append(kwargs)
+        project_path = Path(str(kwargs["project_path"]))
+        return ProjectSetupResult(
+            success=True,
+            project_path=project_path,
+            project_name=project_path.name,
             project_type=str(kwargs["project_type"]),
         )
 
@@ -282,6 +293,34 @@ def test_setup_project_undetectable_type_returns_failed_result(tmp_path: Path):
     assert isinstance(result, ProjectSetupResult)
     assert not result.success
     assert "Could not detect project type" in result.error
+
+
+def test_setup_project_does_not_write_to_the_terminal(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+):
+    interface = ProjectSetupInterface()
+    monkeypatch.setattr(interface, "_copy_vscode_config", lambda *_args: None)
+
+    result = interface.setup_project(project_path=tmp_path, project_type="python")
+
+    assert result.success
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert captured.err == ""
+
+
+def test_setup_python_command_renders_a_successful_result(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    _FakeProjectManager.instances.clear()
+    monkeypatch.setattr(
+        "womm.commands.project.setup.ProjectManagerInterface", _FakeProjectManager
+    )
+
+    result = CliRunner().invoke(setup_group, ["python", "--path", str(tmp_path)])
+
+    assert result.exit_code == 0, result.output
+    assert _FakeProjectManager.instances[0].calls[0]["project_type"] == "python"
 
 
 def test_setup_project_unsupported_type_returns_failed_result(tmp_path: Path):

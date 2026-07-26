@@ -23,9 +23,6 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
-# Third-party imports
-from rich.progress import TaskID
-
 # Local imports
 from ...exceptions.common import ValidationServiceError
 from ...exceptions.project import ProjectServiceError
@@ -35,7 +32,6 @@ from ...services import (
     PythonProjectCreationService,
 )
 from ...shared.results import ProjectSetupResult
-from ...ui.common import ezprinter
 from ...utils.dependencies import probe
 from ...utils.project import (
     copy_asset_type,
@@ -104,27 +100,22 @@ class ProjectSetupInterface:
 
             # Auto-detect project type if not provided
             if project_type is None:
-                with ezprinter.create_spinner_with_status(
-                    "Detecting project type..."
-                ) as (progress, task):
-                    task_id = TaskID(task)
-                    detection_result = self._detection_service.detect_project_type(
-                        project_path
+                detection_result = self._detection_service.detect_project_type(
+                    project_path
+                )
+                detected_type = detection_result.project_type
+                if detected_type and detected_type != "unknown":
+                    project_type = detected_type
+                else:
+                    return ProjectSetupResult(
+                        success=False,
+                        project_path=project_path,
+                        error=(
+                            "Could not detect project type. Project type "
+                            "detection failed. Please specify project type "
+                            "manually."
+                        ),
                     )
-                    detected_type = detection_result.project_type
-                    if detected_type and detected_type != "unknown":
-                        project_type = detected_type
-                        progress.update(task_id, status=f"Detected: {project_type}")
-                    else:
-                        return ProjectSetupResult(
-                            success=False,
-                            project_path=project_path,
-                            error=(
-                                "Could not detect project type. Project type "
-                                "detection failed. Please specify project type "
-                                "manually."
-                            ),
-                        )
 
             if not project_type:
                 return ProjectSetupResult(
@@ -146,24 +137,17 @@ class ProjectSetupInterface:
                     error=deps_error,
                 )
 
-            ezprinter.print_header(f"Setting up {project_type} project")
-
             files_modified = []
             tools_configured = []
             warnings = []
 
             # Copy VSCode configuration
-            with ezprinter.create_spinner_with_status(
-                "Configuring VSCode settings..."
-            ) as (progress, task):
-                task_id = TaskID(task)
-                try:
-                    self._copy_vscode_config(project_path, project_type)
-                    tools_configured.append("vscode")
-                    progress.update(task_id, status="VSCode configured")
-                except Exception as e:
-                    logger.warning(f"Failed to copy VSCode config: {e}")
-                    warnings.append(f"VSCode configuration skipped: {e}")
+            try:
+                self._copy_vscode_config(project_path, project_type)
+                tools_configured.append("vscode")
+            except Exception as e:
+                logger.warning(f"Failed to copy VSCode config: {e}")
+                warnings.append(f"VSCode configuration skipped: {e}")
 
             # Set up project based on type
             if project_type == "python":
@@ -198,10 +182,6 @@ class ProjectSetupInterface:
                         "Only python, javascript, react, and vue are supported"
                     ),
                 )
-
-            ezprinter.success(
-                f"Project setup completed ({len(tools_configured)} tools configured)"
-            )
 
             return ProjectSetupResult(
                 success=True,
@@ -319,78 +299,55 @@ class ProjectSetupInterface:
 
         # Setup virtual environment
         if virtual_env:
-            with ezprinter.create_spinner_with_status(
-                "Setting up virtual environment..."
-            ) as (progress, task):
-                task_id = TaskID(task)
-                try:
-                    venv_result = self._python_service.setup_virtual_environment(
-                        project_path
-                    )
-                    if venv_result.success:
-                        tools_configured.append("venv")
-                        progress.update(task_id, status="Virtual environment ready")
-                    else:
-                        warnings.append("Virtual environment setup failed")
-                except Exception as e:
-                    logger.warning(f"Failed to setup venv: {e}")
-                    warnings.append(f"Virtual environment setup skipped: {e}")
+            try:
+                venv_result = self._python_service.setup_virtual_environment(
+                    project_path
+                )
+                if venv_result.success:
+                    tools_configured.append("venv")
+                else:
+                    warnings.append("Virtual environment setup failed")
+            except Exception as e:
+                logger.warning(f"Failed to setup venv: {e}")
+                warnings.append(f"Virtual environment setup skipped: {e}")
 
         # Install dependencies
         if install_deps:
-            with ezprinter.create_spinner_with_status("Installing dependencies...") as (
-                progress,
-                task,
-            ):
-                task_id = TaskID(task)
-                try:
-                    deps_result = self._python_service.install_dev_dependencies(
-                        project_path
-                    )
-                    if deps_result.success:
-                        tools_configured.append("dependencies")
-                        progress.update(task_id, status="Dependencies installed")
-                    else:
-                        warnings.append("Dependency installation failed")
-                except Exception as e:
-                    logger.warning(f"Failed to install dependencies: {e}")
-                    warnings.append(f"Dependency installation skipped: {e}")
+            try:
+                deps_result = self._python_service.install_dev_dependencies(
+                    project_path
+                )
+                if deps_result.success:
+                    tools_configured.append("dependencies")
+                else:
+                    warnings.append("Dependency installation failed")
+            except Exception as e:
+                logger.warning(f"Failed to install dependencies: {e}")
+                warnings.append(f"Dependency installation skipped: {e}")
 
         # Setup dev tools
         if setup_dev_tools:
-            with ezprinter.create_spinner_with_status(
-                "Setting up development tools..."
-            ) as (progress, task):
-                task_id = TaskID(task)
-                try:
-                    dev_tools_result = self._python_service.setup_dev_tools(
-                        project_path
-                    )
-                    if dev_tools_result.success:
-                        tools_configured.append("dev_tools")
-                        progress.update(task_id, status="Development tools configured")
-                    else:
-                        warnings.append("Dev tools setup failed")
-                except Exception as e:
-                    logger.warning(f"Failed to setup dev tools: {e}")
-                    warnings.append(f"Dev tools setup skipped: {e}")
+            try:
+                dev_tools_result = self._python_service.setup_dev_tools(project_path)
+                if dev_tools_result.success:
+                    tools_configured.append("dev_tools")
+                else:
+                    warnings.append("Dev tools setup failed")
+            except Exception as e:
+                logger.warning(f"Failed to setup dev tools: {e}")
+                warnings.append(f"Dev tools setup skipped: {e}")
 
         # Setup Git repository and hooks (if needed)
         if setup_git_hooks:
-            with ezprinter.create_spinner_with_status(
-                "Setting up Git repository..."
-            ) as (progress, task):
-                task_id = TaskID(task)
-                try:
-                    git_result = self._python_service.setup_git_repository(project_path)
-                    if git_result.success:
-                        tools_configured.append("git")
-                        progress.update(task_id, status="Git repository initialized")
-                    else:
-                        warnings.append("Git repository setup failed")
-                except Exception as e:
-                    logger.warning(f"Failed to setup git repository: {e}")
-                    warnings.append(f"Git repository setup skipped: {e}")
+            try:
+                git_result = self._python_service.setup_git_repository(project_path)
+                if git_result.success:
+                    tools_configured.append("git")
+                else:
+                    warnings.append("Git repository setup failed")
+            except Exception as e:
+                logger.warning(f"Failed to setup git repository: {e}")
+                warnings.append(f"Git repository setup skipped: {e}")
 
         return {
             "files_modified": files_modified,
@@ -424,79 +381,53 @@ class ProjectSetupInterface:
 
         # Install dependencies
         if install_deps:
-            with ezprinter.create_spinner_with_status("Installing dependencies...") as (
-                progress,
-                task,
-            ):
-                task_id = TaskID(task)
-                try:
-                    deps_result = self._javascript_service.install_dependencies(
-                        project_path, project_type
-                    )
-                    if deps_result.success:
-                        tools_configured.append("dependencies")
-                        progress.update(task_id, status="Dependencies installed")
-                    else:
-                        warnings.append("Dependency installation failed")
-                except Exception as e:
-                    logger.warning(f"Failed to install dependencies: {e}")
-                    warnings.append(f"Dependency installation skipped: {e}")
+            try:
+                deps_result = self._javascript_service.install_dependencies(
+                    project_path, project_type
+                )
+                if deps_result.success:
+                    tools_configured.append("dependencies")
+                else:
+                    warnings.append("Dependency installation failed")
+            except Exception as e:
+                logger.warning(f"Failed to install dependencies: {e}")
+                warnings.append(f"Dependency installation skipped: {e}")
 
         # Setup dev tools
         if setup_dev_tools:
-            with ezprinter.create_spinner_with_status(
-                "Setting up development tools..."
-            ) as (progress, task):
-                task_id = TaskID(task)
-                try:
-                    dev_tools_result = self._javascript_service.setup_dev_tools(
-                        project_path, project_type
-                    )
-                    if dev_tools_result.success:
-                        tools_configured.append("dev_tools")
-                        progress.update(task_id, status="Development tools configured")
-                    else:
-                        warnings.append("Dev tools setup failed")
-                except Exception as e:
-                    logger.warning(f"Failed to setup dev tools: {e}")
-                    warnings.append(f"Dev tools setup skipped: {e}")
+            try:
+                dev_tools_result = self._javascript_service.setup_dev_tools(
+                    project_path, project_type
+                )
+                if dev_tools_result.success:
+                    tools_configured.append("dev_tools")
+                else:
+                    warnings.append("Dev tools setup failed")
+            except Exception as e:
+                logger.warning(f"Failed to setup dev tools: {e}")
+                warnings.append(f"Dev tools setup skipped: {e}")
 
         # Setup Git repository and hooks
         if setup_git_hooks:
-            with ezprinter.create_spinner_with_status(
-                "Setting up Git repository..."
-            ) as (progress, task):
-                task_id = TaskID(task)
-                try:
-                    git_result = self._javascript_service.setup_git_repository(
-                        project_path
-                    )
-                    if git_result.success:
-                        tools_configured.append("git")
-                        progress.update(task_id, status="Git repository initialized")
-                    else:
-                        warnings.append("Git repository setup failed")
-                except Exception as e:
-                    logger.warning(f"Failed to setup git repository: {e}")
-                    warnings.append(f"Git repository setup skipped: {e}")
+            try:
+                git_result = self._javascript_service.setup_git_repository(project_path)
+                if git_result.success:
+                    tools_configured.append("git")
+                else:
+                    warnings.append("Git repository setup failed")
+            except Exception as e:
+                logger.warning(f"Failed to setup git repository: {e}")
+                warnings.append(f"Git repository setup skipped: {e}")
 
-            with ezprinter.create_spinner_with_status("Setting up Git hooks...") as (
-                progress,
-                task,
-            ):
-                task_id = TaskID(task)
-                try:
-                    hooks_result = self._javascript_service.setup_git_hooks(
-                        project_path
-                    )
-                    if hooks_result.success:
-                        tools_configured.append("git_hooks")
-                        progress.update(task_id, status="Git hooks configured")
-                    else:
-                        warnings.append("Git hooks setup failed")
-                except Exception as e:
-                    logger.warning(f"Failed to setup git hooks: {e}")
-                    warnings.append(f"Git hooks setup skipped: {e}")
+            try:
+                hooks_result = self._javascript_service.setup_git_hooks(project_path)
+                if hooks_result.success:
+                    tools_configured.append("git_hooks")
+                else:
+                    warnings.append("Git hooks setup failed")
+            except Exception as e:
+                logger.warning(f"Failed to setup git hooks: {e}")
+                warnings.append(f"Git hooks setup skipped: {e}")
 
         return {
             "files_modified": files_modified,

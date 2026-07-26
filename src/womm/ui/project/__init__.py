@@ -22,7 +22,10 @@ from .create.create_completion_summaries import (
     print_project_creation_result,
 )
 from .project_wizard import ProjectWizard
-from .setup.setup_completion_summaries import print_setup_completion_summary
+from .setup.setup_completion_summaries import (
+    print_project_setup_result,
+    print_setup_completion_summary,
+)
 from .templates.template_project_configurator import configure_project_options
 from .templates.template_selector import display_template_selection
 from .templates.template_ui import (
@@ -47,6 +50,7 @@ __all__ = [
     "interactive_template_delete",
     "print_new_project_summary",
     "print_project_creation_result",
+    "print_project_setup_result",
     "print_setup_completion_summary",
     "print_template_creation_summary",
     "print_template_deletion_summary",

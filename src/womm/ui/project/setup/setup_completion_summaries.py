@@ -23,7 +23,8 @@ from pathlib import Path
 from rich.panel import Panel
 
 # Local imports
-from ...common.ezpl_bridge import ezconsole
+from ....shared.results import ProjectSetupResult
+from ...common.ezpl_bridge import ezconsole, ezprinter
 
 # ///////////////////////////////////////////////////////////////
 # FUNCTIONS
@@ -66,6 +67,25 @@ def print_setup_completion_summary(
             setup_dev_tools,
             setup_git_hooks,
         )
+
+
+def print_project_setup_result(result: ProjectSetupResult) -> None:
+    """Render a successful project-setup result for the CLI."""
+    project_path = result.project_path
+    if project_path is None:
+        return
+
+    configured_tools = result.tools_configured or []
+    print_setup_completion_summary(
+        project_path,
+        result.project_type,
+        virtual_env="venv" in configured_tools,
+        install_deps="dependencies" in configured_tools,
+        setup_dev_tools="dev_tools" in configured_tools,
+        setup_git_hooks="git_hooks" in configured_tools,
+    )
+    for warning in result.warnings or []:
+        ezprinter.warning(warning)
 
 
 def _print_python_setup_summary(
@@ -292,4 +312,4 @@ def _print_generic_setup_summary(
 # PUBLIC API
 # ///////////////////////////////////////////////////////////////
 
-__all__ = ["print_setup_completion_summary"]
+__all__ = ["print_project_setup_result", "print_setup_completion_summary"]
