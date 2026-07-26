@@ -27,7 +27,6 @@ from pathlib import Path
 from ...exceptions.project import ProjectServiceError
 from ...services import ProjectDetectionService
 from ...shared.results import ProjectDetectionResult
-from ...ui.common import ezprinter
 
 # ///////////////////////////////////////////////////////////////
 # LOGGER SETUP
@@ -45,7 +44,7 @@ class ProjectDetectionInterface:
     Interface for project type detection operations.
 
     This class provides a high-level interface for project detection operations,
-    handling UI interactions and orchestrating project detection services.
+    orchestrating project detection services and returning typed results.
     """
 
     def __init__(self):
@@ -71,8 +70,6 @@ class ProjectDetectionInterface:
         try:
             # Use current directory if no path provided
             resolved_path = (project_path or Path.cwd()).resolve()
-
-            ezprinter.info(f"Detecting project type at: {resolved_path}")
 
             # Call service to detect project type
             type_result = self._detection_service.detect_project_type(resolved_path)
@@ -104,14 +101,6 @@ class ProjectDetectionInterface:
                     confidence = 75.0  # Lower confidence without full config
             else:
                 confidence = 0.0
-                ezprinter.warning("Could not detect project type")
-
-            if detected_type:
-                ezprinter.success(
-                    f"Detected project type: {detected_type} (confidence: {confidence:.0f}%)"
-                )
-            else:
-                ezprinter.warning("Project type could not be determined")
 
             return ProjectDetectionResult(
                 success=True,
@@ -150,8 +139,6 @@ class ProjectDetectionInterface:
             # Use current directory if no path provided
             resolved_path = (project_path or Path.cwd()).resolve()
 
-            ezprinter.info(f"Detecting project configuration at: {resolved_path}")
-
             # Call service to detect project configuration
             config_result = self._detection_service.detect_project_config(resolved_path)
             detected_type = (
@@ -169,13 +156,6 @@ class ProjectDetectionInterface:
                 if isinstance(config_result, ProjectDetectionResult)
                 else []
             )
-
-            if detected_type:
-                ezprinter.success(
-                    f"Detected {detected_type} project with {len(detected_files)} configuration files"
-                )
-            else:
-                ezprinter.warning("Project configuration could not be determined")
 
             return ProjectDetectionResult(
                 success=True,

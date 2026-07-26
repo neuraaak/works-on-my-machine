@@ -94,6 +94,22 @@ def test_detect_project_type_success(tmp_path: Path):
     assert result.confidence == 100.0
 
 
+def test_detect_project_type_does_not_write_to_the_terminal(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+):
+    interface = ProjectDetectionInterface()
+    interface._detection_service = _FakeDetectionService(
+        type_result=ProjectDetectionResult(success=True, project_type="python"),
+        config_result=ProjectDetectionResult(success=True),
+    )
+
+    interface.detect_project_type(tmp_path)
+
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert captured.err == ""
+
+
 def test_detect_project_type_unknown_has_zero_confidence(tmp_path: Path):
     interface = ProjectDetectionInterface()
     interface._detection_service = _FakeDetectionService(
