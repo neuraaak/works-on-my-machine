@@ -48,7 +48,7 @@ def extract_path_from_reg_output(output: str | bytes) -> str:
         output = output.decode("utf-8", errors="ignore")
 
     for line in str(output).splitlines():
-        if "PATH" in line and ("REG_SZ" in line or "REG_EXPAND_SZ" in line):
+        if "PATH" in line.upper() and ("REG_SZ" in line or "REG_EXPAND_SZ" in line):
             if "REG_EXPAND_SZ" in line:
                 parts = line.split("REG_EXPAND_SZ")
             else:
