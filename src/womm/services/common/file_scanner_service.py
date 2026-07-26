@@ -29,8 +29,7 @@ from ...exceptions.common import (
     FileServiceError,
 )
 from ...shared.configs.security import FileScannerConfig
-from ...shared.result_models import FileScanResult
-from ...shared.results import FileSearchResult
+from ...shared.results import FileScanResult, FileSearchResult
 from ...utils.common import (
     contains_security_sensitive_pattern,
     is_python_file,

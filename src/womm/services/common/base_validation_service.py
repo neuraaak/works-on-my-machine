@@ -26,7 +26,7 @@ from pathlib import Path
 from typing import Any
 
 # Local imports
-from ...shared.result_models import ValidationResult
+from ...shared.results import ValidationResult
 
 # ///////////////////////////////////////////////////////////////
 # LOGGER SETUP

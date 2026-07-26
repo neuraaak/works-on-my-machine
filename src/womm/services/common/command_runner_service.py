@@ -34,8 +34,11 @@ from ...exceptions.common import (
     CommandUtilityError,
     SecurityServiceError,
 )
-from ...shared.result_models import CommandResult
-from ...shared.results import CommandAvailabilityResult, CommandVersionResult
+from ...shared.results import (
+    CommandAvailabilityResult,
+    CommandResult,
+    CommandVersionResult,
+)
 
 # ///////////////////////////////////////////////////////////////
 # COMMAND RUNNER SERVICE CLASS

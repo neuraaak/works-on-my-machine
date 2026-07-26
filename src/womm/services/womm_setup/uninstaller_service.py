@@ -25,7 +25,7 @@ from typing import ClassVar
 # Local imports
 from ...exceptions.common import CommandExecutionError
 from ...exceptions.womm_deployment import WommDeploymentServiceError
-from ...shared.result_models import WOMMInstallerVerificationResult
+from ...shared.results import WOMMInstallerVerificationResult
 from ..common.command_runner_service import CommandRunnerService
 
 # ///////////////////////////////////////////////////////////////

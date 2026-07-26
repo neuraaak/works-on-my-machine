@@ -27,8 +27,7 @@ from typing import ClassVar
 # Local imports
 from ...exceptions.common import CommandTimeoutError
 from ...exceptions.lint import LintServiceError
-from ...shared.result_models import ToolResult
-from ...shared.results import CommandResult
+from ...shared.results import CommandResult, ToolResult
 from ...utils.lint import get_tool_version as get_tool_version_util
 from ..common.command_runner_service import CommandRunnerService
 

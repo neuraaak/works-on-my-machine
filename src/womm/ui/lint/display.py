@@ -21,7 +21,7 @@ from __future__ import annotations
 from rich.table import Table
 
 # Local imports
-from ...shared.result_models import LintSummaryResult
+from ...shared.results import LintSummaryResult
 from ...shared.results.lint_results import ToolStatusResult
 from ..common.ezpl_bridge import ezconsole, ezprinter
 

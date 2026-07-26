@@ -25,7 +25,7 @@ from typing import ClassVar
 # Local imports
 from ...exceptions.lint import LintServiceError
 from ...shared.configs.lint import PythonLintingConfig
-from ...shared.result_models import ToolResult
+from ...shared.results import ToolResult
 from .core_service import LintService
 
 # ///////////////////////////////////////////////////////////////

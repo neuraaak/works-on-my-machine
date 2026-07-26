@@ -31,13 +31,13 @@ from ...services import (
     ContextValidationService,
 )
 from ...shared.configs.context import ContextTypesConfig
-from ...shared.result_models import ContextValidationResult
-from ...shared.results.context_results import (
+from ...shared.results import (
     ContextBackupResult,
     ContextEntriesResult,
     ContextRestoreResult,
     ContextSetupResult,
     ContextStatusResult,
+    ContextValidationResult,
     ScriptInfoResult,
     ScriptRegistrationResult,
     ScriptUnregistrationResult,
