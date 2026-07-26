@@ -22,6 +22,7 @@ from __future__ import annotations
 # ///////////////////////////////////////////////////////////////
 # Standard library imports
 import logging
+import re
 from pathlib import Path
 from typing import Any
 
@@ -101,7 +102,7 @@ class BaseValidationService:
 
             return ValidationResult(success=True)
 
-        except Exception as e:
+        except (OSError, TypeError, ValueError) as e:
             logger.error(f"Error validating path existence: {e}")
             return ValidationResult(
                 success=False,
@@ -142,7 +143,7 @@ class BaseValidationService:
 
             return ValidationResult(success=True)
 
-        except Exception as e:
+        except (OSError, TypeError, ValueError) as e:
             logger.error(f"Error validating path readability: {e}")
             return ValidationResult(
                 success=False,
@@ -178,7 +179,7 @@ class BaseValidationService:
 
             return ValidationResult(success=True)
 
-        except Exception as e:
+        except (OSError, TypeError, ValueError) as e:
             logger.error(f"Error validating path writeability: {e}")
             return ValidationResult(
                 success=False,
@@ -232,8 +233,6 @@ class BaseValidationService:
         Returns:
             ValidationResult with success/failure status
         """
-        import re
-
         try:
             if not re.match(pattern, value):
                 return ValidationResult(
@@ -243,7 +242,7 @@ class BaseValidationService:
 
             return ValidationResult(success=True)
 
-        except Exception as e:
+        except (re.error, TypeError) as e:
             logger.error(f"Error validating string pattern: {e}")
             return ValidationResult(
                 success=False,

@@ -27,6 +27,7 @@ from typing import ClassVar
 # Local imports
 from ...exceptions.common import (
     FileServiceError,
+    SecurityServiceError,
 )
 from ...shared.configs.security import FileScannerConfig
 from ...shared.results import FileScanResult, FileSearchResult
@@ -140,7 +141,7 @@ class FileScannerService:
                 recursive=recursive,
                 search_time=search_time,
             )
-        except Exception as e:
+        except (OSError, TypeError, ValueError) as e:
             search_time = time.time() - start_time
             # Wrap unexpected external exceptions
             return FileSearchResult(
@@ -222,7 +223,7 @@ class FileScannerService:
                 recursive=True,
                 search_time=search_time,
             )
-        except Exception as e:
+        except (OSError, TypeError, ValueError) as e:
             search_time = time.time() - start_time
             return FileSearchResult(
                 success=False,
@@ -281,7 +282,7 @@ class FileScannerService:
                 file_extensions=list(FileScannerConfig.PYTHON_EXTENSIONS),
                 scan_time=scan_time,
             )
-        except Exception as e:
+        except (OSError, TypeError, ValueError) as e:
             scan_time = time.time() - start_time
             return FileScanResult(
                 success=False,
@@ -362,7 +363,7 @@ class FileScannerService:
         except FileServiceError:
             # Re-raise specialized exceptions as-is
             raise
-        except Exception as e:
+        except (OSError, TypeError, ValueError) as e:
             # Wrap unexpected external exceptions
             raise FileServiceError(
                 message=f"Unexpected error during directory scanning: {e}",
@@ -461,21 +462,21 @@ class FileScannerService:
                             self.logger.warning(
                                 f"Security validation failed for {file_path}: {validation_result.validation_reason}"
                             )
-                    except Exception as e:
+                    except (OSError, SecurityServiceError, TypeError, ValueError) as e:
                         # If security validation fails, log and include the file
                         self.logger.warning(
                             f"Security validation failed for {file_path}: {e}"
                         )
                         filtered_files.append(file_path)
 
-                except Exception as e:
+                except (OSError, SecurityServiceError, TypeError, ValueError) as e:
                     # Log individual file processing errors but continue
                     self.logger.warning(f"Error processing file {file_path}: {e}")
                     filtered_files.append(file_path)  # Include on error for safety
 
             return filtered_files
 
-        except Exception as e:
+        except (OSError, SecurityServiceError, TypeError, ValueError) as e:
             raise FileServiceError(
                 message=f"Security filtering failed: {e}",
                 operation="filter_files",

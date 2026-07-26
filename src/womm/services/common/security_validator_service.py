@@ -172,7 +172,7 @@ class SecurityValidatorService:
         except SecurityServiceError:
             # Re-raise security exceptions as-is
             raise
-        except Exception as e:
+        except (OSError, TypeError, ValueError) as e:
             # Catch unexpected errors and wrap them
             raise SecurityServiceError(
                 message=f"Unexpected error during command validation: {e}",
@@ -263,7 +263,7 @@ class SecurityValidatorService:
         except SecurityServiceError:
             # Re-raise security exceptions as-is
             raise
-        except Exception as e:
+        except (OSError, TypeError, ValueError) as e:
             # Catch unexpected errors and wrap them
             raise SecurityServiceError(
                 message=f"Unexpected error during file path validation: {e}",
@@ -335,7 +335,7 @@ class SecurityValidatorService:
                 checks_performed=checks_performed,
             )
 
-        except Exception as e:
+        except (OSError, SecurityServiceError, TypeError, ValueError) as e:
             return SecurityReportResult(
                 success=False,
                 error=f"Unexpected error during security report generation: {e}",

@@ -52,8 +52,15 @@ class CommandRunnerService:
     _initialized: ClassVar[bool] = False
     _lock: ClassVar[Lock] = Lock()
 
-    def __new__(cls) -> CommandRunnerService:
+    def __new__(
+        cls,
+        default_cwd: str | Path | None = None,
+        timeout: int = 30,
+        max_retries: int = 3,
+        retry_delay: float = 1.0,
+    ) -> CommandRunnerService:
         """Create or return the singleton instance."""
+        del default_cwd, timeout, max_retries, retry_delay
         with cls._lock:
             if cls._instance is None:
                 cls._instance = super().__new__(cls)
@@ -99,7 +106,7 @@ class CommandRunnerService:
         ):
             # Re-raise specialized exceptions as-is
             raise
-        except Exception as e:
+        except (OSError, TypeError, ValueError) as e:
             # Wrap unexpected external exceptions
             raise CommandUtilityError(
                 message=f"Unexpected error during CLI manager initialization: {e}",
@@ -204,7 +211,7 @@ class CommandRunnerService:
                     else:
                         raise last_error from e
 
-                except Exception as e:
+                except (OSError, TypeError, ValueError) as e:
                     last_error = CommandExecutionError(
                         command=str(command),
                         return_code=-1,
@@ -236,7 +243,7 @@ class CommandRunnerService:
         except CommandServiceError:
             # Re-raise CLI-specific exceptions unchanged
             raise
-        except Exception as e:
+        except (OSError, TypeError, ValueError) as e:
             # Wrap unexpected external exceptions
             raise CommandUtilityError(
                 message=f"Unexpected error during command execution: {e}",
@@ -335,7 +342,7 @@ class CommandRunnerService:
         ):
             # Re-raise specialized exceptions as-is
             raise
-        except Exception as e:
+        except (OSError, TypeError, ValueError) as e:
             # Wrap unexpected external exceptions
             raise CommandUtilityError(
                 message=f"Unexpected error during command execution: {e}",
@@ -417,7 +424,7 @@ class CommandRunnerService:
             except ImportError:
                 # If security validator is not available, skip security validation
                 security_validated = True
-            except Exception:
+            except (OSError, SecurityServiceError, TypeError, ValueError):
                 # If security validation fails, command is not secure
                 security_validated = False
 
@@ -429,7 +436,7 @@ class CommandRunnerService:
                 security_validated=security_validated,
             )
 
-        except Exception as e:
+        except (OSError, TypeError, ValueError) as e:
             # Log but don't raise - this is a helper method
             self.logger.warning(
                 f"Error checking command availability: {command}, Error: {e}"
@@ -499,7 +506,7 @@ class CommandRunnerService:
                 version_flag=version_flag,
             )
 
-        except Exception as e:
+        except (CommandServiceError, OSError, TypeError, ValueError) as e:
             # Log but don't raise - this is a helper method
             self.logger.warning(f"Error getting command version: {command}, Error: {e}")
             return CommandVersionResult(
@@ -589,7 +596,7 @@ class CommandRunnerService:
             raise
         except ImportError:
             self.logger.warning("Security validator not available, skipping validation")
-        except Exception as e:
+        except (OSError, TypeError, ValueError) as e:
             raise SecurityServiceError(
                 message=f"Security validation failed: {e}",
                 details=(

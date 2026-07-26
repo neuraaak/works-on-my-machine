@@ -30,7 +30,6 @@ from ...shared.results import (
     ProjectDetectionResult,
     ProjectSetupResult,
 )
-from ...ui.common import ezprinter
 from ...utils.dependencies import probe
 from .create_interface import ProjectCreateInterface
 from .detection_interface import ProjectDetectionInterface
@@ -133,22 +132,6 @@ class ProjectManagerInterface:
 
         # Handle dry-run mode
         if dry_run:
-            ezprinter.print_dry_run_message(
-                "create project", f"{project_type} project '{project_name}'"
-            )
-            ezprinter.print_dry_run_message(
-                "create project structure", f"at {project_path}"
-            )
-            ezprinter.print_dry_run_message(
-                "setup development environment", f"for {project_type}"
-            )
-            ezprinter.print_dry_run_message(
-                "install development tools", f"for {project_type}"
-            )
-            ezprinter.print_dry_run_message(
-                "configure VSCode settings", f"for {project_type}"
-            )
-            ezprinter.print_dry_run_success()
             return ProjectCreationResult(
                 success=True,
                 project_path=Path.cwd(),

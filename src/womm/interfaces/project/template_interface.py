@@ -32,7 +32,6 @@ from pathlib import Path
 from ...exceptions.common import ValidationServiceError
 from ...services import ProjectDetectionService, TemplateService
 from ...shared.results import ProjectDetectionResult, TemplateResult
-from ...ui.common import ezprinter
 from ...utils.common import safe_rmtree
 from ...utils.womm_setup import get_womm_installation_path
 
@@ -111,20 +110,6 @@ class TemplateInterface:
                 )
 
             if dry_run:
-                ezprinter.print_header("Template Creation (DRY RUN)")
-                ezprinter.warning("This is a dry run - no changes will be made")
-                ezprinter.info(f"Source: {source_project_path}")
-                ezprinter.info(f"Template: {template_name}")
-                ezprinter.info("Would detect project type")
-                ezprinter.info("Would scan project files")
-                ezprinter.info("Would generalize project")
-                ezprinter.info("Would create template directory")
-                ezprinter.info("Would copy project files")
-                ezprinter.info("Would create template metadata")
-                ezprinter.info("Would extract template variables")
-                if kwargs.get("description"):
-                    ezprinter.info(f"Description: {kwargs.get('description')}")
-                ezprinter.success("Dry run completed successfully")
                 return TemplateResult(
                     success=True,
                     message="Dry run completed successfully",
@@ -184,9 +169,6 @@ class TemplateInterface:
                 )
 
             file_count = len(template_files)
-            ezprinter.success(
-                f"Template '{template_name}' created successfully ({file_count} files)"
-            )
 
             return TemplateResult(
                 success=True,
@@ -292,10 +274,6 @@ class TemplateInterface:
                         error=f"Failed to process template file: {template_file}",
                     )
 
-            ezprinter.success(
-                f"Project generated from template '{template_name}' ({len(files_created)} files)"
-            )
-
             return TemplateResult(
                 success=True,
                 message=f"Project generated from template '{template_name}'",
@@ -398,8 +376,6 @@ class TemplateInterface:
                     template_name=template_name,
                     error=f"Failed to delete template directory: {e}",
                 )
-
-            ezprinter.success(f"Template '{template_name}' deleted successfully")
 
             return TemplateResult(
                 success=True,
