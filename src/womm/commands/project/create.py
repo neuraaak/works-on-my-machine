@@ -29,7 +29,7 @@ from ezpl import LogLevel
 # Local imports
 from ...interfaces import ProjectManagerInterface
 from ...ui.common import ezpl_bridge, ezprinter
-from ...ui.project import ProjectWizard
+from ...ui.project import ProjectWizard, print_project_creation_result
 
 # ///////////////////////////////////////////////////////////////
 # COMMAND GROUPS
@@ -171,25 +171,14 @@ def create_python(
             project_repository,
             project_type,
             force,
-            minimal,
+            minimal=minimal,
         )
         if not success:
             sys.exit(1)
         return
 
     except Exception as e:
-        # Extract error message from exception
-        error_msg = str(e)
-        if hasattr(e, "message") and e.message:
-            error_msg = e.message
-        elif hasattr(e, "reason") and e.reason:
-            error_msg = e.reason
-        elif hasattr(e, "details") and e.details:
-            error_msg = e.details
-
-        ezprinter.error(f"Error creating Python project: {error_msg}")
-        if hasattr(e, "details") and e.details and e.details != error_msg:
-            ezprinter.info(f"Details: {e.details}")
+        ezprinter.error(f"Error creating Python project: {e}")
         sys.exit(1)
 
 
@@ -291,7 +280,7 @@ def create_javascript(
             project_url,
             project_repository,
             force,
-            minimal,
+            minimal=minimal,
         )
         if not success:
             sys.exit(1)
@@ -345,6 +334,8 @@ def _run_interactive_python_setup(
 
     if not result.success:
         ezprinter.error(f"Error creating Python project: {result.error}")
+    else:
+        print_project_creation_result(result)
     return bool(result)
 
 
@@ -414,6 +405,8 @@ def _run_interactive_javascript_setup(
 
     if not result.success:
         ezprinter.error(f"Error creating JavaScript project: {result.error}")
+    else:
+        print_project_creation_result(result)
     return bool(result)
 
 
@@ -471,6 +464,8 @@ def _run_direct_python_setup(
 
     if not result.success:
         ezprinter.error(f"Error creating Python project: {result.error}")
+    else:
+        print_project_creation_result(result)
     return bool(result)
 
 
@@ -524,4 +519,6 @@ def _run_direct_javascript_setup(
 
     if not result.success:
         ezprinter.error(f"Error creating JavaScript project: {result.error}")
+    else:
+        print_project_creation_result(result)
     return bool(result)

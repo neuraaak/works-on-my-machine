@@ -20,6 +20,7 @@ from __future__ import annotations
 from pathlib import Path
 
 # Local imports
+from ....shared.results import ProjectCreationResult
 from ...common.ezpl_bridge import ezconsole, ezprinter
 
 # ///////////////////////////////////////////////////////////////
@@ -44,6 +45,27 @@ def print_new_project_summary(
         _print_javascript_new_summary(project_path, project_name, project_type)
     else:
         _print_generic_new_summary(project_path, project_name, project_type)
+
+
+def print_project_creation_result(result: ProjectCreationResult) -> None:
+    """Render a successful project-creation result for the CLI."""
+    if "Dry-run mode: no actual changes were made" in (result.warnings or []):
+        ezprinter.print_header("Project Creation (DRY RUN)")
+        ezprinter.info(
+            f"Would create {result.project_type} project '{result.project_name}'"
+        )
+        ezprinter.info(f"Project path: {result.project_path}")
+        ezprinter.info("Would create project structure")
+        ezprinter.info("Would setup development environment")
+        ezprinter.info("Would install development tools")
+        ezprinter.info("Would configure VSCode settings")
+        ezprinter.success("Dry-run completed successfully")
+        return
+
+    project_path = result.project_path
+    if project_path is None:
+        return
+    print_new_project_summary(project_path, result.project_name, result.project_type)
 
 
 def _print_python_new_summary(project_path: Path, project_name: str) -> None:
@@ -201,4 +223,4 @@ def _print_generic_new_summary(
 # PUBLIC API
 # ///////////////////////////////////////////////////////////////
 
-__all__ = ["print_new_project_summary"]
+__all__ = ["print_new_project_summary", "print_project_creation_result"]

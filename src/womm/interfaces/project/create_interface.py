@@ -23,9 +23,6 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
-# Third-party imports
-from rich.progress import TaskID
-
 # Local imports
 from ...exceptions.common import ValidationServiceError
 from ...exceptions.project import ProjectServiceError
@@ -38,7 +35,6 @@ from ...services import (
     TemplateService,
 )
 from ...shared.results import ProjectCreationResult
-from ...ui.common import ezprinter
 from ...utils.project import (
     validate_project_name,
     validate_project_path,
@@ -195,15 +191,6 @@ class ProjectCreateInterface:
         Returns:
             ProjectCreationResult: Result indicating dry-run mode
         """
-        ezprinter.print_header("Project Creation (DRY RUN)")
-        ezprinter.info(f"Would create {project_type} project '{project_name}'")
-        ezprinter.info(f"Project path: {project_path}")
-        ezprinter.info("Would create project structure")
-        ezprinter.info("Would setup development environment")
-        ezprinter.info("Would install development tools")
-        ezprinter.info("Would configure VSCode settings")
-        ezprinter.success("Dry-run completed successfully")
-
         return ProjectCreationResult(
             success=True,
             project_path=project_path,
@@ -234,107 +221,69 @@ class ProjectCreateInterface:
         """
         try:
             minimal = kwargs.get("minimal", False)
-            mode_text = " (minimal)" if minimal else ""
-            ezprinter.print_header(f"Creating Python Project{mode_text}")
-            ezprinter.info(f"Project: {project_name}")
-            ezprinter.info(f"Path: {project_path}")
 
             # Create project structure
-            with ezprinter.create_spinner_with_status(
-                "Creating project structure..."
-            ) as (progress, task):
-                task_id = TaskID(task)
-                structure_result = self._python_service.create_project_structure(
-                    project_path, project_name
+            structure_result = self._python_service.create_project_structure(
+                project_path, project_name
+            )
+            if not structure_result.success:
+                return ProjectCreationResult(
+                    success=False,
+                    project_path=project_path,
+                    project_type="python",
+                    error="Failed to create project structure",
                 )
-                if not structure_result.success:
-                    return ProjectCreationResult(
-                        success=False,
-                        project_path=project_path,
-                        project_type="python",
-                        error="Failed to create project structure",
-                    )
-                progress.update(task_id, status="Project structure created")
 
             # Create project files
-            with ezprinter.create_spinner_with_status("Creating Python files...") as (
-                progress,
-                task,
-            ):
-                task_id = TaskID(task)
-                files_result = self._python_service.create_project_files(
-                    project_path, project_name, **kwargs
+            files_result = self._python_service.create_project_files(
+                project_path, project_name, **kwargs
+            )
+            if not files_result.success:
+                return ProjectCreationResult(
+                    success=False,
+                    project_path=project_path,
+                    project_type="python",
+                    error="Failed to create project files",
                 )
-                if not files_result.success:
-                    return ProjectCreationResult(
-                        success=False,
-                        project_path=project_path,
-                        project_type="python",
-                        error="Failed to create project files",
-                    )
-                progress.update(task_id, status="Python files created")
 
             # Skip environment setup, dependencies, and tools in minimal mode
             if not minimal:
                 # Setup virtual environment
-                with ezprinter.create_spinner_with_status(
-                    "Setting up virtual environment..."
-                ) as (progress, task):
-                    task_id = TaskID(task)
-                    venv_result = self._python_service.setup_virtual_environment(
-                        project_path
+                venv_result = self._python_service.setup_virtual_environment(
+                    project_path
+                )
+                if not venv_result.success:
+                    return ProjectCreationResult(
+                        success=False,
+                        project_path=project_path,
+                        project_type="python",
+                        error="Failed to setup virtual environment",
                     )
-                    if not venv_result.success:
-                        return ProjectCreationResult(
-                            success=False,
-                            project_path=project_path,
-                            project_type="python",
-                            error="Failed to setup virtual environment",
-                        )
-                    progress.update(task_id, status="Virtual environment ready")
 
                 # Install development dependencies
-                with ezprinter.create_spinner_with_status(
-                    "Installing development dependencies..."
-                ) as (progress, task):
-                    task_id = TaskID(task)
-                    deps_result = self._python_service.install_dev_dependencies(
-                        project_path
+                deps_result = self._python_service.install_dev_dependencies(
+                    project_path
+                )
+                if not deps_result.success:
+                    return ProjectCreationResult(
+                        success=False,
+                        project_path=project_path,
+                        project_type="python",
+                        error="Failed to install development dependencies",
                     )
-                    if not deps_result.success:
-                        return ProjectCreationResult(
-                            success=False,
-                            project_path=project_path,
-                            project_type="python",
-                            error="Failed to install development dependencies",
-                        )
-                    progress.update(task_id, status="Dependencies installed")
 
                 # Setup development tools
-                with ezprinter.create_spinner_with_status(
-                    "Configuring development tools..."
-                ) as (progress, task):
-                    task_id = TaskID(task)
-                    tools_result = self._python_service.setup_dev_tools(project_path)
-                    if not tools_result.success:
-                        return ProjectCreationResult(
-                            success=False,
-                            project_path=project_path,
-                            project_type="python",
-                            error="Failed to setup development tools",
-                        )
-                    progress.update(task_id, status="Development tools configured")
+                tools_result = self._python_service.setup_dev_tools(project_path)
+                if not tools_result.success:
+                    return ProjectCreationResult(
+                        success=False,
+                        project_path=project_path,
+                        project_type="python",
+                        error="Failed to setup development tools",
+                    )
 
                 # Setup Git repository
-                with ezprinter.create_spinner_with_status(
-                    "Setting up Git repository..."
-                ) as (progress, task):
-                    task_id = TaskID(task)
-                    git_result = self._python_service.setup_git_repository(project_path)
-                    if git_result.warnings:
-                        progress.update(task_id, status="Git setup skipped")
-                    else:
-                        progress.update(task_id, status="Git repository initialized")
+                self._python_service.setup_git_repository(project_path)
 
             files_created = files_result.files_created or []
             tools_configured = (
@@ -342,8 +291,6 @@ class ProjectCreateInterface:
                 if not minimal
                 else []
             )
-            ezprinter.success(f"Python project '{project_name}' created successfully")
-
             return ProjectCreationResult(
                 success=True,
                 project_path=project_path,
@@ -392,111 +339,71 @@ class ProjectCreateInterface:
         """
         try:
             minimal = kwargs.get("minimal", False)
-            mode_text = " (minimal)" if minimal else ""
-            ezprinter.print_header(f"Creating JavaScript Project{mode_text}")
-            ezprinter.info(f"Project: {project_name}")
-            ezprinter.info(f"Path: {project_path}")
-            ezprinter.info(f"Type: {project_type}")
 
             # Create project structure
-            with ezprinter.create_spinner_with_status(
-                "Creating project structure..."
-            ) as (progress, task):
-                task_id = TaskID(task)
-                structure_result = self._javascript_service.create_project_structure(
-                    project_path, project_name
+            structure_result = self._javascript_service.create_project_structure(
+                project_path, project_name
+            )
+            if not structure_result.success:
+                return ProjectCreationResult(
+                    success=False,
+                    project_path=project_path,
+                    project_type=project_type,
+                    error="Failed to create project structure",
                 )
-                if not structure_result.success:
-                    return ProjectCreationResult(
-                        success=False,
-                        project_path=project_path,
-                        project_type=project_type,
-                        error="Failed to create project structure",
-                    )
-                progress.update(task_id, status="Project structure created")
 
             # Create project files
-            with ezprinter.create_spinner_with_status(
-                "Creating JavaScript files..."
-            ) as (progress, task):
-                task_id = TaskID(task)
-                files_result = self._javascript_service.create_project_files(
-                    project_path, project_name, project_type, **kwargs
+            files_result = self._javascript_service.create_project_files(
+                project_path, project_name, project_type, **kwargs
+            )
+            if not files_result.success:
+                return ProjectCreationResult(
+                    success=False,
+                    project_path=project_path,
+                    project_type=project_type,
+                    error="Failed to create project files",
                 )
-                if not files_result.success:
-                    return ProjectCreationResult(
-                        success=False,
-                        project_path=project_path,
-                        project_type=project_type,
-                        error="Failed to create project files",
-                    )
-                progress.update(task_id, status="JavaScript files created")
 
             # Skip npm init, dependencies, and tools in minimal mode
             if not minimal:
                 # Initialize npm project
-                with ezprinter.create_spinner_with_status(
-                    "Initializing npm project..."
-                ) as (progress, task):
-                    task_id = TaskID(task)
-                    npm_result = self._javascript_service.initialize_npm_project(
-                        project_path, project_name, **kwargs
+                npm_result = self._javascript_service.initialize_npm_project(
+                    project_path, project_name, **kwargs
+                )
+                if not npm_result.success:
+                    return ProjectCreationResult(
+                        success=False,
+                        project_path=project_path,
+                        project_type=project_type,
+                        error="Failed to initialize npm project",
                     )
-                    if not npm_result.success:
-                        return ProjectCreationResult(
-                            success=False,
-                            project_path=project_path,
-                            project_type=project_type,
-                            error="Failed to initialize npm project",
-                        )
-                    progress.update(task_id, status="npm project initialized")
 
                 # Install dependencies
-                with ezprinter.create_spinner_with_status(
-                    "Installing dependencies..."
-                ) as (progress, task):
-                    task_id = TaskID(task)
-                    deps_result = self._javascript_service.install_dependencies(
-                        project_path, project_type
+                deps_result = self._javascript_service.install_dependencies(
+                    project_path, project_type
+                )
+                if not deps_result.success:
+                    return ProjectCreationResult(
+                        success=False,
+                        project_path=project_path,
+                        project_type=project_type,
+                        error="Failed to install dependencies",
                     )
-                    if not deps_result.success:
-                        return ProjectCreationResult(
-                            success=False,
-                            project_path=project_path,
-                            project_type=project_type,
-                            error="Failed to install dependencies",
-                        )
-                    progress.update(task_id, status="Dependencies installed")
 
                 # Setup development tools
-                with ezprinter.create_spinner_with_status(
-                    "Configuring development tools..."
-                ) as (progress, task):
-                    task_id = TaskID(task)
-                    tools_result = self._javascript_service.setup_dev_tools(
-                        project_path, project_type
+                tools_result = self._javascript_service.setup_dev_tools(
+                    project_path, project_type
+                )
+                if not tools_result.success:
+                    return ProjectCreationResult(
+                        success=False,
+                        project_path=project_path,
+                        project_type=project_type,
+                        error="Failed to setup development tools",
                     )
-                    if not tools_result.success:
-                        return ProjectCreationResult(
-                            success=False,
-                            project_path=project_path,
-                            project_type=project_type,
-                            error="Failed to setup development tools",
-                        )
-                    progress.update(task_id, status="Development tools configured")
 
                 # Setup Git repository
-                with ezprinter.create_spinner_with_status(
-                    "Setting up Git repository..."
-                ) as (progress, task):
-                    task_id = TaskID(task)
-                    git_result = self._javascript_service.setup_git_repository(
-                        project_path
-                    )
-                    if git_result.warnings:
-                        progress.update(task_id, status="Git setup skipped")
-                    else:
-                        progress.update(task_id, status="Git repository initialized")
+                self._javascript_service.setup_git_repository(project_path)
 
             files_created = files_result.files_created or []
             tools_configured = (
@@ -504,10 +411,6 @@ class ProjectCreateInterface:
                 if not minimal
                 else []
             )
-            ezprinter.success(
-                f"JavaScript project '{project_name}' created successfully"
-            )
-
             return ProjectCreationResult(
                 success=True,
                 project_path=project_path,

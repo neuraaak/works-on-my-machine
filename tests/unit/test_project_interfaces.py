@@ -26,8 +26,10 @@ from pathlib import Path
 
 # Third-party imports
 import pytest
+from click.testing import CliRunner
 
 # Local imports
+from womm.commands.project.create import create_group
 from womm.exceptions.project import ProjectServiceError
 from womm.interfaces.project.create_interface import ProjectCreateInterface
 from womm.interfaces.project.detection_interface import ProjectDetectionInterface
@@ -73,6 +75,35 @@ class _FakeDetectionService:
         return self._config_result or ProjectDetectionResult(success=True)
 
 
+class _FakeProjectManager:
+    """Command-boundary fake that records project creation options."""
+
+    instances: list[_FakeProjectManager] = []
+
+    def __init__(self) -> None:
+        self.calls: list[dict[str, object]] = []
+        self.instances.append(self)
+
+    def create_project(self, **kwargs: object) -> ProjectCreationResult:
+        self.calls.append(kwargs)
+        project_name = str(kwargs["project_name"])
+        target = Path(str(kwargs.get("target", ".")))
+        return ProjectCreationResult(
+            success=True,
+            project_path=target / project_name,
+            project_name=project_name,
+            project_type=str(kwargs["project_type"]),
+        )
+
+
+def _inject_detection_service(
+    interface: ProjectDetectionInterface | ProjectSetupInterface,
+    service: _FakeDetectionService,
+) -> None:
+    """Install a test double without weakening production attribute types."""
+    object.__setattr__(interface, "_detection_service", service)
+
+
 # ///////////////////////////////////////////////////////////////
 # PROJECT DETECTION INTERFACE
 # ///////////////////////////////////////////////////////////////
@@ -80,10 +111,13 @@ class _FakeDetectionService:
 
 def test_detect_project_type_success(tmp_path: Path):
     interface = ProjectDetectionInterface()
-    interface._detection_service = _FakeDetectionService(
-        type_result=ProjectDetectionResult(success=True, project_type="python"),
-        config_result=ProjectDetectionResult(
-            success=True, detected_files=["pyproject.toml"]
+    _inject_detection_service(
+        interface,
+        _FakeDetectionService(
+            type_result=ProjectDetectionResult(success=True, project_type="python"),
+            config_result=ProjectDetectionResult(
+                success=True, detected_files=["pyproject.toml"]
+            ),
         ),
     )
 
@@ -98,9 +132,12 @@ def test_detect_project_type_does_not_write_to_the_terminal(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ):
     interface = ProjectDetectionInterface()
-    interface._detection_service = _FakeDetectionService(
-        type_result=ProjectDetectionResult(success=True, project_type="python"),
-        config_result=ProjectDetectionResult(success=True),
+    _inject_detection_service(
+        interface,
+        _FakeDetectionService(
+            type_result=ProjectDetectionResult(success=True, project_type="python"),
+            config_result=ProjectDetectionResult(success=True),
+        ),
     )
 
     interface.detect_project_type(tmp_path)
@@ -112,8 +149,11 @@ def test_detect_project_type_does_not_write_to_the_terminal(
 
 def test_detect_project_type_unknown_has_zero_confidence(tmp_path: Path):
     interface = ProjectDetectionInterface()
-    interface._detection_service = _FakeDetectionService(
-        type_result=ProjectDetectionResult(success=True, project_type="unknown")
+    _inject_detection_service(
+        interface,
+        _FakeDetectionService(
+            type_result=ProjectDetectionResult(success=True, project_type="unknown")
+        ),
     )
 
     result = interface.detect_project_type(tmp_path)
@@ -127,10 +167,13 @@ def test_detect_project_type_service_error_returns_failed_result_never_raises(
     tmp_path: Path,
 ):
     interface = ProjectDetectionInterface()
-    interface._detection_service = _FakeDetectionService(
-        type_error=ProjectServiceError(
-            operation="detect_project_type", reason="disk unreadable"
-        )
+    _inject_detection_service(
+        interface,
+        _FakeDetectionService(
+            type_error=ProjectServiceError(
+                operation="detect_project_type", reason="disk unreadable"
+            )
+        ),
     )
 
     result = interface.detect_project_type(tmp_path)
@@ -141,10 +184,13 @@ def test_detect_project_type_service_error_returns_failed_result_never_raises(
 
 def test_detect_project_config_service_error_returns_failed_result(tmp_path: Path):
     interface = ProjectDetectionInterface()
-    interface._detection_service = _FakeDetectionService(
-        config_error=ProjectServiceError(
-            operation="detect_project_config", reason="permission denied"
-        )
+    _inject_detection_service(
+        interface,
+        _FakeDetectionService(
+            config_error=ProjectServiceError(
+                operation="detect_project_config", reason="permission denied"
+            )
+        ),
     )
 
     result = interface.detect_project_config(tmp_path)
@@ -199,6 +245,24 @@ def test_create_project_invalid_name_never_raises(tmp_path: Path):
     assert result.error
 
 
+@pytest.mark.parametrize("command", ["python", "javascript"])
+def test_create_minimal_command_forwards_minimal_mode(
+    command: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    _FakeProjectManager.instances.clear()
+    monkeypatch.setattr(
+        "womm.commands.project.create.ProjectManagerInterface", _FakeProjectManager
+    )
+
+    result = CliRunner().invoke(
+        create_group,
+        [command, "demo", "--minimal", "--target", str(tmp_path)],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert _FakeProjectManager.instances[0].calls[0]["minimal"] is True
+
+
 # ///////////////////////////////////////////////////////////////
 # PROJECT SETUP INTERFACE
 # ///////////////////////////////////////////////////////////////
@@ -206,8 +270,11 @@ def test_create_project_invalid_name_never_raises(tmp_path: Path):
 
 def test_setup_project_undetectable_type_returns_failed_result(tmp_path: Path):
     interface = ProjectSetupInterface()
-    interface._detection_service = _FakeDetectionService(
-        type_result=ProjectDetectionResult(success=True, project_type="unknown")
+    _inject_detection_service(
+        interface,
+        _FakeDetectionService(
+            type_result=ProjectDetectionResult(success=True, project_type="unknown")
+        ),
     )
 
     result = interface.setup_project(project_path=tmp_path)
