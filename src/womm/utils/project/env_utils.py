@@ -25,7 +25,6 @@ import venv
 from pathlib import Path
 
 # Local imports
-from ...services.common import CommandRunnerService
 from ...shared.configs.project import PythonProjectConfig
 from .validation_utils import validate_project_path
 
@@ -91,6 +90,8 @@ def _upgrade_pip(project_path: Path, venv_path: Path) -> None:
         venv_path: Path to the virtual environment
     """
     try:
+        from ...services import CommandRunnerService
+
         # Find Python and pip executables
         python_exe = _find_venv_executable(venv_path, "python")
         pip_exe = _find_venv_executable(venv_path, "pip")
@@ -198,6 +199,8 @@ def install_python_dependencies(
         return True
 
     # Install dependencies
+    from ...services import CommandRunnerService
+
     command_runner = CommandRunnerService()
     result = command_runner.run(
         [str(pip_exe), "install", "-r", requirements_file],
@@ -245,6 +248,8 @@ def install_npm_dependencies(project_path: Path) -> bool:
         raise FileNotFoundError("npm is not installed or not in PATH")
 
     # Install dependencies
+    from ...services import CommandRunnerService
+
     command_runner = CommandRunnerService()
     result = command_runner.run(
         ["npm", "install"],
@@ -283,6 +288,8 @@ def install_npm_dev_dependencies(project_path: Path, dependencies: list[str]) ->
         return True
 
     # Install dev dependencies
+    from ...services import CommandRunnerService
+
     command_runner = CommandRunnerService()
     result = command_runner.run(
         ["npm", "install", "--save-dev", *dependencies],

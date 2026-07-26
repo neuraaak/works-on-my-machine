@@ -28,7 +28,6 @@ from typing import ClassVar
 
 # Local imports
 from ...exceptions.project import ProjectServiceError
-from ...ui.common.prompts import confirm
 
 # ///////////////////////////////////////////////////////////////
 # LOGGER SETUP
@@ -300,6 +299,8 @@ class ConflictResolutionService:
             from rich.console import Console
             from rich.panel import Panel
 
+            from ...ui.common.prompts import confirm
+
             console = Console()
 
             console.print(
@@ -351,6 +352,8 @@ class ConflictResolutionService:
         try:
             from rich.console import Console
             from rich.panel import Panel
+
+            from ...ui.common.prompts import confirm
 
             console = Console()
 

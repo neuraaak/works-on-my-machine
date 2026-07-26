@@ -103,11 +103,17 @@ class VariantDetectionUtils:
                 package_data = json.load(f)
         except (json.JSONDecodeError, OSError):
             return default
+        if not isinstance(package_data, dict):
+            return default
 
         # Check for TypeScript
         has_tsconfig = (project_path / "tsconfig.json").exists()
         dependencies = package_data.get("dependencies", {})
         dev_dependencies = package_data.get("devDependencies", {})
+        if not isinstance(dependencies, dict):
+            dependencies = {}
+        if not isinstance(dev_dependencies, dict):
+            dev_dependencies = {}
 
         all_deps = {**dependencies, **dev_dependencies}
 
