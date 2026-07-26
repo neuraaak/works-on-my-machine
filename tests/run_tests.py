@@ -59,14 +59,14 @@ def run_command(cmd: list[str], description: str) -> bool:
         a test runner with trusted input.
     """
     print(f"\n{'=' * 60}")
-    print(f"🚀 {description}")
+    print(f"Running: {description}")
     print(f"{'=' * 60}")
     try:
         # Run without capturing output - displays in real-time
         result = subprocess.run(cmd, check=False)  # noqa: S603
         return result.returncode == 0
     except Exception as e:
-        print(f"❌ Execution error: {e}")
+        print(f"Execution error: {e}")
         return False
 
 
@@ -92,8 +92,8 @@ def main() -> None:
     parser.add_argument(
         "--type",
         choices=["unit", "integration", "all"],
-        default="unit",
-        help="Test type to run (default: unit)",
+        default="all",
+        help="Test type to run (default: all)",
     )
     parser.add_argument(
         "--coverage",
@@ -124,16 +124,13 @@ def main() -> None:
 
     # Validate project structure
     if not Path("pyproject.toml").exists():
-        print(
-            "❌ Error: pyproject.toml not found. Run this script from the project root."
-        )
+        print("Error: pyproject.toml not found. Run this script from the project root.")
         sys.exit(1)
 
-    # Build pytest command
-    # -P disables Python's automatic sys.path[0]=cwd insertion for -m: without
-    # it, running from the project root shadows the installed womm package
-    # with the root-level womm.py installer launcher (same module name).
-    cmd_parts = [sys.executable, "-P", "-m", "pytest"]
+    # Keep this invocation aligned with `uv run pytest`. The project-level
+    # `--import-mode=importlib` option prevents the root womm.py launcher from
+    # shadowing the installed src-layout package during test collection.
+    cmd_parts = [sys.executable, "-m", "pytest"]
 
     # Add verbosity flag
     if args.verbose:
@@ -174,12 +171,12 @@ def main() -> None:
 
     # Display results
     if success:
-        print("\n✅ Tests passed successfully!")
+        print("\nTests passed successfully!")
         if args.coverage:
-            print("\n📊 Coverage report generated in htmlcov/")
+            print("\nCoverage report generated in htmlcov/")
             print("   Open htmlcov/index.html in your browser")
     else:
-        print("\n❌ Tests failed")
+        print("\nTests failed")
         sys.exit(1)
 
 

@@ -303,6 +303,7 @@ minversion = "7.0"
 addopts = [
     "--strict-markers",
     "--strict-config",
+    "--import-mode=importlib",
     "--cov=src/womm",
     "--cov-report=term-missing",
     "--cov-report=html",
