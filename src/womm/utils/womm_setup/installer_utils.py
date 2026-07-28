@@ -179,6 +179,9 @@ def check_default_patterns(file_path: Path, source_path: Path) -> bool:
         if pattern.startswith("*"):
             if file_name.endswith(pattern[1:]):
                 return True
+        elif pattern.endswith("*"):
+            if relative_path.startswith(pattern[:-1]):
+                return True
         elif pattern == "setup.py":
             # Only exclude root setup.py, not subdirectory setup.py files
             if relative_path == "setup.py":
