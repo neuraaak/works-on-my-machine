@@ -463,16 +463,14 @@ class FileScannerService:
                                 f"Security validation failed for {file_path}: {validation_result.validation_reason}"
                             )
                     except (OSError, SecurityServiceError, TypeError, ValueError) as e:
-                        # If security validation fails, log and include the file
+                        # Security validation errors must fail closed.
                         self.logger.warning(
                             f"Security validation failed for {file_path}: {e}"
                         )
-                        filtered_files.append(file_path)
 
                 except (OSError, SecurityServiceError, TypeError, ValueError) as e:
                     # Log individual file processing errors but continue
                     self.logger.warning(f"Error processing file {file_path}: {e}")
-                    filtered_files.append(file_path)  # Include on error for safety
 
             return filtered_files
 
