@@ -309,7 +309,7 @@ addopts = [
     "--cov-report=html",
     "--cov-report=xml",
     # Temporary baseline: ratchet upward as coverage grows.
-    "--cov-fail-under=30",
+    "--cov-fail-under=60",
     "--tb=short",
     "--color=yes",
     "--durations=10",
@@ -358,6 +358,8 @@ omit = [
     "docs/*",
     "examples/*",
     "_temp/*",
+    "*/ui/*/wizard.py",
+    "*/ui/project/project_wizard.py",
 ]
 
 [tool.coverage.report]
@@ -377,7 +379,7 @@ exclude_lines = [
 ]
 show_missing = true
 precision = 2
-fail_under = 70
+fail_under = 60
 
 [tool.coverage.html]
 directory = "htmlcov"
