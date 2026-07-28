@@ -58,6 +58,9 @@ def suggest_project_name(base_name: str) -> str:
     # Remove multiple consecutive hyphens
     suggested = re.sub(r"-+", "-", suggested)
 
+    # Remove any character not allowed in a valid project name
+    suggested = re.sub(r"[^a-zA-Z0-9._-]", "", suggested)
+
     # Ensure it's not empty
     if not suggested:
         suggested = "my-project"

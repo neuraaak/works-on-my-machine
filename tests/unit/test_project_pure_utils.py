@@ -99,7 +99,7 @@ def test_template_validation_and_generation(tmp_path: Path) -> None:
     ("raw", "expected"),
     [
         ("", "my-project"),
-        ("My project!!", "my-project!!"),
+        ("My project!!", "my-project"),
         ("123 app", "project-123-app"),
     ],
 )
