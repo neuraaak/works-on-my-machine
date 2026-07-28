@@ -55,7 +55,7 @@ class ProjectSetupInterface:
     Interface for project setup operations.
 
     This class provides a high-level interface for setting up existing projects,
-    handling UI interactions and orchestrating project setup services.
+    orchestrating project setup services without rendering terminal output.
     """
 
     def __init__(self):

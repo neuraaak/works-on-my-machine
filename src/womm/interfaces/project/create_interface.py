@@ -56,7 +56,7 @@ class ProjectCreateInterface:
     """Project creation interface for project operations.
 
     This class provides a high-level interface for project creation operations,
-    handling UI interactions and orchestrating project creation services.
+    orchestrating project creation services without rendering terminal output.
     """
 
     def __init__(self):

@@ -22,13 +22,17 @@ from __future__ import annotations
 # IMPORTS
 # ///////////////////////////////////////////////////////////////
 # Standard library imports
+import inspect
 from pathlib import Path
+from types import ModuleType
 
 # Third-party imports
 import pytest
 from click.testing import CliRunner
 
 # Local imports
+import womm.interfaces.project.create_interface as create_interface_module
+import womm.interfaces.project.setup_interface as setup_interface_module
 from womm.commands.project.create import create_group
 from womm.commands.project.setup import setup_group
 from womm.exceptions.project import ProjectServiceError
@@ -113,6 +117,25 @@ def _inject_detection_service(
 ) -> None:
     """Install a test double without weakening production attribute types."""
     object.__setattr__(interface, "_detection_service", service)
+
+
+# ///////////////////////////////////////////////////////////////
+# ZERO-UI CONTRACT
+# ///////////////////////////////////////////////////////////////
+
+
+@pytest.mark.parametrize(
+    "interface_module",
+    [create_interface_module, setup_interface_module],
+)
+def test_create_and_setup_interfaces_never_import_ui(interface_module: ModuleType):
+    """Terminal rendering belongs to commands, not project interfaces."""
+    source = inspect.getsource(interface_module)
+
+    assert "ui.project" not in source
+    assert "ui.common" not in source
+    assert "ezprinter" not in source
+    assert "ezconsole" not in source
 
 
 # ///////////////////////////////////////////////////////////////
@@ -241,6 +264,23 @@ def test_create_project_dry_run_reports_success(tmp_path: Path):
 
     assert result.success
     assert result.warnings and "Dry-run" in result.warnings[0]
+
+
+def test_create_project_does_not_write_to_the_terminal(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+):
+    interface = ProjectCreateInterface()
+
+    interface.create_project(
+        project_type="python",
+        project_name="demo",
+        project_path=tmp_path / "demo",
+        dry_run=True,
+    )
+
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert captured.err == ""
 
 
 def test_create_project_invalid_name_never_raises(tmp_path: Path):
