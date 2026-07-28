@@ -21,8 +21,8 @@ from __future__ import annotations
 # IMPORTS
 # ///////////////////////////////////////////////////////////////
 # Standard library imports
+import json
 import logging
-import re
 import shutil
 from pathlib import Path
 from threading import Lock
@@ -41,7 +41,6 @@ from ...utils.project import (
     install_npm_dev_dependencies,
     validate_project_name,
     validate_project_path,
-    validate_project_type,
 )
 from ..common.command_runner_service import CommandRunnerService
 from .template_service import TemplateService
@@ -51,6 +50,29 @@ from .template_service import TemplateService
 # ///////////////////////////////////////////////////////////////
 
 logger = logging.getLogger(__name__)
+
+# ///////////////////////////////////////////////////////////////
+# CONSTANTS
+# ///////////////////////////////////////////////////////////////
+
+JAVASCRIPT_PROJECT_TYPES = frozenset({"javascript", "node", "react", "vue"})
+JAVASCRIPT_TEMPLATE_VARIANTS = {
+    "javascript": "js",
+    "node": "js",
+    "react": "react",
+    "vue": "vue",
+}
+
+
+def _validate_javascript_project_type(project_type: str) -> None:
+    """Validate a JavaScript service project type."""
+    if project_type not in JAVASCRIPT_PROJECT_TYPES:
+        supported_types = ", ".join(sorted(JAVASCRIPT_PROJECT_TYPES))
+        raise ValueError(
+            f"Unsupported JavaScript project type: {project_type}. "
+            f"Supported types: {supported_types}"
+        )
+
 
 # ///////////////////////////////////////////////////////////////
 # JAVASCRIPT PROJECT CREATION SERVICE CLASS
@@ -82,9 +104,7 @@ class JavaScriptProjectCreationService:
 
         self._template_service = TemplateService()
         self._command_runner = CommandRunnerService()
-        self._template_dir = (
-            get_assets_module_path() / "languages" / "javascript" / "templates"
-        )
+        self._template_dir = get_assets_module_path() / "languages" / "javascript"
         self.logger = logging.getLogger(__name__)
         JavaScriptProjectCreationService._initialized = True
 
@@ -105,6 +125,9 @@ class JavaScriptProjectCreationService:
             ProjectServiceError: If structure creation or validation fails
         """
         try:
+            validate_project_path(project_path)
+            validate_project_name(project_name)
+            _validate_javascript_project_type(project_type)
             created_dirs = create_javascript_structure(project_path, project_name)
             return ProjectCreationResult(
                 success=True,
@@ -151,7 +174,7 @@ class JavaScriptProjectCreationService:
         try:
             validate_project_path(project_path, must_exist=True, require_empty=False)
             validate_project_name(project_name)
-            validate_project_type(project_type)
+            _validate_javascript_project_type(project_type)
 
             created_files = []
 
@@ -263,7 +286,7 @@ class JavaScriptProjectCreationService:
         """
         try:
             validate_project_path(project_path, must_exist=True, require_empty=False)
-            validate_project_type(project_type)
+            _validate_javascript_project_type(project_type)
 
             success = install_npm_dependencies(project_path)
             if not success:
@@ -306,7 +329,8 @@ class JavaScriptProjectCreationService:
             ProjectServiceError: If development tools setup fails
         """
         try:
-            validate_project_type(project_type)
+            validate_project_path(project_path, must_exist=True, require_empty=False)
+            _validate_javascript_project_type(project_type)
 
             # Check if npm is available
             if not shutil.which("npm"):
@@ -381,6 +405,8 @@ class JavaScriptProjectCreationService:
             ProjectServiceError: If Git setup fails
         """
         try:
+            validate_project_path(project_path, must_exist=True, require_empty=False)
+
             # Initialize git repository using CommandRunnerService
             git_path = shutil.which("git")
             if not git_path:
@@ -434,6 +460,8 @@ class JavaScriptProjectCreationService:
             ProjectServiceError: If Git hooks setup fails
         """
         try:
+            validate_project_path(project_path, must_exist=True, require_empty=False)
+
             # Initialize husky using CommandRunnerService
             npx_path = shutil.which("npx")
             if not npx_path:
@@ -451,33 +479,35 @@ class JavaScriptProjectCreationService:
             )
 
             if result.returncode == 0:
-                try:
-                    # Add pre-commit hook using CommandRunnerService
-                    self._command_runner.run(
-                        [
-                            npx_path,
-                            "husky",
-                            "add",
-                            ".husky/pre-commit",
-                            "npm run lint-staged",
-                        ],
-                        description="Add pre-commit hook",
-                        cwd=project_path,
+                hook_result = self._command_runner.run(
+                    [
+                        npx_path,
+                        "husky",
+                        "add",
+                        ".husky/pre-commit",
+                        "npm run lint-staged",
+                    ],
+                    description="Add pre-commit hook",
+                    cwd=project_path,
+                )
+                if hook_result.returncode != 0:
+                    return ProjectCreationResult(
+                        success=False,
+                        message="Failed to create Git pre-commit hook",
+                        project_path=project_path,
+                        error=hook_result.stderr,
                     )
-                except Exception as e:
-                    logger.warning(f"Failed to add pre-commit hook: {e}")
                 return ProjectCreationResult(
                     success=True,
                     message="Git hooks installed successfully",
                     project_path=project_path,
                 )
             else:
-                logger.warning("Failed to initialize husky, but continuing")
                 return ProjectCreationResult(
-                    success=True,
-                    message="Git hooks setup skipped",
+                    success=False,
+                    message="Failed to initialize Husky",
                     project_path=project_path,
-                    warnings=["Husky initialization failed"],
+                    error=result.stderr,
                 )
 
         except ProjectServiceError:
@@ -511,7 +541,13 @@ class JavaScriptProjectCreationService:
             ProjectServiceError: If package.json creation or template processing fails
         """
         try:
-            template_path = self._template_dir / "package.template.json"
+            template_variant = JAVASCRIPT_TEMPLATE_VARIANTS[project_type]
+            template_path = (
+                self._template_dir
+                / template_variant
+                / "templates"
+                / "package.json.template"
+            )
             output_path = project_path / "package.json"
 
             # Base template variables
@@ -552,8 +588,8 @@ class JavaScriptProjectCreationService:
                         "START_COMMAND": "react-scripts start",
                         "KEYWORDS": "react,javascript,frontend",
                         "JEST_ENVIRONMENT": "jsdom",
-                        "DEPENDENCIES": '"react": "^18.2.0",\n    "react-dom": "^18.2.0"',
-                        "DEV_DEPENDENCIES": '"react-scripts": "^5.0.1",\n    "@testing-library/react": "^13.4.0",\n    "@testing-library/jest-dom": "^5.16.5"',
+                        "DEPENDENCIES": "",
+                        "DEV_DEPENDENCIES": "",
                     }
                 )
             elif project_type == "vue":
@@ -569,8 +605,8 @@ class JavaScriptProjectCreationService:
                         "START_COMMAND": "vue-cli-service serve",
                         "KEYWORDS": "vue,javascript,frontend",
                         "JEST_ENVIRONMENT": "jsdom",
-                        "DEPENDENCIES": '"vue": "^3.3.0"',
-                        "DEV_DEPENDENCIES": '"@vue/cli-service": "^5.0.0",\n    "@vue/compiler-sfc": "^3.3.0"',
+                        "DEPENDENCIES": "",
+                        "DEV_DEPENDENCIES": "",
                     }
                 )
             else:  # node
@@ -596,568 +632,13 @@ class JavaScriptProjectCreationService:
                 template_path, output_path, template_vars
             )
 
-            # Fix JSON formatting issues
-            try:
-                with open(output_path, encoding="utf-8") as f:
-                    json_content = f.read()
-
-                # Remove trailing commas in devDependencies
-                json_content = re.sub(r",\s*\n\s*},", "\n  },", json_content)
-
-                # Fix empty dependencies sections
-                json_content = json_content.replace(
-                    '"dependencies": {\n    \n  },', '"dependencies": {},'
-                )
-                json_content = json_content.replace(
-                    '"devDependencies": {\n    \n  },', '"devDependencies": {},'
-                )
-
-                # Remove empty DEV_DEPENDENCIES placeholder
-                json_content = re.sub(r",\s*{{DEV_DEPENDENCIES}}", "", json_content)
-
-                # Write the fixed content back
-                with open(output_path, "w", encoding="utf-8") as f:
-                    f.write(json_content)
-
-            except Exception as e:
-                logger.warning(f"Failed to fix JSON formatting: {e}")
+            json.loads(output_path.read_text(encoding="utf-8"))
 
             return {"success": True}
 
         except Exception as e:
             raise ProjectServiceError(
                 operation="create_package_json",
-                reason=str(e),
-                details=f"Exception type: {type(e).__name__}",
-            ) from e
-
-    def _create_main_js_file(
-        self, project_path: Path, project_name: str, project_type: str
-    ) -> dict[str, Any]:
-        """Create the main JavaScript file.
-
-        Args:
-            project_path: Path to the project
-            project_name: Name of the project
-            project_type: Type of JavaScript project (node, react, vue)
-
-        Returns:
-            dict: Metadata about file creation with 'success' and 'files' keys
-
-        Raises:
-            ProjectServiceError: If main JavaScript file creation fails
-        """
-        try:
-            src_dir = project_path / "src"
-            src_dir.mkdir(exist_ok=True)
-
-            created_files = []
-
-            if project_type == "react":
-                # Create React app structure
-                react_files = self._create_react_structure(project_path, project_name)
-                created_files.extend(react_files)
-            elif project_type == "vue":
-                # Create Vue app structure
-                vue_files = self._create_vue_structure(project_path, project_name)
-                created_files.extend(vue_files)
-            else:
-                # Create Node.js app structure
-                node_files = self._create_node_structure(project_path, project_name)
-                created_files.extend(node_files)
-
-            return {"success": True, "files": created_files}
-
-        except Exception as e:
-            raise ProjectServiceError(
-                operation="create_main_js_file",
-                reason=str(e),
-                details=f"Exception type: {type(e).__name__}",
-            ) from e
-
-    def _create_node_structure(
-        self, project_path: Path, project_name: str
-    ) -> list[str]:
-        """Create Node.js project structure.
-
-        Args:
-            project_path: Path to the project
-            project_name: Name of the project
-
-        Returns:
-            list: List of created file paths (relative to project_path)
-        """
-        src_dir = project_path / "src"
-        created_files = []
-
-        # Create main.js
-        main_file = src_dir / "main.js"
-        main_content = f"""#!/usr/bin/env node
-/**
- * Main entry point for {project_name}.
- *
- * This module serves as the main entry point for the Node.js application.
- */
-
-const path = require('path');
-const fs = require('fs');
-
-// Read package.json for version info
-const packageJson = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8'));
-
-function main() {{
-    console.log(`Hello from ${{packageJson.name}} v${{packageJson.version}}!`);
-    console.log('This is a Node.js project created with WOMM CLI.');
-
-    // Add your application logic here
-    return 0;
-}}
-
-if (require.main === module) {{
-    process.exit(main());
-}}
-
-module.exports = {{ main }};
-"""
-        main_file.write_text(main_content, encoding="utf-8")
-        main_file.chmod(0o755)  # Make executable
-        created_files.append(str(main_file.relative_to(project_path)))
-
-        # Create index.js (entry point)
-        index_file = src_dir / "index.js"
-        index_content = f"""/**
- * Entry point for {project_name}.
- *
- * This file exports the main functionality of the application.
- */
-
-const {{ main }} = require('./main');
-
-module.exports = {{
-    main,
-    // Add other exports here
-}};
-"""
-        index_file.write_text(index_content, encoding="utf-8")
-        created_files.append(str(index_file.relative_to(project_path)))
-
-        return created_files
-
-    def _create_react_structure(
-        self, project_path: Path, project_name: str
-    ) -> list[str]:
-        """Create React project structure.
-
-        Args:
-            project_path: Path to the project
-            project_name: Name of the project
-
-        Returns:
-            list: List of created file paths (relative to project_path)
-        """
-        src_dir = project_path / "src"
-        created_files = []
-
-        # Create App.jsx
-        app_file = src_dir / "App.jsx"
-        app_content = f"""import React from 'react';
-import './App.css';
-
-function App() {{
-  return (
-    <div className="App">
-      <header className="App-header">
-        <h1>Welcome to {project_name}</h1>
-        <p>This is a React project created with WOMM CLI.</p>
-      </header>
-    </div>
-  );
-}}
-
-export default App;
-"""
-        app_file.write_text(app_content, encoding="utf-8")
-        created_files.append(str(app_file.relative_to(project_path)))
-
-        # Create App.css
-        css_file = src_dir / "App.css"
-        css_content = """.App {
-  text-align: center;
-}
-
-.App-header {
-  background-color: #282c34;
-  padding: 20px;
-  color: white;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
-}
-
-.App-link {
-  color: #61dafb;
-}
-"""
-        css_file.write_text(css_content, encoding="utf-8")
-        created_files.append(str(css_file.relative_to(project_path)))
-
-        # Create index.jsx
-        index_file = src_dir / "index.jsx"
-        index_content = """import React from 'react';
-import ReactDOM from 'react-dom/client';
-import './index.css';
-import App from './App';
-
-const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>
-);
-"""
-        index_file.write_text(index_content, encoding="utf-8")
-        created_files.append(str(index_file.relative_to(project_path)))
-
-        # Create index.css
-        index_css_file = src_dir / "index.css"
-        index_css_content = """body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
-}
-"""
-        index_css_file.write_text(index_css_content, encoding="utf-8")
-        created_files.append(str(index_css_file.relative_to(project_path)))
-
-        # Create public/index.html
-        public_dir = project_path / "public"
-        public_dir.mkdir(exist_ok=True)
-
-        html_file = public_dir / "index.html"
-        html_content = f"""<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#000000" />
-    <meta
-      name="description"
-      content="{project_name} - A React project created with WOMM CLI"
-    />
-    <title>{project_name}</title>
-  </head>
-  <body>
-    <noscript>You need to enable JavaScript to run this app.</noscript>
-    <div id="root"></div>
-  </body>
-</html>
-"""
-        html_file.write_text(html_content, encoding="utf-8")
-        created_files.append(str(html_file.relative_to(project_path)))
-
-        return created_files
-
-    def _create_vue_structure(self, project_path: Path, project_name: str) -> list[str]:
-        """Create Vue project structure.
-
-        Args:
-            project_path: Path to the project
-            project_name: Name of the project
-
-        Returns:
-            list: List of created file paths (relative to project_path)
-        """
-        src_dir = project_path / "src"
-        created_files = []
-
-        # Create App.vue
-        app_file = src_dir / "App.vue"
-        app_content = f"""<template>
-  <div id="app">
-    <header>
-      <h1>Welcome to {{ projectName }}</h1>
-      <p>This is a Vue project created with WOMM CLI.</p>
-    </header>
-  </div>
-</template>
-
-<script>
-export default {{
-  name: 'App',
-  data() {{
-    return {{
-      projectName: '{project_name}'
-    }}
-  }}
-}}
-</script>
-
-<style>
-#app {{
-  font-family: Avenir, Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-align: center;
-  color: #2c3e50;
-  margin-top: 60px;
-}}
-
-header {{
-  background-color: #f8f9fa;
-  padding: 20px;
-  border-radius: 8px;
-}}
-</style>
-"""
-        app_file.write_text(app_content, encoding="utf-8")
-        created_files.append(str(app_file.relative_to(project_path)))
-
-        # Create main.js
-        main_file = src_dir / "main.js"
-        main_content = """import { createApp } from 'vue'
-import App from './App.vue'
-
-createApp(App).mount('#app')
-"""
-        main_file.write_text(main_content, encoding="utf-8")
-        created_files.append(str(main_file.relative_to(project_path)))
-
-        # Create public/index.html
-        public_dir = project_path / "public"
-        public_dir.mkdir(exist_ok=True)
-
-        html_file = public_dir / "index.html"
-        html_content = f"""<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width,initial-scale=1.0">
-    <link rel="icon" href="<%= BASE_URL %>favicon.ico">
-    <title>{project_name}</title>
-  </head>
-  <body>
-    <noscript>
-      <strong>We're sorry but {project_name} doesn't work properly without JavaScript enabled. Please enable it to continue.</strong>
-    </noscript>
-    <div id="app"></div>
-    <!-- built files will be auto injected -->
-  </body>
-</html>
-"""
-        html_file.write_text(html_content, encoding="utf-8")
-        created_files.append(str(html_file.relative_to(project_path)))
-
-        return created_files
-
-    def _create_config_files(
-        self, project_path: Path, _project_type: str
-    ) -> dict[str, Any]:
-        """Create configuration files.
-
-        Args:
-            project_path: Path to the project
-            project_type: Type of JavaScript project (node, react, vue)
-
-        Returns:
-            dict: Metadata about file creation with 'success' and 'files' keys
-
-        Raises:
-            ProjectServiceError: If config files creation fails
-        """
-        try:
-            created_files = []
-
-            # Create .eslintrc.js
-            eslint_config = """module.exports = {
-  env: {
-    browser: true,
-    es2021: true,
-    node: true,
-  },
-  extends: [
-    'eslint:recommended',
-  ],
-  parserOptions: {
-    ecmaVersion: 'latest',
-    sourceType: 'module',
-  },
-  rules: {
-    'indent': ['error', 2],
-    'linebreak-style': ['error', 'unix'],
-    'quotes': ['error', 'single'],
-    'semi': ['error', 'always'],
-  },
-};
-"""
-            eslint_file = project_path / ".eslintrc.js"
-            eslint_file.write_text(eslint_config, encoding="utf-8")
-            created_files.append(".eslintrc.js")
-
-            # Create .prettierrc
-            prettier_config = """{
-  "semi": true,
-  "trailingComma": "es5",
-  "singleQuote": true,
-  "printWidth": 80,
-  "tabWidth": 2
-}
-"""
-            prettier_file = project_path / ".prettierrc"
-            prettier_file.write_text(prettier_config, encoding="utf-8")
-            created_files.append(".prettierrc")
-
-            # Create jest.config.js for testing
-            jest_config = """module.exports = {
-  testEnvironment: 'node',
-  testMatch: ['**/__tests__/**/*.js', '**/?(*.)+(spec|test).js'],
-  collectCoverageFrom: [
-    'src/**/*.js',
-    '!src/**/*.test.js',
-  ],
-  coverageDirectory: 'coverage',
-  coverageReporters: ['text', 'lcov', 'html'],
-};
-"""
-            jest_file = project_path / "jest.config.js"
-            jest_file.write_text(jest_config, encoding="utf-8")
-            created_files.append("jest.config.js")
-
-            return {"success": True, "files": created_files}
-
-        except Exception as e:
-            raise ProjectServiceError(
-                operation="create_config_files",
-                reason=str(e),
-                details=f"Exception type: {type(e).__name__}",
-            ) from e
-
-    def _create_source_files(
-        self, project_path: Path, _project_name: str, project_type: str
-    ) -> dict[str, Any]:
-        """Create source files based on project type.
-
-        Args:
-            project_path: Path to the project
-            project_name: Name of the project
-            project_type: Type of JavaScript project (node, react, vue)
-
-        Returns:
-            dict: Metadata about file creation with 'success' and 'files' keys
-
-        Raises:
-            ProjectServiceError: If source files creation fails
-        """
-        try:
-            created_files = []
-
-            if project_type == "react":
-                # Create components directory
-                components_dir = project_path / "src" / "components"
-                components_dir.mkdir(exist_ok=True)
-
-                # Create a sample component
-                sample_component = components_dir / "SampleComponent.jsx"
-                component_content = """import React from 'react';
-
-function SampleComponent() {
-  return (
-    <div>
-      <h2>Sample Component</h2>
-      <p>This is a sample React component.</p>
-    </div>
-  );
-}
-
-export default SampleComponent;
-"""
-                sample_component.write_text(component_content, encoding="utf-8")
-                created_files.append(str(sample_component.relative_to(project_path)))
-
-            elif project_type == "vue":
-                # Create components directory
-                components_dir = project_path / "src" / "components"
-                components_dir.mkdir(exist_ok=True)
-
-                # Create a sample component
-                sample_component = components_dir / "SampleComponent.vue"
-                component_content = """<template>
-  <div>
-    <h2>Sample Component</h2>
-    <p>This is a sample Vue component.</p>
-  </div>
-</template>
-
-<script>
-export default {
-  name: 'SampleComponent'
-}
-</script>
-
-<style scoped>
-h2 {
-  color: #42b983;
-}
-</style>
-"""
-                sample_component.write_text(component_content, encoding="utf-8")
-                created_files.append(str(sample_component.relative_to(project_path)))
-
-            else:  # node
-                # Create utils directory
-                utils_dir = project_path / "src" / "utils"
-                utils_dir.mkdir(exist_ok=True)
-
-                # Create a sample utility
-                sample_util = utils_dir / "helpers.js"
-                util_content = """/**
- * Utility functions for the application.
- */
-
-/**
- * Format a message with the given prefix.
- * @param {string} prefix - The prefix to add to the message
- * @param {string} message - The message to format
- * @returns {string} The formatted message
- */
-function formatMessage(prefix, message) {
-  return `[${prefix}] ${message}`;
-}
-
-/**
- * Validate if a string is not empty.
- * @param {string} str - The string to validate
- * @returns {boolean} True if the string is not empty
- */
-function isValidString(str) {
-  return typeof str === 'string' && str.trim().length > 0;
-}
-
-module.exports = {
-  formatMessage,
-  isValidString,
-};
-"""
-                sample_util.write_text(util_content, encoding="utf-8")
-                created_files.append(str(sample_util.relative_to(project_path)))
-
-            return {"success": True, "files": created_files}
-
-        except Exception as e:
-            raise ProjectServiceError(
-                operation="create_source_files",
                 reason=str(e),
                 details=f"Exception type: {type(e).__name__}",
             ) from e
