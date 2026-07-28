@@ -110,11 +110,18 @@ def validate_project_name(project_name: str) -> None:
         )
 
 
-def validate_project_path(project_path: Path) -> None:
+def validate_project_path(
+    project_path: Path,
+    *,
+    must_exist: bool = False,
+    require_empty: bool = True,
+) -> None:
     """Validate a project path.
 
     Args:
         project_path: Path to validate
+        must_exist: Whether the project directory must already exist
+        require_empty: Whether an existing project directory must be empty
 
     Raises:
         ValueError: If project path is invalid
@@ -140,13 +147,16 @@ def validate_project_path(project_path: Path) -> None:
     test_file.touch()
     test_file.unlink()
 
+    if must_exist and not project_path.exists():
+        raise ValueError(f"Project directory does not exist: {project_path}")
+
     # Check if project directory already exists
     if project_path.exists():
         if not project_path.is_dir():
             raise ValueError(f"Path exists but is not a directory: {project_path}")
 
         # Check if directory is empty
-        if any(project_path.iterdir()):
+        if require_empty and any(project_path.iterdir()):
             raise ValueError(f"Directory is not empty: {project_path}")
 
 

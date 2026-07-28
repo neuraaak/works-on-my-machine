@@ -55,7 +55,7 @@ def create_virtual_environment(
         ValueError: If validation fails
         OSError: If venv creation fails
     """
-    validate_project_path(project_path)
+    validate_project_path(project_path, must_exist=True, require_empty=False)
 
     venv_name = venv_name or PythonProjectConfig.VENV_DIR
     venv_path = project_path / venv_name
@@ -181,7 +181,7 @@ def install_python_dependencies(
         FileNotFoundError: If the virtual environment is missing
         RuntimeError: If the pip install command fails
     """
-    validate_project_path(project_path)
+    validate_project_path(project_path, must_exist=True, require_empty=False)
 
     venv_path = project_path / PythonProjectConfig.VENV_DIR
     if not venv_path.exists():
@@ -242,7 +242,7 @@ def install_npm_dependencies(project_path: Path) -> bool:
         FileNotFoundError: If npm is not installed or not in PATH
         RuntimeError: If the npm install command fails
     """
-    validate_project_path(project_path)
+    validate_project_path(project_path, must_exist=True, require_empty=False)
 
     if not check_npm_available():
         raise FileNotFoundError("npm is not installed or not in PATH")
@@ -278,7 +278,7 @@ def install_npm_dev_dependencies(project_path: Path, dependencies: list[str]) ->
         FileNotFoundError: If npm is not installed or not in PATH
         RuntimeError: If the npm install command fails
     """
-    validate_project_path(project_path)
+    validate_project_path(project_path, must_exist=True, require_empty=False)
 
     if not check_npm_available():
         raise FileNotFoundError("npm is not installed or not in PATH")

@@ -103,6 +103,8 @@ class PythonProjectCreationService:
             ProjectServiceError: If structure creation or validation fails
         """
         try:
+            validate_project_path(project_path)
+            validate_project_name(project_name)
             created_dirs = create_python_structure(project_path, project_name)
             return ProjectCreationResult(
                 success=True,
@@ -142,7 +144,7 @@ class PythonProjectCreationService:
             ProjectServiceError: If file creation or template processing fails
         """
         try:
-            validate_project_path(project_path)
+            validate_project_path(project_path, must_exist=True, require_empty=False)
             validate_project_name(project_name)
 
             minimal = kwargs.get("minimal", False)
@@ -312,7 +314,7 @@ class PythonProjectCreationService:
             ProjectServiceError: If Git setup fails
         """
         try:
-            validate_project_path(project_path)
+            validate_project_path(project_path, must_exist=True, require_empty=False)
 
             # Check if git is available
             import shutil

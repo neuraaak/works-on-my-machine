@@ -95,7 +95,7 @@ class ProjectSetupInterface:
         """
         try:
             # Validate project path
-            validate_project_path(project_path)
+            validate_project_path(project_path, must_exist=True, require_empty=False)
             project_path = project_path.resolve()
 
             # Auto-detect project type if not provided

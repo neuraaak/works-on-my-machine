@@ -77,7 +77,7 @@ def get_assets_module_path() -> Path:
     Returns:
         Path: Path to the assets module directory.
     """
-    return Path(__file__).parent.parent / "assets"
+    return Path(__file__).parent.parent.parent / "assets"
 
 
 # ///////////////////////////////////////////////////////////////

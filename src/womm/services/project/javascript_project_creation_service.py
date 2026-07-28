@@ -149,7 +149,7 @@ class JavaScriptProjectCreationService:
             ProjectServiceError: If file creation or template processing fails
         """
         try:
-            validate_project_path(project_path)
+            validate_project_path(project_path, must_exist=True, require_empty=False)
             validate_project_name(project_name)
             validate_project_type(project_type)
 
@@ -216,7 +216,7 @@ class JavaScriptProjectCreationService:
             ProjectServiceError: If npm project initialization fails
         """
         try:
-            validate_project_path(project_path)
+            validate_project_path(project_path, must_exist=True, require_empty=False)
 
             # Check if npm is available
             if not check_npm_available():
@@ -262,7 +262,7 @@ class JavaScriptProjectCreationService:
             ProjectServiceError: If dependency installation fails
         """
         try:
-            validate_project_path(project_path)
+            validate_project_path(project_path, must_exist=True, require_empty=False)
             validate_project_type(project_type)
 
             success = install_npm_dependencies(project_path)
