@@ -143,9 +143,9 @@ class ProjectCreateInterface:
                     ),
                 )
 
-        except ValidationServiceError as e:
+        except (ValidationServiceError, ValueError, OSError) as e:
             logger.error(f"Validation error in create_project: {e}", exc_info=True)
-            error_message = e.reason or str(e) or "Project validation failed"
+            error_message = getattr(e, "reason", str(e)) or "Project validation failed"
             return ProjectCreationResult(
                 success=False,
                 project_path=project_path,
@@ -260,19 +260,7 @@ class ProjectCreateInterface:
                         error="Failed to setup virtual environment",
                     )
 
-                # Install development dependencies
-                deps_result = self._python_service.install_dev_dependencies(
-                    project_path
-                )
-                if not deps_result.success:
-                    return ProjectCreationResult(
-                        success=False,
-                        project_path=project_path,
-                        project_type="python",
-                        error="Failed to install development dependencies",
-                    )
-
-                # Setup development tools
+                # Setup development tools and install development dependencies
                 tools_result = self._python_service.setup_dev_tools(project_path)
                 if not tools_result.success:
                     return ProjectCreationResult(
@@ -283,7 +271,14 @@ class ProjectCreateInterface:
                     )
 
                 # Setup Git repository
-                self._python_service.setup_git_repository(project_path)
+                git_result = self._python_service.setup_git_repository(project_path)
+                if not git_result.success:
+                    return ProjectCreationResult(
+                        success=False,
+                        project_path=project_path,
+                        project_type="python",
+                        error="Failed to setup Git repository",
+                    )
 
             files_created = files_result.files_created or []
             tools_configured = (
@@ -342,7 +337,7 @@ class ProjectCreateInterface:
 
             # Create project structure
             structure_result = self._javascript_service.create_project_structure(
-                project_path, project_name
+                project_path, project_name, project_type
             )
             if not structure_result.success:
                 return ProjectCreationResult(
@@ -403,7 +398,14 @@ class ProjectCreateInterface:
                     )
 
                 # Setup Git repository
-                self._javascript_service.setup_git_repository(project_path)
+                git_result = self._javascript_service.setup_git_repository(project_path)
+                if not git_result.success:
+                    return ProjectCreationResult(
+                        success=False,
+                        project_path=project_path,
+                        project_type=project_type,
+                        error="Failed to setup Git repository",
+                    )
 
             files_created = files_result.files_created or []
             tools_configured = (
