@@ -193,12 +193,18 @@ class ProjectSetupInterface:
                 warnings=warnings if warnings else None,
             )
 
-        except (ProjectServiceError, ValidationServiceError) as e:
+        except (
+            ProjectServiceError,
+            ValidationServiceError,
+            ValueError,
+            OSError,
+        ) as e:
+            reason = getattr(e, "reason", str(e))
             return ProjectSetupResult(
                 success=False,
                 project_path=project_path if project_path else None,
                 project_type=project_type or "",
-                error=f"Failed to setup project: {e.reason}",
+                error=f"Failed to setup project: {reason}",
             )
         except Exception as e:
             logger.error(f"Unexpected error during project setup: {e}", exc_info=True)
@@ -311,8 +317,8 @@ class ProjectSetupInterface:
                 logger.warning(f"Failed to setup venv: {e}")
                 warnings.append(f"Virtual environment setup skipped: {e}")
 
-        # Install dependencies
-        if install_deps:
+        # setup_dev_tools installs the Python development dependencies itself.
+        if install_deps and not setup_dev_tools:
             try:
                 deps_result = self._python_service.install_dev_dependencies(
                     project_path
@@ -330,6 +336,8 @@ class ProjectSetupInterface:
             try:
                 dev_tools_result = self._python_service.setup_dev_tools(project_path)
                 if dev_tools_result.success:
+                    if install_deps:
+                        tools_configured.append("dependencies")
                     tools_configured.append("dev_tools")
                 else:
                     warnings.append("Dev tools setup failed")
