@@ -118,15 +118,15 @@ class ProjectDetectionService:
             # Check each project type
             detected_type = None
             detected_files_by_type: dict[str, list[str]] = {}
-            file_names = [item.name for item in project_files]
             dir_names = [item.name for item in project_dirs]
 
             for project_type, indicators in ProjectConfig.PROJECT_INDICATORS.items():
                 matches: list[str] = []
 
                 for marker in indicators.get("files", []):
-                    if marker in file_names:
-                        matches.append(marker)
+                    matches.extend(
+                        item.name for item in project_files if item.match(marker)
+                    )
 
                 for marker in indicators.get("dirs", []):
                     if marker in dir_names:
@@ -154,7 +154,7 @@ class ProjectDetectionService:
         except ProjectServiceError:
             # Re-raise as-is
             raise
-        except Exception as e:
+        except (OSError, TypeError, ValueError) as e:
             # Wrap unexpected external exceptions
             logger.exception("Unexpected error in detect_project_type")
             raise ProjectServiceError(
@@ -212,31 +212,25 @@ class ProjectDetectionService:
 
             # Analyze configuration files based on project type
             try:
+                config: dict[str, dict[str, str]] = {}
                 if project_type == "python":
                     config = analyze_python_config(project_path)
-                    if config and isinstance(config, dict):
-                        config_files.update(config.get("config_files", {}))
                 elif project_type == "javascript":
                     config = analyze_javascript_config(project_path)
-                    if config and isinstance(config, dict):
-                        config_files.update(config.get("config_files", {}))
                 elif project_type == "java":
                     config = analyze_java_config(project_path)
-                    if config and isinstance(config, dict):
-                        config_files.update(config.get("config_files", {}))
                 elif project_type == "go":
                     config = analyze_go_config(project_path)
-                    if config and isinstance(config, dict):
-                        config_files.update(config.get("config_files", {}))
                 elif project_type == "rust":
                     config = analyze_rust_config(project_path)
-                    if config and isinstance(config, dict):
-                        config_files.update(config.get("config_files", {}))
                 elif project_type == "csharp":
                     config = analyze_csharp_config(project_path)
-                    if config and isinstance(config, dict):
-                        config_files.update(config.get("config_files", {}))
-            except Exception as e:
+
+                for section in ("markers", "details"):
+                    values = config.get(section, {})
+                    if isinstance(values, dict):
+                        config_files.update(values)
+            except (OSError, TypeError, ValueError) as e:
                 logger.warning(
                     f"Failed to analyze configuration for {project_type}: {e}"
                 )
@@ -246,7 +240,7 @@ class ProjectDetectionService:
                 success=True,
                 message="Project configuration detection completed",
                 project_type=project_type,
-                confidence=100.0,
+                confidence=100.0 if project_type != "unknown" else 0.0,
                 detected_files=[],
                 configuration_files=config_files,
             )
@@ -254,7 +248,7 @@ class ProjectDetectionService:
         except ProjectServiceError:
             # Re-raise as-is
             raise
-        except Exception as e:
+        except (OSError, TypeError, ValueError) as e:
             # Wrap unexpected external exceptions
             logger.exception("Unexpected error in detect_project_config")
             raise ProjectServiceError(
@@ -350,7 +344,7 @@ class ProjectDetectionService:
         except ProjectServiceError:
             # Re-raise as-is
             raise
-        except Exception as e:
+        except (OSError, TypeError, ValueError) as e:
             # Wrap unexpected external exceptions
             logger.exception("Unexpected error in detect_project_structure")
             raise ProjectServiceError(
