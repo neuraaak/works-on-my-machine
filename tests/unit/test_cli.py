@@ -12,7 +12,26 @@ from __future__ import annotations
 from click.testing import CliRunner
 
 # Local imports
+from womm import cli
 from womm.cli import womm
+
+
+def test_windows_console_configuration_uses_utf8(monkeypatch) -> None:
+    configured_encodings: list[str] = []
+
+    class Stream:
+        def reconfigure(self, *, encoding: str) -> None:
+            configured_encodings.append(encoding)
+
+    monkeypatch.setattr(cli.sys, "platform", "win32")
+    monkeypatch.setattr(cli.sys, "stdout", Stream())
+    monkeypatch.setattr(cli.sys, "stderr", Stream())
+    monkeypatch.setenv("PYTHONIOENCODING", "cp1252")
+
+    cli._configure_windows_console()
+
+    assert configured_encodings == ["utf-8", "utf-8"]
+    assert cli.os.environ["PYTHONIOENCODING"] == "utf-8"
 
 
 def test_help_registers_all_operational_command_groups() -> None:

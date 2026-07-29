@@ -27,9 +27,24 @@ from .commands.tools import lint_group
 from .shared import startup as _startup  # noqa: F401
 from .ui.common import ezpl_bridge, ezprinter
 
-# Force UTF-8 encoding on Windows.
-if sys.platform == "win32":
+# ///////////////////////////////////////////////////////////////
+# CONSOLE CONFIGURATION
+# ///////////////////////////////////////////////////////////////
+
+
+def _configure_windows_console() -> None:
+    """Configure existing Windows console streams for UTF-8 output."""
+    if sys.platform != "win32":
+        return
+
     os.environ["PYTHONIOENCODING"] = "utf-8"
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is not None:
+            reconfigure(encoding="utf-8")
+
+
+_configure_windows_console()
 
 
 # ///////////////////////////////////////////////////////////////
