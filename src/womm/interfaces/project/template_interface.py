@@ -31,9 +31,9 @@ from pathlib import Path
 # Local imports
 from ...exceptions.common import ValidationServiceError
 from ...services import ProjectDetectionService, TemplateService
+from ...shared.paths import user_templates_dir
 from ...shared.results import ProjectDetectionResult, TemplateResult
 from ...utils.common import safe_rmtree
-from ...utils.womm_setup import get_womm_installation_path
 
 # ///////////////////////////////////////////////////////////////
 # LOGGER SETUP
@@ -57,10 +57,9 @@ class TemplateInterface:
         """Initialize the template interface."""
         self._template_service = TemplateService()
         self._detection_service = ProjectDetectionService()
-        # Use the actual installation path instead of hardcoded ~/.womm
-        installation_path = get_womm_installation_path()
-        self._templates_dir = installation_path / ".templates"
-        self._templates_dir.mkdir(parents=True, exist_ok=True)
+        # User templates are data: they live under the data directory, and
+        # its creation is owned by shared.paths — not by this constructor.
+        self._templates_dir = user_templates_dir()
         self.logger = logging.getLogger(__name__)
 
     # ///////////////////////////////////////////////////////////////

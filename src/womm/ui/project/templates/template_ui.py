@@ -25,7 +25,7 @@ from rich.panel import Panel
 from rich.table import Table
 
 # Local imports
-from ....utils.womm_setup import get_womm_installation_path
+from ....shared.paths import user_templates_dir
 from ...common.ezpl_bridge import ezconsole
 
 # ///////////////////////////////////////////////////////////////
@@ -96,7 +96,7 @@ Template '{template_name}' created successfully!
 
 Source Project: {source_project}
 Files Processed: {file_count}
-Location: ~/.womm/.templates/{template_name}
+Location: ~/.womm/templates/{template_name}
 
 Next Steps:
 • Use 'womm template list' to see all templates
@@ -277,8 +277,7 @@ def interactive_template_delete(templates: dict[str, list[str]]) -> list[str] | 
 def _get_template_info(template_name: str) -> dict[str, str | list | int] | None:
     """Get template information from template.json file."""
     try:
-        installation_path = get_womm_installation_path()
-        template_dir = installation_path / ".templates" / template_name
+        template_dir = user_templates_dir() / template_name
         template_json = template_dir / "template.json"
 
         if template_json.exists():

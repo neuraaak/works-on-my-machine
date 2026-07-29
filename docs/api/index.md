@@ -111,7 +111,7 @@ Auto-detects project types based on file signatures.
 #### **Storage Structure**
 
 ```text
-~/.womm/.templates/
+~/.womm/templates/
 ├── template-name/
 │   ├── template.json          # Metadata
 │   ├── file1.py.template      # Template files

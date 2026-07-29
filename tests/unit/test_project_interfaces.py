@@ -41,6 +41,7 @@ from womm.interfaces.project.detection_interface import ProjectDetectionInterfac
 from womm.interfaces.project.manager_interface import ProjectManagerInterface
 from womm.interfaces.project.setup_interface import ProjectSetupInterface
 from womm.interfaces.project.template_interface import TemplateInterface
+from womm.shared.paths import WOMM_HOME_ENV, user_templates_dir
 from womm.shared.results.project_results import (
     ProjectCreationResult,
     ProjectDetectionResult,
@@ -379,11 +380,22 @@ def test_setup_project_unsupported_type_returns_failed_result(tmp_path: Path):
 
 @pytest.fixture
 def template_interface(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr(
-        "womm.interfaces.project.template_interface.get_womm_installation_path",
-        lambda: tmp_path,
-    )
+    monkeypatch.setenv(WOMM_HOME_ENV, str(tmp_path))
     return TemplateInterface()
+
+
+def test_templates_live_in_the_data_directory(
+    template_interface: TemplateInterface, tmp_path: Path
+):
+    """User templates are data: they follow ``~/.womm``, not the code."""
+    assert template_interface._templates_dir == tmp_path / "templates"
+    assert template_interface._templates_dir == user_templates_dir()
+
+
+def test_templates_dir_exists_after_construction(
+    template_interface: TemplateInterface,
+):
+    assert template_interface._templates_dir.is_dir()
 
 
 def test_list_templates_empty_by_default(template_interface: TemplateInterface):

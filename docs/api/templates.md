@@ -41,7 +41,7 @@ TemplateManager (Main Controller)
 ### **Storage Architecture**
 
 ```text
-~/.womm/.templates/
+~/.womm/templates/
 ├── template-name-1/
 │   ├── template.json              # Metadata
 │   ├── pyproject.toml.template    # Template files
@@ -143,8 +143,7 @@ Each template includes a `template.json` file with comprehensive metadata.
 ```python
 def __init__(self):
     """Initialize the template manager."""
-    self.templates_dir = Path.home() / ".womm" / ".templates"
-    self.templates_dir.mkdir(parents=True, exist_ok=True)
+    self.templates_dir = user_templates_dir()
     self.template_cache: Dict[str, Dict] = {}
 ```
 

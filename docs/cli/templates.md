@@ -277,12 +277,12 @@ email = "{{AUTHOR_EMAIL}}"
 
 ### **Storage Location**
 
-Templates are stored in: `~/.womm/.templates/`
+Templates are stored in: `~/.womm/templates/`
 
 ### **Template Structure**
 
 ```text
-~/.womm/.templates/
+~/.womm/templates/
 ├── template-name/
 │   ├── template.json          # Template metadata
 │   ├── file1.py.template      # Template files
@@ -390,10 +390,10 @@ womm template info template-name
 
 ```bash
 # Check template directory permissions
-ls -la ~/.womm/.templates/
+ls -la ~/.womm/templates/
 
 # Fix permissions if needed
-chmod 755 ~/.womm/.templates/
+chmod 755 ~/.womm/templates/
 ```
 
 **Variable substitution issues:**
@@ -403,7 +403,7 @@ chmod 755 ~/.womm/.templates/
 womm template info template-name
 
 # Verify variable syntax in template files
-cat ~/.womm/.templates/template-name/template.json
+cat ~/.womm/templates/template-name/template.json
 ```
 
 ### **Debug Mode**
@@ -472,7 +472,7 @@ cd team-standard
 womm template create --from-project ./team-standard --description "Team standard Python project"
 
 # 4. Share with team (templates are stored locally)
-# Team members can copy ~/.womm/.templates/team-standard/ to their machines
+# Team members can copy ~/.womm/templates/team-standard/ to their machines
 ```
 
 ---
