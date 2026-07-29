@@ -21,6 +21,7 @@ from __future__ import annotations
 # Standard library imports
 import json
 from datetime import datetime, timedelta
+from pathlib import Path
 
 # Third-party imports
 import pytest
@@ -31,6 +32,7 @@ from womm.interfaces.context.script_detector_interface import (
     ContextScriptDetectorInterface,
     ScriptType,
 )
+from womm.shared.paths import WOMM_HOME_ENV, registry_backups_dir
 from womm.shared.results import (
     BackupCleanupResult,
     BackupDataResult,
@@ -58,6 +60,40 @@ def manager(tmp_path):
     interface = ContextRegistryInterface()
     interface.backup_dir = tmp_path
     return interface
+
+
+# ///////////////////////////////////////////////////////////////
+# BACKUP DIRECTORY LOCATION
+# ///////////////////////////////////////////////////////////////
+
+
+def test_backup_directory_resolves_under_the_data_dir(tmp_path, monkeypatch):
+    """Registry backups are data: they follow ``~/.womm``, not the code."""
+    monkeypatch.setenv(WOMM_HOME_ENV, str(tmp_path))
+
+    directory = ContextRegistryInterface().get_backup_directory()
+
+    assert directory == tmp_path / "backups" / "registry"
+    assert directory == registry_backups_dir()
+    assert directory.is_dir()
+
+
+def test_backup_directory_no_longer_depends_on_an_existing_install(
+    tmp_path, monkeypatch
+):
+    """The old code fell back to the CWD when ``~/.womm`` was absent.
+
+    The data directory is now created on demand, so a fresh machine gets a
+    real backup location instead of scattering backups into whatever
+    directory the user happened to run womm from.
+    """
+    fresh = tmp_path / "never-created"
+    monkeypatch.setenv(WOMM_HOME_ENV, str(fresh))
+
+    directory = ContextRegistryInterface().get_backup_directory()
+
+    assert directory != Path(".")
+    assert directory.is_dir()
 
 
 def _write_backup(directory, name, entries=None, metadata=None):

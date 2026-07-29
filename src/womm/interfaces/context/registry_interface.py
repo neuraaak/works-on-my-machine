@@ -29,6 +29,7 @@ from pathlib import Path
 # Local imports
 from ...shared.configs.context import ContextTypesConfig
 from ...shared.configs.womm_setup import WOMMDeploymentConfig
+from ...shared.paths import registry_backups_dir
 from ...shared.results import (
     BackupCleanupResult,
     BackupDataResult,
@@ -36,7 +37,6 @@ from ...shared.results import (
     BackupFileListResult,
     BackupFileResult,
 )
-from ..womm_setup.installer_interface import get_default_womm_path
 
 # ///////////////////////////////////////////////////////////////
 # MAIN CLASS
@@ -68,15 +68,12 @@ class ContextRegistryInterface:
         """
         Get the backup directory path, creating it if needed.
 
-        Falls back to the current directory when the WOMM installation is
-        unreachable; never raises.
+        Registry backups are user data: they live under ``~/.womm/backups/
+        registry``. Falls back to the current directory only when that
+        location is unwritable; never raises.
         """
         try:
-            womm_path = get_default_womm_path()
-            if womm_path.exists():
-                backup_dir = womm_path / ".backup" / "context_menu"
-                backup_dir.mkdir(parents=True, exist_ok=True)
-                return backup_dir
+            return registry_backups_dir()
         except OSError as e:
             self.logger.warning(f"Could not access WOMM backup directory: {e}")
 
