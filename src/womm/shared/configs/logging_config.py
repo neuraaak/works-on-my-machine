@@ -23,7 +23,7 @@ from pathlib import Path
 from typing import ClassVar
 
 # Local imports
-from ...utils.womm_setup import get_womm_installation_path
+from ..paths import logs_dir
 
 # ///////////////////////////////////////////////////////////////
 # CLASS DEFINITION
@@ -41,7 +41,6 @@ class LoggingConfig:
     # LOG DIRECTORY AND FILE
     # ///////////////////////////////////////////////////////////
 
-    LOG_DIR_NAME: ClassVar[str] = ".logs"
     LOG_FILE_NAME: ClassVar[str] = "womm.log"
 
     # ///////////////////////////////////////////////////////////
@@ -66,18 +65,20 @@ class LoggingConfig:
     def get_log_dir(cls) -> Path:
         """Return the default directory used for WOMM log files.
 
-        Uses the installation path and stores logs under ``.logs/``.
+        Logs are user data: they live under the data directory
+        (``~/.womm/logs``, honoring ``$WOMM_HOME``), never alongside the
+        installed code.
 
         Returns:
             Path to log directory
         """
-        return get_womm_installation_path() / cls.LOG_DIR_NAME
+        return logs_dir()
 
     @classmethod
     def get_log_file(cls) -> Path:
         """Return the default log file path for WOMM.
 
-        By default this is ``<install>/.logs/womm.log``.
+        By default this is ``~/.womm/logs/womm.log``.
 
         Returns:
             Path to log file

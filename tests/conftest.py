@@ -16,12 +16,28 @@ from __future__ import annotations
 # IMPORTS
 # ///////////////////////////////////////////////////////////////
 # Standard library imports
+import os
+import shutil
 import tempfile
 from collections.abc import Generator
 from pathlib import Path
 
 # Third-party imports
 import pytest
+
+# ///////////////////////////////////////////////////////////////
+# DATA DIRECTORY ISOLATION
+# ///////////////////////////////////////////////////////////////
+
+# Redirect the WOMM data directory onto a throwaway location for the whole
+# session. This runs at *import* time, not in a fixture, on purpose: modules
+# such as ``ui.common.ezpl_bridge`` resolve the log directory at import, which
+# happens while pytest collects test modules — before any fixture could run.
+# Without this, running the suite would write into the developer's real
+# ``~/.womm``. ``setdefault`` leaves an explicit override in place.
+_WOMM_HOME_ENV = "WOMM_HOME"
+_TEST_WOMM_HOME = tempfile.mkdtemp(prefix="womm-test-home-")
+os.environ.setdefault(_WOMM_HOME_ENV, _TEST_WOMM_HOME)
 
 # ///////////////////////////////////////////////////////////////
 # FIXTURES - TEMPORARY RESOURCES
@@ -388,6 +404,19 @@ def pytest_configure(config: pytest.Config) -> None:
     config.addinivalue_line("markers", "windows: mark test as Windows specific")
     config.addinivalue_line("markers", "linux: mark test as Linux specific")
     config.addinivalue_line("markers", "macos: mark test as macOS specific")
+
+
+def pytest_sessionfinish(
+    session: pytest.Session,  # noqa: ARG001
+    exitstatus: int,  # noqa: ARG001
+) -> None:
+    """Remove the throwaway data directory created for the session.
+
+    Args:
+        session: Pytest session object (required by the hook signature)
+        exitstatus: Session exit status (required by the hook signature)
+    """
+    shutil.rmtree(_TEST_WOMM_HOME, ignore_errors=True)
 
 
 def pytest_collection_modifyitems(
