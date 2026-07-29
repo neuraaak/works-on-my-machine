@@ -505,3 +505,29 @@ def test_manager_create_project_unsupported_type():
 
     assert not result.success
     assert "Unsupported project type" in result.error
+
+
+def test_manager_forwards_force_once_to_creation_interface(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    manager = ProjectManagerInterface()
+    captured: dict[str, object] = {}
+
+    def create_project(**kwargs: object) -> ProjectCreationResult:
+        captured.update(kwargs)
+        return ProjectCreationResult(success=True)
+
+    monkeypatch.setattr(manager, "_check_dependencies", lambda _type: "")
+    monkeypatch.setattr(manager._create_interface, "create_project", create_project)
+
+    result = manager.create_project(
+        project_type="python",
+        project_name="demo",
+        target=str(tmp_path),
+        force=True,
+        minimal=True,
+    )
+
+    assert result.success
+    assert captured["force"] is True
+    assert captured["minimal"] is True

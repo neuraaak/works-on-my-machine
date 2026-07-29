@@ -162,12 +162,13 @@ class ProjectManagerInterface:
             js_type = project_type
 
         resolved_project_name = project_name or project_path.name
+        force = kwargs.pop("force", False)
         return self._create_interface.create_project(
             project_type=js_type,
             project_name=resolved_project_name,
             project_path=project_path,
             dry_run=dry_run,
-            force=kwargs.get("force", False),
+            force=force,
             minimal=minimal,
             **kwargs,
         )
