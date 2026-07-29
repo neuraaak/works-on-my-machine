@@ -31,6 +31,7 @@ from womm.exceptions.system import SystemServiceError
 from womm.interfaces.system.detector_interface import SystemDetectorInterface
 from womm.interfaces.system.environment_interface import SystemEnvironmentInterface
 from womm.interfaces.system.path_interface import SystemPathInterface
+from womm.shared.paths import WOMM_HOME_ENV, path_backups_dir
 from womm.shared.results import (
     EnvironmentRefreshResult,
     EnvironmentVerificationResult,
@@ -224,10 +225,38 @@ class _FakePathService:
         return self._remove
 
 
+@pytest.fixture(autouse=True)
+def _isolated_womm_home(tmp_path, monkeypatch):
+    """Keep PATH backups inside the test's own data directory."""
+    monkeypatch.setenv(WOMM_HOME_ENV, str(tmp_path))
+
+
 def _make_path_interface(tmp_path, platform: str = "Linux") -> SystemPathInterface:
     interface = SystemPathInterface(target=str(tmp_path))
     interface.platform = platform
     return interface
+
+
+def test_path_backups_live_in_the_data_directory(tmp_path):
+    """Backups are user data: they no longer follow the install target.
+
+    The target directory and the backup location were the same value; a
+    ``--target`` pointing anywhere would drag the backups along with it.
+    """
+    interface = _make_path_interface(tmp_path)
+
+    assert interface.backup_dir == path_backups_dir()
+    assert interface.backup_dir == tmp_path / "backups" / "path"
+    assert interface.backup_dir.is_dir()
+
+
+def test_path_backups_are_independent_of_the_target(tmp_path):
+    """A custom target no longer relocates the backups."""
+    elsewhere = tmp_path / "some-install-target"
+    interface = SystemPathInterface(target=str(elsewhere))
+
+    assert interface.backup_dir == path_backups_dir()
+    assert elsewhere not in interface.backup_dir.parents
 
 
 # ///////////////////////////////////////////////////////////////
@@ -331,7 +360,7 @@ class TestSystemPathInterfaceBackups:
     def test_list_backups_reads_valid_backup_files(self, tmp_path):
         """A valid backup JSON file is surfaced with its entry count."""
         interface = _make_path_interface(tmp_path)
-        interface.backup_dir.mkdir(parents=True)
+        interface.backup_dir.mkdir(parents=True, exist_ok=True)
         backup_file = interface.backup_dir / ".path_20260101_000000.json"
         backup_file.write_text(json.dumps({"entries": ["/a", "/b"]}), encoding="utf-8")
 
@@ -344,7 +373,7 @@ class TestSystemPathInterfaceBackups:
     def test_list_backups_skips_corrupt_files(self, tmp_path):
         """A corrupt backup file is skipped rather than failing the whole listing."""
         interface = _make_path_interface(tmp_path)
-        interface.backup_dir.mkdir(parents=True)
+        interface.backup_dir.mkdir(parents=True, exist_ok=True)
         (interface.backup_dir / ".path_bad.json").write_text(
             "not json", encoding="utf-8"
         )

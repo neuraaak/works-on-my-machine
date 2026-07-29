@@ -31,6 +31,7 @@ from pathlib import Path
 from ...exceptions.common import ValidationServiceError
 from ...exceptions.system import SystemServiceError
 from ...services import CommandRunnerService, SystemPathService
+from ...shared.paths import path_backups_dir
 from ...shared.results import (
     PathBackupInfo,
     PathBackupListResult,
@@ -73,7 +74,9 @@ class SystemPathInterface:
         else:
             self.target_path = get_womm_installation_path()
 
-        self.backup_dir = self.target_path / ".backup"
+        # PATH backups are user data: they belong to the data directory, not
+        # to whatever target the caller asked to modify.
+        self.backup_dir = path_backups_dir()
         self.latest_backup = self.backup_dir / ".path.json"
         self.platform = platform.system()
 
