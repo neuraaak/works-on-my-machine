@@ -80,22 +80,26 @@ def _data_subdir(*parts: str) -> Path:
 # ///////////////////////////////////////////////////////////////
 
 
-def womm_data_dir() -> Path:
-    """Get the WOMM data directory, creating it if absent.
+def womm_data_path() -> Path:
+    """Resolve the WOMM data directory without creating it.
 
     Honors ``$WOMM_HOME`` when set to a non-blank value; otherwise defaults
-    to ``~/.womm``. This directory holds user data only — never code.
+    to ``~/.womm``. This path holds user data only — never code.
 
     Returns:
-        Path: The existing data directory.
+        Path: The data directory location.
     """
     override = os.environ.get(WOMM_HOME_ENV, "").strip()
-    root = (
+    return (
         Path(override).expanduser().resolve()
         if override
         else Path.home() / DEFAULT_DATA_DIRNAME
     )
-    return _ensure_dir(root)
+
+
+def womm_data_dir() -> Path:
+    """Get the WOMM data directory, creating it if absent."""
+    return _ensure_dir(womm_data_path())
 
 
 def logs_dir() -> Path:
@@ -161,5 +165,6 @@ __all__ = [
     "registry_backups_dir",
     "state_file",
     "user_templates_dir",
+    "womm_data_path",
     "womm_data_dir",
 ]

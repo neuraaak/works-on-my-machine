@@ -20,7 +20,7 @@ import click
 
 # Local imports
 from . import __version__
-from .commands.core import path_cmd
+from .commands.core import doctor_cmd, path_cmd
 from .commands.project import create_group, setup_group, template_group
 from .commands.system import context_group, deps_group, system_group
 from .commands.tools import lint_group
@@ -106,6 +106,7 @@ def womm(
 
 
 for command in (
+    doctor_cmd,
     path_cmd,
     create_group,
     lint_group,

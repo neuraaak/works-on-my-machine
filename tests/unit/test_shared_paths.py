@@ -39,6 +39,7 @@ from womm.shared.paths import (
     state_file,
     user_templates_dir,
     womm_data_dir,
+    womm_data_path,
 )
 
 # ///////////////////////////////////////////////////////////////
@@ -68,6 +69,11 @@ def test_data_dir_defaults_to_dot_womm_in_home(tmp_path, monkeypatch):
 
 def test_data_dir_honors_womm_home_override(womm_home):
     assert womm_data_dir() == womm_home
+
+
+def test_data_path_does_not_create_the_data_directory(womm_home):
+    assert womm_data_path() == womm_home
+    assert not womm_home.exists()
 
 
 def test_data_dir_is_created_on_access(womm_home):
