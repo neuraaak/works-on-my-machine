@@ -540,10 +540,10 @@ class TestRestoreEntries:
 class TestQuickSetupTools:
     """Boundary behaviour of ContextMenuInterface.quick_setup_tools()."""
 
-    def test_womm_py_not_found_is_a_failure_result(self, monkeypatch, tmp_path):
+    def test_womm_executable_not_found_is_a_failure_result(self, monkeypatch, tmp_path):
         monkeypatch.setattr(
-            "womm.utils.womm_setup.common_utils.get_current_womm_path",
-            lambda: tmp_path / "womm",
+            "womm.interfaces.context.menu_interface.get_womm_executable",
+            lambda: tmp_path / "womm.exe",
         )
         interface = _interface()
 
@@ -551,14 +551,14 @@ class TestQuickSetupTools:
 
         assert isinstance(result, ContextSetupResult)
         assert result.success is False
-        assert "womm.py" in result.error
+        assert "executable" in result.error
 
     def test_location_error_is_translated_not_reraised(self, monkeypatch):
         def _boom():
             raise OSError("cannot resolve path")
 
         monkeypatch.setattr(
-            "womm.utils.womm_setup.common_utils.get_current_womm_path", _boom
+            "womm.interfaces.context.menu_interface.get_womm_executable", _boom
         )
         interface = _interface()
 
@@ -568,11 +568,11 @@ class TestQuickSetupTools:
         assert "cannot resolve path" in result.error
 
     def test_success_registers_the_womm_cli_tool(self, monkeypatch, tmp_path):
-        womm_py = tmp_path / "womm.py"
-        womm_py.write_text("# entrypoint")
+        executable = tmp_path / "womm.exe"
+        executable.write_text("entrypoint")
         monkeypatch.setattr(
-            "womm.utils.womm_setup.common_utils.get_current_womm_path",
-            lambda: tmp_path / "womm",
+            "womm.interfaces.context.menu_interface.get_womm_executable",
+            lambda: executable,
         )
         interface = _interface()
 

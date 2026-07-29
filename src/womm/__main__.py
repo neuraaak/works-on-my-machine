@@ -27,10 +27,9 @@ import sys
 def main() -> None:
     """Main entry point for the womm package."""
     try:
-        # Import and run the CLI directly
-        from .cli import womm
+        from .cli import main as cli_main
 
-        womm()
+        cli_main()
     except ImportError as e:
         print("Error: Could not import womm package", file=sys.stderr)
         print("Make sure the womm package is properly installed", file=sys.stderr)

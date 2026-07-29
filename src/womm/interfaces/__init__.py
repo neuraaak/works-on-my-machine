@@ -45,9 +45,6 @@ from .system import (
     SystemPathInterface,
 )
 
-# Local imports - Womm deployment interfaces
-from .womm_setup import WommInstallerInterface, WommUninstallerInterface
-
 # ///////////////////////////////////////////////////////////////
 # PUBLIC API
 # ///////////////////////////////////////////////////////////////
@@ -71,7 +68,4 @@ __all__ = [
     "SystemEnvironmentInterface",
     "SystemPathInterface",
     "TemplateInterface",
-    # Womm deployment interfaces
-    "WommInstallerInterface",
-    "WommUninstallerInterface",
 ]

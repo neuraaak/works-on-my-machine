@@ -28,7 +28,6 @@ from pathlib import Path
 
 # Local imports
 from ...shared.configs.context import ContextTypesConfig
-from ...shared.configs.womm_setup import WOMMDeploymentConfig
 from ...shared.paths import registry_backups_dir
 from ...shared.results import (
     BackupCleanupResult,
@@ -48,6 +47,9 @@ class ContextRegistryInterface:
 
     # Backup file format version
     BACKUP_VERSION = "1.0"
+
+    BACKUP_REQUIRED_KEYS = ("metadata", "entries")
+    BACKUP_REQUIRED_METADATA = ("version", "timestamp", "total_entries")
 
     # Maximum number of backup files to keep
     MAX_BACKUP_FILES = 10
@@ -303,15 +305,13 @@ class ContextRegistryInterface:
             )
 
         # Check required top-level keys
-        required_keys = WOMMDeploymentConfig.get_backup_required_keys()
-        for key in required_keys:
+        for key in self.BACKUP_REQUIRED_KEYS:
             if key not in data:
                 raise ValueError(f"Missing required key: {key}")
 
         # Validate metadata
         metadata = data["metadata"]
-        required_metadata = WOMMDeploymentConfig.get_backup_required_metadata()
-        for key in required_metadata:
+        for key in self.BACKUP_REQUIRED_METADATA:
             if key not in metadata:
                 raise ValueError(f"Missing metadata key: {key}")
 

@@ -47,13 +47,6 @@ from .dependency_results import (
     DependencyStatusResult,
 )
 from .file_results import FileOperationResult, FileScanResult, FileSearchResult
-from .installation_results import (
-    InstallationResult,
-    InstallPlanResult,
-    UninstallationResult,
-    UninstallPlanResult,
-    WOMMInstallerVerificationResult,
-)
 from .lint_results import LintSummaryResult, ToolResult, ToolStatusResult
 from .project_results import (
     ConfigurationResult,
@@ -118,8 +111,6 @@ __all__ = [
     "FileOperationResult",
     "FileScanResult",
     "FileSearchResult",
-    "InstallPlanResult",
-    "InstallationResult",
     "LintSummaryResult",
     "PathBackupInfo",
     "PathBackupListResult",
@@ -143,8 +134,5 @@ __all__ = [
     "TemplateResult",
     "ToolResult",
     "ToolStatusResult",
-    "UninstallPlanResult",
-    "UninstallationResult",
     "ValidationResult",
-    "WOMMInstallerVerificationResult",
 ]

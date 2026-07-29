@@ -37,13 +37,13 @@ from ...shared.results.system_results import (
     EnvironmentRefreshResult,
     EnvironmentVerificationResult,
 )
+from ...utils.common import get_bin_module_path
 from ...utils.system import (
     combine_paths,
     get_environment_info,
     get_shell_config_files,
     read_windows_registry_path,
 )
-from ...utils.womm_setup import get_default_womm_path
 from ..common.command_runner_service import CommandRunnerService
 
 # ///////////////////////////////////////////////////////////////
@@ -237,14 +237,8 @@ class SystemEnvironmentService:
             EnvironmentVerificationResult: Result of the verification operation
         """
         try:
-            # Get RefreshEnv.cmd path from installed location
-            # Files are installed in target_path/womm/bin/ (not target_path/bin/)
-            target_path = get_default_womm_path()
             refresh_env_cmd = (
-                target_path
-                / "womm"
-                / "bin"
-                / SystemEnvironmentConfig.REFRESH_ENV_SCRIPT_NAME
+                get_bin_module_path() / SystemEnvironmentConfig.REFRESH_ENV_SCRIPT_NAME
             )
 
             if not refresh_env_cmd.exists() or not refresh_env_cmd.is_file():

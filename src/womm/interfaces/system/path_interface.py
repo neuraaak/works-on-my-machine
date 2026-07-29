@@ -38,7 +38,6 @@ from ...shared.results import (
     PathBackupResult,
     PathOperationResult,
 )
-from ...utils.womm_setup import get_womm_installation_path
 
 # ///////////////////////////////////////////////////////////////
 # LOGGER SETUP
@@ -60,22 +59,10 @@ class SystemPathInterface:
     propagate.
     """
 
-    def __init__(self, target: str | None = None) -> None:
-        """Initialize the PATH interface.
-
-        Args:
-            target: Custom target directory (default: WOMM installation path)
-        """
+    def __init__(self) -> None:
+        """Initialize PATH backup and modification services."""
         self._path_service = SystemPathService()
         self._command_runner = CommandRunnerService()
-
-        if target:
-            self.target_path = Path(target).expanduser().resolve()
-        else:
-            self.target_path = get_womm_installation_path()
-
-        # PATH backups are user data: they belong to the data directory, not
-        # to whatever target the caller asked to modify.
         self.backup_dir = path_backups_dir()
         self.latest_backup = self.backup_dir / ".path.json"
         self.platform = platform.system()
@@ -84,14 +71,14 @@ class SystemPathInterface:
     # PUBLIC METHODS - PATH MODIFICATION
     # ///////////////////////////////////////////////////////////////
 
-    def add_to_path(self) -> PathOperationResult:
+    def add_to_path(self, entry: Path) -> PathOperationResult:
         """
-        Add WOMM to PATH environment variable.
+        Add an explicit entry to PATH environment variable.
 
         Returns:
             PathOperationResult: success/failure; failure carries the error.
         """
-        womm_path = str(self.target_path)
+        entry_path = str(entry.expanduser().resolve())
 
         try:
             current_path_result = self._path_service.get_current_system_path()
@@ -100,7 +87,7 @@ class SystemPathInterface:
                 success=False,
                 message="Failed to get current PATH",
                 error=str(e),
-                entry_path=womm_path,
+                entry_path=entry_path,
                 operation="add",
             )
 
@@ -109,7 +96,7 @@ class SystemPathInterface:
                 success=False,
                 message=current_path_result.message or "Failed to get current PATH",
                 error=current_path_result.error or "",
-                entry_path=womm_path,
+                entry_path=entry_path,
                 operation="add",
             )
 
@@ -118,36 +105,36 @@ class SystemPathInterface:
 
         try:
             if self.platform == "Windows":
-                return self._path_service.setup_windows_path(womm_path, original_path)
-            return self._path_service.setup_unix_path(womm_path, original_path)
+                return self._path_service.setup_windows_path(entry_path, original_path)
+            return self._path_service.setup_unix_path(entry_path, original_path)
         except (SystemServiceError, ValidationServiceError) as e:
             return PathOperationResult(
                 success=False,
-                message="Failed to add WOMM to PATH",
+                message="Failed to add entry to PATH",
                 error=str(e),
-                entry_path=womm_path,
+                entry_path=entry_path,
                 operation="add",
             )
 
-    def remove_from_path(self) -> PathOperationResult:
+    def remove_from_path(self, entry: Path) -> PathOperationResult:
         """
-        Remove WOMM from PATH environment variable.
+        Remove an explicit entry from PATH environment variable.
 
         Returns:
             PathOperationResult: success/failure; failure carries the error.
         """
-        womm_path = str(self.target_path)
+        entry_path = str(entry.expanduser().resolve())
 
         try:
             if self.platform == "Windows":
-                return self._path_service.remove_from_windows_path(womm_path)
-            return self._path_service.remove_from_unix_path(womm_path)
+                return self._path_service.remove_from_windows_path(entry_path)
+            return self._path_service.remove_from_unix_path(entry_path)
         except (SystemServiceError, ValidationServiceError) as e:
             return PathOperationResult(
                 success=False,
-                message="Failed to remove WOMM from PATH",
+                message="Failed to remove entry from PATH",
                 error=str(e),
-                entry_path=womm_path,
+                entry_path=entry_path,
                 operation="remove",
             )
 
@@ -258,7 +245,6 @@ class SystemPathInterface:
             "version": 1,
             "timestamp": timestamp,
             "platform": self.platform,
-            "target": str(self.target_path),
             "separator": sep,
             "path_string": current_path,
             "entries": entries,

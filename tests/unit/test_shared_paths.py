@@ -8,7 +8,7 @@
 Tests for ``womm.shared.paths``.
 
 This module is the single authority on *where things live*. It answers two
-questions that used to be conflated by ``get_womm_installation_path()``:
+questions that the legacy self-installer used to conflate:
 where the mutable user data lives (``~/.womm``, overridable via
 ``$WOMM_HOME``) and where the immutable packaged assets live (the package
 itself, read through ``importlib.resources``).

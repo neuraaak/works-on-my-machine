@@ -231,32 +231,19 @@ def _isolated_womm_home(tmp_path, monkeypatch):
     monkeypatch.setenv(WOMM_HOME_ENV, str(tmp_path))
 
 
-def _make_path_interface(tmp_path, platform: str = "Linux") -> SystemPathInterface:
-    interface = SystemPathInterface(target=str(tmp_path))
+def _make_path_interface(platform: str = "Linux") -> SystemPathInterface:
+    interface = SystemPathInterface()
     interface.platform = platform
     return interface
 
 
 def test_path_backups_live_in_the_data_directory(tmp_path):
-    """Backups are user data: they no longer follow the install target.
-
-    The target directory and the backup location were the same value; a
-    ``--target`` pointing anywhere would drag the backups along with it.
-    """
-    interface = _make_path_interface(tmp_path)
+    """Backups are user data, independent from installation locations."""
+    interface = _make_path_interface()
 
     assert interface.backup_dir == path_backups_dir()
     assert interface.backup_dir == tmp_path / "backups" / "path"
     assert interface.backup_dir.is_dir()
-
-
-def test_path_backups_are_independent_of_the_target(tmp_path):
-    """A custom target no longer relocates the backups."""
-    elsewhere = tmp_path / "some-install-target"
-    interface = SystemPathInterface(target=str(elsewhere))
-
-    assert interface.backup_dir == path_backups_dir()
-    assert elsewhere not in interface.backup_dir.parents
 
 
 # ///////////////////////////////////////////////////////////////
@@ -269,7 +256,7 @@ class TestSystemPathInterfaceModify:
 
     def test_add_to_path_success_passes_result_through(self, tmp_path):
         """A successful service result is returned unchanged."""
-        interface = _make_path_interface(tmp_path)
+        interface = _make_path_interface()
         interface._path_service = _FakePathService(
             current=PathOperationResult(success=True, path_entries=["/a"]),
             setup=PathOperationResult(
@@ -277,7 +264,7 @@ class TestSystemPathInterfaceModify:
             ),
         )
 
-        result = interface.add_to_path()
+        result = interface.add_to_path(tmp_path)
 
         assert isinstance(result, PathOperationResult)
         assert result.success is True
@@ -285,12 +272,12 @@ class TestSystemPathInterfaceModify:
 
     def test_add_to_path_service_error_is_translated_to_failure_result(self, tmp_path):
         """A SystemServiceError from get_current_system_path becomes a failed Result."""
-        interface = _make_path_interface(tmp_path)
+        interface = _make_path_interface()
         interface._path_service = _FakePathService(
             error=SystemServiceError(operation="path_get", reason="boom")
         )
 
-        result = interface.add_to_path()
+        result = interface.add_to_path(tmp_path)
 
         assert isinstance(result, PathOperationResult)
         assert result.success is False
@@ -299,12 +286,12 @@ class TestSystemPathInterfaceModify:
 
     def test_add_to_path_get_current_failure_short_circuits(self, tmp_path):
         """A failed get_current_system_path Result is surfaced as an add failure."""
-        interface = _make_path_interface(tmp_path)
+        interface = _make_path_interface()
         interface._path_service = _FakePathService(
             current=PathOperationResult(success=False, message="registry unreadable")
         )
 
-        result = interface.add_to_path()
+        result = interface.add_to_path(tmp_path)
 
         assert result.success is False
         assert result.message == "registry unreadable"
@@ -312,14 +299,14 @@ class TestSystemPathInterfaceModify:
 
     def test_remove_from_path_success_passes_result_through(self, tmp_path):
         """A successful removal result is returned unchanged."""
-        interface = _make_path_interface(tmp_path)
+        interface = _make_path_interface()
         interface._path_service = _FakePathService(
             remove=PathOperationResult(
                 success=True, path_modified=True, operation="remove"
             )
         )
 
-        result = interface.remove_from_path()
+        result = interface.remove_from_path(tmp_path)
 
         assert result.success is True
         assert result.path_modified is True
@@ -328,12 +315,12 @@ class TestSystemPathInterfaceModify:
         self, tmp_path
     ):
         """A service error during removal becomes a failed Result, never re-raised."""
-        interface = _make_path_interface(tmp_path)
+        interface = _make_path_interface()
         interface._path_service = _FakePathService(
             error=SystemServiceError(operation="path_get", reason="boom")
         )
 
-        result = interface.remove_from_path()
+        result = interface.remove_from_path(tmp_path)
 
         assert result.success is False
         assert "boom" in result.error
@@ -350,7 +337,7 @@ class TestSystemPathInterfaceBackups:
 
     def test_list_backups_empty_when_no_backup_dir(self, tmp_path):
         """No backup directory is a normal empty state, not a failure."""
-        interface = _make_path_interface(tmp_path)
+        interface = _make_path_interface()
 
         result = interface.list_backups()
 
@@ -359,7 +346,7 @@ class TestSystemPathInterfaceBackups:
 
     def test_list_backups_reads_valid_backup_files(self, tmp_path):
         """A valid backup JSON file is surfaced with its entry count."""
-        interface = _make_path_interface(tmp_path)
+        interface = _make_path_interface()
         interface.backup_dir.mkdir(parents=True, exist_ok=True)
         backup_file = interface.backup_dir / ".path_20260101_000000.json"
         backup_file.write_text(json.dumps({"entries": ["/a", "/b"]}), encoding="utf-8")
@@ -372,7 +359,7 @@ class TestSystemPathInterfaceBackups:
 
     def test_list_backups_skips_corrupt_files(self, tmp_path):
         """A corrupt backup file is skipped rather than failing the whole listing."""
-        interface = _make_path_interface(tmp_path)
+        interface = _make_path_interface()
         interface.backup_dir.mkdir(parents=True, exist_ok=True)
         (interface.backup_dir / ".path_bad.json").write_text(
             "not json", encoding="utf-8"
@@ -385,7 +372,7 @@ class TestSystemPathInterfaceBackups:
 
     def test_create_backup_success_writes_file(self, tmp_path):
         """A successful backup writes a JSON file and reports its path."""
-        interface = _make_path_interface(tmp_path)
+        interface = _make_path_interface()
         interface._path_service = _FakePathService(
             current=PathOperationResult(success=True, path_entries=["/a", "/b"])
         )
@@ -400,7 +387,7 @@ class TestSystemPathInterfaceBackups:
         self, tmp_path
     ):
         """A service error during backup creation becomes a failed Result."""
-        interface = _make_path_interface(tmp_path)
+        interface = _make_path_interface()
         interface._path_service = _FakePathService(
             error=SystemServiceError(operation="path_get", reason="boom")
         )
@@ -412,7 +399,7 @@ class TestSystemPathInterfaceBackups:
 
     def test_restore_backup_unix_updates_environment(self, tmp_path, monkeypatch):
         """Restoring on a non-Windows platform updates the process environment."""
-        interface = _make_path_interface(tmp_path, platform="Linux")
+        interface = _make_path_interface(platform="Linux")
         backup_file = tmp_path / ".path_backup.json"
         backup_file.write_text(
             json.dumps(
@@ -432,7 +419,7 @@ class TestSystemPathInterfaceBackups:
         self, tmp_path
     ):
         """An unreadable backup file yields a failed Result, never a raise."""
-        interface = _make_path_interface(tmp_path)
+        interface = _make_path_interface()
         backup_file = tmp_path / ".path_bad.json"
         backup_file.write_text("not json", encoding="utf-8")
 

@@ -8,8 +8,8 @@
 Path contract for Works On My Machine.
 
 This module is the **single authority** on where things live. It keeps two
-notions strictly apart, where the legacy ``get_womm_installation_path()``
-answered both with one value:
+notions strictly apart, which the legacy self-installer incorrectly collapsed
+into one location:
 
 - **Data** — mutable, user-owned, always under ``~/.womm`` (overridable via
   ``$WOMM_HOME``), in every channel: dev, ``uv tool``, or standalone. This

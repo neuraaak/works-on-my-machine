@@ -22,7 +22,6 @@ from __future__ import annotations
 # Local imports
 from womm.shared.results.base import BaseResult, CommandResult
 from womm.shared.results.file_results import FileSearchResult
-from womm.shared.results.installation_results import WOMMInstallerVerificationResult
 from womm.shared.results.project_results import (
     ProjectDetectionResult,
     SetupResult,
@@ -83,18 +82,6 @@ def test_file_search_result_post_init_defaults_files_found_to_empty_list():
     result = FileSearchResult(success=True, files_found=None)
 
     assert result.files_found == []
-
-
-# ///////////////////////////////////////////////////////////////
-# INSTALLATION RESULTS
-# ///////////////////////////////////////////////////////////////
-
-
-def test_womm_installer_verification_result_post_init_defaults():
-    result = WOMMInstallerVerificationResult(success=True)
-
-    assert result.path_entries == []
-    assert result.accessible_commands == []
 
 
 # ///////////////////////////////////////////////////////////////

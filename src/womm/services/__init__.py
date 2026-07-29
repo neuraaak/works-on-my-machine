@@ -48,9 +48,6 @@ from .project import (
 # Local imports - System services
 from .system import SystemDetectorService, SystemEnvironmentService, SystemPathService
 
-# Local imports - Womm deployment services
-from .womm_setup import WommInstallerService, WommUninstallerService
-
 # ///////////////////////////////////////////////////////////////
 # PUBLIC API
 # ///////////////////////////////////////////////////////////////
@@ -80,7 +77,4 @@ __all__ = [  # noqa: RUF022
     "SystemDetectorService",
     "SystemEnvironmentService",
     "SystemPathService",
-    # Womm deployment services
-    "WommInstallerService",
-    "WommUninstallerService",
 ]

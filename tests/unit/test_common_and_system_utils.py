@@ -38,7 +38,8 @@ def test_resolve_script_path_uses_expected_base(
     monkeypatch.setattr(
         path_resolver_utils, "get_bin_module_path", lambda: bases["bin"]
     )
-    monkeypatch.setattr(path_resolver_utils, "get_project_root", lambda: bases["root"])
+    bases["root"].mkdir()
+    monkeypatch.chdir(bases["root"])
 
     assert (
         path_resolver_utils.resolve_script_path(relative_path)
@@ -53,35 +54,6 @@ def test_validate_script_exists_accepts_regular_file_only(tmp_path: Path) -> Non
     assert path_resolver_utils.validate_script_exists(file_path)
     assert not path_resolver_utils.validate_script_exists(tmp_path)
     assert not path_resolver_utils.validate_script_exists(tmp_path / "missing.py")
-
-
-@pytest.mark.parametrize(
-    ("module_path", "git_exists", "expected"),
-    [
-        (Path("/site-packages/womm/assets"), False, True),
-        (Path("/workspace/womm/assets"), True, False),
-        (Path("/workspace/womm/assets"), False, True),
-    ],
-)
-def test_is_pip_installation_uses_location_and_git_marker(
-    monkeypatch: pytest.MonkeyPatch,
-    module_path: Path,
-    git_exists: bool,
-    expected: bool,
-) -> None:
-    monkeypatch.setattr(
-        path_resolver_utils, "get_assets_module_path", lambda: module_path
-    )
-    original_exists = Path.exists
-
-    def exists(path: Path) -> bool:
-        if path.name == ".git":
-            return git_exists
-        return original_exists(path)
-
-    monkeypatch.setattr(Path, "exists", exists)
-
-    assert path_resolver_utils.is_pip_installation() is expected
 
 
 @pytest.mark.parametrize(

@@ -7,7 +7,7 @@
 """
 Core WOMM CLI Commands Package.
 
-This package contains core command modules for WOMM installation and setup.
+This package contains core commands for user-facing system utilities.
 """
 
 from __future__ import annotations
@@ -16,14 +16,12 @@ from __future__ import annotations
 # IMPORTS
 # ///////////////////////////////////////////////////////////////
 # Local imports
-from .womm_setup import install, path_cmd, uninstall
+from .path import path_cmd
 
 # ///////////////////////////////////////////////////////////////
 # PUBLIC API
 # ///////////////////////////////////////////////////////////////
 
 __all__ = [
-    "install",
     "path_cmd",
-    "uninstall",
 ]

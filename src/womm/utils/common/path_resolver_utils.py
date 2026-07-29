@@ -44,15 +44,6 @@ ASSETS_PREFIX_LENGTH = len(ASSETS_PREFIX)
 # ///////////////////////////////////////////////////////////////
 
 
-def get_project_root() -> Path:
-    """Return the project root directory.
-
-    Returns:
-        Path: Path to the project root directory.
-    """
-    return Path(__file__).parent.parent.parent
-
-
 def get_shared_module_path() -> Path:
     """Return the path to the `womm/shared` directory.
 
@@ -86,13 +77,13 @@ def get_assets_module_path() -> Path:
 
 
 def resolve_script_path(relative_path: str) -> Path:
-    """Resolve a script path relative to assets, bin, or project root.
+    """Resolve a script path relative to assets, bin, or the working directory.
 
     The path is resolved based on its prefix:
     - ``\"languages/\"``: resolved against `womm/assets/languages/`
     - ``\"bin/\"``: resolved against `womm/bin/`
     - ``\"assets/\"``: resolved against `womm/assets/`
-    - Otherwise: resolved against the project root
+    - Otherwise: resolved against the current working directory
 
     Args:
         relative_path: Relative path to resolve.
@@ -109,7 +100,7 @@ def resolve_script_path(relative_path: str) -> Path:
     if relative_path.startswith(ASSETS_PREFIX):
         assets_path = get_assets_module_path()
         return assets_path / relative_path[ASSETS_PREFIX_LENGTH:]
-    return get_project_root() / relative_path
+    return Path(relative_path).resolve()
 
 
 def validate_script_exists(script_path: Path) -> bool:
@@ -129,39 +120,6 @@ def validate_script_exists(script_path: Path) -> bool:
 # ///////////////////////////////////////////////////////////////
 
 
-def is_pip_installation() -> bool:
-    """Detect if WOMM is running from a pip-installed package.
-
-    Returns True if:
-    - womm module is in site-packages or similar (not development directory)
-    - No .git directory exists in parent directories
-
-    Returns:
-        bool: True if pip installation, False if development environment
-    """
-    try:
-        # Get womm module location
-        womm_path = get_assets_module_path().parent.parent
-
-        # Check if running from site-packages or dist-packages
-        womm_path_str = str(womm_path).lower()
-        if "site-packages" in womm_path_str or "dist-packages" in womm_path_str:
-            return True
-
-        # Check if .git exists in parents (development indicator)
-        current = womm_path
-        for _ in range(5):  # Check up to 5 levels
-            if (current / ".git").exists():
-                return False
-            current = current.parent
-
-        # If we get here, assume pip installation
-        return True
-    except Exception:
-        # If detection fails, assume pip installation (safer fallback)
-        return True
-
-
 # ///////////////////////////////////////////////////////////////
 # PUBLIC API
 # ///////////////////////////////////////////////////////////////
@@ -169,9 +127,7 @@ def is_pip_installation() -> bool:
 __all__ = [
     "get_assets_module_path",
     "get_bin_module_path",
-    "get_project_root",
     "get_shared_module_path",
-    "is_pip_installation",
     "resolve_script_path",
     "validate_script_exists",
 ]

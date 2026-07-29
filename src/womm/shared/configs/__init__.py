@@ -35,7 +35,6 @@ from .project import (
 )
 from .security import FileScannerConfig, SecurityPatternsConfig
 from .system import PackageManagerConfig, SystemDetectorConfig, SystemEnvironmentConfig
-from .womm_setup.womm_deployment_config import WOMMDeploymentConfig
 
 # ///////////////////////////////////////////////////////////////
 # PUBLIC API
@@ -57,5 +56,4 @@ __all__ = [
     "SystemDetectorConfig",
     "SystemEnvironmentConfig",
     "SystemPackageManagerConfig",
-    "WOMMDeploymentConfig",
 ]

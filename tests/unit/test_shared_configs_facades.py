@@ -8,7 +8,7 @@
 Tests for the remaining thin config helpers: ``ProjectVariantConfig`` (a
 backward-compat facade delegating to ``VariantMappingsConfig``/
 ``VariantUIConfig``), ``PythonProjectConfig``'s static formatters, and
-``WOMMDeploymentConfig``'s list-copy accessors.
+and ``PythonProjectConfig``'s static formatters.
 """
 
 from __future__ import annotations
@@ -19,7 +19,6 @@ from __future__ import annotations
 # Local imports
 from womm.shared.configs.project.project_variant_config import ProjectVariantConfig
 from womm.shared.configs.project.python_project_config import PythonProjectConfig
-from womm.shared.configs.womm_setup.womm_deployment_config import WOMMDeploymentConfig
 
 # ///////////////////////////////////////////////////////////////
 # PROJECT VARIANT CONFIG (FACADE)
@@ -68,29 +67,3 @@ def test_get_requirements_content_returns_template():
 
 def test_format_dependency_joins_name_and_version():
     assert PythonProjectConfig.format_dependency("ruff", ">=0.5.0") == "ruff>=0.5.0"
-
-
-# ///////////////////////////////////////////////////////////////
-# WOMM DEPLOYMENT CONFIG
-# ///////////////////////////////////////////////////////////////
-
-
-def test_get_essential_files_returns_a_copy():
-    files = WOMMDeploymentConfig.get_essential_files()
-    files.append("mutated")
-
-    assert "mutated" not in WOMMDeploymentConfig.ESSENTIAL_FILES
-
-
-def test_get_backup_required_keys_returns_a_copy():
-    keys = WOMMDeploymentConfig.get_backup_required_keys()
-    keys.append("mutated")
-
-    assert "mutated" not in WOMMDeploymentConfig.BACKUP_REQUIRED_KEYS
-
-
-def test_get_backup_required_metadata_returns_a_copy():
-    metadata = WOMMDeploymentConfig.get_backup_required_metadata()
-    metadata.append("mutated")
-
-    assert "mutated" not in WOMMDeploymentConfig.BACKUP_REQUIRED_METADATA

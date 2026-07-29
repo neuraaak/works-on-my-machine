@@ -11,8 +11,6 @@ A comprehensive tool for managing development environments, dependencies,
 and project setup across multiple programming languages.
 """
 
-from pathlib import Path
-
 from ._version import __version__
 
 # ///////////////////////////////////////////////////////////////
@@ -29,14 +27,6 @@ __python_requires__ = ">=3.13"
 __keywords__ = ["logging", "rich", "loguru", "console", "file"]
 __url__ = "https://github.com/neuraaak/works-on-my-machine"
 __repository__ = "https://github.com/neuraaak/works-on-my-machine"
-
-# ///////////////////////////////////////////////////////////////
-# PROOF FILE DETECTION
-# ///////////////////////////////////////////////////////////////
-
-# Check if proof file exists in current womm package directory
-_WOMM_DIR = Path(__file__).parent
-HAS_PROOF_FILE = (_WOMM_DIR / ".proof").exists()
 
 # ///////////////////////////////////////////////////////////////
 # PUBLIC API
@@ -60,5 +50,4 @@ __all__ = [
     "__url__",
     "__repository__",
     "main",
-    "HAS_PROOF_FILE",
 ]

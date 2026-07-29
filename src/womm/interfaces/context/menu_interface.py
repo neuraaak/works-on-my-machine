@@ -43,6 +43,7 @@ from ...shared.results import (
     ScriptUnregistrationResult,
     ScriptValidationResult,
 )
+from ...shared.runtime import get_womm_executable
 from ...utils.context import ContextIconResolver
 from .registry_interface import ContextRegistryInterface
 from .script_detector_interface import ContextScriptDetectorInterface, ScriptType
@@ -455,27 +456,22 @@ class ContextMenuInterface:
         Returns:
             ContextSetupResult: Aggregate registration outcome
         """
-        from ...utils.womm_setup.common_utils import get_current_womm_path
-
         try:
-            womm_package_path = get_current_womm_path()
-            project_root = womm_package_path.parent
-            womm_py_path = project_root / "womm.py"
-
-            if not womm_py_path.exists():
+            womm_executable = get_womm_executable()
+            if not womm_executable.is_file():
                 return ContextSetupResult(
-                    success=False, error=f"Could not find womm.py at {womm_py_path}"
+                    success=False,
+                    error=f"Could not find WOMM executable at {womm_executable}",
                 )
-
-            womm_py_absolute = str(womm_py_path.resolve())
-        except Exception as e:
+            executable_path = str(womm_executable.resolve())
+        except OSError as e:
             return ContextSetupResult(
-                success=False, error=f"Failed to locate womm.py: {e}"
+                success=False, error=f"Failed to locate WOMM executable: {e}"
             )
 
         tools = [
             {
-                "target": womm_py_absolute,
+                "target": executable_path,
                 "label": "WOMM CLI",
                 "description": "Main WOMM command-line interface",
             },

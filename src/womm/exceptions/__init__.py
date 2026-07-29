@@ -15,7 +15,6 @@ Import exceptions from the appropriate domain:
     from exceptions.lint import LintServiceError
     from exceptions.project import ProjectServiceError
     from exceptions.system import SystemServiceError
-    from exceptions.womm_deployment import WommDeploymentServiceError
 
 Available domains:
 - common: Command, file, and security service exceptions
@@ -23,7 +22,6 @@ Available domains:
 - lint: Linting service exceptions
 - project: Project management exceptions
 - system: System management exceptions
-- womm_deployment: WOMM installation/deployment exceptions
 """
 
 from __future__ import annotations
@@ -54,9 +52,6 @@ from .project import ProjectServiceError
 # Local imports - System exceptions
 from .system import SystemServiceError
 
-# Local imports - WOMM Deployment exceptions
-from .womm_deployment import WommDeploymentServiceError
-
 # ///////////////////////////////////////////////////////////////
 # PUBLIC API - All Exceptions
 # ///////////////////////////////////////////////////////////////
@@ -78,6 +73,4 @@ __all__ = [  # noqa: RUF022
     "ProjectServiceError",
     # System exceptions
     "SystemServiceError",
-    # WOMM Deployment exceptions
-    "WommDeploymentServiceError",
 ]
