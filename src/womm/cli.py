@@ -25,6 +25,7 @@ import click
 
 # Local imports
 from . import HAS_PROOF_FILE, __version__
+from .shared import startup as _startup  # noqa: F401
 from .ui.common import (
     ezlogger,  # noqa: F401
     ezpl_bridge,
