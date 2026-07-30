@@ -84,6 +84,47 @@ class ConflictResolutionService:
     # PUBLIC METHODS
     # ///////////////////////////////////////////////////////////////
 
+    def validate_project_destination(
+        self, project_path: Path, force: bool = False
+    ) -> None:
+        """Validate the destination of a project creation request.
+
+        A non-empty directory is rejected by default so project creation never
+        changes an existing project accidentally. ``force`` permits generators
+        to merge their files into that directory; it never deletes its contents.
+
+        Raises:
+            ProjectServiceError: If the destination cannot safely receive a project.
+        """
+        try:
+            if not project_path.exists():
+                return
+
+            if not project_path.is_dir():
+                raise ProjectServiceError(
+                    operation="validate_project_destination",
+                    reason=f"Project destination is not a directory: {project_path}",
+                )
+
+            if not any(project_path.iterdir()) or force:
+                return
+
+            raise ProjectServiceError(
+                operation="validate_project_destination",
+                reason=(
+                    f"Project destination already exists and is not empty: {project_path}. "
+                    "Use --force to merge generated files."
+                ),
+            )
+        except ProjectServiceError:
+            raise
+        except OSError as e:
+            raise ProjectServiceError(
+                operation="validate_project_destination",
+                reason=str(e),
+                details=f"Target: {project_path}",
+            ) from e
+
     def resolve_file_conflict(
         self,
         source_file: Path,

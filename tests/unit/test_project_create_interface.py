@@ -108,6 +108,64 @@ def test_create_project_translates_service_error(
     assert result.error == "Project creation failed: template missing"
 
 
+@pytest.mark.parametrize("project_type", ["python", "javascript"])
+def test_create_project_rejects_non_empty_destination_without_force(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, project_type: str
+) -> None:
+    """The default creation path must not touch an existing project directory."""
+    interface = ProjectCreateInterface()
+    project_path = tmp_path / "demo"
+    project_path.mkdir()
+    existing_file = project_path / "keep-me.txt"
+    existing_file.write_text("user content", encoding="utf-8")
+    create_calls: list[object] = []
+
+    monkeypatch.setattr(
+        interface,
+        "_create_python_project",
+        lambda *_args, **_kwargs: create_calls.append("python"),
+    )
+    monkeypatch.setattr(
+        interface,
+        "_create_javascript_project",
+        lambda *_args, **_kwargs: create_calls.append("javascript"),
+    )
+
+    result = interface.create_project(project_type, "demo", project_path)
+
+    assert not result.success
+    assert "already exists and is not empty" in result.error
+    assert existing_file.read_text(encoding="utf-8") == "user content"
+    assert create_calls == []
+
+
+@pytest.mark.parametrize("project_type", ["python", "javascript"])
+def test_create_project_allows_non_empty_destination_with_force(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, project_type: str
+) -> None:
+    """Force permits a merge but does not remove unrelated user files."""
+    interface = ProjectCreateInterface()
+    project_path = tmp_path / "demo"
+    project_path.mkdir()
+    existing_file = project_path / "keep-me.txt"
+    existing_file.write_text("user content", encoding="utf-8")
+
+    def create(*_args: object, **_kwargs: object) -> ProjectCreationResult:
+        (project_path / "generated.txt").write_text("generated", encoding="utf-8")
+        return ProjectCreationResult(success=True)
+
+    if project_type == "python":
+        monkeypatch.setattr(interface, "_create_python_project", create)
+    else:
+        monkeypatch.setattr(interface, "_create_javascript_project", create)
+
+    result = interface.create_project(project_type, "demo", project_path, force=True)
+
+    assert result.success
+    assert existing_file.read_text(encoding="utf-8") == "user content"
+    assert (project_path / "generated.txt").read_text(encoding="utf-8") == "generated"
+
+
 # ///////////////////////////////////////////////////////////////
 # PYTHON ORCHESTRATION
 # ///////////////////////////////////////////////////////////////

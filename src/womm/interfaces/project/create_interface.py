@@ -100,13 +100,15 @@ class ProjectCreateInterface:
             # Validate inputs
             validate_project_type(project_type)
             validate_project_name(project_name)
-            validate_project_path(project_path)
 
             # Handle dry-run mode
             if dry_run:
                 return self._handle_dry_run(
                     project_type, project_name, project_path, **kwargs
                 )
+
+            self._conflict_service.validate_project_destination(project_path, force)
+            validate_project_path(project_path, require_empty=not force)
 
             # Create project based on type
             if project_type == "python":
@@ -213,7 +215,7 @@ class ProjectCreateInterface:
         Args:
             project_name: Name of the project
             project_path: Path where to create the project
-            force: If True, overwrite existing files without prompting
+            force: If True, merge generated files into an existing directory
             **kwargs: Additional configuration options (minimal: bool for minimal setup)
 
         Returns:
@@ -326,7 +328,7 @@ class ProjectCreateInterface:
             project_name: Name of the project
             project_path: Path where to create the project
             project_type: JavaScript project type (node, react, vue)
-            force: If True, overwrite existing files without prompting
+            force: If True, merge generated files into an existing directory
             **kwargs: Additional configuration options (minimal: bool for minimal setup)
 
         Returns:
