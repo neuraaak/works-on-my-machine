@@ -24,22 +24,37 @@ import json
 import subprocess
 from datetime import datetime
 from pathlib import Path
+from typing import Protocol
 
 # Local imports
-from ...services import CommandRunnerService
-from ...shared.results import ToolResult
+from ...shared.results import CommandResult, ToolResult
+
+# ///////////////////////////////////////////////////////////////
+# PROTOCOLS
+# ///////////////////////////////////////////////////////////////
+
+
+class CommandRunner(Protocol):
+    """Minimal command execution surface needed by these utilities.
+
+    Declared structurally so this module stays free of any dependency on the
+    services layer, which itself imports from here.
+    """
+
+    def run_silent(self, command: list[str]) -> CommandResult: ...
+
 
 # ///////////////////////////////////////////////////////////////
 # TOOL DETECTION FUNCTIONS
 # ///////////////////////////////////////////////////////////////
 
 
-def get_tool_version(tool_name: str, command_runner: CommandRunnerService) -> str:
+def get_tool_version(tool_name: str, command_runner: CommandRunner) -> str:
     """Get version of a linting tool.
 
     Args:
         tool_name: Name of the tool
-        command_runner: CommandRunnerService instance
+        command_runner: Any object exposing ``run_silent``
 
     Returns:
         str: Version string, or an empty string if the tool printed nothing

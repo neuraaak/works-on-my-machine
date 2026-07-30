@@ -16,10 +16,6 @@ import json
 from pathlib import Path
 
 # Local imports
-# `womm.services` must be imported before `womm.utils.lint`: the latter is
-# involved in a circular import with `womm.services.lint.core_service`, which
-# only resolves once `womm.services` has already finished initializing.
-import womm.services  # noqa: F401
 from womm.shared.results.lint_results import ToolResult
 from womm.utils.lint import export_lint_results_to_json
 
