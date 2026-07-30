@@ -163,18 +163,20 @@ class BaseValidationService:
         """
         try:
             path_obj = Path(path)
-            parent = path_obj.parent if path_obj.is_file() else path_obj
+            # An existing directory is checked directly; anything else (existing
+            # file or path yet to be created) is checked through its container.
+            container = path_obj if path_obj.is_dir() else path_obj.parent
 
-            if not parent.exists():
+            if not container.exists():
                 return ValidationResult(
                     success=False,
-                    error=f"Parent directory does not exist: {parent}",
+                    error=f"Parent directory does not exist: {container}",
                 )
 
-            if not parent.stat().st_mode & 0o200:
+            if not container.stat().st_mode & 0o200:
                 return ValidationResult(
                     success=False,
-                    error=f"Parent directory is not writable: {parent}",
+                    error=f"Parent directory is not writable: {container}",
                 )
 
             return ValidationResult(success=True)

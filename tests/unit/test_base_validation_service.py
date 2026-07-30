@@ -116,15 +116,19 @@ def test_validate_path_writable_missing_parent_fails(tmp_path):
     assert "does not exist" in result.error
 
 
-def test_validate_path_writable_nonexistent_file_target_fails(tmp_path):
-    # BUG (base_validation_service.py:166): for a target that doesn't exist yet,
-    # `is_file()` is False so `parent` resolves to the target itself instead of
-    # its containing directory, and the writability check fails even though the
-    # real parent directory exists and is writable. Documented here, not fixed.
+def test_validate_path_writable_new_file_in_writable_dir_succeeds(tmp_path):
     result = BaseValidationService.validate_path_writable(tmp_path / "afile.txt")
 
+    assert result.success
+
+
+def test_validate_path_writable_missing_directory_target_fails(tmp_path):
+    result = BaseValidationService.validate_path_writable(
+        tmp_path / "missing_dir" / "nested_dir"
+    )
+
     assert not result.success
-    assert "Parent directory does not exist" in result.error
+    assert "does not exist" in result.error
 
 
 def test_validate_path_writable_existing_file_checks_its_directory(tmp_path):
@@ -136,7 +140,7 @@ def test_validate_path_writable_existing_file_checks_its_directory(tmp_path):
     assert result.success
 
 
-def test_validate_path_writable_directory_target_uses_itself_as_parent(tmp_path):
+def test_validate_path_writable_existing_directory_succeeds(tmp_path):
     result = BaseValidationService.validate_path_writable(tmp_path)
 
     assert result.success
