@@ -9,8 +9,11 @@ Conflict Resolution Service - Singleton service for handling file conflicts.
 
 Handles conflicts when copying files during project creation:
 - Detects existing files
-- Prompts user for resolution (unless --force is used)
+- Applies a deterministic policy, or defers to a caller-supplied resolver
 - Manages merge strategies for directories
+
+The service never talks to the user: an interactive resolution belongs to the
+command/UI layer and reaches this service through a ``ConflictResolver``.
 """
 
 from __future__ import annotations
@@ -21,33 +24,19 @@ from __future__ import annotations
 # Standard library imports
 import logging
 import shutil
-from enum import StrEnum
 from pathlib import Path
 from threading import Lock
 from typing import ClassVar
 
 # Local imports
 from ...exceptions.project import ProjectServiceError
+from ...shared.conflicts import ConflictAction, ConflictResolver
 
 # ///////////////////////////////////////////////////////////////
 # LOGGER SETUP
 # ///////////////////////////////////////////////////////////////
 
 logger = logging.getLogger(__name__)
-
-# ///////////////////////////////////////////////////////////////
-# ENUMS
-# ///////////////////////////////////////////////////////////////
-
-
-class ConflictAction(StrEnum):
-    """Actions available for conflict resolution."""
-
-    OVERWRITE = "overwrite"
-    SKIP = "skip"
-    MERGE = "merge"
-    CANCEL = "cancel"
-
 
 # ///////////////////////////////////////////////////////////////
 # CONFLICT RESOLUTION SERVICE CLASS
@@ -131,14 +120,17 @@ class ConflictResolutionService:
         target_file: Path,
         force: bool = False,
         context: str = "file",
+        resolver: ConflictResolver | None = None,
     ) -> ConflictAction:
         """Resolve a file conflict.
 
         Args:
             source_file: Source file to copy
             target_file: Target file path (may already exist)
-            force: If True, automatically overwrite without prompting
+            force: If True, automatically overwrite without asking the resolver
             context: Context description for the conflict (e.g., "config file")
+            resolver: Optional decision maker consulted on a real conflict.
+                Without one, an existing file is left untouched.
 
         Returns:
             ConflictAction: Action to take (OVERWRITE, SKIP, or CANCEL)
@@ -156,8 +148,11 @@ class ConflictResolutionService:
                 self.logger.info(f"Force mode: overwriting {target_file}")
                 return ConflictAction.OVERWRITE
 
-            # Prompt user for resolution
-            return self._prompt_file_resolution(target_file, context)
+            if resolver is None:
+                self.logger.info(f"No resolver: keeping existing {target_file}")
+                return ConflictAction.SKIP
+
+            return resolver.resolve_file(target_file, context)
 
         except Exception as e:
             raise ProjectServiceError(
@@ -172,14 +167,17 @@ class ConflictResolutionService:
         target_dir: Path,
         force: bool = False,
         context: str = "directory",
+        resolver: ConflictResolver | None = None,
     ) -> ConflictAction:
         """Resolve a directory conflict.
 
         Args:
             source_dir: Source directory to copy
             target_dir: Target directory path (may already exist)
-            force: If True, automatically overwrite without prompting
+            force: If True, automatically merge without asking the resolver
             context: Context description for the conflict (e.g., ".vscode")
+            resolver: Optional decision maker consulted on a real conflict.
+                Without one, the directory is merged into, never replaced.
 
         Returns:
             ConflictAction: Action to take (OVERWRITE, MERGE, SKIP, or CANCEL)
@@ -197,8 +195,11 @@ class ConflictResolutionService:
                 self.logger.info(f"Force mode: merging into {target_dir}")
                 return ConflictAction.MERGE
 
-            # Prompt user for resolution
-            return self._prompt_directory_resolution(target_dir, context)
+            if resolver is None:
+                self.logger.info(f"No resolver: merging into {target_dir}")
+                return ConflictAction.MERGE
+
+            return resolver.resolve_directory(target_dir, context)
 
         except Exception as e:
             raise ProjectServiceError(
@@ -213,14 +214,16 @@ class ConflictResolutionService:
         target_file: Path,
         force: bool = False,
         context: str = "file",
+        resolver: ConflictResolver | None = None,
     ) -> bool:
         """Copy a file with conflict resolution.
 
         Args:
             source_file: Source file to copy
             target_file: Target file path
-            force: If True, automatically overwrite without prompting
+            force: If True, automatically overwrite without asking the resolver
             context: Context description for the conflict
+            resolver: Optional decision maker consulted on a real conflict
 
         Returns:
             bool: True if file was copied, False if skipped or cancelled
@@ -231,7 +234,7 @@ class ConflictResolutionService:
         try:
             # Resolve conflict
             action = self.resolve_file_conflict(
-                source_file, target_file, force, context
+                source_file, target_file, force, context, resolver
             )
 
             if action == ConflictAction.CANCEL:
@@ -263,14 +266,16 @@ class ConflictResolutionService:
         target_dir: Path,
         force: bool = False,
         context: str = "directory",
+        resolver: ConflictResolver | None = None,
     ) -> bool:
         """Copy a directory with conflict resolution.
 
         Args:
             source_dir: Source directory to copy
             target_dir: Target directory path
-            force: If True, automatically merge without prompting
+            force: If True, automatically merge without asking the resolver
             context: Context description for the conflict
+            resolver: Optional decision maker consulted on a real conflict
 
         Returns:
             bool: True if directory was copied, False if skipped or cancelled
@@ -281,7 +286,7 @@ class ConflictResolutionService:
         try:
             # Resolve conflict
             action = self.resolve_directory_conflict(
-                source_dir, target_dir, force, context
+                source_dir, target_dir, force, context, resolver
             )
 
             if action == ConflictAction.CANCEL:
@@ -319,129 +324,3 @@ class ConflictResolutionService:
                 reason=str(e),
                 details=f"Source: {source_dir}, Target: {target_dir}",
             ) from e
-
-    # ///////////////////////////////////////////////////////////////
-    # PRIVATE METHODS
-    # ///////////////////////////////////////////////////////////////
-
-    def _prompt_file_resolution(
-        self, target_file: Path, context: str
-    ) -> ConflictAction:
-        """Prompt user for file conflict resolution.
-
-        Args:
-            target_file: Target file that already exists
-            context: Context description
-
-        Returns:
-            ConflictAction: User's choice
-        """
-        try:
-            from rich.console import Console
-            from rich.panel import Panel
-
-            from ...ui.common.prompts import confirm
-
-            console = Console()
-
-            console.print(
-                Panel(
-                    f"[yellow]⚠️  Conflict detected![/yellow]\n\n"
-                    f"File already exists: [cyan]{target_file}[/cyan]\n"
-                    f"Context: {context}",
-                    title="File Conflict",
-                    border_style="yellow",
-                )
-            )
-
-            overwrite = confirm(
-                f"Overwrite existing file [cyan]{target_file.name}[/cyan]?",
-                default=False,
-            )
-
-            if overwrite:
-                return ConflictAction.OVERWRITE
-            else:
-                skip_all = confirm(
-                    "Skip this file and continue?",
-                    default=True,
-                )
-                if skip_all:
-                    return ConflictAction.SKIP
-                else:
-                    return ConflictAction.CANCEL
-
-        except KeyboardInterrupt:
-            return ConflictAction.CANCEL
-        except Exception as e:
-            self.logger.warning(f"Error prompting for file resolution: {e}")
-            # Default to skip on error
-            return ConflictAction.SKIP
-
-    def _prompt_directory_resolution(
-        self, target_dir: Path, context: str
-    ) -> ConflictAction:
-        """Prompt user for directory conflict resolution.
-
-        Args:
-            target_dir: Target directory that already exists
-            context: Context description
-
-        Returns:
-            ConflictAction: User's choice
-        """
-        try:
-            from rich.console import Console
-            from rich.panel import Panel
-
-            from ...ui.common.prompts import confirm
-
-            console = Console()
-
-            console.print(
-                Panel(
-                    f"[yellow]⚠️  Conflict detected![/yellow]\n\n"
-                    f"Directory already exists: [cyan]{target_dir}[/cyan]\n"
-                    f"Context: {context}",
-                    title="Directory Conflict",
-                    border_style="yellow",
-                )
-            )
-
-            # Show options
-            console.print("\n[bold]Choose an action:[/bold]")
-            console.print("1. [green]Merge[/green] - Add new files, keep existing")
-            console.print("2. [yellow]Overwrite[/yellow] - Replace entire directory")
-            console.print("3. [red]Skip[/red] - Don't copy this directory")
-            console.print("4. [red]Cancel[/red] - Abort operation")
-
-            from rich.prompt import Prompt
-
-            choice = Prompt.ask(
-                "\nYour choice",
-                choices=["1", "2", "3", "4"],
-                default="1",
-            )
-
-            if choice == "1":
-                return ConflictAction.MERGE
-            elif choice == "2":
-                overwrite_confirm = confirm(
-                    "[red]⚠️  This will delete all existing files in the directory. Continue?[/red]",
-                    default=False,
-                )
-                if overwrite_confirm:
-                    return ConflictAction.OVERWRITE
-                else:
-                    return self._prompt_directory_resolution(target_dir, context)
-            elif choice == "3":
-                return ConflictAction.SKIP
-            else:  # choice == "4"
-                return ConflictAction.CANCEL
-
-        except KeyboardInterrupt:
-            return ConflictAction.CANCEL
-        except Exception as e:
-            self.logger.warning(f"Error prompting for directory resolution: {e}")
-            # Default to merge on error (safer)
-            return ConflictAction.MERGE

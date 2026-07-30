@@ -25,6 +25,27 @@ from womm.services.project.conflict_resolution_service import (
 )
 
 # ///////////////////////////////////////////////////////////////
+# TEST DOUBLES
+# ///////////////////////////////////////////////////////////////
+
+
+class _FakeResolver:
+    """Records the calls it receives and returns a fixed action."""
+
+    def __init__(self, action: ConflictAction) -> None:
+        self.action = action
+        self.calls: list[tuple[str, Path, str]] = []
+
+    def resolve_file(self, target_file: Path, context: str) -> ConflictAction:
+        self.calls.append(("file", target_file, context))
+        return self.action
+
+    def resolve_directory(self, target_dir: Path, context: str) -> ConflictAction:
+        self.calls.append(("directory", target_dir, context))
+        return self.action
+
+
+# ///////////////////////////////////////////////////////////////
 # FILE CONFLICT RESOLUTION
 # ///////////////////////////////////////////////////////////////
 
@@ -50,17 +71,30 @@ def test_resolve_file_conflict_overwrites_when_forced(tmp_path: Path) -> None:
     assert action == ConflictAction.OVERWRITE
 
 
-def test_resolve_file_conflict_prompts_when_target_exists_and_not_forced(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+def test_resolve_file_conflict_consults_the_resolver_when_not_forced(
+    tmp_path: Path,
 ) -> None:
     target = tmp_path / "existing.txt"
     target.touch()
-    service = ConflictResolutionService()
-    monkeypatch.setattr(
-        service, "_prompt_file_resolution", lambda *_args: ConflictAction.SKIP
+    resolver = _FakeResolver(ConflictAction.SKIP)
+
+    action = ConflictResolutionService().resolve_file_conflict(
+        tmp_path / "source.txt", target, resolver=resolver
     )
 
-    action = service.resolve_file_conflict(tmp_path / "source.txt", target)
+    assert action == ConflictAction.SKIP
+    assert resolver.calls == [("file", target, "file")]
+
+
+def test_resolve_file_conflict_keeps_existing_file_without_a_resolver(
+    tmp_path: Path,
+) -> None:
+    target = tmp_path / "existing.txt"
+    target.touch()
+
+    action = ConflictResolutionService().resolve_file_conflict(
+        tmp_path / "source.txt", target
+    )
 
     assert action == ConflictAction.SKIP
 
@@ -91,21 +125,30 @@ def test_resolve_directory_conflict_merges_when_forced(tmp_path: Path) -> None:
     assert action == ConflictAction.MERGE
 
 
-def test_resolve_directory_conflict_prompts_when_target_exists_and_not_forced(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+def test_resolve_directory_conflict_consults_the_resolver_when_not_forced(
+    tmp_path: Path,
 ) -> None:
     target = tmp_path / "existing"
     target.mkdir()
-    service = ConflictResolutionService()
-    monkeypatch.setattr(
-        service,
-        "_prompt_directory_resolution",
-        lambda *_args: ConflictAction.CANCEL,
+    resolver = _FakeResolver(ConflictAction.CANCEL)
+
+    action = ConflictResolutionService().resolve_directory_conflict(
+        tmp_path / "source", target, resolver=resolver
     )
 
-    action = service.resolve_directory_conflict(tmp_path / "source", target)
-
     assert action == ConflictAction.CANCEL
+    assert resolver.calls == [("directory", target, "directory")]
+
+
+def test_resolve_directory_conflict_merges_without_a_resolver(tmp_path: Path) -> None:
+    target = tmp_path / "existing"
+    target.mkdir()
+
+    action = ConflictResolutionService().resolve_directory_conflict(
+        tmp_path / "source", target
+    )
+
+    assert action == ConflictAction.MERGE
 
 
 # ///////////////////////////////////////////////////////////////
@@ -139,36 +182,32 @@ def test_copy_file_with_resolution_overwrites_when_forced(tmp_path: Path) -> Non
 
 
 def test_copy_file_with_resolution_skips_and_leaves_target_untouched(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path,
 ) -> None:
     source = tmp_path / "source.txt"
     source.write_text("new")
     target = tmp_path / "target.txt"
     target.write_text("old")
-    service = ConflictResolutionService()
-    monkeypatch.setattr(
-        service, "_prompt_file_resolution", lambda *_args: ConflictAction.SKIP
-    )
 
-    copied = service.copy_file_with_resolution(source, target)
+    copied = ConflictResolutionService().copy_file_with_resolution(
+        source, target, resolver=_FakeResolver(ConflictAction.SKIP)
+    )
 
     assert copied is False
     assert target.read_text() == "old"
 
 
 def test_copy_file_with_resolution_returns_false_when_cancelled(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path,
 ) -> None:
     source = tmp_path / "source.txt"
     source.write_text("new")
     target = tmp_path / "target.txt"
     target.write_text("old")
-    service = ConflictResolutionService()
-    monkeypatch.setattr(
-        service, "_prompt_file_resolution", lambda *_args: ConflictAction.CANCEL
-    )
 
-    copied = service.copy_file_with_resolution(source, target)
+    copied = ConflictResolutionService().copy_file_with_resolution(
+        source, target, resolver=_FakeResolver(ConflictAction.CANCEL)
+    )
 
     assert copied is False
 
@@ -209,7 +248,7 @@ def test_copy_directory_with_resolution_copies_when_no_conflict(
 
 
 def test_copy_directory_with_resolution_overwrite_replaces_existing_contents(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path,
 ) -> None:
     source = tmp_path / "source"
     source.mkdir()
@@ -217,14 +256,10 @@ def test_copy_directory_with_resolution_overwrite_replaces_existing_contents(
     target = tmp_path / "target"
     target.mkdir()
     (target / "stale.txt").write_text("stale")
-    service = ConflictResolutionService()
-    monkeypatch.setattr(
-        service,
-        "_prompt_directory_resolution",
-        lambda *_args: ConflictAction.OVERWRITE,
-    )
 
-    copied = service.copy_directory_with_resolution(source, target)
+    copied = ConflictResolutionService().copy_directory_with_resolution(
+        source, target, resolver=_FakeResolver(ConflictAction.OVERWRITE)
+    )
 
     assert copied is True
     assert (target / "new.txt").read_text() == "new"
@@ -251,21 +286,17 @@ def test_copy_directory_with_resolution_merge_keeps_existing_files(
 
 
 def test_copy_directory_with_resolution_skips_and_leaves_target_untouched(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path,
 ) -> None:
     source = tmp_path / "source"
     source.mkdir()
     (source / "new.txt").write_text("new")
     target = tmp_path / "target"
     target.mkdir()
-    service = ConflictResolutionService()
-    monkeypatch.setattr(
-        service,
-        "_prompt_directory_resolution",
-        lambda *_args: ConflictAction.SKIP,
-    )
 
-    copied = service.copy_directory_with_resolution(source, target)
+    copied = ConflictResolutionService().copy_directory_with_resolution(
+        source, target, resolver=_FakeResolver(ConflictAction.SKIP)
+    )
 
     assert copied is False
     assert not (target / "new.txt").exists()
