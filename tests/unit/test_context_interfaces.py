@@ -44,28 +44,6 @@ from womm.shared.results.context_results import (
 )
 
 # ///////////////////////////////////////////////////////////////
-# FIXTURES
-# ///////////////////////////////////////////////////////////////
-
-
-@pytest.fixture(autouse=True)
-def _reset_context_parameters_singleton():
-    """Reset the ContextParametersService singleton around each test.
-
-    ContextParametersService.from_flags() builds on a process-wide singleton
-    (__new__ always returns the same instance, context_types accumulates
-    across calls instead of resetting) — a real, pre-existing bug outside the
-    scope of this exception->Result rework. Without this reset, from_flags()
-    calls in one test leak context_types into every later test in this file.
-    """
-    ContextParametersService._instance = None
-    ContextParametersService._initialized = False
-    yield
-    ContextParametersService._instance = None
-    ContextParametersService._initialized = False
-
-
-# ///////////////////////////////////////////////////////////////
 # FAKE SERVICES
 # ///////////////////////////////////////////////////////////////
 

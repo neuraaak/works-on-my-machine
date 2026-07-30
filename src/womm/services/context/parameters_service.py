@@ -20,8 +20,6 @@ from __future__ import annotations
 # Standard library imports
 import logging
 from enum import Enum
-from threading import Lock
-from typing import ClassVar
 
 # Local imports
 from ...exceptions.context import ContextServiceError
@@ -60,33 +58,19 @@ class ContextType(Enum):
 
 
 class ContextParametersService:
-    """Singleton service for managing intelligent context parameters for context menu registration."""
+    """Context parameters selected for one context menu registration.
 
-    _instance: ClassVar[ContextParametersService | None] = None
-    _initialized: ClassVar[bool] = False
-    _lock: ClassVar[Lock] = Lock()
-
-    def __new__(cls) -> ContextParametersService:
-        """Create or return the singleton instance.
-
-        Returns:
-            ContextParametersService: The singleton instance
-        """
-        with cls._lock:
-            if cls._instance is None:
-                cls._instance = super().__new__(cls)
-        return cls._instance
+    Each instance owns its own selection. The class is deliberately not a
+    singleton: two successive registrations in the same process must not
+    accumulate each other's flags.
+    """
 
     def __init__(self) -> None:
-        """Initialize context parameters service (only once)."""
-        if ContextParametersService._initialized:
-            return
-
+        """Initialize an empty set of context parameters."""
         self.logger = logging.getLogger(__name__)
         self.context_types: set[ContextType] = set()
         self.file_types: set[str] = set()
         self.custom_extensions: set[str] = set()
-        ContextParametersService._initialized = True
 
     @property
     def REGISTRY_PATHS(self) -> dict[ContextType, str]:
