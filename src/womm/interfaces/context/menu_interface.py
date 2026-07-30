@@ -20,16 +20,15 @@ from __future__ import annotations
 # Standard library imports
 import logging
 from pathlib import Path
-from typing import cast
 
 # Local imports
 from ...exceptions.context import ContextServiceError
 from ...services import (
     ContextParameters,
     ContextRegistryService,
-    ContextType,
     ContextValidationService,
 )
+from ...services.context.backup_entries import ContextBackupEntriesReader
 from ...shared.configs.context import ContextTypesConfig
 from ...shared.results import (
     ContextBackupResult,
@@ -47,6 +46,7 @@ from ...shared.runtime import get_womm_executable
 from ...utils.context import ContextIconResolver
 from .registry_interface import ContextRegistryInterface
 from .script_detector_interface import ContextScriptDetectorInterface, ScriptType
+from .script_registrar import ContextScriptRegistrar
 
 # ///////////////////////////////////////////////////////////////
 # MAIN CLASS
@@ -64,6 +64,7 @@ class ContextMenuInterface:
         self._registry_service: ContextRegistryService | None = None
         self._backup_manager: ContextRegistryInterface | None = None
         self._validation_service: ContextValidationService | None = None
+        self._entries_reader: ContextBackupEntriesReader | None = None
 
     # ///////////////////////////////////////////////////////////////
     # SERVICE PROPERTIES (LAZY INITIALIZATION)
@@ -104,6 +105,13 @@ class ContextMenuInterface:
             self._validation_service = ContextValidationService()
         return self._validation_service
 
+    @property
+    def _backup_entries_reader(self) -> ContextBackupEntriesReader:
+        """Lazy load the backup entries reader when needed."""
+        if self._entries_reader is None:
+            self._entries_reader = ContextBackupEntriesReader(self.logger)
+        return self._entries_reader
+
     # ///////////////////////////////////////////////////////////////
     # PUBLIC METHODS
     # ///////////////////////////////////////////////////////////////
@@ -129,190 +137,22 @@ class ContextMenuInterface:
         Returns:
             ScriptRegistrationResult: Result of the registration attempt
         """
-        try:
-            if not script_path:
-                raise ValueError("Script path cannot be None or empty")
-            if not label:
-                raise ValueError("Label cannot be None or empty")
-
-            # Comprehensive validation using ContextValidationService
-            try:
-                validation_result = self.validation_service.validate_command_parameters(
-                    script_path, label, icon
-                )
-                if not validation_result.success:
-                    raise ValueError(validation_result.error or "Validation failed")
-            except ValueError:
-                raise
-            except Exception as e:
-                raise ValueError(f"Validation process failed: {e}") from e
-
-            # Detect script type and get info
-            script_info = ContextScriptDetectorInterface.get_script_info(script_path)
-            if not script_info.success:
-                raise RuntimeError(f"Failed to detect script type: {script_info.error}")
-            script_type = script_info.script_type
-
-            # Resolve icon
-            try:
-                icon_path = self.icon_manager.resolve_icon(icon or "auto", script_path)
-                if icon_path is None and icon and icon.lower() != "auto":
-                    # Fallback to default icon for script type
-                    icon_path = script_info.default_icon
-            except (ValueError, OSError) as e:
-                self.logger.warning(f"Failed to resolve icon for {script_path}: {e}")
-                icon_path = None
-
-            # Generate registry key name
-            try:
-                registry_key_name = self.registry_service.generate_registry_key_name(
-                    script_path
-                )
-            except Exception as e:
-                raise RuntimeError(f"Failed to generate registry key name: {e}") from e
-
-            # Build command
-            command = script_info.command
-
-            # Default context parameters (directory + background) when none given
-            if context_params is None:
-                context_params = ContextParameters.from_flags(
-                    root=False,
-                    file=False,
-                    files=False,
-                    background=True,
-                    file_types=None,
-                    extensions=None,
-                )
-
-            try:
-                validation = context_params.validate_parameters()
-                is_valid = cast(bool, validation.get("valid", False))
-                if not is_valid:
-                    errors = cast(list[str], validation.get("errors", []))
-                    raise ValueError(
-                        f"Context parameter validation failed: {'; '.join(errors)}"
-                    )
-
-                warnings = cast(list[str], validation.get("warnings", []))
-                if warnings:
-                    self.logger.warning(
-                        f"Context parameter warnings: {'; '.join(warnings)}"
-                    )
-            except ValueError:
-                raise
-            except Exception as e:
-                raise ValueError(
-                    f"Context parameter validation process failed: {e}"
-                ) from e
-
-            # Build final command for display (use first context type for dry-run)
-            context_types = list(context_params.context_types)
-            final_command = (
-                context_params.build_command(command, context_types[0])
-                if context_types
-                else command
-            )
-
-            if dry_run:
-                return ScriptRegistrationResult(
-                    success=True,
-                    dry_run=True,
-                    script_path=script_path,
-                    script_type=script_type,
-                    label=label,
-                    icon_path=icon_path,
-                    registry_key=registry_key_name,
-                    command=final_command,
-                    context_info=context_params.get_description(),
-                )
-
-            # Get registry paths and add entries
-            try:
-                registry_paths = context_params.get_registry_paths()
-            except Exception as e:
-                raise RuntimeError(f"Failed to get registry paths: {e}") from e
-
-            success_count = 0
-            total_paths = len(registry_paths)
-
-            for registry_path in registry_paths:
-                full_path = f"{registry_path}\\{registry_key_name}"
-
-                # Build command with appropriate parameters for this context type
-                context_type = self._get_context_type_from_path(registry_path)
-                entry_command = context_params.build_command(command, context_type)
-
-                try:
-                    add_result = self.registry_service.add_context_menu_entry(
-                        full_path,
-                        entry_command,
-                        label,
-                        icon_path,
-                    )
-                    entry_success = add_result.success
-                except Exception as e:
-                    self.logger.warning(
-                        f"Failed to add registry entry {full_path}: {e}"
-                    )
-                    entry_success = False
-
-                if entry_success:
-                    success_count += 1
-
-            if success_count != total_paths:
-                raise RuntimeError(
-                    f"Failed to add registry entries ({success_count}/{total_paths} succeeded)"
-                )
-
-            return ScriptRegistrationResult(
-                success=True,
-                script_path=script_path,
-                script_type=script_type,
-                label=label,
-                icon_path=icon_path,
-                registry_key=registry_key_name,
-                command=final_command,
-                context_info=context_params.get_description(),
-                success_count=success_count,
-                total_paths=total_paths,
-            )
-
-        except (ValueError, RuntimeError) as e:
-            return ScriptRegistrationResult(success=False, error=str(e))
-        except Exception as e:
-            return ScriptRegistrationResult(
-                success=False,
-                error=f"Unexpected error during script registration: {e}",
-            )
+        return self._registrar().register(
+            script_path, label, icon, dry_run, context_params
+        )
 
     # ///////////////////////////////////////////////////////////////
     # PRIVATE METHODS
     # ///////////////////////////////////////////////////////////////
 
-    def _get_context_type_from_path(self, registry_path: str) -> ContextType:
-        """
-        Determine context type from registry path.
-
-        Args:
-            registry_path: Registry path
-
-        Returns:
-            ContextType enum value
-        """
-        if (
-            ContextTypesConfig.REGISTRY_PATTERN_DIRECTORY_SHELL in registry_path
-            and "background" not in registry_path
-        ):
-            return ContextType.DIRECTORY
-        elif ContextTypesConfig.REGISTRY_PATTERN_DIRECTORY_BACKGROUND in registry_path:
-            return ContextType.BACKGROUND
-        elif ContextTypesConfig.REGISTRY_PATTERN_DRIVE_SHELL in registry_path:
-            return ContextType.ROOT
-        elif ContextTypesConfig.REGISTRY_PATTERN_FILE_SHELL in registry_path:
-            return ContextType.FILE
-        else:
-            return ContextType.DIRECTORY  # Default fallback
+    def _registrar(self) -> ContextScriptRegistrar:
+        """Build a registrar bound to this interface's current collaborators."""
+        return ContextScriptRegistrar(
+            validation_service=self.validation_service,
+            icon_manager=self.icon_manager,
+            registry_service=self.registry_service,
+            logger=self.logger,
+        )
 
     def unregister_script(
         self, key_name: str, dry_run: bool = False
@@ -733,71 +573,7 @@ class ContextMenuInterface:
         Returns:
             List of unique entries with metadata
         """
-        import json
-
-        backup_dir = self.get_backup_directory()
-        all_entries: dict[str, dict] = {}
-        backup_files = sorted(backup_dir.glob("context_menu_backup_*.json"))
-
-        for backup_file in backup_files:
-            try:
-                with open(backup_file, encoding="utf-8") as f:
-                    data = json.load(f)
-
-                # Entries are organized by context type (directory, background, etc.)
-                entries_dict = data.get("entries", {})
-                if not isinstance(entries_dict, dict):
-                    # Fallback for old format where entries might be a list
-                    entries_dict = {
-                        "directory": (
-                            entries_dict if isinstance(entries_dict, list) else []
-                        )
-                    }
-
-                # Iterate through all context types
-                for context_type in [
-                    "directory",
-                    "background",
-                    "file",
-                    "files",
-                    "root",
-                ]:
-                    entries = entries_dict.get(context_type, [])
-                    if not isinstance(entries, list):
-                        continue
-
-                    for entry in entries:
-                        if not isinstance(entry, dict):
-                            continue
-                        key_name = entry.get("key_name")
-                        if key_name and key_name not in all_entries:
-                            entry["_source_backup"] = backup_file.name
-                            entry["_context_type"] = context_type
-                            entry["_display_name"] = self._format_entry_display(entry)
-                            all_entries[key_name] = entry
-
-            except Exception as e:
-                self.logger.debug(f"Error reading {backup_file.name}: {e}")
-
-        return list(all_entries.values())
-
-    def _format_entry_display(self, entry: dict) -> str:
-        """Format entry for display in selection menu."""
-        import re
-
-        key_name = entry.get("key_name", "Unknown")
-        properties = entry.get("properties", {})
-
-        display_text = properties.get("MUIVerb") or properties.get("@", key_name)
-
-        command = properties.get("Command", "")
-        if command:
-            exe_match = re.search(r'"([^"]*\.exe)"', command)
-            if exe_match:
-                exe_name = Path(exe_match.group(1)).name
-                display_text = f"{display_text} ({exe_name})"
-
-        return f"{display_text} [key: {key_name}]"
+        return self._backup_entries_reader.collect_entries(self.get_backup_directory())
 
     def get_current_entry_keys(self) -> set[str]:
         """
@@ -832,11 +608,7 @@ class ContextMenuInterface:
         Returns:
             List of entries not yet installed
         """
-        return [
-            entry
-            for entry in all_entries
-            if entry.get("key_name") and entry.get("key_name") not in current_keys
-        ]
+        return self._backup_entries_reader.filter_available(all_entries, current_keys)
 
     def apply_cherry_picked_entries(
         self, selected_entries: list[dict]
@@ -868,12 +640,7 @@ class ContextMenuInterface:
                 results[key_name] = False
                 continue
 
-            # Extract script path from command
-            script_path = None
-            if '"' in command:
-                script_match = command.split('"')[1]
-                if script_match and Path(script_match).exists():
-                    script_path = script_match
+            script_path = self._backup_entries_reader.extract_script_path(command)
 
             if not script_path:
                 self.logger.warning(

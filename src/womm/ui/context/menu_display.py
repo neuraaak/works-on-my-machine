@@ -18,6 +18,7 @@ from __future__ import annotations
 # ///////////////////////////////////////////////////////////////
 # Standard library imports
 import json
+import re
 from datetime import datetime
 from pathlib import Path
 
@@ -206,18 +207,45 @@ class ContextMenuUI:
             instruction="Use space to select/deselect, enter to confirm, q to quit",
         )
 
-        def format_entry(entry: dict) -> str:
-            return entry.get("_display_name", entry.get("key_name", "Unknown"))
-
         selected = menu.select_multiple_from_list(
-            available_entries, display_func=format_entry
+            available_entries, display_func=format_entry_display
         )
 
         return selected if selected else []
 
 
 # ///////////////////////////////////////////////////////////////
+# FUNCTIONS
+# ///////////////////////////////////////////////////////////////
+
+
+def format_entry_display(entry: dict) -> str:
+    """
+    Format a backup entry for display in a selection menu.
+
+    Args:
+        entry: Backup entry as read from a backup file
+
+    Returns:
+        Label of the form ``MUIVerb (exe) [key: key_name]``.
+    """
+    key_name = entry.get("key_name", "Unknown")
+    properties = entry.get("properties", {})
+
+    display_text = properties.get("MUIVerb") or properties.get("@", key_name)
+
+    command = properties.get("Command", "")
+    if command:
+        exe_match = re.search(r'"([^"]*\.exe)"', command)
+        if exe_match:
+            exe_name = Path(exe_match.group(1)).name
+            display_text = f"{display_text} ({exe_name})"
+
+    return f"{display_text} [key: {key_name}]"
+
+
+# ///////////////////////////////////////////////////////////////
 # PUBLIC API
 # ///////////////////////////////////////////////////////////////
 
-__all__ = ["ContextMenuUI"]
+__all__ = ["ContextMenuUI", "format_entry_display"]

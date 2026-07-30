@@ -20,6 +20,7 @@ from __future__ import annotations
 from .menu_interface import ContextMenuInterface
 from .registry_interface import ContextRegistryInterface
 from .script_detector_interface import ContextScriptDetectorInterface
+from .script_registrar import ContextScriptRegistrar
 
 # ///////////////////////////////////////////////////////////////
 # PUBLIC API
@@ -29,4 +30,5 @@ __all__ = [
     "ContextMenuInterface",
     "ContextRegistryInterface",
     "ContextScriptDetectorInterface",
+    "ContextScriptRegistrar",
 ]

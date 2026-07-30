@@ -17,7 +17,7 @@ from __future__ import annotations
 # IMPORTS
 # ///////////////////////////////////////////////////////////////
 # Local imports
-from .menu_display import ContextMenuUI
+from .menu_display import ContextMenuUI, format_entry_display
 from .wizard import ContextMenuWizard
 
 # ///////////////////////////////////////////////////////////////
@@ -27,4 +27,5 @@ from .wizard import ContextMenuWizard
 __all__ = [
     "ContextMenuUI",
     "ContextMenuWizard",
+    "format_entry_display",
 ]
