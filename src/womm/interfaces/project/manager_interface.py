@@ -23,6 +23,8 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
+from ...services.dependencies import probe
+
 # Local imports
 from ...shared.configs.project import ProjectConfig
 from ...shared.results import (
@@ -30,7 +32,6 @@ from ...shared.results import (
     ProjectDetectionResult,
     ProjectSetupResult,
 )
-from ...utils.dependencies import probe
 from .create_interface import ProjectCreateInterface
 from .detection_interface import ProjectDetectionInterface
 from .setup_interface import ProjectSetupInterface

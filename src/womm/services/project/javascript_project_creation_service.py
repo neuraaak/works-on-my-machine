@@ -33,16 +33,18 @@ from ...exceptions.project import ProjectServiceError
 from ...shared.results import ProjectCreationResult
 from ...utils.common import get_assets_module_path
 from ...utils.project import (
-    check_npm_available,
     create_javascript_config_files,
     create_javascript_source_files,
     create_javascript_structure,
-    install_npm_dependencies,
-    install_npm_dev_dependencies,
     validate_project_name,
     validate_project_path,
 )
 from ..common.command_runner_service import CommandRunnerService
+from .env_utils import (
+    check_npm_available,
+    install_npm_dependencies,
+    install_npm_dev_dependencies,
+)
 from .template_service import TemplateService
 
 # ///////////////////////////////////////////////////////////////

@@ -287,10 +287,29 @@ root_packages = ["womm"]
 # Le package doit être installé en mode editable (pip install -e .)
 # ou lancer avec PYTHONPATH=src lint-imports
 
+# Couches, de la plus haute à la plus basse. Une couche ne peut importer que
+# les couches situées en dessous d'elle.
+#   `a | b` : couches soeurs indépendantes, qui ne peuvent pas s'importer.
+#   `a : b` : couches soeurs autorisées à s'importer mutuellement.
 [[tool.importlinter.contracts]]
 name = "layer dependency flow"
 type = "layers"
-layers = []
+containers = ["womm"]
+layers = [
+    "cli",
+    "commands",
+    # Les interfaces orchestrent et renvoient des Result ; l'UI rend et
+    # interagit. Aucune des deux ne doit connaître l'autre : c'est la commande
+    # qui traduit un Result en affichage.
+    "interfaces | ui",
+    # Les services portent la logique et les erreurs déclarées. Ils ne peuvent
+    # donc atteindre ni l'UI ni les interfaces.
+    "services",
+    # `shared` et `utils` se référencent mutuellement (configuration ↔
+    # détection) : elles forment une seule couche basse.
+    "utils : shared",
+    "exceptions",
+]
 
 # ///////////////////////////////////////////////////////////////
 # 🧪 TESTING & COVERAGE TOOLS

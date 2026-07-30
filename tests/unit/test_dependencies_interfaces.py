@@ -27,12 +27,12 @@ import pytest
 # Local imports
 from womm.interfaces.dependencies import deps_interface as deps_module
 from womm.interfaces.dependencies.deps_interface import DepsInterface
+from womm.services.dependencies import ProbeResult
 from womm.shared.results import (
     DependencyCheckResult,
     DependencyInventoryResult,
     DependencyStatusResult,
 )
-from womm.utils.dependencies import ProbeResult
 
 # ///////////////////////////////////////////////////////////////
 # FIXTURES

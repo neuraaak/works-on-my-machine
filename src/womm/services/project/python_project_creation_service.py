@@ -37,12 +37,11 @@ from ...utils.project import (
     create_python_requirements_files,
     create_python_structure,
     create_python_test_file,
-    create_virtual_environment,
-    install_python_dependencies,
     validate_project_name,
     validate_project_path,
 )
 from ..common.command_runner_service import CommandRunnerService
+from .env_utils import create_virtual_environment, install_python_dependencies
 from .template_service import TemplateService
 
 # ///////////////////////////////////////////////////////////////

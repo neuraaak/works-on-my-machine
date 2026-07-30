@@ -19,6 +19,14 @@ from __future__ import annotations
 # Local imports
 from .conflict_resolution_service import ConflictResolutionService
 from .detection_service import ProjectDetectionService
+from .env_utils import (
+    check_npm_available,
+    create_virtual_environment,
+    find_pip_executable,
+    install_npm_dependencies,
+    install_npm_dev_dependencies,
+    install_python_dependencies,
+)
 from .javascript_project_creation_service import JavaScriptProjectCreationService
 from .python_project_creation_service import PythonProjectCreationService
 from .template_service import TemplateService
@@ -35,4 +43,10 @@ __all__ = [
     "ProjectValidationService",
     "PythonProjectCreationService",
     "TemplateService",
+    "check_npm_available",
+    "create_virtual_environment",
+    "find_pip_executable",
+    "install_npm_dependencies",
+    "install_npm_dev_dependencies",
+    "install_python_dependencies",
 ]

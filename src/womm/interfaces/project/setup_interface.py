@@ -31,8 +31,8 @@ from ...services import (
     ProjectDetectionService,
     PythonProjectCreationService,
 )
+from ...services.dependencies import probe
 from ...shared.results import ProjectSetupResult
-from ...utils.dependencies import probe
 from ...utils.project import (
     copy_asset_type,
     validate_project_path,

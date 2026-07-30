@@ -191,11 +191,11 @@ def test_setup_virtual_environment_accepts_success_result(
         path.mkdir()
 
     monkeypatch.setattr(
-        "womm.utils.project.env_utils.venv.create",
+        "womm.services.project.env_utils.venv.create",
         create_venv,
     )
     monkeypatch.setattr(
-        "womm.utils.project.env_utils._upgrade_pip",
+        "womm.services.project.env_utils._upgrade_pip",
         lambda _project_path, _venv_path: None,
     )
 

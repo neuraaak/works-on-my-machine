@@ -21,7 +21,7 @@ from pathlib import Path
 import click
 
 # Local imports
-from ... import __version__
+from ..._version import __version__
 from ...interfaces import ContextMenuInterface
 from ...shared.paths import womm_data_path
 from ...shared.runtime import get_womm_executable

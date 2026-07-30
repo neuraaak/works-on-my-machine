@@ -24,6 +24,8 @@ from __future__ import annotations
 import logging
 import sys
 
+from ...services.dependencies import ProbeResult, probe
+
 # Local imports
 from ...shared.configs.dependencies import (
     DevToolsConfig,
@@ -38,7 +40,6 @@ from ...shared.results import (
     DependencyProbe,
     DependencyStatusResult,
 )
-from ...utils.dependencies import ProbeResult, probe
 
 # ///////////////////////////////////////////////////////////////
 # LOGGER SETUP

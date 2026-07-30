@@ -20,12 +20,12 @@ import pytest
 
 # Local imports
 from womm.interfaces.project.manager_interface import ProjectManagerInterface
+from womm.services.dependencies.probe import ProbeResult
 from womm.shared.results import (
     ProjectCreationResult,
     ProjectDetectionResult,
     ProjectSetupResult,
 )
-from womm.utils.dependencies.probe import ProbeResult
 
 # ///////////////////////////////////////////////////////////////
 # FIXTURES

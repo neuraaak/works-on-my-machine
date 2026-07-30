@@ -24,7 +24,7 @@ import shutil
 from dataclasses import dataclass
 
 # Local imports
-from ...services.common.command_runner_service import CommandRunnerService
+from ..common.command_runner_service import CommandRunnerService
 
 # ///////////////////////////////////////////////////////////////
 # RESULT TYPE

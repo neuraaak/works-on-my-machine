@@ -35,8 +35,9 @@ def _ui_imports(source: str, depth: int) -> list[str]:
 
     Args:
         source: Python source code of a service module
-        depth: Depth of that module inside `womm`, i.e. how many leading dots a
-            relative import needs to reach the package root
+        depth: Number of leading dots a relative import needs to reach the
+            `womm` root from that module, i.e. its number of path components
+            (`womm/services/project/x.py` needs `...`, so depth is 3)
 
     Returns:
         list[str]: Human-readable description of each offending import
@@ -70,7 +71,7 @@ def test_no_service_module_imports_the_ui_layer() -> None:
     offenders: list[str] = []
 
     for path in SERVICES_ROOT.rglob("*.py"):
-        depth = len(path.relative_to(SERVICES_ROOT.parent).parts) - 1
+        depth = len(path.relative_to(SERVICES_ROOT.parent).parts)
         offenders += [
             f"{path.name}: {found}"
             for found in _ui_imports(path.read_text(encoding="utf-8"), depth)
@@ -79,9 +80,18 @@ def test_no_service_module_imports_the_ui_layer() -> None:
     assert offenders == [], f"services must not import the UI layer: {offenders}"
 
 
-def test_the_guard_detects_the_import_it_was_written_for() -> None:
-    # Depth 3: womm/services/<domain>/<module>.py, the shape of the module that
-    # used to prompt from within the service layer.
-    found = _ui_imports("from ...ui.common.prompts import confirm\n", depth=3)
+def test_the_guard_detects_a_ui_import_at_a_real_module_depth() -> None:
+    # The depth is derived exactly as the scan above derives it, so an
+    # off-by-one there cannot make this guard silently vacuous.
+    module = SERVICES_ROOT / "project" / "conflict_resolution_service.py"
+    depth = len(module.relative_to(SERVICES_ROOT.parent).parts)
+
+    found = _ui_imports("from ...ui.common.prompts import confirm\n", depth)
 
     assert found == ["from ...ui.common.prompts"]
+
+
+def test_the_guard_ignores_a_relative_import_that_stops_below_the_root() -> None:
+    # `..ui` from womm/services/project/x.py points at womm.services.ui,
+    # which is not the UI layer.
+    assert _ui_imports("from ..ui import helper\n", depth=3) == []

@@ -6,7 +6,8 @@ from pathlib import Path
 
 import pytest
 
-from womm.utils.project import asset_utils, env_utils
+from womm.services.project import env_utils
+from womm.utils.project import asset_utils
 
 
 def test_copy_asset_file_and_directory_honor_overwrite_and_exclusions(

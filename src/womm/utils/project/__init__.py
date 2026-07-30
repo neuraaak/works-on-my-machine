@@ -43,14 +43,6 @@ from .core_utils import (
     create_python_structure,
     matches_project_type,
 )
-from .env_utils import (
-    check_npm_available,
-    create_virtual_environment,
-    find_pip_executable,
-    install_npm_dependencies,
-    install_npm_dev_dependencies,
-    install_python_dependencies,
-)
 from .file_utils import (
     create_javascript_source_files,
     create_node_main_files,
@@ -94,7 +86,6 @@ __all__ = [
     "analyze_python_config",
     "analyze_rust_config",
     "categorize_directory",
-    "check_npm_available",
     "check_project_name",
     "copy_asset_file",
     "copy_asset_type",
@@ -110,9 +101,7 @@ __all__ = [
     "create_python_structure",
     "create_python_test_file",
     "create_react_main_files",
-    "create_virtual_environment",
     "create_vue_main_files",
-    "find_pip_executable",
     "generate_cross_platform_template",
     "get_assets_path",
     "get_node_paths",
@@ -120,9 +109,6 @@ __all__ = [
     "get_python_paths",
     "get_shell_commands",
     "get_validation_summary",
-    "install_npm_dependencies",
-    "install_npm_dev_dependencies",
-    "install_python_dependencies",
     "matches_project_type",
     "replace_platform_placeholders",
     "suggest_project_name",

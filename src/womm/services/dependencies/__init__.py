@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 # ///////////////////////////////////////////////////////////////
-# DEPENDENCIES UTILS - Dependencies Utility Functions
+# DEPENDENCIES SERVICES - Dependency detection
 # Project: works-on-my-machine
 # ///////////////////////////////////////////////////////////////
 
 """
-Dependencies utility functions for Works On My Machine.
+Dependency-related services for Works On My Machine.
 
 This package exposes the lightweight read-only probe used to detect whether an
 executable (system package manager, runtime, or dev tool) is available.

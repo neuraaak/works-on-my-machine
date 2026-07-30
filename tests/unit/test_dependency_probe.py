@@ -23,11 +23,11 @@ import shutil
 
 # Local imports
 from womm.services.common.command_runner_service import CommandRunnerService
+from womm.services.dependencies.probe import probe
 from womm.shared.results.command_results import (
     CommandAvailabilityResult,
     CommandVersionResult,
 )
-from womm.utils.dependencies.probe import probe
 
 # ///////////////////////////////////////////////////////////////
 # TESTS

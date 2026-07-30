@@ -19,8 +19,8 @@ import pytest
 
 # Local imports
 from womm.services.common.command_runner_service import CommandRunnerService
+from womm.services.project import env_utils
 from womm.shared.results.base import CommandResult
-from womm.utils.project import env_utils
 
 # ///////////////////////////////////////////////////////////////
 # HELPERS

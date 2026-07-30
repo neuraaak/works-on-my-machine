@@ -85,7 +85,7 @@ class LintService:
             bool: True if tool is available, False otherwise
         """
         try:
-            from ...utils.dependencies import probe
+            from ...services.dependencies import probe
 
             return probe(tool_name, detect_version=False).available
         except Exception as e:
