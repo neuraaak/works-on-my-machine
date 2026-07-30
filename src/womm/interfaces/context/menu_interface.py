@@ -25,7 +25,7 @@ from typing import cast
 # Local imports
 from ...exceptions.context import ContextServiceError
 from ...services import (
-    ContextParametersService,
+    ContextParameters,
     ContextRegistryService,
     ContextType,
     ContextValidationService,
@@ -114,7 +114,7 @@ class ContextMenuInterface:
         label: str,
         icon: str | None = None,
         dry_run: bool = False,
-        context_params: ContextParametersService | None = None,
+        context_params: ContextParameters | None = None,
     ) -> ScriptRegistrationResult:
         """
         Register a script in the Windows context menu.
@@ -176,7 +176,7 @@ class ContextMenuInterface:
 
             # Default context parameters (directory + background) when none given
             if context_params is None:
-                context_params = ContextParametersService.from_flags(
+                context_params = ContextParameters.from_flags(
                     root=False,
                     file=False,
                     files=False,
@@ -477,7 +477,7 @@ class ContextMenuInterface:
             },
         ]
 
-        context_params = ContextParametersService.from_flags(
+        context_params = ContextParameters.from_flags(
             root=False,
             file=False,
             files=False,

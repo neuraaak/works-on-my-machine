@@ -17,7 +17,7 @@ from __future__ import annotations
 # IMPORTS
 # ///////////////////////////////////////////////////////////////
 # Local imports
-from .parameters_service import ContextParametersService, ContextType
+from .parameters import ContextParameters, ContextType
 from .registry_service import ContextRegistryService
 from .validation_service import ContextValidationService
 
@@ -26,7 +26,7 @@ from .validation_service import ContextValidationService
 # ///////////////////////////////////////////////////////////////
 
 __all__ = [
-    "ContextParametersService",
+    "ContextParameters",
     "ContextRegistryService",
     "ContextType",
     "ContextValidationService",

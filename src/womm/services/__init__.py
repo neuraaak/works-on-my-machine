@@ -26,7 +26,7 @@ from .common import (
 
 # Local imports - Context services
 from .context import (
-    ContextParametersService,
+    ContextParameters,
     ContextRegistryService,
     ContextType,
     ContextValidationService,
@@ -59,7 +59,7 @@ __all__ = [  # noqa: RUF022
     "FileScannerService",
     "SecurityValidatorService",
     # Context services
-    "ContextParametersService",
+    "ContextParameters",
     "ContextRegistryService",
     "ContextType",
     "ContextValidationService",

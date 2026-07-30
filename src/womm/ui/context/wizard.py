@@ -29,7 +29,7 @@ except ImportError:
     INQUIRERPY_AVAILABLE = False
 
 # Local imports
-from ...services.context import ContextParametersService, ContextType
+from ...services.context import ContextParameters, ContextType
 from ..common.ezpl_bridge import ezconsole, ezprinter
 from ..common.interactive_menu import InteractiveMenu
 
@@ -43,7 +43,7 @@ class ContextMenuWizard:
 
     @staticmethod
     def run_setup() -> tuple[
-        str | None, str | None, str | None, ContextParametersService | None
+        str | None, str | None, str | None, ContextParameters | None
     ]:
         """
         Run the complete interactive setup wizard.
@@ -455,7 +455,7 @@ class ContextMenuWizard:
             return None
 
     @staticmethod
-    def _select_context() -> ContextParametersService:
+    def _select_context() -> ContextParameters:
         """Interactive context type selection."""
         menu = InteractiveMenu(
             title="Select Context Type",
@@ -475,7 +475,7 @@ class ContextMenuWizard:
             context_options, display_func=lambda item: item["label"]
         )
 
-        context_params = ContextParametersService()
+        context_params = ContextParameters()
 
         if not selected:
             return context_params
@@ -500,7 +500,7 @@ class ContextMenuWizard:
         return context_params
 
     @staticmethod
-    def _select_file_types(context_params: ContextParametersService) -> None:
+    def _select_file_types(context_params: ContextParameters) -> None:
         """Interactive file type selection."""
         menu = InteractiveMenu(
             title="Select File Types", instruction="Choose which file types to support"

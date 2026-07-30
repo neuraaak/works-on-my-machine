@@ -28,7 +28,7 @@ import pytest
 # Local imports
 from womm.exceptions.context import ContextServiceError
 from womm.interfaces.context.menu_interface import ContextMenuInterface
-from womm.services.context import ContextParametersService
+from womm.services.context import ContextParameters
 from womm.shared.results.context_results import (
     BackupDataResult,
     BackupFileResult,
@@ -190,7 +190,7 @@ class TestRegisterScript:
 
     def test_success_returns_registration_result(self):
         interface = _interface()
-        context_params = ContextParametersService.from_flags(background=True)
+        context_params = ContextParameters.from_flags(background=True)
 
         result = interface.register_script(
             "C:\\tools\\demo.bat", "Demo", None, False, context_params
@@ -209,7 +209,7 @@ class TestRegisterScript:
         registry = _FakeRegistryService()
         registry.add_context_menu_entry = _boom
         interface = _interface(registry=registry)
-        context_params = ContextParametersService.from_flags(background=True)
+        context_params = ContextParameters.from_flags(background=True)
 
         result = interface.register_script(
             "C:\\tools\\demo.bat", "Demo", None, True, context_params
@@ -239,7 +239,7 @@ class TestRegisterScript:
     def test_partial_registry_failure_is_a_failure_result(self):
         registry = _FakeRegistryService(add_outcomes=[True, False])
         interface = _interface(registry=registry)
-        context_params = ContextParametersService.from_flags()  # directory + background
+        context_params = ContextParameters.from_flags()  # directory + background
 
         result = interface.register_script(
             "C:\\tools\\demo.bat", "Demo", None, False, context_params
@@ -253,7 +253,7 @@ class TestRegisterScript:
             add_outcomes=[ContextServiceError("registry_entry", "boom")]
         )
         interface = _interface(registry=registry)
-        context_params = ContextParametersService.from_flags(background=True)
+        context_params = ContextParameters.from_flags(background=True)
 
         result = interface.register_script(
             "C:\\tools\\demo.bat", "Demo", None, False, context_params

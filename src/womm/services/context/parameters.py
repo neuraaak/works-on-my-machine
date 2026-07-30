@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 # ///////////////////////////////////////////////////////////////
-# CONTEXT PARAMETERS SERVICE - Context Menu Parameters Service
+# CONTEXT PARAMETERS - Context Menu Parameters
 # Project: works-on-my-machine
 # ///////////////////////////////////////////////////////////////
 
 """
-Context Parameters Service - Singleton service for context menu parameters management.
+Context Parameters - Parameters selected for a context menu registration.
 
 This module provides functionality to handle intelligent context parameters
 like --root, --file, --files, --background and automatically generate
@@ -53,11 +53,11 @@ class ContextType(Enum):
 
 
 # ///////////////////////////////////////////////////////////////
-# CONTEXT PARAMETERS SERVICE CLASS
+# CONTEXT PARAMETERS CLASS
 # ///////////////////////////////////////////////////////////////
 
 
-class ContextParametersService:
+class ContextParameters:
     """Context parameters selected for one context menu registration.
 
     Each instance owns its own selection. The class is deliberately not a
@@ -426,9 +426,9 @@ class ContextParametersService:
         background: bool = False,
         file_types: list[str] | None = None,
         extensions: list[str] | None = None,
-    ) -> ContextParametersService:
+    ) -> ContextParameters:
         """
-        Create ContextParametersService from command line flags.
+        Create ContextParameters from command line flags.
 
         Args:
             root: --root flag
@@ -439,7 +439,7 @@ class ContextParametersService:
             extensions: List of custom extensions
 
         Returns:
-            Configured ContextParametersService instance
+            Configured ContextParameters instance
 
         Raises:
             ContextServiceError: If parameters are invalid or an unexpected
@@ -493,7 +493,7 @@ class ContextParametersService:
         except Exception as e:
             raise ContextServiceError(
                 "from_flags",
-                f"Unexpected error creating ContextParametersService from flags: {e}",
+                f"Unexpected error creating ContextParameters from flags: {e}",
                 details=f"Root: {root}, File: {file}, Files: {files}, Background: {background}",
             ) from e
 

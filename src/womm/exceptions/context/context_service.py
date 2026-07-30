@@ -16,7 +16,7 @@ from __future__ import annotations
 
 
 class ContextServiceError(Exception):
-    """Single exception for ``ContextValidationService``, ``ContextParametersService``
+    """Single exception for ``ContextValidationService``, ``ContextParameters``
     and ``ContextRegistryService``.
 
     Covers every context menu service failure (invalid input, registry access,

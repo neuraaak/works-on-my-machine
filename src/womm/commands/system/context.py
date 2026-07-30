@@ -30,7 +30,7 @@ from rich.progress import TaskID
 
 # Local imports
 from ...interfaces import ContextMenuInterface
-from ...services.context import ContextParametersService
+from ...services.context import ContextParameters
 from ...shared.results.context_results import ContextCherryPickResult
 from ...ui.common import ezpl_bridge, ezprinter
 from ...ui.context import ContextMenuUI, ContextMenuWizard
@@ -89,7 +89,7 @@ def _resolve_registration_target(
     file_types: tuple[str, ...],
     extensions: tuple[str, ...],
     interactive: bool,
-) -> tuple[str, str, str, ContextParametersService] | None:
+) -> tuple[str, str, str, ContextParameters] | None:
     """Resolve the (target, label, icon, context_params) tuple for registration.
 
     Runs the interactive wizard or validates the non-interactive flags.
@@ -119,7 +119,7 @@ def _resolve_registration_target(
         return None
 
     resolved_icon = icon if isinstance(icon, str) and icon else "auto"
-    context_params = ContextParametersService.from_flags(
+    context_params = ContextParameters.from_flags(
         root=root,
         file=file,
         files=files,
