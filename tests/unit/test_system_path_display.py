@@ -193,3 +193,56 @@ def test_render_path_backup_list_result_with_backups(monkeypatch):
 
     ezprinter.create_backup_table.assert_called_once()
     ezpl_bridge.console.print.assert_any_call("backup-table")
+
+
+def test_render_path_backup_list_result_with_backups_shows_commands_panel(monkeypatch):
+    _, ezconsole, _ = _patch_ui(monkeypatch)
+    result = PathBackupListResult(
+        success=True,
+        backups=[
+            PathBackupInfo(
+                name="a.json",
+                path="C:/a.json",
+                size=100,
+                modified="2026-01-01",
+                path_entries=3,
+            )
+        ],
+    )
+
+    display_module.render_path_backup_list_result(result)
+
+    panels = _panels(ezconsole)
+    assert len(panels) == 1
+    assert panels[0].title == "PATH Commands"
+    assert panels[0].border_style == "blue"
+    assert "womm path -b" in panels[0].renderable
+    assert "womm path -r" in panels[0].renderable
+    assert "womm path -l" in panels[0].renderable
+
+
+def test_render_path_backup_list_result_empty_shows_getting_started_panel(monkeypatch):
+    _, ezconsole, _ = _patch_ui(monkeypatch)
+    result = PathBackupListResult(success=True, backups=[])
+
+    display_module.render_path_backup_list_result(result)
+
+    panels = _panels(ezconsole)
+    assert len(panels) == 1
+    assert panels[0].title == "Getting Started"
+    assert panels[0].border_style == "blue"
+    assert "womm path -b" in panels[0].renderable
+
+
+def test_render_path_backup_list_result_failure_shows_troubleshooting_panel(
+    monkeypatch,
+):
+    _, ezconsole, _ = _patch_ui(monkeypatch)
+    result = PathBackupListResult(success=False, error="not found")
+
+    display_module.render_path_backup_list_result(result)
+
+    panels = _panels(ezconsole)
+    assert len(panels) == 1
+    assert panels[0].title == "Troubleshooting"
+    assert panels[0].border_style == "yellow"

@@ -132,6 +132,16 @@ def render_path_backup_list_result(result: PathBackupListResult) -> None:
         ezprinter.error(result.message or "Failed to retrieve PATH backups")
         if result.error:
             ezprinter.info(result.error)
+
+        _show_panel(
+            """The PATH backup list could not be retrieved.
+
+- Check that the backup directory exists and is readable
+- Check permissions on the WOMM data directory
+- Use womm path -b to create a first backup""",
+            "Troubleshooting",
+            "yellow",
+        )
         return
 
     ezprinter.system(f"Backup location: {result.backup_location}")
@@ -140,6 +150,16 @@ def render_path_backup_list_result(result: PathBackupListResult) -> None:
     if not result.backups:
         ezpl_bridge.console.print("")
         ezprinter.system("No backup files found")
+
+        _show_panel(
+            """No PATH backup has been created yet.
+
+- Use womm path -b to create your first backup
+- Backups are stored in the WOMM data directory
+- Use womm path -r to restore one once it exists""",
+            "Getting Started",
+            "blue",
+        )
         return
 
     ezpl_bridge.console.print("")
@@ -155,6 +175,16 @@ def render_path_backup_list_result(result: PathBackupListResult) -> None:
         ]
     )
     ezpl_bridge.console.print(backup_table)
+
+    _show_panel(
+        """PATH backup management commands:
+
+- womm path -b - Create a new PATH backup
+- womm path -r - Restore PATH from a backup
+- womm path -l - List available PATH backups""",
+        "PATH Commands",
+        "blue",
+    )
 
 
 # ///////////////////////////////////////////////////////////////
