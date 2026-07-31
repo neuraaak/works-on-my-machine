@@ -60,24 +60,51 @@ def _show_panel(content: str, title: str, border_style: str) -> None:
 # ///////////////////////////////////////////////////////////////
 
 
-def render_path_operation_result(result: PathOperationResult) -> None:
+def render_path_operation_result(
+    result: PathOperationResult,
+    context: str = "operation",
+) -> None:
     """
     Render a PATH operation Result (add/remove/restore).
 
     Args:
         result: Outcome returned by ``SystemPathInterface.add_to_path()``,
             ``remove_from_path()``, or ``restore_backup()``.
+        context: ``"restore"`` adds the restore-specific panel; any other
+            value, including the default, renders lines only.
     """
     if result.success:
         if result.path_modified:
             ezprinter.success(result.message)
         else:
             ezprinter.info(result.message)
+
+        if context == "restore":
+            _show_panel(
+                """PATH restored successfully from backup.
+
+- Restart your terminal for the changes to take effect
+- Use womm path -l to list available backups
+- Use womm path -b to snapshot the restored PATH""",
+                "Restore Complete",
+                "green",
+            )
         return
 
     ezprinter.error(result.message or "PATH operation failed")
     if result.error:
         ezprinter.info(result.error)
+
+    if context == "restore":
+        _show_panel(
+            """The PATH could not be restored from the selected backup.
+
+- Check that the backup file is readable and not corrupted
+- Check permissions on the user environment variables
+- Use womm path -l to pick another backup""",
+            "Troubleshooting",
+            "yellow",
+        )
 
 
 def render_path_backup_result(result: PathBackupResult) -> None:

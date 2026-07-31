@@ -129,12 +129,8 @@ def _run_path_restore(manager: SystemPathInterface) -> None:
         return
 
     restore_result = manager.restore_backup(selected["file"])
-    render_path_operation_result(restore_result)
-    if restore_result.success:
-        ezprinter.info(
-            "You may need to restart your terminal for changes to take effect"
-        )
-    else:
+    render_path_operation_result(restore_result, context="restore")
+    if not restore_result.success:
         sys.exit(1)
 
 

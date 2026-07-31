@@ -95,6 +95,59 @@ def test_render_path_operation_result_failure(monkeypatch):
     ezprinter.info.assert_any_call("permission denied")
 
 
+def test_render_path_operation_result_default_context_shows_no_panel(monkeypatch):
+    _, ezconsole, _ = _patch_ui(monkeypatch)
+    result = PathOperationResult(
+        success=True, path_modified=True, message="PATH updated"
+    )
+
+    display_module.render_path_operation_result(result)
+
+    assert _panels(ezconsole) == []
+
+
+def test_render_path_operation_result_failure_default_context_shows_no_panel(
+    monkeypatch,
+):
+    _, ezconsole, _ = _patch_ui(monkeypatch)
+    result = PathOperationResult(success=False, error="permission denied")
+
+    display_module.render_path_operation_result(result)
+
+    assert _panels(ezconsole) == []
+
+
+def test_render_path_operation_result_restore_success_shows_complete_panel(monkeypatch):
+    _, ezconsole, _ = _patch_ui(monkeypatch)
+    result = PathOperationResult(
+        success=True, path_modified=True, message="PATH restored"
+    )
+
+    display_module.render_path_operation_result(result, context="restore")
+
+    panels = _panels(ezconsole)
+    assert len(panels) == 1
+    assert panels[0].title == "Restore Complete"
+    assert panels[0].border_style == "green"
+    assert "restart" in panels[0].renderable.lower()
+    assert "womm path -l" in panels[0].renderable
+
+
+def test_render_path_operation_result_restore_failure_shows_troubleshooting_panel(
+    monkeypatch,
+):
+    _, ezconsole, _ = _patch_ui(monkeypatch)
+    result = PathOperationResult(success=False, error="permission denied")
+
+    display_module.render_path_operation_result(result, context="restore")
+
+    panels = _panels(ezconsole)
+    assert len(panels) == 1
+    assert panels[0].title == "Troubleshooting"
+    assert panels[0].border_style == "yellow"
+    assert "womm path -l" in panels[0].renderable
+
+
 # ///////////////////////////////////////////////////////////////
 # BACKUP CREATION
 # ///////////////////////////////////////////////////////////////
