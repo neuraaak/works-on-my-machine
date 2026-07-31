@@ -30,9 +30,6 @@ from womm.shared.results import (
     DependencyInventoryResult,
     DependencyStatusResult,
     EnvironmentRefreshResult,
-    PathBackupListResult,
-    PathBackupResult,
-    PathOperationResult,
     SystemDetectionResult,
 )
 from womm.shared.results.dependency_results import (
@@ -40,7 +37,6 @@ from womm.shared.results.dependency_results import (
     DependencyManagerStatus,
     DependencyProbe,
 )
-from womm.shared.results.system_results import PathBackupInfo
 from womm.ui.system import display as display_module
 
 # ///////////////////////////////////////////////////////////////
@@ -53,7 +49,6 @@ def _patch_ui(monkeypatch):
     ezconsole = MagicMock()
     ezpl_bridge = MagicMock()
     ezprinter.create_panel.return_value = "panel"
-    ezprinter.create_backup_table.return_value = "backup-table"
     monkeypatch.setattr(display_module, "ezprinter", ezprinter)
     monkeypatch.setattr(display_module, "ezconsole", ezconsole)
     monkeypatch.setattr(display_module, "ezpl_bridge", ezpl_bridge)
@@ -236,103 +231,6 @@ def test_render_environment_refresh_result_failure(monkeypatch):
 
     ezprinter.error.assert_called_once_with("Environment refresh failed")
     ezprinter.info.assert_any_call("registry error")
-
-
-# ///////////////////////////////////////////////////////////////
-# PATH OPERATIONS
-# ///////////////////////////////////////////////////////////////
-
-
-def test_render_path_operation_result_modified(monkeypatch):
-    ezprinter, _, _ = _patch_ui(monkeypatch)
-    result = PathOperationResult(
-        success=True, path_modified=True, message="PATH updated"
-    )
-
-    display_module.render_path_operation_result(result)
-
-    ezprinter.success.assert_called_once_with("PATH updated")
-
-
-def test_render_path_operation_result_not_modified(monkeypatch):
-    ezprinter, _, _ = _patch_ui(monkeypatch)
-    result = PathOperationResult(
-        success=True, path_modified=False, message="already present"
-    )
-
-    display_module.render_path_operation_result(result)
-
-    ezprinter.info.assert_called_once_with("already present")
-
-
-def test_render_path_operation_result_failure(monkeypatch):
-    ezprinter, _, _ = _patch_ui(monkeypatch)
-    result = PathOperationResult(success=False, error="permission denied")
-
-    display_module.render_path_operation_result(result)
-
-    ezprinter.error.assert_called_once_with("PATH operation failed")
-    ezprinter.info.assert_any_call("permission denied")
-
-
-def test_render_path_backup_result_success(monkeypatch):
-    ezprinter, _, _ = _patch_ui(monkeypatch)
-    result = PathBackupResult(
-        success=True, backup_location="C:/backups", backup_file="C:/backups/a.json"
-    )
-
-    display_module.render_path_backup_result(result)
-
-    ezprinter.system.assert_any_call("Backup location: C:/backups")
-    ezprinter.system.assert_any_call("Backup file: a.json")
-
-
-def test_render_path_backup_result_failure(monkeypatch):
-    ezprinter, _, _ = _patch_ui(monkeypatch)
-    result = PathBackupResult(success=False, error="disk full")
-
-    display_module.render_path_backup_result(result)
-
-    ezprinter.error.assert_called_once_with("PATH backup failed")
-
-
-def test_render_path_backup_list_result_failure(monkeypatch):
-    ezprinter, _, _ = _patch_ui(monkeypatch)
-    result = PathBackupListResult(success=False, error="not found")
-
-    display_module.render_path_backup_list_result(result)
-
-    ezprinter.error.assert_called_once_with("Failed to retrieve PATH backups")
-
-
-def test_render_path_backup_list_result_empty(monkeypatch):
-    ezprinter, _, ezpl_bridge = _patch_ui(monkeypatch)
-    result = PathBackupListResult(success=True, backups=[])
-
-    display_module.render_path_backup_list_result(result)
-
-    ezprinter.system.assert_any_call("No backup files found")
-
-
-def test_render_path_backup_list_result_with_backups(monkeypatch):
-    ezprinter, _, ezpl_bridge = _patch_ui(monkeypatch)
-    result = PathBackupListResult(
-        success=True,
-        backups=[
-            PathBackupInfo(
-                name="a.json",
-                path="C:/a.json",
-                size=100,
-                modified="2026-01-01",
-                path_entries=3,
-            )
-        ],
-    )
-
-    display_module.render_path_backup_list_result(result)
-
-    ezprinter.create_backup_table.assert_called_once()
-    ezpl_bridge.console.print.assert_any_call("backup-table")
 
 
 # ///////////////////////////////////////////////////////////////

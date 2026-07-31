@@ -26,10 +26,12 @@ from .display import (
     display_system_detection_results,
     display_system_managers_list,
     render_environment_refresh_result,
+    render_system_detection_result,
+)
+from .path_display import (
     render_path_backup_list_result,
     render_path_backup_result,
     render_path_operation_result,
-    render_system_detection_result,
 )
 
 # ///////////////////////////////////////////////////////////////
