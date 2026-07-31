@@ -18,13 +18,42 @@ from __future__ import annotations
 # Standard library imports
 from pathlib import Path
 
+# Third-party imports
+from rich.panel import Panel
+
 # Local imports
 from ...shared.results import (
     PathBackupListResult,
     PathBackupResult,
     PathOperationResult,
 )
-from ..common import ezpl_bridge, ezprinter
+from ..common import ezconsole, ezpl_bridge, ezprinter
+
+# ///////////////////////////////////////////////////////////////
+# PANEL HELPERS
+# ///////////////////////////////////////////////////////////////
+
+
+def _show_panel(content: str, title: str, border_style: str) -> None:
+    """Print a bordered panel using the shared WOMM panel styling.
+
+    Args:
+        content: Body text of the panel.
+        title: Panel title.
+        border_style: Rich colour name; also drives the ``bright_`` body style.
+    """
+    panel = Panel(
+        content,
+        title=title,
+        border_style=border_style,
+        style=f"bright_{border_style}",
+        padding=(1, 1),
+        width=80,
+    )
+    ezconsole.print("")
+    ezconsole.print(panel)
+    ezconsole.print("")
+
 
 # ///////////////////////////////////////////////////////////////
 # DISPLAY FUNCTIONS
@@ -63,11 +92,33 @@ def render_path_backup_result(result: PathBackupResult) -> None:
         ezprinter.system(f"Backup location: {result.backup_location}")
         if result.backup_file:
             ezprinter.system(f"Backup file: {Path(result.backup_file).name}")
+
+        file_name = Path(result.backup_file).name if result.backup_file else "unknown"
+        _show_panel(
+            f"""PATH backup created successfully.
+
+- Location: {result.backup_location}
+- File: {file_name}
+- Use womm path -r to restore this backup later
+- Use womm path -l to list every available backup""",
+            "Backup Information",
+            "yellow",
+        )
         return
 
     ezprinter.error(result.message or "PATH backup failed")
     if result.error:
         ezprinter.info(result.error)
+
+    _show_panel(
+        """The PATH backup could not be created.
+
+- Check write permissions on the backup directory
+- Check available disk space
+- Use womm path -l to inspect the backup location""",
+        "Troubleshooting",
+        "yellow",
+    )
 
 
 def render_path_backup_list_result(result: PathBackupListResult) -> None:

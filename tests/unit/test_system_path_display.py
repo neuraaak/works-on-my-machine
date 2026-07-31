@@ -121,6 +121,36 @@ def test_render_path_backup_result_failure(monkeypatch):
     ezprinter.error.assert_called_once_with("PATH backup failed")
 
 
+def test_render_path_backup_result_success_shows_information_panel(monkeypatch):
+    _, ezconsole, _ = _patch_ui(monkeypatch)
+    result = PathBackupResult(
+        success=True, backup_location="C:/backups", backup_file="C:/backups/a.json"
+    )
+
+    display_module.render_path_backup_result(result)
+
+    panels = _panels(ezconsole)
+    assert len(panels) == 1
+    assert panels[0].title == "Backup Information"
+    assert panels[0].border_style == "yellow"
+    assert panels[0].width == 80
+    assert "a.json" in panels[0].renderable
+    assert "womm path -r" in panels[0].renderable
+
+
+def test_render_path_backup_result_failure_shows_troubleshooting_panel(monkeypatch):
+    _, ezconsole, _ = _patch_ui(monkeypatch)
+    result = PathBackupResult(success=False, error="disk full")
+
+    display_module.render_path_backup_result(result)
+
+    panels = _panels(ezconsole)
+    assert len(panels) == 1
+    assert panels[0].title == "Troubleshooting"
+    assert panels[0].border_style == "yellow"
+    assert "womm path -l" in panels[0].renderable
+
+
 # ///////////////////////////////////////////////////////////////
 # BACKUP LISTING
 # ///////////////////////////////////////////////////////////////
