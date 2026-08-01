@@ -24,6 +24,7 @@ from ...shared.results import (
     DependencyCheckResult,
     DependencyInventoryResult,
     DependencyStatusResult,
+    DoctorResult,
     EnvironmentRefreshResult,
     SystemDetectionResult,
 )
@@ -279,6 +280,45 @@ def render_environment_refresh_result(
     ezprinter.info("Solution: Restart your terminal or run 'refreshenv' manually")
 
 
+def render_doctor_result(result: DoctorResult, verbose: bool = False) -> None:
+    """
+    Render the runtime diagnostic Result.
+
+    Args:
+        result: Outcome returned by ``DoctorInterface.diagnose()``.
+        verbose: Whether to show the raw executable and data directory paths.
+    """
+    if not result.success:
+        ezprinter.error(result.message or "Runtime diagnostic failed")
+        if result.error:
+            ezprinter.info(result.error)
+        return
+
+    ezprinter.system(f"Runtime channel: {result.channel}")
+    ezprinter.system(f"Version: {result.version}")
+    ezprinter.system(f"PATH command: {result.path_command or 'not found'}")
+    ezprinter.system(f"Context menu: {result.context_menu_status}")
+
+    writable_label = "writable" if result.data_dir_writable else "not writable"
+    if result.data_dir_writable:
+        ezprinter.success(f"Data directory: {result.data_dir} ({writable_label})")
+    else:
+        ezprinter.warning(f"Data directory: {result.data_dir} ({writable_label})")
+
+    if verbose:
+        ezprinter.info(f"Executable: {result.executable}")
+
+    _show_panel(
+        """Runtime diagnostic commands:
+
+- womm doctor -v - Show the resolved executable path
+- womm path list - Inspect the current PATH
+- womm context list - Inspect registered context menu entries""",
+        "Doctor Commands",
+        "blue",
+    )
+
+
 def render_deps_check_result(
     result: DependencyCheckResult,
     verbose: bool = False,
@@ -491,6 +531,7 @@ __all__ = [
     "render_deps_check_result",
     "render_deps_inventory_result",
     "render_deps_status_result",
+    "render_doctor_result",
     "render_environment_refresh_result",
     "render_system_detection_result",
 ]

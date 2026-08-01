@@ -45,6 +45,7 @@ from .dependency_results import (
     DependencyProbe,
     DependencyStatusResult,
 )
+from .doctor_results import DoctorResult
 from .file_results import FileOperationResult, FileScanResult, FileSearchResult
 from .lint_results import LintSummaryResult, ToolResult, ToolStatusResult
 from .project_results import (
@@ -105,6 +106,7 @@ __all__ = [
     "DependencyManagerStatus",
     "DependencyProbe",
     "DependencyStatusResult",
+    "DoctorResult",
     "EnvironmentRefreshResult",
     "EnvironmentVerificationResult",
     "FileOperationResult",

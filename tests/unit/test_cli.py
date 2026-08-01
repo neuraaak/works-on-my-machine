@@ -66,13 +66,29 @@ def test_doctor_reports_runtime_without_creating_data_directory(
     data_dir = tmp_path / "womm-home"
     monkeypatch.setenv("WOMM_HOME", str(data_dir))
     monkeypatch.setattr(
-        "womm.commands.core.doctor._context_menu_status", lambda: "0 entries"
+        "womm.interfaces.core.doctor_interface.DoctorInterface._context_menu_status",
+        staticmethod(lambda: "0 entries"),
     )
 
     result = CliRunner().invoke(womm, ["doctor"])
 
     assert result.exit_code == 0
-    assert "Runtime channel:" in result.output
-    assert f"Data directory: {data_dir}" in result.output
-    assert "Context menu: 0 entries" in result.output
+    assert not data_dir.exists()
+
+
+def test_doctor_diagnose_reports_the_data_directory(tmp_path, monkeypatch) -> None:
+    from womm.interfaces.core import DoctorInterface
+
+    data_dir = tmp_path / "womm-home"
+    monkeypatch.setenv("WOMM_HOME", str(data_dir))
+    monkeypatch.setattr(
+        "womm.interfaces.core.doctor_interface.DoctorInterface._context_menu_status",
+        staticmethod(lambda: "0 entries"),
+    )
+
+    result = DoctorInterface().diagnose()
+
+    assert result.success
+    assert result.data_dir == str(data_dir)
+    assert result.context_menu_status == "0 entries"
     assert not data_dir.exists()

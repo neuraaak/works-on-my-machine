@@ -25,6 +25,7 @@ from .display import (
     render_deps_check_result,
     render_deps_inventory_result,
     render_deps_status_result,
+    render_doctor_result,
     render_environment_refresh_result,
     render_system_detection_result,
 )
@@ -48,6 +49,7 @@ __all__ = [
     "render_deps_check_result",
     "render_deps_inventory_result",
     "render_deps_status_result",
+    "render_doctor_result",
     "render_environment_refresh_result",
     "render_path_backup_content_result",
     "render_path_backup_list_result",

@@ -29,6 +29,7 @@ from womm.shared.results import (
     DependencyCheckResult,
     DependencyInventoryResult,
     DependencyStatusResult,
+    DoctorResult,
     EnvironmentRefreshResult,
     SystemDetectionResult,
 )
@@ -197,6 +198,55 @@ def test_render_system_detection_result_failure(monkeypatch):
     display_module.render_system_detection_result(result)
 
     ezprinter.error.assert_called_once_with("detection failed")
+
+
+# ///////////////////////////////////////////////////////////////
+# DOCTOR
+# ///////////////////////////////////////////////////////////////
+
+
+def test_render_doctor_result_reports_all_fields(monkeypatch):
+    ezprinter, ezconsole, _ = _patch_ui(monkeypatch)
+    result = DoctorResult(
+        success=True,
+        channel="package",
+        version="1.0.0",
+        executable="/usr/bin/womm",
+        data_dir="/home/user/.womm",
+        data_dir_writable=True,
+        path_command="/usr/bin/womm",
+        context_menu_status="0 entries",
+    )
+
+    display_module.render_doctor_result(result, verbose=True)
+
+    ezprinter.system.assert_any_call("Runtime channel: package")
+    ezprinter.success.assert_any_call("Data directory: /home/user/.womm (writable)")
+    ezprinter.info.assert_any_call("Executable: /usr/bin/womm")
+    ezconsole.print.assert_called()
+
+
+def test_render_doctor_result_warns_when_data_dir_not_writable(monkeypatch):
+    ezprinter, _, _ = _patch_ui(monkeypatch)
+    result = DoctorResult(
+        success=True,
+        data_dir="/root/.womm",
+        data_dir_writable=False,
+    )
+
+    display_module.render_doctor_result(result)
+
+    ezprinter.warning.assert_any_call("Data directory: /root/.womm (not writable)")
+
+
+def test_render_doctor_result_failure(monkeypatch):
+    ezprinter, _, _ = _patch_ui(monkeypatch)
+    result = DoctorResult(success=False, message="boom", error="detail")
+
+    display_module.render_doctor_result(result)
+
+    ezprinter.error.assert_called_once_with("boom")
+    ezprinter.info.assert_any_call("detail")
 
 
 # ///////////////////////////////////////////////////////////////

@@ -23,6 +23,9 @@ from .context import (
     ContextScriptDetectorInterface,
 )
 
+# Local imports - Core interfaces
+from .core import DoctorInterface
+
 # Local imports - Dependencies interfaces
 from .dependencies import DepsInterface
 
@@ -54,6 +57,8 @@ __all__ = [
     "ContextMenuInterface",
     "ContextRegistryInterface",
     "ContextScriptDetectorInterface",
+    # Core interfaces
+    "DoctorInterface",
     # Dependencies interfaces
     "DepsInterface",
     # Project interfaces

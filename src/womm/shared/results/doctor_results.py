@@ -1,0 +1,42 @@
+#!/usr/bin/env python3
+# ///////////////////////////////////////////////////////////////
+# DOCTOR RESULTS - Runtime Diagnostic Result Classes
+# Project: works-on-my-machine
+# ///////////////////////////////////////////////////////////////
+
+"""Result class for the read-only runtime diagnostic (``womm doctor``)."""
+
+from __future__ import annotations
+
+# ///////////////////////////////////////////////////////////////
+# IMPORTS
+# ///////////////////////////////////////////////////////////////
+# Standard library imports
+from dataclasses import dataclass
+
+# Local imports
+from .base import BaseResult
+
+# ///////////////////////////////////////////////////////////////
+# DOCTOR RESULT
+# ///////////////////////////////////////////////////////////////
+
+
+@dataclass
+class DoctorResult(BaseResult):
+    """Result for the runtime diagnostic report."""
+
+    channel: str = ""
+    version: str = ""
+    executable: str = ""
+    data_dir: str = ""
+    data_dir_writable: bool = False
+    path_command: str | None = None
+    context_menu_status: str = ""
+
+
+# ///////////////////////////////////////////////////////////////
+# PUBLIC API
+# ///////////////////////////////////////////////////////////////
+
+__all__ = ["DoctorResult"]
