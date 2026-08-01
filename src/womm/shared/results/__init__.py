@@ -47,7 +47,6 @@ from .dependency_results import (
 )
 from .doctor_results import DoctorResult
 from .file_results import FileOperationResult, FileScanResult, FileSearchResult
-from .lint_results import LintSummaryResult, ToolResult, ToolStatusResult
 from .project_results import (
     ConfigurationResult,
     ProjectCreationResult,
@@ -112,7 +111,6 @@ __all__ = [
     "FileOperationResult",
     "FileScanResult",
     "FileSearchResult",
-    "LintSummaryResult",
     "PathBackupContentResult",
     "PathBackupInfo",
     "PathBackupListResult",
@@ -134,7 +132,5 @@ __all__ = [
     "SystemDetectionResult",
     "SystemInfoResult",
     "TemplateResult",
-    "ToolResult",
-    "ToolStatusResult",
     "ValidationResult",
 ]

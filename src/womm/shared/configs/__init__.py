@@ -12,7 +12,6 @@ This package contains configuration classes organized by domain:
 - project: Project structure, types, and variants
 - system: System detection and environment
 - context: Context menu configuration
-- lint: Linting configuration
 - security: Security patterns
 - scanner: File scanner configuration
 """
@@ -25,7 +24,6 @@ from __future__ import annotations
 # Local imports
 from .context import ContextConfig
 from .dependencies import DevToolsConfig, RuntimeConfig, SystemPackageManagerConfig
-from .lint import PythonLintingConfig
 from .project import (
     JavaScriptProjectConfig,
     ProjectConfig,
@@ -49,7 +47,6 @@ __all__ = [
     "ProjectConfig",
     "ProjectStructureConfig",
     "ProjectVariantConfig",
-    "PythonLintingConfig",
     "PythonProjectConfig",
     "RuntimeConfig",
     "SecurityPatternsConfig",

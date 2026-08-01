@@ -32,9 +32,6 @@ from .context import (
     ContextValidationService,
 )
 
-# Local imports - Lint services
-from .lint import LintService, PythonLintService
-
 # Local imports - Project services
 from .project import (
     ConflictResolutionService,
@@ -63,9 +60,6 @@ __all__ = [  # noqa: RUF022
     "ContextRegistryService",
     "ContextType",
     "ContextValidationService",
-    # Lint services
-    "LintService",
-    "PythonLintService",
     # Project services
     "ConflictResolutionService",
     "JavaScriptProjectCreationService",

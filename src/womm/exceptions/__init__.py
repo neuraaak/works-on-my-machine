@@ -12,14 +12,12 @@ Import exceptions from the appropriate domain:
 
     from exceptions.common import CommandServiceError, FileServiceError
     from exceptions.context import ContextServiceError
-    from exceptions.lint import LintServiceError
     from exceptions.project import ProjectServiceError
     from exceptions.system import SystemServiceError
 
 Available domains:
 - common: Command, file, and security service exceptions
 - context: Context menu service exceptions
-- lint: Linting service exceptions
 - project: Project management exceptions
 - system: System management exceptions
 """
@@ -43,9 +41,6 @@ from .common import (
 # Local imports - Context exceptions
 from .context import ContextServiceError
 
-# Local imports - Lint exceptions
-from .lint import LintServiceError
-
 # Local imports - Project exceptions
 from .project import ProjectServiceError
 
@@ -67,8 +62,6 @@ __all__ = [  # noqa: RUF022
     "ValidationServiceError",
     # Context exceptions
     "ContextServiceError",
-    # Lint exceptions
-    "LintServiceError",
     # Project exceptions
     "ProjectServiceError",
     # System exceptions

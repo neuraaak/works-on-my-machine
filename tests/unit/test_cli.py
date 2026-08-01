@@ -42,7 +42,6 @@ def test_help_registers_all_operational_command_groups() -> None:
         "doctor",
         "path",
         "create",
-        "lint",
         "system",
         "context",
         "setup",

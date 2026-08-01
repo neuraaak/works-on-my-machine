@@ -29,9 +29,6 @@ from .core import DoctorInterface
 # Local imports - Dependencies interfaces
 from .dependencies import DepsInterface
 
-# Local imports - Lint interfaces
-from .lint import PythonLintInterface
-
 # Local imports - Project interfaces
 from .project import (
     ProjectCreateInterface,
@@ -66,8 +63,6 @@ __all__ = [
     "ProjectDetectionInterface",
     "ProjectManagerInterface",
     "ProjectSetupInterface",
-    # Lint interfaces
-    "PythonLintInterface",
     # System interfaces
     "SystemDetectorInterface",
     "SystemEnvironmentInterface",
