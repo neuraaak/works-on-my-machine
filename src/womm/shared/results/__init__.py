@@ -66,6 +66,7 @@ from .security_results import (
 from .system_results import (
     EnvironmentRefreshResult,
     EnvironmentVerificationResult,
+    PathBackupContentResult,
     PathBackupInfo,
     PathBackupListResult,
     PathBackupResult,
@@ -112,6 +113,7 @@ __all__ = [
     "FileScanResult",
     "FileSearchResult",
     "LintSummaryResult",
+    "PathBackupContentResult",
     "PathBackupInfo",
     "PathBackupListResult",
     "PathBackupResult",

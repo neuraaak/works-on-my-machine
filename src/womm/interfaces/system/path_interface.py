@@ -33,6 +33,7 @@ from ...exceptions.system import SystemServiceError
 from ...services import CommandRunnerService, SystemPathService
 from ...shared.paths import path_backups_dir
 from ...shared.results import (
+    PathBackupContentResult,
     PathBackupInfo,
     PathBackupListResult,
     PathBackupResult,
@@ -139,6 +140,28 @@ class SystemPathInterface:
             )
 
     # ///////////////////////////////////////////////////////////////
+    # PUBLIC METHODS - PATH INSPECTION
+    # ///////////////////////////////////////////////////////////////
+
+    def list_path_entries(self) -> PathOperationResult:
+        """
+        List the entries of the current user PATH.
+
+        Returns:
+            PathOperationResult: ``path_entries`` holds the current PATH on
+            success; failure carries the error.
+        """
+        try:
+            return self._path_service.get_current_system_path()
+        except (SystemServiceError, ValidationServiceError) as e:
+            return PathOperationResult(
+                success=False,
+                message="Failed to read the current PATH",
+                error=str(e),
+                operation="list",
+            )
+
+    # ///////////////////////////////////////////////////////////////
     # PUBLIC METHODS - BACKUP MANAGEMENT
     # ///////////////////////////////////////////////////////////////
 
@@ -198,6 +221,90 @@ class SystemPathInterface:
             message=f"Found {len(backups)} backup(s)",
             backup_location=str(self.backup_dir),
             backups=backups,
+        )
+
+    def _resolve_backup_name(self, name: str) -> Path | None:
+        """Resolve a backup name inside the backup directory.
+
+        Args:
+            name: Bare file name, as listed by ``list_backups()``.
+
+        Returns:
+            The resolved path, or None when the name is unsafe, absent, or
+            not a regular file. Callers must not disclose the resolved path.
+        """
+        if not name or ".." in name or "/" in name or "\\" in name:
+            return None
+        if Path(name).is_absolute() or Path(name).drive:
+            return None
+
+        try:
+            candidate = (self.backup_dir / name).resolve()
+            root = self.backup_dir.resolve()
+        except OSError:
+            return None
+
+        if not candidate.is_relative_to(root):
+            return None
+        if not candidate.is_file():
+            return None
+        # resolve() followed the symlink; is_relative_to already rejected any
+        # target outside root, so reaching here means the file is contained.
+        return candidate
+
+    def read_backup(self, name: str) -> PathBackupContentResult:
+        """
+        Read the content of a single PATH backup file.
+
+        Args:
+            name: Bare backup file name, as listed by ``list_backups()``.
+                Path separators, parent references and absolute paths are
+                rejected.
+
+        Returns:
+            PathBackupContentResult: the backup's metadata and entries, or a
+            failure carrying the reason.
+        """
+        backup_file = self._resolve_backup_name(name)
+        if backup_file is None:
+            return PathBackupContentResult(
+                success=False,
+                message=f"No readable backup named {name!r}",
+                name=name,
+            )
+
+        try:
+            data = json.loads(backup_file.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError, UnicodeDecodeError) as e:
+            return PathBackupContentResult(
+                success=False,
+                message=f"Failed to read backup file: {name}",
+                error=str(e),
+                name=name,
+            )
+
+        if not isinstance(data, dict):
+            return PathBackupContentResult(
+                success=False,
+                message=f"Malformed backup file: {name}",
+                error="Backup payload is not an object",
+                name=name,
+            )
+
+        entries = data.get("entries", [])
+        if not isinstance(entries, list):
+            entries = []
+
+        return PathBackupContentResult(
+            success=True,
+            message=f"Read {len(entries)} entries from {name}",
+            name=name,
+            backup_file=str(backup_file),
+            timestamp=str(data.get("timestamp", "")),
+            platform=str(data.get("platform", "")),
+            separator=str(data.get("separator", "")),
+            length=int(data.get("length", 0) or 0),
+            entries=[str(entry) for entry in entries],
         )
 
     def create_backup(self) -> PathBackupResult:

@@ -113,6 +113,24 @@ class PathBackupListResult(BaseResult):
 
 
 @dataclass
+class PathBackupContentResult(BaseResult):
+    """Content of a single PATH backup file."""
+
+    name: str = ""
+    backup_file: str = ""
+    timestamp: str = ""
+    platform: str = ""
+    separator: str = ""
+    length: int = 0
+    entries: list[str] | None = None
+
+    def __post_init__(self) -> None:
+        """Initialize derived fields."""
+        if self.entries is None:
+            self.entries = []
+
+
+@dataclass
 class PathBackupResult(BaseResult):
     """Result for creating a PATH backup."""
 
@@ -236,6 +254,7 @@ class PrerequisitesInstallResult(BaseResult):
 __all__ = [
     "EnvironmentRefreshResult",
     "EnvironmentVerificationResult",
+    "PathBackupContentResult",
     "PathBackupInfo",
     "PathBackupListResult",
     "PathBackupResult",
