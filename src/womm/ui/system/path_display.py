@@ -23,6 +23,7 @@ from rich.panel import Panel
 
 # Local imports
 from ...shared.results import (
+    PathBackupContentResult,
     PathBackupListResult,
     PathBackupResult,
     PathOperationResult,
@@ -84,8 +85,8 @@ def render_path_operation_result(
                 """PATH restored successfully from backup.
 
 - Restart your terminal for the changes to take effect
-- Use womm path -l to list available backups
-- Use womm path -b to snapshot the restored PATH""",
+- Use womm path backup list to list available backups
+- Use womm path backup create to snapshot the restored PATH""",
                 "Restore Complete",
                 "green",
             )
@@ -101,7 +102,7 @@ def render_path_operation_result(
 
 - Check that the backup file is readable and not corrupted
 - Check permissions on the user environment variables
-- Use womm path -l to pick another backup""",
+- Use womm path backup list to pick another backup""",
             "Troubleshooting",
             "yellow",
         )
@@ -126,8 +127,8 @@ def render_path_backup_result(result: PathBackupResult) -> None:
 
 - Location: {result.backup_location}
 - File: {file_name}
-- Use womm path -r to restore this backup later
-- Use womm path -l to list every available backup""",
+- Use womm path backup restore to restore this backup later
+- Use womm path backup list to list every available backup""",
             "Backup Information",
             "yellow",
         )
@@ -142,7 +143,7 @@ def render_path_backup_result(result: PathBackupResult) -> None:
 
 - Check write permissions on the backup directory
 - Check available disk space
-- Use womm path -l to inspect the backup location""",
+- Use womm path backup list to inspect the backup location""",
         "Troubleshooting",
         "yellow",
     )
@@ -165,7 +166,7 @@ def render_path_backup_list_result(result: PathBackupListResult) -> None:
 
 - Check that the backup directory exists and is readable
 - Check permissions on the WOMM data directory
-- Use womm path -b to create a first backup""",
+- Use womm path backup create to create a first backup""",
             "Troubleshooting",
             "yellow",
         )
@@ -181,9 +182,9 @@ def render_path_backup_list_result(result: PathBackupListResult) -> None:
         _show_panel(
             """No PATH backup has been created yet.
 
-- Use womm path -b to create your first backup
+- Use womm path backup create to create your first backup
 - Backups are stored in the WOMM data directory
-- Use womm path -r to restore one once it exists""",
+- Use womm path backup restore to restore one once it exists""",
             "Getting Started",
             "blue",
         )
@@ -206,10 +207,118 @@ def render_path_backup_list_result(result: PathBackupListResult) -> None:
     _show_panel(
         """PATH backup management commands:
 
-- womm path -b - Create a new PATH backup
-- womm path -r - Restore PATH from a backup
-- womm path -l - List available PATH backups""",
+- womm path list - Show the entries of your current PATH
+- womm path backup create - Create a new PATH backup
+- womm path backup list - List available PATH backups
+- womm path backup show <name> - Inspect a backup's content
+- womm path backup restore - Restore PATH from a backup""",
         "PATH Commands",
+        "blue",
+    )
+
+
+def render_path_entries_result(result: PathOperationResult) -> None:
+    """
+    Render the entries of the current PATH.
+
+    Args:
+        result: Outcome returned by ``SystemPathInterface.list_path_entries()``.
+    """
+    if not result.success:
+        ezprinter.error(result.message or "Failed to read the current PATH")
+        if result.error:
+            ezprinter.info(result.error)
+
+        _show_panel(
+            """The current PATH could not be read.
+
+- Check permissions on the user environment variables
+- Use womm path backup list to inspect available backups""",
+            "Troubleshooting",
+            "yellow",
+        )
+        return
+
+    entries = result.path_entries or []
+    ezprinter.success(f"{len(entries)} entries in PATH")
+
+    if not entries:
+        ezpl_bridge.console.print("")
+        ezprinter.system("PATH is empty")
+    else:
+        table = ezprinter.create_table(
+            title="Current PATH",
+            columns=[
+                ("#", "cyan", True),
+                ("Entry", "green", False),
+                ("Exists", "yellow", True),
+            ],
+        )
+        for index, entry in enumerate(entries, 1):
+            table.add_row(str(index), entry, "yes" if Path(entry).exists() else "no")
+        ezpl_bridge.console.print("")
+        ezpl_bridge.console.print(table)
+
+    _show_panel(
+        """PATH management commands:
+
+- womm path backup create - Snapshot the current PATH
+- womm path backup list - List available PATH backups
+- womm path backup show <name> - Inspect a backup's content""",
+        "PATH Commands",
+        "blue",
+    )
+
+
+def render_path_backup_content_result(result: PathBackupContentResult) -> None:
+    """
+    Render the content of a single PATH backup.
+
+    Args:
+        result: Outcome returned by ``SystemPathInterface.read_backup()``.
+    """
+    if not result.success:
+        ezprinter.error(result.message or "Failed to read the backup")
+        if result.error:
+            ezprinter.info(result.error)
+
+        _show_panel(
+            """The requested backup could not be read.
+
+- Use womm path backup list to see the available backup names
+- Pass the file name only, not a path
+- The backup file may be corrupted""",
+            "Troubleshooting",
+            "yellow",
+        )
+        return
+
+    entries = result.entries or []
+    ezprinter.success(f"Backup {result.name} contains {len(entries)} entries")
+    ezprinter.system(f"Created: {result.timestamp}")
+    ezprinter.system(f"Platform: {result.platform}")
+    ezprinter.system(f"PATH length: {result.length} chars")
+
+    if entries:
+        table = ezprinter.create_table(
+            title=f"Entries in {result.name}",
+            columns=[
+                ("#", "cyan", True),
+                ("Entry", "green", False),
+            ],
+        )
+        for index, entry in enumerate(entries, 1):
+            table.add_row(str(index), entry)
+        ezpl_bridge.console.print("")
+        ezpl_bridge.console.print(table)
+
+    _show_panel(
+        """Backup inspection commands:
+
+- womm path backup restore - Restore your PATH from a backup
+- womm path backup list - List available PATH backups
+- womm path list - Compare against your current PATH""",
+        "Backup Content",
         "blue",
     )
 
@@ -219,7 +328,9 @@ def render_path_backup_list_result(result: PathBackupListResult) -> None:
 # ///////////////////////////////////////////////////////////////
 
 __all__ = [
+    "render_path_backup_content_result",
     "render_path_backup_list_result",
     "render_path_backup_result",
+    "render_path_entries_result",
     "render_path_operation_result",
 ]

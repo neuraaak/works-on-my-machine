@@ -25,6 +25,7 @@ from rich.panel import Panel
 
 # Local imports
 from womm.shared.results import (
+    PathBackupContentResult,
     PathBackupListResult,
     PathBackupResult,
     PathOperationResult,
@@ -130,7 +131,7 @@ def test_render_path_operation_result_restore_success_shows_complete_panel(monke
     assert panels[0].title == "Restore Complete"
     assert panels[0].border_style == "green"
     assert "restart" in panels[0].renderable.lower()
-    assert "womm path -l" in panels[0].renderable
+    assert "womm path backup list" in panels[0].renderable
 
 
 def test_render_path_operation_result_restore_failure_shows_troubleshooting_panel(
@@ -145,7 +146,7 @@ def test_render_path_operation_result_restore_failure_shows_troubleshooting_pane
     assert len(panels) == 1
     assert panels[0].title == "Troubleshooting"
     assert panels[0].border_style == "yellow"
-    assert "womm path -l" in panels[0].renderable
+    assert "womm path backup list" in panels[0].renderable
 
 
 # ///////////////////////////////////////////////////////////////
@@ -188,7 +189,7 @@ def test_render_path_backup_result_success_shows_information_panel(monkeypatch):
     assert panels[0].border_style == "yellow"
     assert panels[0].width == 80
     assert "a.json" in panels[0].renderable
-    assert "womm path -r" in panels[0].renderable
+    assert "womm path backup restore" in panels[0].renderable
 
 
 def test_render_path_backup_result_failure_shows_troubleshooting_panel(monkeypatch):
@@ -201,7 +202,7 @@ def test_render_path_backup_result_failure_shows_troubleshooting_panel(monkeypat
     assert len(panels) == 1
     assert panels[0].title == "Troubleshooting"
     assert panels[0].border_style == "yellow"
-    assert "womm path -l" in panels[0].renderable
+    assert "womm path backup list" in panels[0].renderable
 
 
 # ///////////////////////////////////////////////////////////////
@@ -269,9 +270,9 @@ def test_render_path_backup_list_result_with_backups_shows_commands_panel(monkey
     assert len(panels) == 1
     assert panels[0].title == "PATH Commands"
     assert panels[0].border_style == "blue"
-    assert "womm path -b" in panels[0].renderable
-    assert "womm path -r" in panels[0].renderable
-    assert "womm path -l" in panels[0].renderable
+    assert "womm path backup create" in panels[0].renderable
+    assert "womm path backup restore" in panels[0].renderable
+    assert "womm path backup list" in panels[0].renderable
 
 
 def test_render_path_backup_list_result_empty_shows_getting_started_panel(monkeypatch):
@@ -284,7 +285,7 @@ def test_render_path_backup_list_result_empty_shows_getting_started_panel(monkey
     assert len(panels) == 1
     assert panels[0].title == "Getting Started"
     assert panels[0].border_style == "blue"
-    assert "womm path -b" in panels[0].renderable
+    assert "womm path backup create" in panels[0].renderable
 
 
 def test_render_path_backup_list_result_failure_shows_troubleshooting_panel(
@@ -299,3 +300,100 @@ def test_render_path_backup_list_result_failure_shows_troubleshooting_panel(
     assert len(panels) == 1
     assert panels[0].title == "Troubleshooting"
     assert panels[0].border_style == "yellow"
+
+
+# ///////////////////////////////////////////////////////////////
+# PATH ENTRIES
+# ///////////////////////////////////////////////////////////////
+
+
+def test_render_path_entries_result_shows_table_and_commands_panel(monkeypatch):
+    ezprinter, ezconsole, ezpl_bridge = _patch_ui(monkeypatch)
+    # Must stay a MagicMock: the renderer calls .add_row() on it.
+    table = MagicMock()
+    ezprinter.create_table.return_value = table
+    result = PathOperationResult(
+        success=True, message="ok", path_entries=["C:/a", "C:/b"]
+    )
+
+    display_module.render_path_entries_result(result)
+
+    ezprinter.create_table.assert_called_once()
+    assert table.add_row.call_count == 2
+    ezpl_bridge.console.print.assert_any_call(table)
+    panels = _panels(ezconsole)
+    assert len(panels) == 1
+    assert panels[0].title == "PATH Commands"
+    assert panels[0].border_style == "blue"
+
+
+def test_render_path_entries_result_empty_path(monkeypatch):
+    ezprinter, ezconsole, _ = _patch_ui(monkeypatch)
+    result = PathOperationResult(success=True, message="ok", path_entries=[])
+
+    display_module.render_path_entries_result(result)
+
+    ezprinter.create_table.assert_not_called()
+    ezprinter.system.assert_any_call("PATH is empty")
+    assert len(_panels(ezconsole)) == 1
+
+
+def test_render_path_entries_result_failure(monkeypatch):
+    ezprinter, ezconsole, _ = _patch_ui(monkeypatch)
+    result = PathOperationResult(success=False, error="registry unavailable")
+
+    display_module.render_path_entries_result(result)
+
+    ezprinter.error.assert_called_once_with("Failed to read the current PATH")
+    panels = _panels(ezconsole)
+    assert len(panels) == 1
+    assert panels[0].title == "Troubleshooting"
+    assert panels[0].border_style == "yellow"
+
+
+# ///////////////////////////////////////////////////////////////
+# BACKUP CONTENT
+# ///////////////////////////////////////////////////////////////
+
+
+def test_render_path_backup_content_result_success(monkeypatch):
+    ezprinter, ezconsole, ezpl_bridge = _patch_ui(monkeypatch)
+    # Must stay a MagicMock: the renderer calls .add_row() on it.
+    table = MagicMock()
+    ezprinter.create_table.return_value = table
+    result = PathBackupContentResult(
+        success=True,
+        name=".path_20260801_120000.json",
+        backup_file="C:/backups/.path_20260801_120000.json",
+        timestamp="20260801_120000",
+        platform="Windows",
+        separator=";",
+        length=9,
+        entries=["C:/a", "C:/b"],
+    )
+
+    display_module.render_path_backup_content_result(result)
+
+    ezprinter.create_table.assert_called_once()
+    assert table.add_row.call_count == 2
+    ezpl_bridge.console.print.assert_any_call(table)
+    panels = _panels(ezconsole)
+    assert len(panels) == 1
+    assert panels[0].title == "Backup Content"
+    assert panels[0].border_style == "blue"
+    assert "womm path backup restore" in panels[0].renderable
+
+
+def test_render_path_backup_content_result_failure(monkeypatch):
+    ezprinter, ezconsole, _ = _patch_ui(monkeypatch)
+    result = PathBackupContentResult(
+        success=False, message="No readable backup named 'nope.json'"
+    )
+
+    display_module.render_path_backup_content_result(result)
+
+    ezprinter.error.assert_called_once_with("No readable backup named 'nope.json'")
+    panels = _panels(ezconsole)
+    assert len(panels) == 1
+    assert panels[0].title == "Troubleshooting"
+    assert "womm path backup list" in panels[0].renderable
