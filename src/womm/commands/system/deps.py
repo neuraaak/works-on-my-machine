@@ -22,7 +22,6 @@ from __future__ import annotations
 # IMPORTS
 # ///////////////////////////////////////////////////////////////
 # Standard library imports
-import logging
 import sys
 
 # Third-party imports
@@ -33,17 +32,10 @@ from ezpl import LogLevel
 from ...interfaces import DepsInterface
 from ...ui.common import ezpl_bridge, ezprinter
 from ...ui.system import (
-    display_deps_check_results,
-    display_deps_inventory,
-    display_deps_status_table,
+    render_deps_check_result,
+    render_deps_inventory_result,
+    render_deps_status_result,
 )
-
-# ///////////////////////////////////////////////////////////////
-# LOGGER SETUP
-# ///////////////////////////////////////////////////////////////
-
-logger = logging.getLogger(__name__)
-
 
 # ///////////////////////////////////////////////////////////////
 # MAIN DEPS GROUP
@@ -85,7 +77,7 @@ def deps_group(ctx: click.Context) -> None:
 )
 def deps_check(verbose: bool) -> None:
     """
-    Check availability of all dependencies across all strata.
+    🔍 Check availability of all dependencies across all strata.
 
     Probes system package managers, runtimes, and development tools, then
     reports which are present. Exit status is 0 when at least one system
@@ -103,12 +95,9 @@ def deps_check(verbose: bool) -> None:
     ezprinter.print_header("Dependencies Check")
 
     result = DepsInterface().check_all(detect_versions=verbose)
+    render_deps_check_result(result, verbose)
     if not result.success:
-        logger.error(f"Failed to check dependencies: {result.error}")
-        ezprinter.error(f"Check failed: {result.error}")
-        raise click.Abort()
-
-    display_deps_check_results(result, verbose)
+        sys.exit(1)
     sys.exit(0 if (result.system_ok and result.runtime_ok) else 1)
 
 
@@ -122,7 +111,7 @@ def deps_check(verbose: bool) -> None:
 )
 def deps_status(verbose: bool) -> None:
     """
-    Show a comprehensive dependency status table.
+    📊 Show a comprehensive dependency status table.
 
     Renders a table with the status of every component across the three
     strata, including versions and availability.
@@ -138,13 +127,8 @@ def deps_status(verbose: bool) -> None:
     ezprinter.print_header("Dependency Status")
 
     result = DepsInterface().show_status(detect_versions=verbose)
-    if not result.success:
-        logger.error(f"Failed to generate status report: {result.error}")
-        ezprinter.error(f"Status failed: {result.error}")
-        raise click.Abort()
-
-    display_deps_status_table(result, verbose)
-    sys.exit(0)
+    render_deps_status_result(result, verbose)
+    sys.exit(0 if result.success else 1)
 
 
 @deps_group.command(name="list")
@@ -157,7 +141,7 @@ def deps_status(verbose: bool) -> None:
 )
 def deps_list(verbose: bool) -> None:
     """
-    List the dependencies WOMM knows about (static inventory).
+    📋 List the dependencies WOMM knows about (static inventory).
 
     Shows the configured system package managers, runtimes, and development
     tools for the current platform, without probing the machine.
@@ -172,13 +156,8 @@ def deps_list(verbose: bool) -> None:
     ezprinter.print_header("Dependency Inventory")
 
     result = DepsInterface().list_all()
-    if not result.success:
-        logger.error(f"Failed to list dependencies: {result.error}")
-        ezprinter.error(f"List failed: {result.error}")
-        raise click.Abort()
-
-    display_deps_inventory(result)
-    sys.exit(0)
+    render_deps_inventory_result(result)
+    sys.exit(0 if result.success else 1)
 
 
 # ///////////////////////////////////////////////////////////////

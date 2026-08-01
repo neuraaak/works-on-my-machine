@@ -16,6 +16,7 @@ from __future__ import annotations
 # IMPORTS
 # ///////////////////////////////////////////////////////////////
 # Third-party imports
+from rich.panel import Panel
 from rich.table import Table
 
 # Local imports
@@ -27,6 +28,32 @@ from ...shared.results import (
     SystemDetectionResult,
 )
 from ..common import ezconsole, ezpl_bridge, ezprinter
+
+# ///////////////////////////////////////////////////////////////
+# PANEL HELPERS
+# ///////////////////////////////////////////////////////////////
+
+
+def _show_panel(content: str, title: str, border_style: str) -> None:
+    """Print a bordered panel using the shared WOMM panel styling.
+
+    Args:
+        content: Body text of the panel.
+        title: Panel title.
+        border_style: Rich colour name; also drives the ``bright_`` body style.
+    """
+    panel = Panel(
+        content,
+        title=title,
+        border_style=border_style,
+        style=f"bright_{border_style}",
+        padding=(1, 1),
+        width=80,
+    )
+    ezconsole.print("")
+    ezconsole.print(panel)
+    ezconsole.print("")
+
 
 # ///////////////////////////////////////////////////////////////
 # DISPLAY FUNCTIONS
@@ -252,17 +279,33 @@ def render_environment_refresh_result(
     ezprinter.info("Solution: Restart your terminal or run 'refreshenv' manually")
 
 
-def display_deps_check_results(
+def render_deps_check_result(
     result: DependencyCheckResult,
     verbose: bool = False,
 ) -> None:
     """
-    Display dependency check results (all strata).
+    Render a dependency check Result (all strata).
 
     Args:
         result: Probe results collected by ``DepsInterface.check_all()``
         verbose: Whether to show additional details
     """
+    if not result.success:
+        ezprinter.error(result.message or "Dependency check failed")
+        if result.error:
+            ezprinter.info(result.error)
+
+        _show_panel(
+            """The dependency check could not complete.
+
+- Check that WOMM can probe your system package managers
+- Re-run with -v/--verbose for more detail
+- Use womm deps list to see the static inventory instead""",
+            "Troubleshooting",
+            "yellow",
+        )
+        return
+
     ezprinter.info("Checking all dependencies...\n")
 
     # Strata 1
@@ -300,18 +343,44 @@ def display_deps_check_results(
         else:
             ezprinter.warning(msg)
 
+    _show_panel(
+        """Dependency commands:
 
-def display_deps_status_table(
+- womm deps status - Full status table with versions
+- womm deps list - Static inventory, no probing
+- womm deps check -v - Show version details for each component""",
+        "Deps Commands",
+        "blue",
+    )
+
+
+def render_deps_status_result(
     result: DependencyStatusResult,
     verbose: bool = False,
 ) -> None:
     """
-    Display comprehensive dependency status in a table.
+    Render a comprehensive dependency status table.
 
     Args:
         result: Status data collected by ``DepsInterface.show_status()``
         verbose: Whether to show additional details column
     """
+    if not result.success:
+        ezprinter.error(result.message or "Failed to generate dependency status")
+        if result.error:
+            ezprinter.info(result.error)
+
+        _show_panel(
+            """The dependency status report could not be generated.
+
+- Check that WOMM can probe your system package managers
+- Re-run with -v/--verbose for more detail
+- Use womm deps list to see the static inventory instead""",
+            "Troubleshooting",
+            "yellow",
+        )
+        return
+
     table = Table(title="WOMM Dependency Status", show_header=True)
     table.add_column("Strata", style="cyan", width=20)
     table.add_column("Component", style="yellow", width=30)
@@ -355,14 +424,39 @@ def display_deps_status_table(
 
     ezconsole.print(table)
 
+    _show_panel(
+        """Dependency commands:
 
-def display_deps_inventory(result: DependencyInventoryResult) -> None:
+- womm deps check - Probe and report availability
+- womm deps list - Static inventory, no probing
+- womm deps status -v - Show details column""",
+        "Deps Commands",
+        "blue",
+    )
+
+
+def render_deps_inventory_result(result: DependencyInventoryResult) -> None:
     """
-    Display the static dependency inventory (no probing).
+    Render the static dependency inventory (no probing).
 
     Args:
         result: Inventory collected by ``DepsInterface.list_all()``
     """
+    if not result.success:
+        ezprinter.error(result.message or "Failed to list dependencies")
+        if result.error:
+            ezprinter.info(result.error)
+
+        _show_panel(
+            """The dependency inventory could not be listed.
+
+- This is a static listing; it should not depend on system state
+- Re-run with -v/--verbose for more detail""",
+            "Troubleshooting",
+            "yellow",
+        )
+        return
+
     ezprinter.info("=== System Package Managers (Strata 1) ===")
     for entry in result.system:
         ezprinter.info(f"  • {entry.name} ({entry.detail})")
@@ -375,6 +469,15 @@ def display_deps_inventory(result: DependencyInventoryResult) -> None:
     for entry in result.tools:
         ezprinter.info(f"  • {entry.name}: {entry.detail}")
 
+    _show_panel(
+        """Dependency commands:
+
+- womm deps check - Probe and report availability
+- womm deps status - Full status table with versions""",
+        "Deps Commands",
+        "blue",
+    )
+
 
 # ///////////////////////////////////////////////////////////////
 # PUBLIC API
@@ -383,11 +486,11 @@ def display_deps_inventory(result: DependencyInventoryResult) -> None:
 __all__ = [
     "display_available_managers",
     "display_best_manager",
-    "display_deps_check_results",
-    "display_deps_inventory",
-    "display_deps_status_table",
     "display_system_detection_results",
     "display_system_managers_list",
+    "render_deps_check_result",
+    "render_deps_inventory_result",
+    "render_deps_status_result",
     "render_environment_refresh_result",
     "render_system_detection_result",
 ]

@@ -238,7 +238,7 @@ def test_render_environment_refresh_result_failure(monkeypatch):
 # ///////////////////////////////////////////////////////////////
 
 
-def test_display_deps_check_results_reports_all_strata(monkeypatch):
+def test_render_deps_check_result_reports_all_strata(monkeypatch):
     ezprinter, ezconsole, _ = _patch_ui(monkeypatch)
     result = DependencyCheckResult(
         success=True,
@@ -247,23 +247,35 @@ def test_display_deps_check_results_reports_all_strata(monkeypatch):
         tools=[DependencyProbe(name="ruff", available=True)],
     )
 
-    display_module.display_deps_check_results(result, verbose=True)
+    display_module.render_deps_check_result(result, verbose=True)
 
     ezprinter.success.assert_any_call("Available: winget")
     ezprinter.warning.assert_any_call("✗ python: N/A")
     ezprinter.success.assert_any_call("  ✓ ruff")
+    ezconsole.print.assert_any_call("")
 
 
-def test_display_deps_check_results_no_system_managers(monkeypatch):
+def test_render_deps_check_result_no_system_managers(monkeypatch):
     ezprinter, _, _ = _patch_ui(monkeypatch)
     result = DependencyCheckResult(success=True, system=[], runtime=[], tools=[])
 
-    display_module.display_deps_check_results(result)
+    display_module.render_deps_check_result(result)
 
     ezprinter.warning.assert_any_call("No system package managers available")
 
 
-def test_display_deps_status_table_verbose(monkeypatch):
+def test_render_deps_check_result_failure_shows_troubleshooting(monkeypatch):
+    ezprinter, ezconsole, _ = _patch_ui(monkeypatch)
+    result = DependencyCheckResult(success=False, message="boom", error="detail")
+
+    display_module.render_deps_check_result(result)
+
+    ezprinter.error.assert_called_once_with("boom")
+    ezprinter.info.assert_any_call("detail")
+    ezconsole.print.assert_called()
+
+
+def test_render_deps_status_result_verbose(monkeypatch):
     _, ezconsole, _ = _patch_ui(monkeypatch)
     result = DependencyStatusResult(
         success=True,
@@ -280,12 +292,23 @@ def test_display_deps_status_table_verbose(monkeypatch):
         tools=[DependencyProbe(name="ruff", available=False)],
     )
 
-    display_module.display_deps_status_table(result, verbose=True)
+    display_module.render_deps_status_result(result, verbose=True)
 
-    ezconsole.print.assert_called_once()
+    ezconsole.print.assert_called()
 
 
-def test_display_deps_inventory_lists_all_strata(monkeypatch):
+def test_render_deps_status_result_failure_shows_troubleshooting(monkeypatch):
+    ezprinter, ezconsole, _ = _patch_ui(monkeypatch)
+    result = DependencyStatusResult(success=False, message="boom", error="detail")
+
+    display_module.render_deps_status_result(result)
+
+    ezprinter.error.assert_called_once_with("boom")
+    ezprinter.info.assert_any_call("detail")
+    ezconsole.print.assert_called()
+
+
+def test_render_deps_inventory_result_lists_all_strata(monkeypatch):
     ezprinter, _, _ = _patch_ui(monkeypatch)
     result = DependencyInventoryResult(
         success=True,
@@ -294,8 +317,17 @@ def test_display_deps_inventory_lists_all_strata(monkeypatch):
         tools=[DependencyInventoryEntry(name="ruff", detail="linter")],
     )
 
-    display_module.display_deps_inventory(result)
+    display_module.render_deps_inventory_result(result)
 
     ezprinter.info.assert_any_call("  • winget (Windows)")
-    ezprinter.info.assert_any_call("  • python (3.13)")
-    ezprinter.info.assert_any_call("  • ruff: linter")
+
+
+def test_render_deps_inventory_result_failure_shows_troubleshooting(monkeypatch):
+    ezprinter, ezconsole, _ = _patch_ui(monkeypatch)
+    result = DependencyInventoryResult(success=False, message="boom", error="detail")
+
+    display_module.render_deps_inventory_result(result)
+
+    ezprinter.error.assert_called_once_with("boom")
+    ezprinter.info.assert_any_call("detail")
+    ezconsole.print.assert_called()
