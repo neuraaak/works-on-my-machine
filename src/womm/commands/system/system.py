@@ -60,7 +60,7 @@ def system_group(ctx: click.Context) -> None:
     help="Enable verbose output (DEBUG level)",
 )
 def system_detect(verbose: bool) -> None:
-    """Detect system information and available tools."""
+    """🔍 Detect system information and available tools."""
     if verbose:
         ezpl_bridge.set_level(LogLevel.DEBUG.label)
 
@@ -98,7 +98,7 @@ def system_detect(verbose: bool) -> None:
     help="Enable verbose output (DEBUG level)",
 )
 def system_refresh_env(verbose: bool) -> None:
-    """Refresh environment variables (Windows only)."""
+    """🔄 Refresh environment variables (Windows only)."""
     if verbose:
         ezpl_bridge.set_level(LogLevel.DEBUG.label)
 

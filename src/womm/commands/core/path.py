@@ -17,6 +17,7 @@ from pathlib import Path
 
 # Third-party imports
 import click
+from ezpl import LogLevel
 
 # Local imports
 from ...interfaces import SystemPathInterface
@@ -61,9 +62,18 @@ def path_backup_group() -> None:
 
 @path_group.command("list")
 @click.help_option("-h", "--help")
-def path_list() -> None:
+@click.option(
+    "-v",
+    "--verbose",
+    is_flag=True,
+    help="Enable verbose output (DEBUG level)",
+)
+def path_list(verbose: bool) -> None:
     """📋 List the entries of your current PATH."""
-    ezprinter.print_header("W.O.M.M Current PATH")
+    if verbose:
+        ezpl_bridge.set_level(LogLevel.DEBUG.label)
+
+    ezprinter.print_header("Current PATH")
     result = SystemPathInterface().list_path_entries()
     render_path_entries_result(result)
     if not result.success:
@@ -77,9 +87,18 @@ def path_list() -> None:
 
 @path_backup_group.command("create")
 @click.help_option("-h", "--help")
-def path_backup_create() -> None:
+@click.option(
+    "-v",
+    "--verbose",
+    is_flag=True,
+    help="Enable verbose output (DEBUG level)",
+)
+def path_backup_create(verbose: bool) -> None:
     """💾 Create a backup of your current PATH."""
-    ezprinter.print_header("W.O.M.M PATH Backup Creation")
+    if verbose:
+        ezpl_bridge.set_level(LogLevel.DEBUG.label)
+
+    ezprinter.print_header("PATH Backup Creation")
     result = SystemPathInterface().create_backup()
     render_path_backup_result(result)
     if not result.success:
@@ -88,9 +107,18 @@ def path_backup_create() -> None:
 
 @path_backup_group.command("list")
 @click.help_option("-h", "--help")
-def path_backup_list() -> None:
+@click.option(
+    "-v",
+    "--verbose",
+    is_flag=True,
+    help="Enable verbose output (DEBUG level)",
+)
+def path_backup_list(verbose: bool) -> None:
     """📋 List available PATH backups."""
-    ezprinter.print_header("W.O.M.M PATH Backup List")
+    if verbose:
+        ezpl_bridge.set_level(LogLevel.DEBUG.label)
+
+    ezprinter.print_header("PATH Backup List")
     result = SystemPathInterface().list_backups()
     render_path_backup_list_result(result)
     if not result.success:
@@ -100,9 +128,18 @@ def path_backup_list() -> None:
 @path_backup_group.command("show")
 @click.help_option("-h", "--help")
 @click.argument("name")
-def path_backup_show(name: str) -> None:
+@click.option(
+    "-v",
+    "--verbose",
+    is_flag=True,
+    help="Enable verbose output (DEBUG level)",
+)
+def path_backup_show(name: str, verbose: bool) -> None:
     """🔍 Show the content of a PATH backup (file name, not a path)."""
-    ezprinter.print_header("W.O.M.M PATH Backup Content")
+    if verbose:
+        ezpl_bridge.set_level(LogLevel.DEBUG.label)
+
+    ezprinter.print_header("PATH Backup Content")
     result = SystemPathInterface().read_backup(name)
     render_path_backup_content_result(result)
     if not result.success:
@@ -111,9 +148,18 @@ def path_backup_show(name: str) -> None:
 
 @path_backup_group.command("restore")
 @click.help_option("-h", "--help")
-def path_backup_restore() -> None:
+@click.option(
+    "-v",
+    "--verbose",
+    is_flag=True,
+    help="Enable verbose output (DEBUG level)",
+)
+def path_backup_restore(verbose: bool) -> None:
     """🔄 Restore your PATH from a backup."""
-    ezprinter.print_header("W.O.M.M PATH Restoration")
+    if verbose:
+        ezpl_bridge.set_level(LogLevel.DEBUG.label)
+
+    ezprinter.print_header("PATH Restoration")
     _run_path_restore(SystemPathInterface())
 
 
