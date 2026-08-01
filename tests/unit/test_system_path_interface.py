@@ -111,6 +111,10 @@ def test_read_backup_reports_corrupted_json(interface):
         "",
         "C:/Windows/System32/evil.json",
         "/etc/passwd",
+        "C:foo",
+        "NUL",
+        "a\x00b",
+        "real.json:ads",
     ],
 )
 def test_read_backup_rejects_names_escaping_the_backup_dir(

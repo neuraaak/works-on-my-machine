@@ -233,7 +233,7 @@ class SystemPathInterface:
             The resolved path, or None when the name is unsafe, absent, or
             not a regular file. Callers must not disclose the resolved path.
         """
-        if not name or ".." in name or "/" in name or "\\" in name:
+        if not name or ".." in name or "/" in name or "\\" in name or ":" in name:
             return None
         if Path(name).is_absolute() or Path(name).drive:
             return None
