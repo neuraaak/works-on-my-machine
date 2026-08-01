@@ -201,8 +201,14 @@ def _run_path_restore(manager: SystemPathInterface) -> None:
     ezpl_bridge.console.print(table)
     ezpl_bridge.console.print("")
 
+    # The menu carries the bare name, not the path: restore_backup() confines
+    # the name inside the backup directory itself.
     menu_items = [
-        {"file": Path(backup.path), "path_entries": backup.path_entries}
+        {
+            "file": Path(backup.path),
+            "name": backup.name,
+            "path_entries": backup.path_entries,
+        }
         for backup in backups
     ]
     menu = InteractiveMenu(title="Select Backup to Restore", border_style="cyan")
@@ -216,7 +222,7 @@ def _run_path_restore(manager: SystemPathInterface) -> None:
         ezprinter.system("Restoration cancelled")
         return
 
-    restore_result = manager.restore_backup(selected["file"])
+    restore_result = manager.restore_backup(selected["name"])
     render_path_operation_result(restore_result, context="restore")
     if not restore_result.success:
         sys.exit(1)

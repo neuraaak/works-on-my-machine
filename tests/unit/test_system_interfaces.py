@@ -400,8 +400,8 @@ class TestSystemPathInterfaceBackups:
     def test_restore_backup_unix_updates_environment(self, tmp_path, monkeypatch):
         """Restoring on a non-Windows platform updates the process environment."""
         interface = _make_path_interface(platform="Linux")
-        backup_file = tmp_path / ".path_backup.json"
-        backup_file.write_text(
+        interface.backup_dir.mkdir(parents=True, exist_ok=True)
+        (interface.backup_dir / ".path_backup.json").write_text(
             json.dumps(
                 {"path_string": "/restored:/path", "entries": ["/restored", "/path"]}
             ),
@@ -409,7 +409,7 @@ class TestSystemPathInterfaceBackups:
         )
         monkeypatch.setenv("PATH", "/old")
 
-        result = interface.restore_backup(backup_file)
+        result = interface.restore_backup(".path_backup.json")
 
         assert result.success is True
         assert result.path_modified is True
@@ -420,13 +420,84 @@ class TestSystemPathInterfaceBackups:
     ):
         """An unreadable backup file yields a failed Result, never a raise."""
         interface = _make_path_interface()
-        backup_file = tmp_path / ".path_bad.json"
-        backup_file.write_text("not json", encoding="utf-8")
+        interface.backup_dir.mkdir(parents=True, exist_ok=True)
+        (interface.backup_dir / ".path_bad.json").write_text(
+            "not json", encoding="utf-8"
+        )
 
-        result = interface.restore_backup(backup_file)
+        result = interface.restore_backup(".path_bad.json")
 
         assert result.success is False
         assert result.operation == "restore"
+
+    # ///////////////////////////////////////////////////////////////
+    # CONTAINMENT OF THE RESTORE NAME
+    # ///////////////////////////////////////////////////////////////
+    #
+    # restore_backup writes HKCU\Environment\PATH from whatever the backup
+    # JSON says, so an attacker-chosen file reached through this name is a
+    # user-PATH takeover, i.e. code execution on the next command launch.
+    # Every hostile case below plants a *real, readable, valid* backup at the
+    # end of the hostile path: without it the read would fail anyway and the
+    # test would pass through a rejection path other than containment.
+
+    @staticmethod
+    def _plant_valid_backup(target: Path) -> None:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(
+            json.dumps({"path_string": "/evil", "entries": ["/evil"]}),
+            encoding="utf-8",
+        )
+
+    def test_restore_backup_refuses_a_traversal_name(self, tmp_path, monkeypatch):
+        """`../` must not reach a real backup planted outside the directory."""
+        interface = _make_path_interface(platform="Linux")
+        interface.backup_dir.mkdir(parents=True, exist_ok=True)
+        self._plant_valid_backup(interface.backup_dir.parent / "evil.json")
+        monkeypatch.setenv("PATH", "/old")
+
+        result = interface.restore_backup("../evil.json")
+
+        assert result.success is False
+        assert os.environ["PATH"] == "/old"
+
+    def test_restore_backup_refuses_an_absolute_name(self, tmp_path, monkeypatch):
+        """An absolute path to a real backup must not be accepted as a name."""
+        interface = _make_path_interface(platform="Linux")
+        interface.backup_dir.mkdir(parents=True, exist_ok=True)
+        outside = tmp_path / "outside" / "evil.json"
+        self._plant_valid_backup(outside)
+        monkeypatch.setenv("PATH", "/old")
+
+        result = interface.restore_backup(str(outside))
+
+        assert result.success is False
+        assert os.environ["PATH"] == "/old"
+
+    def test_restore_backup_refuses_a_separator_name(self, tmp_path, monkeypatch):
+        """A relative name with a separator must not descend either."""
+        interface = _make_path_interface(platform="Linux")
+        self._plant_valid_backup(interface.backup_dir / "sub" / "evil.json")
+        monkeypatch.setenv("PATH", "/old")
+
+        result = interface.restore_backup("sub/evil.json")
+
+        assert result.success is False
+        assert os.environ["PATH"] == "/old"
+
+    def test_restore_backup_rejection_does_not_disclose_the_resolved_path(
+        self, tmp_path
+    ):
+        """The refusal quotes the supplied name only, never where it resolved."""
+        interface = _make_path_interface(platform="Linux")
+        interface.backup_dir.mkdir(parents=True, exist_ok=True)
+        self._plant_valid_backup(interface.backup_dir.parent / "evil.json")
+
+        result = interface.restore_backup("../evil.json")
+
+        assert result.success is False
+        assert str(interface.backup_dir.parent.resolve()) not in result.message
+        assert str(interface.backup_dir.parent.resolve()) not in (result.error or "")
 
 
 if __name__ == "__main__":

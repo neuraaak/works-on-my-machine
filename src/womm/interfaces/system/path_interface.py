@@ -368,17 +368,33 @@ class SystemPathInterface:
             entries_count=len(entries),
         )
 
-    def restore_backup(self, backup_file: Path) -> PathOperationResult:
+    def restore_backup(self, name: str) -> PathOperationResult:
         """
         Restore PATH from a specific backup file.
 
         Args:
-            backup_file: Backup JSON file to restore from (as returned by
-                ``list_backups()``).
+            name: Bare backup file name, as listed by ``list_backups()``.
+                Path separators, parent references and absolute paths are
+                rejected — this method writes the user's PATH from whatever
+                the file contains, so it must never read outside
+                ``backup_dir``. The confinement lives here rather than in the
+                caller: ``read_backup()`` on this same interface already works
+                that way, and a signature taking a ready-made ``Path`` invites
+                the next caller to hand it raw user input.
 
         Returns:
             PathOperationResult: success/failure; failure carries the error.
         """
+        backup_file = self._resolve_backup_name(name)
+        if backup_file is None:
+            return PathOperationResult(
+                success=False,
+                message=f"No readable backup named {name!r}",
+                error="Backup name is unsafe, absent, or not a regular file",
+                entry_path=name,
+                operation="restore",
+            )
+
         try:
             data = json.loads(backup_file.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError, UnicodeDecodeError) as e:
