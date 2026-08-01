@@ -21,6 +21,7 @@ from __future__ import annotations
 # ///////////////////////////////////////////////////////////////
 # Standard library imports
 from pathlib import Path
+from unittest.mock import MagicMock
 
 # Third-party imports
 import pytest
@@ -560,6 +561,90 @@ class TestQuickSetupTools:
         assert result.success is True
         assert result.success_count == 1
         assert result.tools_registered == ["WOMM CLI"]
+
+
+# ///////////////////////////////////////////////////////////////
+# BACKUP READING
+# ///////////////////////////////////////////////////////////////
+
+
+def test_list_backups_delegates_to_the_backup_manager(monkeypatch):
+    from womm.interfaces import ContextMenuInterface
+    from womm.shared.results import BackupFileInfo, BackupFileListResult
+
+    interface = ContextMenuInterface()
+    expected = BackupFileListResult(
+        success=True, backups=[BackupFileInfo(filename="b.json", filepath="/b.json")]
+    )
+    manager = MagicMock()
+    manager.list_backup_files.return_value = expected
+    monkeypatch.setattr(
+        type(interface),
+        "backup_manager",
+        property(lambda self: manager),  # noqa: ARG005
+    )
+
+    result = interface.list_backups()
+
+    assert result is expected
+    manager.list_backup_files.assert_called_once_with()
+
+
+def test_read_backup_returns_the_backup_info(tmp_path, monkeypatch):
+    from womm.interfaces import ContextMenuInterface
+    from womm.shared.results import BackupDataResult
+
+    backup = tmp_path / "context_menu_backup_1.json"
+    backup.write_text("{}", encoding="utf-8")
+
+    interface = ContextMenuInterface()
+    monkeypatch.setattr(interface, "get_backup_directory", lambda: tmp_path)
+    expected = BackupDataResult(success=True, filepath=str(backup))
+    manager = MagicMock()
+    manager.get_backup_info.return_value = expected
+    monkeypatch.setattr(
+        type(interface),
+        "backup_manager",
+        property(lambda self: manager),  # noqa: ARG005
+    )
+
+    result = interface.read_backup("context_menu_backup_1.json")
+
+    assert result is expected
+    manager.get_backup_info.assert_called_once_with(str(backup.resolve()))
+
+
+@pytest.mark.parametrize(
+    "hostile_name", ["", "..", "../evil.json", "..\\evil.json", "/etc/passwd"]
+)
+def test_read_backup_rejects_an_unsafe_name(tmp_path, monkeypatch, hostile_name):
+    from womm.interfaces import ContextMenuInterface
+
+    interface = ContextMenuInterface()
+    monkeypatch.setattr(interface, "get_backup_directory", lambda: tmp_path)
+    manager = MagicMock()
+    monkeypatch.setattr(
+        type(interface),
+        "backup_manager",
+        property(lambda self: manager),  # noqa: ARG005
+    )
+
+    result = interface.read_backup(hostile_name)
+
+    assert result.success is False
+    # repr(), not the bare name: repr doubles a backslash, so a substring
+    # check against the raw name would never match "..\\evil.json".
+    assert repr(hostile_name) in result.error
+    manager.get_backup_info.assert_not_called()
+
+
+def test_resolve_backup_path_returns_none_for_an_unsafe_name(tmp_path, monkeypatch):
+    from womm.interfaces import ContextMenuInterface
+
+    interface = ContextMenuInterface()
+    monkeypatch.setattr(interface, "get_backup_directory", lambda: tmp_path)
+
+    assert interface.resolve_backup_path("../evil.json") is None
 
 
 if __name__ == "__main__":

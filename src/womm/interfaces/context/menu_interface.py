@@ -31,6 +31,8 @@ from ...services import (
 from ...services.context.backup_entries import ContextBackupEntriesReader
 from ...shared.configs.context import ContextTypesConfig
 from ...shared.results import (
+    BackupDataResult,
+    BackupFileListResult,
     ContextBackupResult,
     ContextEntriesResult,
     ContextRestoreResult,
@@ -44,6 +46,7 @@ from ...shared.results import (
 )
 from ...shared.runtime import get_womm_executable
 from ...utils.context import ContextIconResolver
+from ...utils.security import resolve_backup_name
 from .registry_interface import ContextRegistryInterface
 from .script_detector_interface import ContextScriptDetectorInterface, ScriptType
 from .script_registrar import ContextScriptRegistrar
@@ -426,6 +429,54 @@ class ContextMenuInterface:
             backup_file=backup_file,
             entry_count=data.get("metadata", {}).get("total_entries", 0),
         )
+
+    # ///////////////////////////////////////////////////////////
+    # BACKUP READING
+    # ///////////////////////////////////////////////////////////
+
+    def list_backups(self) -> BackupFileListResult:
+        """
+        List the available context menu backup files.
+
+        Returns:
+            BackupFileListResult: the discovered backups, newest first.
+        """
+        return self.backup_manager.list_backup_files()
+
+    def resolve_backup_path(self, name: str) -> Path | None:
+        """
+        Resolve a backup name inside the backup directory.
+
+        Args:
+            name: Bare backup file name, as listed by ``list_backups()``.
+                Path separators, parent references and absolute paths are
+                rejected.
+
+        Returns:
+            The resolved path, or None when the name is unsafe, absent, or
+            not a regular file. Callers must not disclose the resolved path.
+        """
+        return resolve_backup_name(self.get_backup_directory(), name)
+
+    def read_backup(self, name: str) -> BackupDataResult:
+        """
+        Read the content of a single context menu backup file.
+
+        Args:
+            name: Bare backup file name, as listed by ``list_backups()``.
+
+        Returns:
+            BackupDataResult: the backup's data, metadata and per-type entry
+            statistics, or a failure carrying the reason.
+        """
+        backup_file = self.resolve_backup_path(name)
+        if backup_file is None:
+            return BackupDataResult(
+                success=False,
+                error=f"No readable backup named {name!r}",
+            )
+
+        return self.backup_manager.get_backup_info(str(backup_file))
 
     def get_script_info(self, script_path: str) -> ScriptInfoResult:
         """
