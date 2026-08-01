@@ -7,8 +7,10 @@
 """
 Context menu UI components.
 
-This module provides UI components for context menu operations,
-including backup selection and restoration interfaces.
+Pure presentation: these components receive backup records that a command
+has already read through the interface layer, and never touch the
+filesystem themselves. The `interfaces` and `ui` layers are siblings and
+must not import each other.
 """
 
 from __future__ import annotations
@@ -17,10 +19,9 @@ from __future__ import annotations
 # IMPORTS
 # ///////////////////////////////////////////////////////////////
 # Standard library imports
-import json
 import re
-from datetime import datetime
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 # Third-party imports
 from rich.panel import Panel
@@ -28,6 +29,59 @@ from rich.panel import Panel
 # Local imports
 from ..common.ezpl_bridge import ezconsole, ezprinter
 from ..common.prompts import confirm, prompt_choice
+
+if TYPE_CHECKING:
+    from ...shared.results import BackupFileInfo
+
+# ///////////////////////////////////////////////////////////////
+# FUNCTIONS
+# ///////////////////////////////////////////////////////////////
+
+
+def _describe(backup: BackupFileInfo) -> str:
+    """Build the one-line label of a backup, used both in the menu and the panel.
+
+    Args:
+        backup: Backup record as produced by the interface layer.
+
+    Returns:
+        Label of the form ``name - 📅 date | 📦 size KB (n entries)``.
+    """
+    modified = (
+        backup.modified_time.strftime("%Y-%m-%d %H:%M:%S")
+        if backup.modified_time
+        else "unknown"
+    )
+    return (
+        f"{backup.filename} - 📅 {modified} | "
+        f"📦 {backup.size_kb:.1f} KB ({backup.entry_count} entries)"
+    )
+
+
+def format_entry_display(entry: dict) -> str:
+    """
+    Format a backup entry for display in a selection menu.
+
+    Args:
+        entry: Backup entry as read from a backup file
+
+    Returns:
+        Label of the form ``MUIVerb (exe) [key: key_name]``.
+    """
+    key_name = entry.get("key_name", "Unknown")
+    properties = entry.get("properties", {})
+
+    display_text = properties.get("MUIVerb") or properties.get("@", key_name)
+
+    command = properties.get("Command", "")
+    if command:
+        exe_match = re.search(r'"([^"]*\.exe)"', command)
+        if exe_match:
+            exe_name = Path(exe_match.group(1)).name
+            display_text = f"{display_text} ({exe_name})"
+
+    return f"{display_text} [key: {key_name}]"
+
 
 # ///////////////////////////////////////////////////////////////
 # CLASSES
@@ -39,150 +93,64 @@ class ContextMenuUI:
 
     @staticmethod
     def show_backup_selection_menu(
-        backup_dir: Path,
-        _verbose: bool = False,
-    ) -> Path | None:
+        backups: list[BackupFileInfo],
+    ) -> BackupFileInfo | None:
         """
-        Show interactive menu for selecting a backup file to restore.
+        Show interactive menu for selecting a backup to restore.
 
         Args:
-            backup_dir: Directory containing backup files
-            verbose: Enable verbose output
+            backups: Backups to choose from, newest first, as produced by
+                ``ContextMenuInterface.list_backups()``.
 
         Returns:
-            Selected backup file path or None if cancelled
+            Selected backup or None if the list is empty or the user
+            cancelled.
         """
-        # Find all backup files
-        backup_files = list(backup_dir.glob("context_menu_backup_*.json"))
-        if not backup_files:
+        if not backups:
             ezprinter.error("No context menu backups found")
-            ezprinter.info(f"Checked directory: {backup_dir}")
             return None
 
-        # Sort by modification time (newest first)
-        backup_files.sort(key=lambda x: x.stat().st_mtime, reverse=True)
+        choices = [_describe(backup) for backup in backups]
 
-        ezprinter.info("Available context menu backups:")
-
-        # Display backup options
-        for i, file in enumerate(backup_files, 1):
-            try:
-                stat = file.stat()
-                modified_date = datetime.fromtimestamp(stat.st_mtime).strftime(
-                    "%Y-%m-%d %H:%M:%S"
-                )
-                size_kb = stat.st_size / 1024
-
-                # Try to read backup info
-                try:
-                    with open(file, encoding="utf-8") as f:
-                        data = json.load(f)
-                    entry_count = len(data.get("entries", []))
-                    info = f" ({entry_count} entries)"
-                except Exception:
-                    info = ""
-
-                ezprinter.info(f"  {i}. {file.name}")
-                ezprinter.info(f"     📅 {modified_date} | 📦 {size_kb:.1f} KB{info}")
-
-            except Exception as e:
-                ezprinter.debug(f"Error reading backup {file.name}: {e}")
-                continue
-
-        ezconsole.print("")
-
-        # Create backup file choices
-        backup_choices = []
-        for file in backup_files:
-            try:
-                size_kb = file.stat().st_size / 1024
-                modified_date = datetime.fromtimestamp(file.stat().st_mtime).strftime(
-                    "%Y-%m-%d %H:%M:%S"
-                )
-
-                # Try to read entry count from backup
-                info = ""
-                try:
-                    with open(file, encoding="utf-8") as f:
-                        data = json.load(f)
-                    entry_count = len(data.get("entries", []))
-                    info = f" ({entry_count} entries)"
-                except Exception:
-                    info = ""
-
-                choice_text = (
-                    f"{file.name} - 📅 {modified_date} | 📦 {size_kb:.1f} KB{info}"
-                )
-                backup_choices.append(choice_text)
-
-            except Exception as e:
-                ezprinter.debug(f"Error reading backup {file.name}: {e}")
-                continue
-
-        # Show selection menu
         try:
-            selected_choice = prompt_choice(
-                "Choose a backup to restore:", backup_choices
-            )
-
-            # Find the corresponding file
-            selected_index = backup_choices.index(selected_choice)
-            selected_file = backup_files[selected_index]
-
-            return selected_file
-
+            selected_choice = prompt_choice("Choose a backup to restore:", choices)
+            return backups[choices.index(selected_choice)]
         except (KeyboardInterrupt, ValueError):
-            ezprinter.info("📤 Restore cancelled")
+            ezprinter.info("Restore cancelled")
             return None
 
     @staticmethod
-    def confirm_restore_operation(backup_file: Path) -> bool:
+    def confirm_restore_operation(backup: BackupFileInfo) -> bool:
         """
         Ask user to confirm the restore operation.
 
         Args:
-            backup_file: Path to the backup file to restore
+            backup: Backup about to be restored
 
         Returns:
             True if user confirms, False otherwise
         """
-        ezprinter.info(f"Selected backup: {backup_file.name}")
+        modified = (
+            backup.modified_time.strftime("%Y-%m-%d %H:%M:%S")
+            if backup.modified_time
+            else "unknown"
+        )
+        details_panel = Panel(
+            f"""Backup Details:
+• File: {backup.filename}
+• Entries: {backup.entry_count}
+• Created: {modified}
+• Size: {backup.size_kb:.1f} KB""",
+            title="Backup Information",
+            border_style="blue",
+            style="bright_blue",
+            padding=(1, 1),
+            width=60,
+        )
+        ezconsole.print("")
+        ezconsole.print(details_panel)
+        ezconsole.print("")
 
-        # Show backup details
-        try:
-            with open(backup_file, encoding="utf-8") as f:
-                data = json.load(f)
-
-            entry_count = len(data.get("entries", []))
-            timestamp = data.get("timestamp", "Unknown")
-
-            # Format timestamp for display
-            try:
-                dt = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
-                formatted_time = dt.strftime("%Y-%m-%d %H:%M:%S")
-            except Exception:
-                formatted_time = timestamp
-
-            details_panel = Panel(
-                f"""Backup Details:
-• File: {backup_file.name}
-• Entries: {entry_count}
-• Created: {formatted_time}
-• Size: {backup_file.stat().st_size / 1024:.1f} KB""",
-                title="Backup Information",
-                border_style="blue",
-                style="bright_blue",
-                padding=(1, 1),
-                width=60,
-            )
-            ezconsole.print("")
-            ezconsole.print(details_panel)
-            ezconsole.print("")
-
-        except Exception as e:
-            ezprinter.debug(f"Could not read backup details: {e}")
-
-        # Ask for confirmation
         return confirm(
             "This will overwrite current context menu entries. Proceed?", default=False
         )
@@ -212,36 +180,6 @@ class ContextMenuUI:
         )
 
         return selected if selected else []
-
-
-# ///////////////////////////////////////////////////////////////
-# FUNCTIONS
-# ///////////////////////////////////////////////////////////////
-
-
-def format_entry_display(entry: dict) -> str:
-    """
-    Format a backup entry for display in a selection menu.
-
-    Args:
-        entry: Backup entry as read from a backup file
-
-    Returns:
-        Label of the form ``MUIVerb (exe) [key: key_name]``.
-    """
-    key_name = entry.get("key_name", "Unknown")
-    properties = entry.get("properties", {})
-
-    display_text = properties.get("MUIVerb") or properties.get("@", key_name)
-
-    command = properties.get("Command", "")
-    if command:
-        exe_match = re.search(r'"([^"]*\.exe)"', command)
-        if exe_match:
-            exe_name = Path(exe_match.group(1)).name
-            display_text = f"{display_text} ({exe_name})"
-
-    return f"{display_text} [key: {key_name}]"
 
 
 # ///////////////////////////////////////////////////////////////

@@ -500,16 +500,25 @@ def context_restore(backup_file: str | None, verbose: bool) -> None:
         if not backup_path.exists():
             ezprinter.error(f"Backup file not found: {backup_file}")
             sys.exit(1)
-        selected_file = backup_path
+        selected_path = str(backup_path)
+        listing = manager.list_backups()
+        selected = next(
+            (b for b in (listing.backups or []) if b.filepath == selected_path), None
+        )
+        if selected is None:
+            ezprinter.error(f"Backup file not found: {backup_file}")
+            sys.exit(1)
     else:
-        backup_dir = manager.get_backup_directory()
-        selected = ContextMenuUI.show_backup_selection_menu(backup_dir, verbose)
+        listing = manager.list_backups()
+        if not listing.success:
+            ezprinter.error(f"Could not list backups: {listing.error}")
+            sys.exit(1)
+        selected = ContextMenuUI.show_backup_selection_menu(listing.backups or [])
         if selected is None:
             ezprinter.info("Restore cancelled")
             return
-        selected_file = selected
 
-    if not ContextMenuUI.confirm_restore_operation(selected_file):
+    if not ContextMenuUI.confirm_restore_operation(selected):
         ezprinter.info("Restore cancelled")
         return
 
@@ -517,7 +526,7 @@ def context_restore(backup_file: str | None, verbose: bool) -> None:
         "Restoring context menu from backup..."
     ) as (progress, task):
         progress.update(cast(TaskID, task), status="Restoring from backup...")
-        result = manager.restore_entries(str(selected_file))
+        result = manager.restore_entries(selected.filepath)
 
     render_context_restore_result(result)
     sys.exit(0 if result.success else 1)

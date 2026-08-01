@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 # ///////////////////////////////////////////////////////////////
-# TEST CONTEXT MENU DISPLAY - Backup selection UI logic
+# TEST CONTEXT MENU DISPLAY - Backup selection UI
 # Project: Works On My Machine
 # ///////////////////////////////////////////////////////////////
 
 """
 Tests for ``ContextMenuUI``.
 
-Real backup discovery/parsing/sorting logic runs against real JSON files
-under ``tmp_path``; only the interactive prompts (``prompt_choice``,
-``confirm``) and the terminal (``ezprinter``/``ezconsole``) are patched.
+This module is pure presentation: it receives resolved ``BackupFileInfo``
+records and never touches the filesystem. The tests build those records in
+memory and patch only the interactive prompts and the terminal.
 """
 
 from __future__ import annotations
@@ -18,12 +18,11 @@ from __future__ import annotations
 # IMPORTS
 # ///////////////////////////////////////////////////////////////
 # Standard library imports
-import json
-import os
-import time
+from datetime import datetime
 from unittest.mock import MagicMock
 
 # Local imports
+from womm.shared.results import BackupFileInfo
 from womm.ui.context import menu_display as menu_display_module
 
 # ///////////////////////////////////////////////////////////////
@@ -39,15 +38,14 @@ def _patch_ui(monkeypatch):
     return ezprinter, ezconsole
 
 
-def _write_backup(path, entries=2, timestamp="2026-01-01T10:00:00"):
-    path.write_text(
-        json.dumps(
-            {
-                "timestamp": timestamp,
-                "entries": [{"key_name": f"entry{i}"} for i in range(entries)],
-            }
-        ),
-        encoding="utf-8",
+def _backup(name="context_menu_backup_1.json", entries=2):
+    return BackupFileInfo(
+        filename=name,
+        filepath=f"/backups/{name}",
+        size_bytes=2048,
+        modified_time=datetime(2026, 1, 1, 10, 0, 0),
+        entry_count=entries,
+        backup_timestamp="2026-01-01T10:00:00",
     )
 
 
@@ -56,87 +54,66 @@ def _write_backup(path, entries=2, timestamp="2026-01-01T10:00:00"):
 # ///////////////////////////////////////////////////////////////
 
 
-def test_show_backup_selection_menu_no_backups_found(tmp_path, monkeypatch):
+def test_selection_menu_reports_an_empty_list(monkeypatch):
     ezprinter, _ = _patch_ui(monkeypatch)
 
-    result = menu_display_module.ContextMenuUI.show_backup_selection_menu(tmp_path)
+    result = menu_display_module.ContextMenuUI.show_backup_selection_menu([])
 
     assert result is None
     ezprinter.error.assert_called_once_with("No context menu backups found")
 
 
-def test_show_backup_selection_menu_returns_selected_file(tmp_path, monkeypatch):
+def test_selection_menu_returns_the_chosen_backup(monkeypatch):
     _patch_ui(monkeypatch)
-    backup = tmp_path / "context_menu_backup_1.json"
-    _write_backup(backup)
+    first, second = _backup("a.json"), _backup("b.json")
+    captured = {}
 
-    monkeypatch.setattr(
-        menu_display_module,
-        "prompt_choice",
-        lambda _message, choices: choices[0],
+    def fake_prompt_choice(_question, choices):
+        captured["choices"] = choices
+        return choices[1]
+
+    monkeypatch.setattr(menu_display_module, "prompt_choice", fake_prompt_choice)
+
+    result = menu_display_module.ContextMenuUI.show_backup_selection_menu(
+        [first, second]
     )
 
-    result = menu_display_module.ContextMenuUI.show_backup_selection_menu(tmp_path)
+    assert result is second
+    assert len(captured["choices"]) == 2
+    assert "a.json" in captured["choices"][0]
+    assert "2 entries" in captured["choices"][0]
 
-    assert result == backup
 
-
-def test_show_backup_selection_menu_cancelled_returns_none(tmp_path, monkeypatch):
+def test_selection_menu_returns_none_when_cancelled(monkeypatch):
     ezprinter, _ = _patch_ui(monkeypatch)
-    _write_backup(tmp_path / "context_menu_backup_1.json")
 
-    def _raise_keyboard_interrupt(*_args, **_kwargs):
+    def fake_prompt_choice(_question, _choices):
         raise KeyboardInterrupt
 
-    monkeypatch.setattr(menu_display_module, "prompt_choice", _raise_keyboard_interrupt)
+    monkeypatch.setattr(menu_display_module, "prompt_choice", fake_prompt_choice)
 
-    result = menu_display_module.ContextMenuUI.show_backup_selection_menu(tmp_path)
+    result = menu_display_module.ContextMenuUI.show_backup_selection_menu([_backup()])
 
     assert result is None
-    ezprinter.info.assert_any_call("📤 Restore cancelled")
+    ezprinter.info.assert_called_with("Restore cancelled")
 
 
-def test_show_backup_selection_menu_skips_unreadable_backup(tmp_path, monkeypatch):
+def test_selection_menu_handles_an_unknown_modified_time(monkeypatch):
     _patch_ui(monkeypatch)
-    good = tmp_path / "context_menu_backup_good.json"
-    _write_backup(good)
-    bad = tmp_path / "context_menu_backup_bad.json"
-    bad.write_text("not json", encoding="utf-8")
+    backup = _backup()
+    backup.modified_time = None
+    captured = {}
 
-    monkeypatch.setattr(
-        menu_display_module,
-        "prompt_choice",
-        lambda _message, choices: choices[0],
-    )
-
-    result = menu_display_module.ContextMenuUI.show_backup_selection_menu(tmp_path)
-
-    assert result in {good, bad}
-
-
-def test_show_backup_selection_menu_sorts_newest_first(tmp_path, monkeypatch):
-    _patch_ui(monkeypatch)
-    older = tmp_path / "context_menu_backup_older.json"
-    newer = tmp_path / "context_menu_backup_newer.json"
-    _write_backup(older)
-    _write_backup(newer)
-
-    now = time.time()
-    os.utime(older, (now - 100, now - 100))
-    os.utime(newer, (now, now))
-
-    captured_choices = {}
-
-    def _capture_and_select(_message, choices):
-        captured_choices["choices"] = choices
+    def fake_prompt_choice(_question, choices):
+        captured["choices"] = choices
         return choices[0]
 
-    monkeypatch.setattr(menu_display_module, "prompt_choice", _capture_and_select)
+    monkeypatch.setattr(menu_display_module, "prompt_choice", fake_prompt_choice)
 
-    result = menu_display_module.ContextMenuUI.show_backup_selection_menu(tmp_path)
+    result = menu_display_module.ContextMenuUI.show_backup_selection_menu([backup])
 
-    assert result == newer
-    assert captured_choices["choices"][0].startswith("context_menu_backup_newer")
+    assert result is backup
+    assert "unknown" in captured["choices"][0]
 
 
 # ///////////////////////////////////////////////////////////////
@@ -144,69 +121,45 @@ def test_show_backup_selection_menu_sorts_newest_first(tmp_path, monkeypatch):
 # ///////////////////////////////////////////////////////////////
 
 
-def test_confirm_restore_operation_shows_details_and_asks(tmp_path, monkeypatch):
-    _, ezconsole = _patch_ui(monkeypatch)
-    backup = tmp_path / "backup.json"
-    _write_backup(backup, entries=3)
-
-    monkeypatch.setattr(menu_display_module, "confirm", lambda *_a, **_k: True)
-
-    result = menu_display_module.ContextMenuUI.confirm_restore_operation(backup)
-
-    assert result is True
-    ezconsole.print.assert_called()
-
-
-def test_confirm_restore_operation_handles_invalid_timestamp(tmp_path, monkeypatch):
+def test_confirm_restore_shows_details_and_returns_the_answer(monkeypatch):
     _patch_ui(monkeypatch)
-    backup = tmp_path / "backup.json"
-    _write_backup(backup, timestamp="not-a-timestamp")
+    monkeypatch.setattr(menu_display_module, "confirm", lambda _question, **_k: True)
 
-    monkeypatch.setattr(menu_display_module, "confirm", lambda *_a, **_k: False)
-
-    result = menu_display_module.ContextMenuUI.confirm_restore_operation(backup)
-
-    assert result is False
+    assert (
+        menu_display_module.ContextMenuUI.confirm_restore_operation(_backup()) is True
+    )
 
 
-def test_confirm_restore_operation_handles_unreadable_file(tmp_path, monkeypatch):
-    ezprinter, _ = _patch_ui(monkeypatch)
-    backup = tmp_path / "backup.json"
-    backup.write_text("not json", encoding="utf-8")
+def test_confirm_restore_propagates_a_refusal(monkeypatch):
+    _patch_ui(monkeypatch)
+    monkeypatch.setattr(menu_display_module, "confirm", lambda _question, **_k: False)
 
-    monkeypatch.setattr(menu_display_module, "confirm", lambda *_a, **_k: True)
-
-    result = menu_display_module.ContextMenuUI.confirm_restore_operation(backup)
-
-    assert result is True
-    assert ezprinter.debug.called
+    assert (
+        menu_display_module.ContextMenuUI.confirm_restore_operation(_backup()) is False
+    )
 
 
 # ///////////////////////////////////////////////////////////////
-# SHOW CHERRY PICK MENU
+# FORMAT ENTRY DISPLAY
 # ///////////////////////////////////////////////////////////////
 
 
-def test_show_cherry_pick_menu_returns_selected_entries(monkeypatch):
-    _patch_ui(monkeypatch)
-    entries = [{"key_name": "a"}, {"key_name": "b"}]
+def test_format_entry_display_uses_muiverb_and_exe():
+    entry = {
+        "key_name": "womm_tool",
+        "properties": {
+            "MUIVerb": "Open with WOMM",
+            "Command": '"C:\\bin\\womm.exe" %1',
+        },
+    }
 
-    fake_menu = MagicMock()
-    fake_menu.select_multiple_from_list.return_value = [entries[0]]
-    monkeypatch.setattr("womm.ui.common.InteractiveMenu", lambda **_kwargs: fake_menu)
+    label = menu_display_module.format_entry_display(entry)
 
-    result = menu_display_module.ContextMenuUI.show_cherry_pick_menu(entries)
-
-    assert result == [entries[0]]
+    assert label == "Open with WOMM (womm.exe) [key: womm_tool]"
 
 
-def test_show_cherry_pick_menu_empty_selection_returns_empty_list(monkeypatch):
-    _patch_ui(monkeypatch)
-
-    fake_menu = MagicMock()
-    fake_menu.select_multiple_from_list.return_value = None
-    monkeypatch.setattr("womm.ui.common.InteractiveMenu", lambda **_kwargs: fake_menu)
-
-    result = menu_display_module.ContextMenuUI.show_cherry_pick_menu([])
-
-    assert result == []
+def test_format_entry_display_falls_back_to_the_key_name():
+    assert (
+        menu_display_module.format_entry_display({"key_name": "bare"})
+        == "bare [key: bare]"
+    )
