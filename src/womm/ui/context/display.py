@@ -16,11 +16,16 @@ from __future__ import annotations
 # ///////////////////////////////////////////////////////////////
 # IMPORTS
 # ///////////////////////////////////////////////////////////////
+# Standard library imports
+from pathlib import Path
+
 # Third-party imports
 from rich.panel import Panel
 
 # Local imports
 from ...shared.results import (
+    BackupDataResult,
+    BackupFileListResult,
     ContextBackupResult,
     ContextCherryPickResult,
     ContextEntriesResult,
@@ -200,37 +205,41 @@ def render_context_restore_result(result: ContextRestoreResult) -> None:
 
 
 def render_context_entries_result(result: ContextEntriesResult) -> None:
-    """Render a context entries result.
+    """Render a context entries result, summary first.
 
     Args:
         result: The ContextEntriesResult to render
     """
-    if result.success:
-        ezprinter.print_header("Context Menu Entries")
-
-        entries = result.entries or {}
-        for context_type in ["directory", "background"]:
-            ezconsole.print(f"\n[bold]{context_type.upper()} CONTEXT:[/bold]")
-            context_entries = entries.get(context_type, [])
-
-            if not context_entries:
-                ezconsole.print("  No entries found")
-            else:
-                for entry in context_entries:
-                    ezconsole.print(f"  Key: {entry.get('key_name', 'Unknown')}")
-                    display_name = entry.get(
-                        "display_name", entry.get("key_name", "Unknown")
-                    )
-                    ezconsole.print(f"    Display: {display_name}")
-                    if entry.get("command"):
-                        ezconsole.print(f"    Command: {entry['command']}")
-                    if entry.get("icon"):
-                        ezconsole.print(f"    Icon: {entry['icon']}")
-                    ezconsole.print()
-
-        show_list_commands()
-    else:
+    if not result.success:
         ezprinter.error(f"Failed to retrieve context menu entries: {result.error}")
+        return
+
+    ezprinter.print_header("Context Menu Entries")
+
+    ezconsole.print(f"[bold]Total: {result.total_entries}[/bold]")
+    for context_type, count in result.entries_by_type.items():
+        ezconsole.print(f"  {context_type}: {count}")
+
+    entries = result.entries or {}
+    for context_type in entries:
+        ezconsole.print(f"\n[bold]{context_type.upper()} CONTEXT:[/bold]")
+        context_entries = entries[context_type]
+
+        if not context_entries:
+            ezconsole.print("  No entries found")
+            continue
+
+        for entry in context_entries:
+            ezconsole.print(f"  Key: {entry.get('key_name', 'Unknown')}")
+            display_name = entry.get("display_name", entry.get("key_name", "Unknown"))
+            ezconsole.print(f"    Display: {display_name}")
+            if entry.get("command"):
+                ezconsole.print(f"    Command: {entry['command']}")
+            if entry.get("icon"):
+                ezconsole.print(f"    Icon: {entry['icon']}")
+            ezconsole.print("")
+
+    show_list_commands()
 
 
 # //://:obe
@@ -268,6 +277,121 @@ def render_context_status_result(result: ContextStatusResult) -> None:
 - Verify WOMM installation is complete"""
 
         show_tip_panel(troubleshoot_content, "Troubleshooting")
+
+
+# ///////////////////////////////////////////////////////////////
+# BACKUP LISTING AND CONTENT DISPLAY FUNCTIONS
+# ///////////////////////////////////////////////////////////////
+
+
+def render_context_backup_list_result(result: BackupFileListResult) -> None:
+    """Render the list of available context menu backup files.
+
+    Args:
+        result: The BackupFileListResult to render
+    """
+    if not result.success:
+        ezprinter.error(f"Failed to list backups: {result.error}")
+        show_tip_panel(
+            """Troubleshooting backup listing:
+
+- Check that the backup directory exists and is readable
+- Create a first backup with womm context backup create""",
+            "Troubleshooting",
+        )
+        return
+
+    backups = result.backups or []
+    if not backups:
+        ezprinter.info(f"No backups found in {result.backup_directory}")
+        getting_started = Panel(
+            """No context menu backup yet.
+
+- womm context backup create - Create your first backup
+- womm context list - See what would be backed up""",
+            title="Getting Started",
+            border_style="blue",
+            style="bright_blue",
+            padding=(1, 1),
+            width=80,
+        )
+        ezconsole.print("")
+        ezconsole.print(getting_started)
+        ezconsole.print("")
+        return
+
+    ezprinter.success(f"Found {len(backups)} backup(s) in {result.backup_directory}")
+    for backup in backups:
+        modified = (
+            backup.modified_time.strftime("%Y-%m-%d %H:%M:%S")
+            if backup.modified_time
+            else "unknown"
+        )
+        ezconsole.print(f"  {backup.filename}")
+        ezconsole.print(
+            f"    {modified} | {backup.size_kb:.1f} KB | {backup.entry_count} entries"
+        )
+
+    commands_panel = Panel(
+        """Backup commands:
+
+- womm context backup show <name> - Inspect a backup's content
+- womm context backup restore <name> - Restore a backup
+- womm context backup cherry-pick - Pick individual entries""",
+        title="Backup Commands",
+        border_style="blue",
+        style="bright_blue",
+        padding=(1, 1),
+        width=80,
+    )
+    ezconsole.print("")
+    ezconsole.print(commands_panel)
+    ezconsole.print("")
+
+
+def render_context_backup_content_result(result: BackupDataResult) -> None:
+    """Render the content of a single context menu backup file.
+
+    Args:
+        result: The BackupDataResult to render
+    """
+    if not result.success:
+        ezprinter.error(f"Could not read backup: {result.error}")
+        show_tip_panel(
+            """Troubleshooting backup reading:
+
+- Backups are named, not path-addressed: pass a bare file name
+- Run womm context backup list to see the available names""",
+            "Troubleshooting",
+        )
+        return
+
+    metadata = result.metadata or {}
+    ezconsole.print(f"[bold]Backup: {Path(result.filepath).name}[/bold]")
+    ezconsole.print(f"  Created: {metadata.get('timestamp', 'unknown')}")
+    ezconsole.print(f"  Version: {metadata.get('version', 'unknown')}")
+    ezconsole.print(f"  Entries: {metadata.get('total_entries', 0)}")
+
+    for context_type, stats in (result.entry_stats or {}).items():
+        ezconsole.print(f"\n[bold]{context_type.upper()} CONTEXT:[/bold]")
+        ezconsole.print(f"  Count: {stats.get('count', 0)}")
+        for key in stats.get("sample_keys", []):
+            ezconsole.print(f"    - {key}")
+
+    restore_panel = Panel(
+        f"""To restore this backup:
+
+- womm context backup restore {Path(result.filepath).name}
+- womm context backup cherry-pick - Pick individual entries instead""",
+        title="Backup Content",
+        border_style="blue",
+        style="bright_blue",
+        padding=(1, 1),
+        width=80,
+    )
+    ezconsole.print("")
+    ezconsole.print(restore_panel)
+    ezconsole.print("")
 
 
 # //://:obe
@@ -343,8 +467,9 @@ def show_list_commands() -> None:
 
 - womm context register --target <file> --label "<name>" - Add new entry
 - womm context unregister --remove <key> - Remove existing entry
-- womm context backup - Create backup of current entries
-- womm context restore - Restore entries from backup"""
+- womm context backup create - Create backup of current entries
+- womm context backup list - List available backups
+- womm context backup restore <name> - Restore entries from backup"""
 
     tip_panel = Panel(
         tip_content,
@@ -384,6 +509,8 @@ def show_tip_panel(content: str, title: str = "Tip") -> None:
 # ///////////////////////////////////////////////////////////////
 
 __all__ = [
+    "render_context_backup_content_result",
+    "render_context_backup_list_result",
     "render_context_backup_result",
     "render_context_cherry_pick_result",
     "render_context_entries_result",

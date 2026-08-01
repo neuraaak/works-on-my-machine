@@ -200,11 +200,149 @@ def test_render_context_entries_result_success_with_entries(monkeypatch):
 
 def test_render_context_entries_result_success_no_entries(monkeypatch):
     ezprinter, ezconsole = _patch_ui(monkeypatch)
-    result = ContextEntriesResult(success=True, entries={})
+    result = ContextEntriesResult(success=True, entries={"directory": []})
 
     display_module.render_context_entries_result(result)
 
     ezconsole.print.assert_any_call("  No entries found")
+
+
+# ///////////////////////////////////////////////////////////////
+# ENTRIES SUMMARY
+# ///////////////////////////////////////////////////////////////
+
+
+def test_entries_result_prints_a_summary_header(monkeypatch):
+    ezprinter, ezconsole = _patch_ui(monkeypatch)
+    result = ContextEntriesResult(
+        success=True,
+        entries={"directory": [{"key_name": "a"}], "background": []},
+    )
+
+    display_module.render_context_entries_result(result)
+
+    printed = " ".join(str(call.args[0]) for call in ezconsole.print.call_args_list)
+    assert "Total: 1" in printed
+    assert "directory: 1" in printed
+    assert "background: 0" in printed
+
+
+def test_entries_result_shows_a_type_outside_the_usual_two(monkeypatch):
+    _patch_ui(monkeypatch)
+    result = ContextEntriesResult(success=True, entries={"root": [{"key_name": "z"}]})
+
+    display_module.render_context_entries_result(result)
+
+    printed = " ".join(
+        str(call.args[0]) for call in display_module.ezconsole.print.call_args_list
+    )
+    assert "ROOT CONTEXT" in printed
+
+
+# ///////////////////////////////////////////////////////////////
+# BACKUP LIST
+# ///////////////////////////////////////////////////////////////
+
+
+def test_backup_list_renders_each_backup(monkeypatch):
+    from datetime import datetime
+
+    from womm.shared.results import BackupFileInfo, BackupFileListResult
+
+    _patch_ui(monkeypatch)
+    result = BackupFileListResult(
+        success=True,
+        backup_directory="/backups",
+        backups=[
+            BackupFileInfo(
+                filename="context_menu_backup_1.json",
+                filepath="/backups/context_menu_backup_1.json",
+                size_bytes=2048,
+                modified_time=datetime(2026, 1, 1, 10, 0, 0),
+                entry_count=3,
+            )
+        ],
+    )
+
+    display_module.render_context_backup_list_result(result)
+
+    printed = " ".join(
+        str(call.args[0]) for call in display_module.ezconsole.print.call_args_list
+    )
+    assert "context_menu_backup_1.json" in printed
+    assert "3 entries" in printed
+
+
+def test_backup_list_without_backups_shows_getting_started(monkeypatch):
+    from womm.shared.results import BackupFileListResult
+
+    _patch_ui(monkeypatch)
+
+    display_module.render_context_backup_list_result(
+        BackupFileListResult(success=True, backup_directory="/backups", backups=[])
+    )
+
+    titles = [
+        call.args[0].title
+        for call in display_module.ezconsole.print.call_args_list
+        if hasattr(call.args[0], "title")
+    ]
+    assert "Getting Started" in titles
+
+
+def test_backup_list_failure_reports_the_error(monkeypatch):
+    from womm.shared.results import BackupFileListResult
+
+    ezprinter, _ = _patch_ui(monkeypatch)
+
+    display_module.render_context_backup_list_result(
+        BackupFileListResult(success=False, error="boom")
+    )
+
+    ezprinter.error.assert_called_once()
+
+
+# ///////////////////////////////////////////////////////////////
+# BACKUP CONTENT
+# ///////////////////////////////////////////////////////////////
+
+
+def test_backup_content_renders_metadata_and_stats(monkeypatch):
+    from womm.shared.results import BackupDataResult
+
+    _patch_ui(monkeypatch)
+    result = BackupDataResult(
+        success=True,
+        filepath="/backups/context_menu_backup_1.json",
+        metadata={"timestamp": "2026-01-01T10:00:00", "total_entries": 2},
+        entry_stats={"directory": {"count": 2, "sample_keys": ["alpha", "beta"]}},
+    )
+
+    display_module.render_context_backup_content_result(result)
+
+    printed = " ".join(
+        str(call.args[0]) for call in display_module.ezconsole.print.call_args_list
+    )
+    assert "context_menu_backup_1.json" in printed
+    assert "alpha" in printed
+
+
+def test_backup_content_failure_shows_troubleshooting(monkeypatch):
+    from womm.shared.results import BackupDataResult
+
+    ezprinter, ezconsole = _patch_ui(monkeypatch)
+
+    display_module.render_context_backup_content_result(
+        BackupDataResult(success=False, error="No readable backup named 'nope.json'")
+    )
+
+    ezprinter.error.assert_called_once()
+    titles = [
+        call.args[0].title
+        for call in ezconsole.print.call_args_list
+        if hasattr(call.args[0], "title")
+    ]
+    assert "Troubleshooting" in titles
 
 
 # ///////////////////////////////////////////////////////////////
