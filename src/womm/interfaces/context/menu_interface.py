@@ -37,7 +37,6 @@ from ...shared.results import (
     ContextEntriesResult,
     ContextRestoreResult,
     ContextSetupResult,
-    ContextStatusResult,
     ContextValidationResult,
     ScriptInfoResult,
     ScriptRegistrationResult,
@@ -264,30 +263,6 @@ class ContextMenuInterface:
                 all_entries[context_type] = []
 
         return ContextEntriesResult(success=True, entries=all_entries)
-
-    def get_status(self) -> ContextStatusResult:
-        """
-        Compute context menu registration status.
-
-        Returns:
-            ContextStatusResult: Entry counts by context type
-        """
-        entries_result = self.list_entries()
-        if not entries_result.success:
-            return ContextStatusResult(success=False, error=entries_result.error)
-
-        entries = entries_result.entries or {}
-        entries_by_type = {
-            context_type: len(entries.get(context_type, []))
-            for context_type in ("directory", "background")
-        }
-        total_entries = sum(entries_by_type.values())
-
-        return ContextStatusResult(
-            success=True,
-            total_entries=total_entries,
-            entries_by_type=entries_by_type,
-        )
 
     def quick_setup_tools(self, verbose: bool = False) -> ContextSetupResult:
         """

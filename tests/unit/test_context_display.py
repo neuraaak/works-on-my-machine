@@ -26,7 +26,6 @@ from womm.shared.results import (
     ContextEntriesResult,
     ContextRestoreResult,
     ContextSetupResult,
-    ContextStatusResult,
     ScriptRegistrationResult,
     ScriptUnregistrationResult,
 )
@@ -345,30 +344,6 @@ def test_backup_content_failure_shows_troubleshooting(monkeypatch):
         if hasattr(call.args[0], "title")
     ]
     assert "Troubleshooting" in titles
-
-
-# ///////////////////////////////////////////////////////////////
-# STATUS
-# ///////////////////////////////////////////////////////////////
-
-
-def test_render_context_status_result_success(monkeypatch):
-    ezprinter, _ = _patch_ui(monkeypatch)
-    result = ContextStatusResult(success=True, total_entries=7)
-
-    display_module.render_context_status_result(result)
-
-    ezprinter.success.assert_called_once_with("Found 7 context menu entries")
-
-
-def test_render_context_status_result_failure_with_error(monkeypatch):
-    ezprinter, _ = _patch_ui(monkeypatch)
-    result = ContextStatusResult(success=False, error="access denied")
-
-    display_module.render_context_status_result(result)
-
-    ezprinter.error.assert_called_once_with("Failed to retrieve context menu status")
-    ezprinter.info.assert_any_call("Error: access denied")
 
 
 # ///////////////////////////////////////////////////////////////

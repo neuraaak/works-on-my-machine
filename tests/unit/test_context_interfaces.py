@@ -38,7 +38,6 @@ from womm.shared.results.context_results import (
     ContextRegistryResult,
     ContextRestoreResult,
     ContextSetupResult,
-    ContextStatusResult,
     ContextValidationResult,
     ScriptRegistrationResult,
     ScriptUnregistrationResult,
@@ -333,12 +332,12 @@ class TestUnregisterScript:
 
 
 # ///////////////////////////////////////////////////////////////
-# TESTS - LIST ENTRIES / STATUS
+# TESTS - LIST ENTRIES
 # ///////////////////////////////////////////////////////////////
 
 
 class TestListEntriesAndStatus:
-    """Boundary behaviour of list_entries() and get_status()."""
+    """Boundary behaviour of list_entries()."""
 
     def test_list_entries_aggregates_by_context_type(self):
         interface = _interface(
@@ -372,30 +371,6 @@ class TestListEntriesAndStatus:
 
         assert result.success is True
         assert result.entries["directory"] == []
-
-    def test_get_status_counts_directory_and_background_only(self):
-        interface = _interface(
-            registry=_FakeRegistryService(
-                list_results={
-                    "directory": ContextRegistryResult(
-                        success=True, entries=[{"key_name": "a"}, {"key_name": "b"}]
-                    ),
-                    "background": ContextRegistryResult(
-                        success=True, entries=[{"key_name": "c"}]
-                    ),
-                    "root": ContextRegistryResult(
-                        success=True, entries=[{"key_name": "ignored"}]
-                    ),
-                }
-            )
-        )
-
-        result = interface.get_status()
-
-        assert isinstance(result, ContextStatusResult)
-        assert result.success is True
-        assert result.total_entries == 3
-        assert result.entries_by_type == {"directory": 2, "background": 1}
 
 
 # ///////////////////////////////////////////////////////////////

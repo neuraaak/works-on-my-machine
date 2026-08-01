@@ -162,19 +162,6 @@ class ContextEntriesResult(BaseResult):
         )
 
 
-@dataclass
-class ContextStatusResult(BaseResult):
-    """Result for context menu status check."""
-
-    total_entries: int = 0
-    entries_by_type: dict[str, int] | None = None
-
-    def __post_init__(self) -> None:
-        """Initialize derived fields."""
-        if self.entries_by_type is None:
-            self.entries_by_type = {}
-
-
 # ///////////////////////////////////////////////////////////////
 # SETUP RESULTS
 # ///////////////////////////////////////////////////////////////
@@ -350,7 +337,6 @@ __all__ = [
     "ContextRegistryResult",
     "ContextRestoreResult",
     "ContextSetupResult",
-    "ContextStatusResult",
     "ContextValidationResult",
     "ScriptInfoResult",
     "ScriptRegistrationResult",

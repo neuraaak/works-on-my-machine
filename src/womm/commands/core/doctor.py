@@ -42,7 +42,7 @@ def _is_writable(directory: Path) -> bool:
 def _context_menu_status() -> str:
     """Return context-menu entry counts without modifying the registry."""
     try:
-        result = ContextMenuInterface().get_status()
+        result = ContextMenuInterface().list_entries()
     except OSError as error:
         return f"unavailable ({error})"
 

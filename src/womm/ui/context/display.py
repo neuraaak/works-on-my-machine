@@ -31,7 +31,6 @@ from ...shared.results import (
     ContextEntriesResult,
     ContextRestoreResult,
     ContextSetupResult,
-    ContextStatusResult,
     ScriptRegistrationResult,
     ScriptUnregistrationResult,
 )
@@ -240,43 +239,6 @@ def render_context_entries_result(result: ContextEntriesResult) -> None:
             ezconsole.print("")
 
     show_list_commands()
-
-
-# //://:obe
-# STATUS DISPLAY FUNCTIONS
-# ///////////////////////////////////////////////////////////////
-
-
-def render_context_status_result(result: ContextStatusResult) -> None:
-    """Render a context status result.
-
-    Args:
-        result: The ContextStatusResult to render
-    """
-    if result.success:
-        ezprinter.success(f"Found {result.total_entries} context menu entries")
-
-        info_content = """Context menu status information:
-
-- Entries with descriptions are managed by external tools
-- Entries without descriptions are system defaults or unmanaged
-- All entries are shown for both folder and background context menus
-- Backup files are stored in your WOMM installation directory"""
-
-        show_tip_panel(info_content, "Status Information")
-    else:
-        ezprinter.error("Failed to retrieve context menu status")
-        if result.error:
-            ezprinter.info(f"Error: {result.error}")
-
-        troubleshoot_content = """Troubleshooting context menu issues:
-
-- Ensure you have administrator privileges
-- Check if Windows Registry access is blocked
-- Try running from an elevated command prompt
-- Verify WOMM installation is complete"""
-
-        show_tip_panel(troubleshoot_content, "Troubleshooting")
 
 
 # ///////////////////////////////////////////////////////////////
@@ -516,7 +478,6 @@ __all__ = [
     "render_context_entries_result",
     "render_context_restore_result",
     "render_context_setup_result",
-    "render_context_status_result",
     "render_script_registration_result",
     "render_script_unregistration_result",
     "show_list_commands",
