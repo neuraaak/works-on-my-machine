@@ -20,6 +20,7 @@ from __future__ import annotations
 # Standard library imports
 import sys
 from datetime import datetime
+from pathlib import Path
 from typing import cast
 
 # Third-party imports
@@ -29,7 +30,11 @@ from rich.progress import TaskID
 
 # Local imports
 from ....interfaces import ContextMenuInterface
-from ....shared.results.context_results import ContextCherryPickResult
+from ....shared.results.context_results import (
+    BackupDataResult,
+    BackupFileInfo,
+    ContextCherryPickResult,
+)
 from ....ui.common import ezpl_bridge, ezprinter
 from ....ui.context import ContextMenuUI
 from ....ui.context.display import (
@@ -156,6 +161,39 @@ def context_backup_show(name: str, verbose: bool) -> None:
 # ///////////////////////////////////////////////////////////////
 
 
+def _describe_resolved_backup(
+    resolved: Path, content: BackupDataResult
+) -> BackupFileInfo:
+    """Describe an already resolved and readable backup file.
+
+    Built from the confined path and the parsed content only: the backup
+    listing is deliberately not consulted, so a readable backup whose name
+    falls outside the listing glob stays restorable.
+
+    Args:
+        resolved: Confined path returned by ``resolve_backup_path``.
+        content: Successful result returned by ``read_backup``.
+
+    Returns:
+        The metadata record expected by the restore confirmation prompt.
+    """
+    try:
+        stat = resolved.stat()
+        size_bytes = stat.st_size
+        modified_time = datetime.fromtimestamp(stat.st_mtime)
+    except OSError:
+        size_bytes = 0
+        modified_time = None
+
+    return BackupFileInfo(
+        filename=resolved.name,
+        filepath=str(resolved),
+        size_bytes=size_bytes,
+        modified_time=modified_time,
+        entry_count=(content.metadata or {}).get("total_entries", 0),
+    )
+
+
 @context_backup_group.command("restore")
 @click.help_option("-h", "--help")
 @click.argument("name", required=False)
@@ -181,28 +219,32 @@ def context_backup_restore(name: str | None, verbose: bool) -> None:
     if not _check_windows(manager):
         return
 
-    listing = manager.list_backups()
-    if not listing.success:
-        ezprinter.error(f"Could not list backups: {listing.error}")
-        sys.exit(1)
-
     if name:
+        content = manager.read_backup(name)
+        if not content.success:
+            ezprinter.error(str(content.error))
+            ezprinter.info("Run 'womm context backup list' to see available names")
+            sys.exit(1)
+
         resolved = manager.resolve_backup_path(name)
         if resolved is None:
             ezprinter.error(f"No readable backup named {name!r}")
             ezprinter.info("Run 'womm context backup list' to see available names")
             sys.exit(1)
-        selected = next(
-            (b for b in (listing.backups or []) if b.filename == resolved.name), None
-        )
-        if selected is None:
-            ezprinter.error(f"No readable backup named {name!r}")
-            sys.exit(1)
+
+        selected = _describe_resolved_backup(resolved, content)
+        target = str(resolved)
     else:
+        listing = manager.list_backups()
+        if not listing.success:
+            ezprinter.error(f"Could not list backups: {listing.error}")
+            sys.exit(1)
+
         selected = ContextMenuUI.show_backup_selection_menu(listing.backups or [])
         if selected is None:
             ezprinter.info("Restore cancelled")
             return
+        target = selected.filepath
 
     if not ContextMenuUI.confirm_restore_operation(selected):
         ezprinter.info("Restore cancelled")
@@ -212,7 +254,7 @@ def context_backup_restore(name: str | None, verbose: bool) -> None:
         "Restoring context menu from backup..."
     ) as (progress, task):
         progress.update(cast(TaskID, task), status="Restoring from backup...")
-        result = manager.restore_entries(selected.filepath)
+        result = manager.restore_entries(target)
 
     render_context_restore_result(result)
     sys.exit(0 if result.success else 1)

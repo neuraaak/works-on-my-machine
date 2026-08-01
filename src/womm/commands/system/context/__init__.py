@@ -43,6 +43,7 @@ def context_group(ctx: click.Context) -> None:
 
 
 @context_group.group("backup", invoke_without_command=True)
+@click.help_option("-h", "--help")
 @click.pass_context
 def context_backup_group(ctx: click.Context) -> None:
     """Manage context menu backups."""

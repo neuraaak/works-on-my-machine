@@ -121,18 +121,53 @@ def test_selection_menu_handles_an_unknown_modified_time(monkeypatch):
 # ///////////////////////////////////////////////////////////////
 
 
+def _patch_confirm(monkeypatch, answer: bool) -> dict:
+    """Patch the confirm prompt and capture the kwargs it receives.
+
+    Args:
+        monkeypatch: Pytest monkeypatch fixture.
+        answer: Value the patched prompt returns.
+
+    Returns:
+        A dict filled with the captured ``kwargs`` on call.
+    """
+    captured: dict = {}
+
+    def fake_confirm(question, **kwargs):
+        captured["question"] = question
+        captured["kwargs"] = kwargs
+        return answer
+
+    monkeypatch.setattr(menu_display_module, "confirm", fake_confirm)
+    return captured
+
+
 def test_confirm_restore_shows_details_and_returns_the_answer(monkeypatch):
     _patch_ui(monkeypatch)
-    monkeypatch.setattr(menu_display_module, "confirm", lambda _question, **_k: True)
+    captured = _patch_confirm(monkeypatch, True)
 
     assert (
         menu_display_module.ContextMenuUI.confirm_restore_operation(_backup()) is True
     )
+    assert captured["kwargs"]["default"] is False
+
+
+def test_confirm_restore_defaults_to_refusing(monkeypatch):
+    """A reflex Enter must never overwrite the registry entries.
+
+    The prompt is destructive, so the default answer has to be negative.
+    """
+    _patch_ui(monkeypatch)
+    captured = _patch_confirm(monkeypatch, False)
+
+    menu_display_module.ContextMenuUI.confirm_restore_operation(_backup())
+
+    assert captured["kwargs"]["default"] is False
 
 
 def test_confirm_restore_propagates_a_refusal(monkeypatch):
     _patch_ui(monkeypatch)
-    monkeypatch.setattr(menu_display_module, "confirm", lambda _question, **_k: False)
+    _patch_confirm(monkeypatch, False)
 
     assert (
         menu_display_module.ContextMenuUI.confirm_restore_operation(_backup()) is False

@@ -28,6 +28,7 @@ from click.testing import CliRunner
 # Local imports
 from womm.commands.system.context import context_group
 from womm.shared.results import (
+    BackupDataResult,
     BackupFileInfo,
     BackupFileListResult,
     ContextRestoreResult,
@@ -47,6 +48,13 @@ def test_context_without_subcommand_shows_help():
 
 def test_backup_without_subcommand_shows_help():
     result = CliRunner().invoke(context_group, ["backup"])
+
+    assert result.exit_code == 0
+    assert "Usage:" in result.output
+
+
+def test_backup_group_accepts_the_short_help_flag():
+    result = CliRunner().invoke(context_group, ["backup", "-h"])
 
     assert result.exit_code == 0
     assert "Usage:" in result.output
@@ -107,6 +115,23 @@ def _listing_with_one_backup() -> BackupFileListResult:
     )
 
 
+def _readable_backup() -> BackupDataResult:
+    """Build a successful backup read.
+
+    A successful read matters: it leaves ``resolve_backup_path`` as the only
+    possible source of a refusal in the hostile-name test.
+
+    Returns:
+        A successful backup content result.
+    """
+    return BackupDataResult(
+        success=True,
+        filepath=_SAFE_PATH,
+        data={"entries": {}},
+        metadata={"total_entries": 1},
+    )
+
+
 @pytest.mark.parametrize("hostile_name", ["../evil.json", "..\\evil.json", "/etc/x"])
 def test_restore_never_reaches_the_registry_with_an_unsafe_name(
     monkeypatch, hostile_name
@@ -123,6 +148,7 @@ def test_restore_never_reaches_the_registry_with_an_unsafe_name(
     manager = MagicMock()
     manager.is_windows.return_value = True
     manager.list_backups.return_value = _listing_with_one_backup()
+    manager.read_backup.return_value = _readable_backup()
     manager.resolve_backup_path.return_value = None
     monkeypatch.setattr(
         backup_module, "ContextMenuInterface", MagicMock(return_value=manager)
@@ -146,6 +172,7 @@ def test_restore_reaches_the_registry_with_a_resolved_name(monkeypatch):
     manager = MagicMock()
     manager.is_windows.return_value = True
     manager.list_backups.return_value = _listing_with_one_backup()
+    manager.read_backup.return_value = _readable_backup()
     manager.resolve_backup_path.return_value = Path(_SAFE_PATH)
     manager.restore_entries.return_value = ContextRestoreResult(
         success=True, backup_file=_SAFE_PATH, entry_count=1
@@ -163,7 +190,68 @@ def test_restore_reaches_the_registry_with_a_resolved_name(monkeypatch):
 
     assert result.exit_code == 0
     manager.resolve_backup_path.assert_called_once_with(_SAFE_NAME)
-    manager.restore_entries.assert_called_once_with(_SAFE_PATH)
+    manager.restore_entries.assert_called_once_with(str(Path(_SAFE_PATH)))
+
+
+def test_restore_accepts_a_readable_backup_absent_from_the_listing(monkeypatch):
+    """Regression: a custom ``-o`` name is readable, so it must be restorable.
+
+    ``backup create -o mon_backup.json`` produces a file outside the
+    ``context_menu_backup_*`` listing glob. Resolution and reading both
+    succeed, so restore must reach the registry.
+    """
+    from womm.commands.system.context import backup as backup_module
+
+    custom_name = "mon_backup.json"
+    custom_path = f"C:/backups/{custom_name}"
+
+    manager = MagicMock()
+    manager.is_windows.return_value = True
+    manager.list_backups.return_value = _listing_with_one_backup()
+    manager.read_backup.return_value = BackupDataResult(
+        success=True,
+        filepath=custom_path,
+        data={"entries": {}},
+        metadata={"total_entries": 3},
+    )
+    manager.resolve_backup_path.return_value = Path(custom_path)
+    manager.restore_entries.return_value = ContextRestoreResult(
+        success=True, backup_file=custom_path, entry_count=3
+    )
+    monkeypatch.setattr(
+        backup_module, "ContextMenuInterface", MagicMock(return_value=manager)
+    )
+    monkeypatch.setattr(
+        backup_module.ContextMenuUI,
+        "confirm_restore_operation",
+        staticmethod(lambda _backup: True),
+    )
+
+    result = CliRunner().invoke(context_group, ["backup", "restore", custom_name])
+
+    assert result.exit_code == 0
+    manager.restore_entries.assert_called_once_with(str(Path(custom_path)))
+
+
+def test_restore_refuses_an_unreadable_backup(monkeypatch):
+    """An unparsable backup must stop before the registry write."""
+    from womm.commands.system.context import backup as backup_module
+
+    manager = MagicMock()
+    manager.is_windows.return_value = True
+    manager.read_backup.return_value = BackupDataResult(
+        success=False, error=f"No readable backup named {_SAFE_NAME!r}"
+    )
+    manager.resolve_backup_path.return_value = Path(_SAFE_PATH)
+    monkeypatch.setattr(
+        backup_module, "ContextMenuInterface", MagicMock(return_value=manager)
+    )
+
+    result = CliRunner().invoke(context_group, ["backup", "restore", _SAFE_NAME])
+
+    assert result.exit_code == 1
+    assert _SAFE_PATH not in result.output
+    manager.restore_entries.assert_not_called()
 
 
 def test_show_rejects_an_unsafe_name(monkeypatch):
