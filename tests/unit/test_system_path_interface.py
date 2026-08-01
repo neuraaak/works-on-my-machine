@@ -114,7 +114,6 @@ def test_read_backup_reports_corrupted_json(interface):
         "C:foo",
         "NUL",
         "a\x00b",
-        "real.json:ads",
     ],
 )
 def test_read_backup_rejects_names_escaping_the_backup_dir(
@@ -133,6 +132,24 @@ def test_read_backup_rejects_names_escaping_the_backup_dir(
     # The rejection message must not leak a resolved filesystem path.
     assert str(tmp_path) not in (result.message or "")
     assert str(tmp_path) not in (result.error or "")
+
+
+def test_read_backup_rejects_an_alternate_data_stream_suffix(interface):
+    """The colon check must do the rejecting, not ``is_file()``.
+
+    ``real.json`` is created here on purpose: without it, ``is_file()``
+    would already reject "real.json:ads" for lacking a base file, making the
+    test pass regardless of the colon clause. With ``real.json`` present and
+    readable, only the ``":" in name`` check in ``_resolve_backup_name``
+    stands between this hostile name and a real read — if that clause were
+    removed, stage 1 would let the name through, ``is_file()`` would (on
+    NTFS) resolve the stream and return True, and the read would succeed.
+    """
+    _write_backup(interface, "real.json", ["C:/a"])
+
+    result = interface.read_backup("real.json:ads")
+
+    assert result.success is False
 
 
 def test_read_backup_rejects_a_directory(interface):

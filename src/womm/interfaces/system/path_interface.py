@@ -233,6 +233,11 @@ class SystemPathInterface:
             The resolved path, or None when the name is unsafe, absent, or
             not a regular file. Callers must not disclose the resolved path.
         """
+        # These checks intentionally overlap (e.g. an absolute POSIX path is
+        # also caught by the "/" check; a Windows drive-relative name is
+        # also caught by ":"): a containment filter must not depend on the
+        # ordering of its own sub-clauses to stay correct, so each is kept
+        # even where another already covers the same input.
         if not name or ".." in name or "/" in name or "\\" in name or ":" in name:
             return None
         if Path(name).is_absolute() or Path(name).drive:
