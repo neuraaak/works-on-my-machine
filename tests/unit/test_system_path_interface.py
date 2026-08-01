@@ -139,7 +139,7 @@ def test_read_backup_rejects_an_alternate_data_stream_suffix(interface):
 
     ``real.json`` and a genuine stream on it are created here on purpose:
     with both present, only the ``":" in name`` check in
-    ``_resolve_backup_name`` stands between this hostile name and a real
+    ``resolve_backup_name`` stands between this hostile name and a real
     read — if that clause were removed, stage 1 would let the name through,
     ``is_file()``/``resolve()`` would follow the stream and return True, and
     the read would succeed against the stream's contents.

@@ -39,6 +39,7 @@ from ...shared.results import (
     PathBackupResult,
     PathOperationResult,
 )
+from ...utils.security import resolve_backup_name
 
 # ///////////////////////////////////////////////////////////////
 # LOGGER SETUP
@@ -224,7 +225,7 @@ class SystemPathInterface:
         )
 
     def _resolve_backup_name(self, name: str) -> Path | None:
-        """Resolve a backup name inside the backup directory.
+        """Resolve a backup name inside this interface's backup directory.
 
         Args:
             name: Bare file name, as listed by ``list_backups()``.
@@ -233,29 +234,7 @@ class SystemPathInterface:
             The resolved path, or None when the name is unsafe, absent, or
             not a regular file. Callers must not disclose the resolved path.
         """
-        # These checks intentionally overlap (e.g. an absolute POSIX path is
-        # also caught by the "/" check; a Windows drive-relative name is
-        # also caught by ":"): a containment filter must not depend on the
-        # ordering of its own sub-clauses to stay correct, so each is kept
-        # even where another already covers the same input.
-        if not name or ".." in name or "/" in name or "\\" in name or ":" in name:
-            return None
-        if Path(name).is_absolute() or Path(name).drive:
-            return None
-
-        try:
-            candidate = (self.backup_dir / name).resolve()
-            root = self.backup_dir.resolve()
-        except OSError:
-            return None
-
-        if not candidate.is_relative_to(root):
-            return None
-        if not candidate.is_file():
-            return None
-        # resolve() followed the symlink; is_relative_to already rejected any
-        # target outside root, so reaching here means the file is contained.
-        return candidate
+        return resolve_backup_name(self.backup_dir, name)
 
     def read_backup(self, name: str) -> PathBackupContentResult:
         """

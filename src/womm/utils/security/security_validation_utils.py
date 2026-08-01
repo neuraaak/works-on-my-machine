@@ -24,6 +24,47 @@ from pathlib import Path
 from ...shared.configs.security import SecurityPatternsConfig
 
 # ///////////////////////////////////////////////////////////////
+# BACKUP NAME CONTAINMENT
+# ///////////////////////////////////////////////////////////////
+
+
+def resolve_backup_name(backup_dir: Path, name: str) -> Path | None:
+    """Resolve a backup name inside a backup directory.
+
+    Args:
+        backup_dir: Directory the name must stay inside.
+        name: Bare file name, as listed by a backup listing.
+
+    Returns:
+        The resolved path, or None when the name is unsafe, absent, or
+        not a regular file. Callers must not disclose the resolved path.
+    """
+    # These checks intentionally overlap (e.g. an absolute POSIX path is
+    # also caught by the "/" check; a Windows drive-relative name is
+    # also caught by ":"): a containment filter must not depend on the
+    # ordering of its own sub-clauses to stay correct, so each is kept
+    # even where another already covers the same input.
+    if not name or ".." in name or "/" in name or "\\" in name or ":" in name:
+        return None
+    if Path(name).is_absolute() or Path(name).drive:
+        return None
+
+    try:
+        candidate = (backup_dir / name).resolve()
+        root = backup_dir.resolve()
+    except OSError:
+        return None
+
+    if not candidate.is_relative_to(root):
+        return None
+    if not candidate.is_file():
+        return None
+    # resolve() followed the symlink; is_relative_to already rejected any
+    # target outside root, so reaching here means the file is contained.
+    return candidate
+
+
+# ///////////////////////////////////////////////////////////////
 # COMMAND VALIDATION FUNCTIONS
 # ///////////////////////////////////////////////////////////////
 
