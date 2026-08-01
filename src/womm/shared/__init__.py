@@ -17,7 +17,7 @@ from __future__ import annotations
 # IMPORTS
 # ///////////////////////////////////////////////////////////////
 # Local imports
-from . import configs, conflicts, paths, results
+from . import configs, paths, results
 
 # ///////////////////////////////////////////////////////////////
 # PUBLIC API
@@ -25,7 +25,6 @@ from . import configs, conflicts, paths, results
 
 __all__ = [
     "configs",
-    "conflicts",
     "paths",
     "results",
 ]

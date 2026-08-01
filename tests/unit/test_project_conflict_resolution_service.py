@@ -4,7 +4,11 @@
 # Project: Works On My Machine
 # ///////////////////////////////////////////////////////////////
 
-"""Direct tests for file/directory conflict resolution during project creation."""
+"""Direct tests for the project destination guard used by ``womm create``.
+
+Since 2026-08-02 the service exposes a single policy: refuse a non-empty
+destination unless ``--force`` allows generated files to be merged into it.
+"""
 
 from __future__ import annotations
 
@@ -20,292 +24,74 @@ import pytest
 # Local imports
 from womm.exceptions.project import ProjectServiceError
 from womm.services.project.conflict_resolution_service import (
-    ConflictAction,
     ConflictResolutionService,
 )
 
 # ///////////////////////////////////////////////////////////////
-# TEST DOUBLES
+# DESTINATION VALIDATION
 # ///////////////////////////////////////////////////////////////
 
 
-class _FakeResolver:
-    """Records the calls it receives and returns a fixed action."""
-
-    def __init__(self, action: ConflictAction) -> None:
-        self.action = action
-        self.calls: list[tuple[str, Path, str]] = []
-
-    def resolve_file(self, target_file: Path, context: str) -> ConflictAction:
-        self.calls.append(("file", target_file, context))
-        return self.action
-
-    def resolve_directory(self, target_dir: Path, context: str) -> ConflictAction:
-        self.calls.append(("directory", target_dir, context))
-        return self.action
+def test_missing_destination_is_accepted(tmp_path: Path) -> None:
+    ConflictResolutionService().validate_project_destination(tmp_path / "new")
 
 
-# ///////////////////////////////////////////////////////////////
-# FILE CONFLICT RESOLUTION
-# ///////////////////////////////////////////////////////////////
-
-
-def test_resolve_file_conflict_overwrites_when_target_is_missing(
-    tmp_path: Path,
-) -> None:
-    action = ConflictResolutionService().resolve_file_conflict(
-        tmp_path / "source.txt", tmp_path / "missing.txt"
-    )
-
-    assert action == ConflictAction.OVERWRITE
-
-
-def test_resolve_file_conflict_overwrites_when_forced(tmp_path: Path) -> None:
-    target = tmp_path / "existing.txt"
-    target.touch()
-
-    action = ConflictResolutionService().resolve_file_conflict(
-        tmp_path / "source.txt", target, force=True
-    )
-
-    assert action == ConflictAction.OVERWRITE
-
-
-def test_resolve_file_conflict_consults_the_resolver_when_not_forced(
-    tmp_path: Path,
-) -> None:
-    target = tmp_path / "existing.txt"
-    target.touch()
-    resolver = _FakeResolver(ConflictAction.SKIP)
-
-    action = ConflictResolutionService().resolve_file_conflict(
-        tmp_path / "source.txt", target, resolver=resolver
-    )
-
-    assert action == ConflictAction.SKIP
-    assert resolver.calls == [("file", target, "file")]
-
-
-def test_resolve_file_conflict_keeps_existing_file_without_a_resolver(
-    tmp_path: Path,
-) -> None:
-    target = tmp_path / "existing.txt"
-    target.touch()
-
-    action = ConflictResolutionService().resolve_file_conflict(
-        tmp_path / "source.txt", target
-    )
-
-    assert action == ConflictAction.SKIP
-
-
-# ///////////////////////////////////////////////////////////////
-# DIRECTORY CONFLICT RESOLUTION
-# ///////////////////////////////////////////////////////////////
-
-
-def test_resolve_directory_conflict_overwrites_when_target_is_missing(
-    tmp_path: Path,
-) -> None:
-    action = ConflictResolutionService().resolve_directory_conflict(
-        tmp_path / "source", tmp_path / "missing"
-    )
-
-    assert action == ConflictAction.OVERWRITE
-
-
-def test_resolve_directory_conflict_merges_when_forced(tmp_path: Path) -> None:
-    target = tmp_path / "existing"
+def test_empty_destination_is_accepted(tmp_path: Path) -> None:
+    target = tmp_path / "empty"
     target.mkdir()
 
-    action = ConflictResolutionService().resolve_directory_conflict(
-        tmp_path / "source", target, force=True
-    )
-
-    assert action == ConflictAction.MERGE
+    ConflictResolutionService().validate_project_destination(target)
 
 
-def test_resolve_directory_conflict_consults_the_resolver_when_not_forced(
-    tmp_path: Path,
-) -> None:
+def test_non_empty_destination_is_refused_without_force(tmp_path: Path) -> None:
     target = tmp_path / "existing"
     target.mkdir()
-    resolver = _FakeResolver(ConflictAction.CANCEL)
+    (target / "keep.txt").write_text("user content", encoding="utf-8")
 
-    action = ConflictResolutionService().resolve_directory_conflict(
-        tmp_path / "source", target, resolver=resolver
-    )
-
-    assert action == ConflictAction.CANCEL
-    assert resolver.calls == [("directory", target, "directory")]
+    with pytest.raises(ProjectServiceError, match="already exists and is not empty"):
+        ConflictResolutionService().validate_project_destination(target)
 
 
-def test_resolve_directory_conflict_merges_without_a_resolver(tmp_path: Path) -> None:
+def test_non_empty_destination_is_accepted_with_force(tmp_path: Path) -> None:
     target = tmp_path / "existing"
     target.mkdir()
+    keep = target / "keep.txt"
+    keep.write_text("user content", encoding="utf-8")
 
-    action = ConflictResolutionService().resolve_directory_conflict(
-        tmp_path / "source", target
-    )
+    ConflictResolutionService().validate_project_destination(target, force=True)
 
-    assert action == ConflictAction.MERGE
-
-
-# ///////////////////////////////////////////////////////////////
-# FILE COPY WITH RESOLUTION
-# ///////////////////////////////////////////////////////////////
+    # --force merges, it never deletes what the user already had there.
+    assert keep.read_text(encoding="utf-8") == "user content"
 
 
-def test_copy_file_with_resolution_copies_when_no_conflict(tmp_path: Path) -> None:
-    source = tmp_path / "source.txt"
-    source.write_text("content")
-    target = tmp_path / "out" / "target.txt"
+def test_destination_that_is_a_file_is_refused(tmp_path: Path) -> None:
+    target = tmp_path / "a-file"
+    target.write_text("x", encoding="utf-8")
 
-    copied = ConflictResolutionService().copy_file_with_resolution(source, target)
-
-    assert copied is True
-    assert target.read_text() == "content"
+    with pytest.raises(ProjectServiceError, match="is not a directory"):
+        ConflictResolutionService().validate_project_destination(target)
 
 
-def test_copy_file_with_resolution_overwrites_when_forced(tmp_path: Path) -> None:
-    source = tmp_path / "source.txt"
-    source.write_text("new")
-    target = tmp_path / "target.txt"
-    target.write_text("old")
+def test_destination_that_is_a_file_is_refused_even_with_force(tmp_path: Path) -> None:
+    # `force` relaxes the non-empty rule only; it must not turn a file into a
+    # valid project root.
+    target = tmp_path / "a-file"
+    target.write_text("x", encoding="utf-8")
 
-    copied = ConflictResolutionService().copy_file_with_resolution(
-        source, target, force=True
-    )
-
-    assert copied is True
-    assert target.read_text() == "new"
+    with pytest.raises(ProjectServiceError, match="is not a directory"):
+        ConflictResolutionService().validate_project_destination(target, force=True)
 
 
-def test_copy_file_with_resolution_skips_and_leaves_target_untouched(
-    tmp_path: Path,
-) -> None:
-    source = tmp_path / "source.txt"
-    source.write_text("new")
-    target = tmp_path / "target.txt"
-    target.write_text("old")
-
-    copied = ConflictResolutionService().copy_file_with_resolution(
-        source, target, resolver=_FakeResolver(ConflictAction.SKIP)
-    )
-
-    assert copied is False
-    assert target.read_text() == "old"
-
-
-def test_copy_file_with_resolution_returns_false_when_cancelled(
-    tmp_path: Path,
-) -> None:
-    source = tmp_path / "source.txt"
-    source.write_text("new")
-    target = tmp_path / "target.txt"
-    target.write_text("old")
-
-    copied = ConflictResolutionService().copy_file_with_resolution(
-        source, target, resolver=_FakeResolver(ConflictAction.CANCEL)
-    )
-
-    assert copied is False
-
-
-def test_copy_file_with_resolution_wraps_unexpected_errors(
+def test_unreadable_destination_is_wrapped_as_a_service_error(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    service = ConflictResolutionService()
-    monkeypatch.setattr(
-        service,
-        "resolve_file_conflict",
-        lambda *_args, **_kwargs: ConflictAction.OVERWRITE,
-    )
-
-    with pytest.raises(ProjectServiceError, match="copy_file_with_resolution"):
-        service.copy_file_with_resolution(
-            tmp_path / "missing-source.txt", tmp_path / "target.txt"
-        )
-
-
-# ///////////////////////////////////////////////////////////////
-# DIRECTORY COPY WITH RESOLUTION
-# ///////////////////////////////////////////////////////////////
-
-
-def test_copy_directory_with_resolution_copies_when_no_conflict(
-    tmp_path: Path,
-) -> None:
-    source = tmp_path / "source"
-    source.mkdir()
-    (source / "file.txt").write_text("content")
-    target = tmp_path / "target"
-
-    copied = ConflictResolutionService().copy_directory_with_resolution(source, target)
-
-    assert copied is True
-    assert (target / "file.txt").read_text() == "content"
-
-
-def test_copy_directory_with_resolution_overwrite_replaces_existing_contents(
-    tmp_path: Path,
-) -> None:
-    source = tmp_path / "source"
-    source.mkdir()
-    (source / "new.txt").write_text("new")
-    target = tmp_path / "target"
-    target.mkdir()
-    (target / "stale.txt").write_text("stale")
-
-    copied = ConflictResolutionService().copy_directory_with_resolution(
-        source, target, resolver=_FakeResolver(ConflictAction.OVERWRITE)
-    )
-
-    assert copied is True
-    assert (target / "new.txt").read_text() == "new"
-    assert not (target / "stale.txt").exists()
-
-
-def test_copy_directory_with_resolution_merge_keeps_existing_files(
-    tmp_path: Path,
-) -> None:
-    source = tmp_path / "source"
-    source.mkdir()
-    (source / "new.txt").write_text("new")
-    target = tmp_path / "target"
-    target.mkdir()
-    (target / "kept.txt").write_text("kept")
-
-    copied = ConflictResolutionService().copy_directory_with_resolution(
-        source, target, force=True
-    )
-
-    assert copied is True
-    assert (target / "new.txt").read_text() == "new"
-    assert (target / "kept.txt").read_text() == "kept"
-
-
-def test_copy_directory_with_resolution_skips_and_leaves_target_untouched(
-    tmp_path: Path,
-) -> None:
-    source = tmp_path / "source"
-    source.mkdir()
-    (source / "new.txt").write_text("new")
-    target = tmp_path / "target"
+    target = tmp_path / "existing"
     target.mkdir()
 
-    copied = ConflictResolutionService().copy_directory_with_resolution(
-        source, target, resolver=_FakeResolver(ConflictAction.SKIP)
-    )
+    def _boom(_self: Path) -> object:
+        raise OSError("permission denied")
 
-    assert copied is False
-    assert not (target / "new.txt").exists()
+    monkeypatch.setattr(Path, "iterdir", _boom)
 
-
-def test_copy_directory_with_resolution_wraps_unexpected_errors(
-    tmp_path: Path,
-) -> None:
-    with pytest.raises(ProjectServiceError, match="copy_directory_with_resolution"):
-        ConflictResolutionService().copy_directory_with_resolution(
-            tmp_path / "missing-source", tmp_path / "target"
-        )
+    with pytest.raises(ProjectServiceError, match="permission denied"):
+        ConflictResolutionService().validate_project_destination(target)

@@ -17,7 +17,6 @@ from __future__ import annotations
 # IMPORTS
 # ///////////////////////////////////////////////////////////////
 # Local imports
-from .create.conflict_prompts import InteractiveConflictResolver
 from .create.create_completion_summaries import (
     print_new_project_summary,
     print_project_creation_result,
@@ -44,7 +43,6 @@ from .templates.template_ui import (
 # ///////////////////////////////////////////////////////////////
 
 __all__ = [
-    "InteractiveConflictResolver",
     "ProjectWizard",
     "configure_project_options",
     "display_template_selection",
