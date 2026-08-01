@@ -39,11 +39,11 @@ class DevToolsConfig:
 
     DEVTOOLS_DEPENDENCIES: ClassVar[dict[str, dict[str, list[str]]]] = {
         "python": {
-            "formatting": ["black", "isort"],
-            "linting": ["ruff", "flake8"],
+            # ruff covers formatting, import sorting and linting on its own:
+            # black / isort / flake8 were dropped on 2026-08-02.
+            "linting": ["ruff"],
             "security": ["bandit"],
             "testing": ["pytest"],
-            "type_checking": ["mypy"],
         },
         "javascript": {
             "formatting": ["prettier"],
