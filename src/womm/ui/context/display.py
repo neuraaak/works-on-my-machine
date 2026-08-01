@@ -367,7 +367,7 @@ def render_context_backup_content_result(result: BackupDataResult) -> None:
         return
 
     metadata = result.metadata or {}
-    ezconsole.print(f"[bold]Backup: {Path(result.filepath).name}[/bold]")
+    ezprinter.success(f"Backup: {Path(result.filepath).name}")
     ezconsole.print(f"  Created: {metadata.get('timestamp', 'unknown')}")
     ezconsole.print(f"  Version: {metadata.get('version', 'unknown')}")
     ezconsole.print(f"  Entries: {metadata.get('total_entries', 0)}")

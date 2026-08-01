@@ -310,7 +310,7 @@ def test_backup_list_failure_reports_the_error(monkeypatch):
 def test_backup_content_renders_metadata_and_stats(monkeypatch):
     from womm.shared.results import BackupDataResult
 
-    _patch_ui(monkeypatch)
+    ezprinter, ezconsole = _patch_ui(monkeypatch)
     result = BackupDataResult(
         success=True,
         filepath="/backups/context_menu_backup_1.json",
@@ -320,8 +320,10 @@ def test_backup_content_renders_metadata_and_stats(monkeypatch):
 
     display_module.render_context_backup_content_result(result)
 
+    ezprinter.success.assert_called_once()
     printed = " ".join(
-        str(call.args[0]) for call in display_module.ezconsole.print.call_args_list
+        [str(call.args[0]) for call in ezprinter.success.call_args_list]
+        + [str(call.args[0]) for call in ezconsole.print.call_args_list]
     )
     assert "context_menu_backup_1.json" in printed
     assert "alpha" in printed
