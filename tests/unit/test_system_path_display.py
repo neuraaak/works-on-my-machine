@@ -327,6 +327,24 @@ def test_render_path_entries_result_shows_table_and_commands_panel(monkeypatch):
     assert panels[0].border_style == "blue"
 
 
+def test_render_path_entries_result_exists_check_survives_oserror(monkeypatch):
+    ezprinter, _, ezpl_bridge = _patch_ui(monkeypatch)
+    table = MagicMock()
+    ezprinter.create_table.return_value = table
+
+    def _raise(_self):
+        raise OSError("exotic errno from network share")
+
+    monkeypatch.setattr(display_module.Path, "exists", _raise)
+    result = PathOperationResult(success=True, message="ok", path_entries=["C:/a"])
+
+    display_module.render_path_entries_result(result)
+
+    assert table.add_row.call_count == 1
+    assert table.add_row.call_args.args == ("1", "C:/a", "?")
+    ezpl_bridge.console.print.assert_any_call(table)
+
+
 def test_render_path_entries_result_empty_path(monkeypatch):
     ezprinter, ezconsole, _ = _patch_ui(monkeypatch)
     result = PathOperationResult(success=True, message="ok", path_entries=[])

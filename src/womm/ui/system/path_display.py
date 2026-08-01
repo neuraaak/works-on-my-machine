@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 # ///////////////////////////////////////////////////////////////
-# PATH DISPLAY - PATH Backup UI Display Functions
+# PATH - PATH Inspection and Backup Commands
 # Project: works-on-my-machine
 # ///////////////////////////////////////////////////////////////
 
 """
-PATH backup display functions for Works On My Machine.
+PATH display functions for Works On My Machine.
 
-Provides display functions for PATH backup, restore and listing results.
+Provides display functions for PATH inspection (live entries, a single
+backup's content) and PATH backup/restore/listing results.
 """
 
 from __future__ import annotations
@@ -33,6 +34,23 @@ from ..common import ezconsole, ezpl_bridge, ezprinter
 # ///////////////////////////////////////////////////////////////
 # PANEL HELPERS
 # ///////////////////////////////////////////////////////////////
+
+
+def _entry_exists_label(entry: str) -> str:
+    """Return "yes"/"no" for a PATH entry, or "?" when it cannot be probed.
+
+    Args:
+        entry: A single PATH entry to probe for existence.
+
+    Returns:
+        ``"yes"`` if the entry exists, ``"no"`` if it does not, or ``"?"``
+        when the filesystem check raises an unexpected ``OSError`` (e.g. an
+        exotic errno from an SMB or network share entry).
+    """
+    try:
+        return "yes" if Path(entry).exists() else "no"
+    except OSError:
+        return "?"
 
 
 def _show_panel(content: str, title: str, border_style: str) -> None:
@@ -255,7 +273,7 @@ def render_path_entries_result(result: PathOperationResult) -> None:
             ],
         )
         for index, entry in enumerate(entries, 1):
-            table.add_row(str(index), entry, "yes" if Path(entry).exists() else "no")
+            table.add_row(str(index), entry, _entry_exists_label(entry))
         ezpl_bridge.console.print("")
         ezpl_bridge.console.print(table)
 

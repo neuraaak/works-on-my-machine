@@ -117,6 +117,8 @@ class PathBackupContentResult(BaseResult):
     """Content of a single PATH backup file."""
 
     name: str = ""
+    # Fully resolved filesystem path; intentionally never rendered to the
+    # user, and should not be printed by future renderers.
     backup_file: str = ""
     timestamp: str = ""
     platform: str = ""
