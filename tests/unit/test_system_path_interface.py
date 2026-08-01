@@ -137,15 +137,19 @@ def test_read_backup_rejects_names_escaping_the_backup_dir(
 def test_read_backup_rejects_an_alternate_data_stream_suffix(interface):
     """The colon check must do the rejecting, not ``is_file()``.
 
-    ``real.json`` is created here on purpose: without it, ``is_file()``
-    would already reject "real.json:ads" for lacking a base file, making the
-    test pass regardless of the colon clause. With ``real.json`` present and
-    readable, only the ``":" in name`` check in ``_resolve_backup_name``
-    stands between this hostile name and a real read — if that clause were
-    removed, stage 1 would let the name through, ``is_file()`` would (on
-    NTFS) resolve the stream and return True, and the read would succeed.
+    ``real.json`` and a genuine stream on it are created here on purpose:
+    with both present, only the ``":" in name`` check in
+    ``_resolve_backup_name`` stands between this hostile name and a real
+    read — if that clause were removed, stage 1 would let the name through,
+    ``is_file()``/``resolve()`` would follow the stream and return True, and
+    the read would succeed against the stream's contents.
     """
     _write_backup(interface, "real.json", ["C:/a"])
+    stream_path = interface.backup_dir / "real.json:ads"
+    try:
+        stream_path.write_text(json.dumps({"entries": ["pwned"]}), encoding="utf-8")
+    except (OSError, ValueError, NotImplementedError):
+        pytest.skip("alternate data streams not supported on this filesystem")
 
     result = interface.read_backup("real.json:ads")
 
