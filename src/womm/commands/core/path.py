@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 # ///////////////////////////////////////////////////////////////
-# PATH - PATH Backup Commands
+# PATH - PATH Inspection and Backup Commands
 # Project: works-on-my-machine
 # ///////////////////////////////////////////////////////////////
 
-"""User-facing PATH backup and restore commands."""
+"""User-facing PATH inspection, backup and restore commands."""
 
 from __future__ import annotations
 
@@ -27,57 +27,99 @@ from ...ui.common import (
     format_backup_item,
 )
 from ...ui.system import (
+    render_path_backup_content_result,
     render_path_backup_list_result,
     render_path_backup_result,
+    render_path_entries_result,
     render_path_operation_result,
 )
 
 # ///////////////////////////////////////////////////////////////
-# PATH MANAGEMENT COMMANDS
+# COMMAND GROUPS
 # ///////////////////////////////////////////////////////////////
 
 
-@click.command("path")
+@click.group("path", invoke_without_command=True)
 @click.help_option("-h", "--help")
-@click.option(
-    "-b", "--backup", "backup_flag", is_flag=True, help="Create a PATH backup"
-)
-@click.option(
-    "-r", "--restore", "restore_flag", is_flag=True, help="Restore PATH from backup"
-)
-@click.option(
-    "-l", "--list", "list_flag", is_flag=True, help="List available PATH backups"
-)
-def path_cmd(backup_flag: bool, restore_flag: bool, list_flag: bool) -> None:
-    """🧭 PATH utilities: backup, restore, and list backups."""
-    selected = sum(bool(value) for value in (backup_flag, restore_flag, list_flag))
-    if selected > 1:
-        ezprinter.error("Choose only one action among --backup, --restore, or --list")
-        sys.exit(1)
-    if selected == 0:
-        list_flag = True
+@click.pass_context
+def path_group(ctx: click.Context) -> None:
+    """🧭 PATH utilities: inspect, back up and restore your PATH."""
+    if ctx.invoked_subcommand is None:
+        click.echo(ctx.get_help())
 
-    try:
-        manager = SystemPathInterface()
 
-        if list_flag:
-            ezprinter.print_header("W.O.M.M PATH Backup List")
-            result = manager.list_backups()
-            render_path_backup_list_result(result)
-            if not result.success:
-                sys.exit(1)
-        elif backup_flag:
-            ezprinter.print_header("W.O.M.M PATH Backup Creation")
-            result = manager.create_backup()
-            render_path_backup_result(result)
-            if not result.success:
-                sys.exit(1)
-        elif restore_flag:
-            ezprinter.print_header("W.O.M.M PATH Restoration")
-            _run_path_restore(manager)
-    except Exception as error:
-        ezprinter.error(f"Unexpected PATH command error: {error}")
+@path_group.group("backup")
+@click.help_option("-h", "--help")
+def path_backup_group() -> None:
+    """💾 Manage PATH backups."""
+
+
+# ///////////////////////////////////////////////////////////////
+# PATH INSPECTION
+# ///////////////////////////////////////////////////////////////
+
+
+@path_group.command("list")
+@click.help_option("-h", "--help")
+def path_list() -> None:
+    """📋 List the entries of your current PATH."""
+    ezprinter.print_header("W.O.M.M Current PATH")
+    result = SystemPathInterface().list_path_entries()
+    render_path_entries_result(result)
+    if not result.success:
         sys.exit(1)
+
+
+# ///////////////////////////////////////////////////////////////
+# BACKUP MANAGEMENT
+# ///////////////////////////////////////////////////////////////
+
+
+@path_backup_group.command("create")
+@click.help_option("-h", "--help")
+def path_backup_create() -> None:
+    """💾 Create a backup of your current PATH."""
+    ezprinter.print_header("W.O.M.M PATH Backup Creation")
+    result = SystemPathInterface().create_backup()
+    render_path_backup_result(result)
+    if not result.success:
+        sys.exit(1)
+
+
+@path_backup_group.command("list")
+@click.help_option("-h", "--help")
+def path_backup_list() -> None:
+    """📋 List available PATH backups."""
+    ezprinter.print_header("W.O.M.M PATH Backup List")
+    result = SystemPathInterface().list_backups()
+    render_path_backup_list_result(result)
+    if not result.success:
+        sys.exit(1)
+
+
+@path_backup_group.command("show")
+@click.help_option("-h", "--help")
+@click.argument("name")
+def path_backup_show(name: str) -> None:
+    """🔍 Show the content of a PATH backup (file name, not a path)."""
+    ezprinter.print_header("W.O.M.M PATH Backup Content")
+    result = SystemPathInterface().read_backup(name)
+    render_path_backup_content_result(result)
+    if not result.success:
+        sys.exit(1)
+
+
+@path_backup_group.command("restore")
+@click.help_option("-h", "--help")
+def path_backup_restore() -> None:
+    """🔄 Restore your PATH from a backup."""
+    ezprinter.print_header("W.O.M.M PATH Restoration")
+    _run_path_restore(SystemPathInterface())
+
+
+# ///////////////////////////////////////////////////////////////
+# INTERACTIVE RESTORE
+# ///////////////////////////////////////////////////////////////
 
 
 def _run_path_restore(manager: SystemPathInterface) -> None:
@@ -134,4 +176,8 @@ def _run_path_restore(manager: SystemPathInterface) -> None:
         sys.exit(1)
 
 
-__all__ = ["path_cmd"]
+# ///////////////////////////////////////////////////////////////
+# PUBLIC API
+# ///////////////////////////////////////////////////////////////
+
+__all__ = ["path_group"]

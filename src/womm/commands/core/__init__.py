@@ -17,7 +17,7 @@ from __future__ import annotations
 # ///////////////////////////////////////////////////////////////
 # Local imports
 from .doctor import doctor_cmd
-from .path import path_cmd
+from .path import path_group
 
 # ///////////////////////////////////////////////////////////////
 # PUBLIC API
@@ -25,5 +25,5 @@ from .path import path_cmd
 
 __all__ = [
     "doctor_cmd",
-    "path_cmd",
+    "path_group",
 ]
