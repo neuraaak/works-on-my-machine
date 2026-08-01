@@ -146,6 +146,21 @@ class ContextEntriesResult(BaseResult):
         if self.entries is None:
             self.entries = {}
 
+    @property
+    def entries_by_type(self) -> dict[str, int]:
+        """Entry count per context type, for the types actually present."""
+        return {
+            context_type: len(context_entries)
+            for context_type, context_entries in (self.entries or {}).items()
+        }
+
+    @property
+    def total_entries(self) -> int:
+        """Total number of registered entries, across all context types."""
+        return sum(
+            len(context_entries) for context_entries in (self.entries or {}).values()
+        )
+
 
 @dataclass
 class ContextStatusResult(BaseResult):
