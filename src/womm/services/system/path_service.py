@@ -337,7 +337,7 @@ class SystemPathService:
             )
 
             womm_export_line = f'export PATH="{entry_path}:$PATH"'
-            womm_path_comment = "# Added by Works On My Machine installer"
+            womm_path_comment = "# Added by Works On My Machine (womm path add)"
 
             # Business logic: path already present - return success result
             if target_rc.exists():

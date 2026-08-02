@@ -73,14 +73,110 @@ class SystemPathInterface:
     # PUBLIC METHODS - PATH MODIFICATION
     # ///////////////////////////////////////////////////////////////
 
+    def _contains_executable(self, directory: Path) -> bool:
+        """Tell whether a directory holds at least one runnable file.
+
+        A PATH entry that contains nothing executable buys nothing and is
+        almost always a typo or the wrong nesting level (``node`` instead of
+        ``node/bin``), so it is refused rather than written.
+
+        Args:
+            directory: An existing directory.
+
+        Returns:
+            True when at least one direct child is executable. Unreadable
+            directories answer False: an entry we cannot inspect is not one
+            we should add.
+        """
+        if self.platform == "Windows":
+            raw_pathext = os.environ.get("PATHEXT", ".EXE;.BAT;.CMD;.COM")
+            suffixes = {ext.lower() for ext in raw_pathext.split(os.pathsep) if ext}
+        else:
+            suffixes = set()
+
+        try:
+            for child in directory.iterdir():
+                if not child.is_file():
+                    continue
+                if self.platform == "Windows":
+                    if child.suffix.lower() in suffixes:
+                        return True
+                elif os.access(child, os.X_OK):
+                    return True
+        except OSError as e:
+            logger.warning(f"Failed to inspect candidate PATH entry: {e}")
+            return False
+
+        return False
+
+    def _reject_add(self, entry_path: str, reason: str) -> PathOperationResult:
+        """Build the failure returned when a candidate entry is refused."""
+        return PathOperationResult(
+            success=False,
+            message="Refused to add this entry to PATH",
+            error=reason,
+            entry_path=entry_path,
+            operation="add",
+        )
+
+    def _snapshot_before_write(self, operation: str) -> PathOperationResult | None:
+        """Back up the current PATH before modifying it.
+
+        Args:
+            operation: ``"add"`` or ``"remove"``, carried by the failure.
+
+        Returns:
+            None when the snapshot succeeded, otherwise the failure to hand
+            back. A PATH write we cannot undo is not one we should attempt:
+            on Windows the target is ``HKCU\\Environment``, and a wrong value
+            there costs the user their shell.
+        """
+        backup = self.create_backup()
+        if backup.success:
+            return None
+
+        return PathOperationResult(
+            success=False,
+            message="Refused to modify PATH without a backup",
+            error=backup.error
+            or backup.message
+            or "Failed to back up the current PATH",
+            operation=operation,
+        )
+
     def add_to_path(self, entry: Path) -> PathOperationResult:
         """
         Add an explicit entry to PATH environment variable.
 
+        The entry must be an existing directory holding at least one
+        executable, and the current PATH is backed up first. Both guards live
+        here rather than in the caller: the next caller would otherwise have
+        to remember them, and the sink is a registry write.
+
+        Args:
+            entry: Directory to append to the user PATH.
+
         Returns:
             PathOperationResult: success/failure; failure carries the error.
+            Adding an entry that is already present succeeds without writing.
         """
-        entry_path = str(entry.expanduser().resolve())
+        expanded = entry.expanduser()
+        entry_path = str(expanded.resolve())
+
+        if not expanded.exists():
+            return self._reject_add(entry_path, "Directory does not exist")
+        if not expanded.is_dir():
+            return self._reject_add(entry_path, "Not a directory")
+        if not self._contains_executable(expanded):
+            return self._reject_add(
+                entry_path,
+                "Directory holds no executable — check the nesting level "
+                "(a 'bin' subdirectory is often the one to add)",
+            )
+
+        snapshot_failure = self._snapshot_before_write("add")
+        if snapshot_failure is not None:
+            return snapshot_failure
 
         try:
             current_path_result = self._path_service.get_current_system_path()
@@ -122,10 +218,22 @@ class SystemPathInterface:
         """
         Remove an explicit entry from PATH environment variable.
 
+        Unlike ``add_to_path()``, the directory is **not** required to exist:
+        removing the entry of an uninstalled tool is the main reason to call
+        this. The current PATH is still backed up first.
+
+        Args:
+            entry: Directory to drop from the user PATH.
+
         Returns:
             PathOperationResult: success/failure; failure carries the error.
+            Removing an entry that is absent succeeds without writing.
         """
         entry_path = str(entry.expanduser().resolve())
+
+        snapshot_failure = self._snapshot_before_write("remove")
+        if snapshot_failure is not None:
+            return snapshot_failure
 
         try:
             if self.platform == "Windows":

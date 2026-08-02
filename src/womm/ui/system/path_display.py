@@ -79,6 +79,48 @@ def _show_panel(content: str, title: str, border_style: str) -> None:
 # ///////////////////////////////////////////////////////////////
 
 
+_OPERATION_PANELS: dict[str, tuple[str, str, str]] = {
+    "restore": (
+        """PATH restored successfully from backup.
+
+- Restart your terminal for the changes to take effect
+- Use womm path backup list to list available backups
+- Use womm path backup create to snapshot the restored PATH""",
+        """The PATH could not be restored from the selected backup.
+
+- Check that the backup file is readable and not corrupted
+- Check permissions on the user environment variables
+- Use womm path backup list to pick another backup""",
+        "Restore Complete",
+    ),
+    "add": (
+        """Your PATH now contains this entry.
+
+- Restart your terminal for the change to take effect
+- Use womm path list to check the resulting PATH
+- Use womm path backup restore to undo this change""",
+        """The entry could not be added to your PATH.
+
+- Check that the directory exists and holds an executable
+- A tool often lives in a bin subdirectory, not in its root
+- Check permissions on the user environment variables""",
+        "Entry Added",
+    ),
+    "remove": (
+        """Your PATH no longer contains this entry.
+
+- Restart your terminal for the change to take effect
+- Use womm path list to check the resulting PATH
+- Use womm path backup restore to undo this change""",
+        """The entry could not be removed from your PATH.
+
+- Use womm path list to check how the entry is spelled
+- Check permissions on the user environment variables""",
+        "Entry Removed",
+    ),
+}
+
+
 def render_path_operation_result(
     result: PathOperationResult,
     context: str = "operation",
@@ -89,41 +131,30 @@ def render_path_operation_result(
     Args:
         result: Outcome returned by ``SystemPathInterface.add_to_path()``,
             ``remove_from_path()``, or ``restore_backup()``.
-        context: ``"restore"`` adds the restore-specific panel; any other
-            value, including the default, renders lines only.
+        context: ``"add"``, ``"remove"`` or ``"restore"`` adds the panel of
+            that operation; any other value, including the default, renders
+            lines only.
     """
+    panels = _OPERATION_PANELS.get(context)
+
     if result.success:
         if result.path_modified:
             ezprinter.success(result.message)
         else:
             ezprinter.info(result.message)
 
-        if context == "restore":
-            _show_panel(
-                """PATH restored successfully from backup.
-
-- Restart your terminal for the changes to take effect
-- Use womm path backup list to list available backups
-- Use womm path backup create to snapshot the restored PATH""",
-                "Restore Complete",
-                "green",
-            )
+        if panels:
+            success_text, _, title = panels
+            _show_panel(success_text, title, "green")
         return
 
     ezprinter.error(result.message or "PATH operation failed")
     if result.error:
         ezprinter.info(result.error)
 
-    if context == "restore":
-        _show_panel(
-            """The PATH could not be restored from the selected backup.
-
-- Check that the backup file is readable and not corrupted
-- Check permissions on the user environment variables
-- Use womm path backup list to pick another backup""",
-            "Troubleshooting",
-            "yellow",
-        )
+    if panels:
+        _, failure_text, _ = panels
+        _show_panel(failure_text, "Troubleshooting", "yellow")
 
 
 def render_path_backup_result(result: PathBackupResult) -> None:
@@ -223,13 +254,15 @@ def render_path_backup_list_result(result: PathBackupListResult) -> None:
     ezpl_bridge.console.print(backup_table)
 
     _show_panel(
-        """PATH backup management commands:
+        """PATH management commands:
 
 - womm path list - Show the entries of your current PATH
+- womm path add <dir> - Add a directory to your PATH
+- womm path remove <dir> - Remove a directory from your PATH
 - womm path backup create - Create a new PATH backup
 - womm path backup list - List available PATH backups
 - womm path backup show <name> - Inspect a backup's content
-- womm path backup restore - Restore PATH from a backup""",
+- womm path backup restore [name] - Restore PATH from a backup""",
         "PATH Commands",
         "blue",
     )

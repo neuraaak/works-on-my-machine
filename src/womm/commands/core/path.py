@@ -36,6 +36,12 @@ from ...ui.system import (
 )
 
 # ///////////////////////////////////////////////////////////////
+# CONSTANTS
+# ///////////////////////////////////////////////////////////////
+
+_CANCELLED = "Restoration cancelled"
+
+# ///////////////////////////////////////////////////////////////
 # COMMAND GROUPS
 # ///////////////////////////////////////////////////////////////
 
@@ -76,6 +82,62 @@ def path_list(verbose: bool) -> None:
     ezprinter.print_header("Current PATH")
     result = SystemPathInterface().list_path_entries()
     render_path_entries_result(result)
+    if not result.success:
+        sys.exit(1)
+
+
+# ///////////////////////////////////////////////////////////////
+# PATH MODIFICATION
+# ///////////////////////////////////////////////////////////////
+
+
+@path_group.command("add")
+@click.help_option("-h", "--help")
+@click.argument("directory", type=click.Path(path_type=Path))
+@click.option(
+    "-v",
+    "--verbose",
+    is_flag=True,
+    help="Enable verbose output (DEBUG level)",
+)
+def path_add(directory: Path, verbose: bool) -> None:
+    """➕ Add a directory to your PATH.
+
+    DIRECTORY must exist and hold at least one executable. The current PATH
+    is backed up before the change, so 'backup restore' undoes it.
+    """
+    if verbose:
+        ezpl_bridge.set_level(LogLevel.DEBUG.label)
+
+    ezprinter.print_header("PATH Entry Addition")
+    result = SystemPathInterface().add_to_path(directory)
+    render_path_operation_result(result, context="add")
+    if not result.success:
+        sys.exit(1)
+
+
+@path_group.command("remove")
+@click.help_option("-h", "--help")
+@click.argument("directory", type=click.Path(path_type=Path))
+@click.option(
+    "-v",
+    "--verbose",
+    is_flag=True,
+    help="Enable verbose output (DEBUG level)",
+)
+def path_remove(directory: Path, verbose: bool) -> None:
+    """➖ Remove a directory from your PATH.
+
+    DIRECTORY does not have to exist — dropping the entry of an uninstalled
+    tool is the usual reason to run this. The current PATH is backed up
+    before the change.
+    """
+    if verbose:
+        ezpl_bridge.set_level(LogLevel.DEBUG.label)
+
+    ezprinter.print_header("PATH Entry Removal")
+    result = SystemPathInterface().remove_from_path(directory)
+    render_path_operation_result(result, context="remove")
     if not result.success:
         sys.exit(1)
 
@@ -148,24 +210,65 @@ def path_backup_show(name: str, verbose: bool) -> None:
 
 @path_backup_group.command("restore")
 @click.help_option("-h", "--help")
+@click.argument("name", required=False)
 @click.option(
     "-v",
     "--verbose",
     is_flag=True,
     help="Enable verbose output (DEBUG level)",
 )
-def path_backup_restore(verbose: bool) -> None:
-    """🔄 Restore your PATH from a backup."""
+def path_backup_restore(name: str | None, verbose: bool) -> None:
+    """🔄 Restore your PATH from a backup.
+
+    NAME is a bare backup file name, as listed by 'backup list'. Without
+    NAME, a backup is chosen interactively.
+    """
     if verbose:
         ezpl_bridge.set_level(LogLevel.DEBUG.label)
 
     ezprinter.print_header("PATH Restoration")
-    _run_path_restore(SystemPathInterface())
+    manager = SystemPathInterface()
+    if name:
+        _restore_named_backup(manager, name)
+    else:
+        _run_path_restore(manager)
 
 
 # ///////////////////////////////////////////////////////////////
-# INTERACTIVE RESTORE
+# RESTORE
 # ///////////////////////////////////////////////////////////////
+
+
+def _confirm_restore() -> bool:
+    """Ask for an explicit confirmation before writing the user's PATH."""
+    confirm_menu = InteractiveMenu(title="Confirm Restoration", border_style="yellow")
+    return confirm_menu.confirm_action("Proceed with restoration?", default_yes=True)
+
+
+def _restore_named_backup(manager: SystemPathInterface, name: str) -> None:
+    """Restore the PATH from an explicitly named backup.
+
+    The name stays bare on the whole path: ``read_backup()`` and
+    ``restore_backup()`` each confine it inside the backup directory, and
+    the readability check runs first so an unusable name stops before the
+    confirmation prompt.
+    """
+    content = manager.read_backup(name)
+    if not content.success:
+        render_path_backup_content_result(content)
+        ezprinter.info("Run 'womm path backup list' to see available names")
+        sys.exit(1)
+
+    ezprinter.info(f"Backup: {name} ({len(content.entries or [])} PATH entries)")
+
+    if not _confirm_restore():
+        ezprinter.system(_CANCELLED)
+        return
+
+    restore_result = manager.restore_backup(name)
+    render_path_operation_result(restore_result, context="restore")
+    if not restore_result.success:
+        sys.exit(1)
 
 
 def _run_path_restore(manager: SystemPathInterface) -> None:
@@ -214,12 +317,11 @@ def _run_path_restore(manager: SystemPathInterface) -> None:
     menu = InteractiveMenu(title="Select Backup to Restore", border_style="cyan")
     selected = menu.select_from_list(menu_items, display_func=format_backup_item)
     if selected is None:
-        ezprinter.system("Restoration cancelled")
+        ezprinter.system(_CANCELLED)
         return
 
-    confirm_menu = InteractiveMenu(title="Confirm Restoration", border_style="yellow")
-    if not confirm_menu.confirm_action("Proceed with restoration?", default_yes=True):
-        ezprinter.system("Restoration cancelled")
+    if not _confirm_restore():
+        ezprinter.system(_CANCELLED)
         return
 
     restore_result = manager.restore_backup(selected["name"])

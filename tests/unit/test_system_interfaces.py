@@ -251,6 +251,16 @@ def test_path_backups_live_in_the_data_directory(tmp_path):
 # ///////////////////////////////////////////////////////////////
 
 
+def _bin_dir(tmp_path, name: str = "tools") -> Path:
+    """Build a plausible PATH candidate: a directory holding an executable."""
+    directory = tmp_path / name
+    directory.mkdir()
+    executable = directory / "thing.exe"
+    executable.write_text("")
+    executable.chmod(0o755)
+    return directory
+
+
 class TestSystemPathInterfaceModify:
     """Boundary behaviour of add_to_path()/remove_from_path()."""
 
@@ -264,11 +274,87 @@ class TestSystemPathInterfaceModify:
             ),
         )
 
-        result = interface.add_to_path(tmp_path)
+        result = interface.add_to_path(_bin_dir(tmp_path))
 
         assert isinstance(result, PathOperationResult)
         assert result.success is True
         assert result.path_modified is True
+
+    def test_add_to_path_backs_the_current_path_up_before_writing(self, tmp_path):
+        """The change must be undoable: a snapshot exists once add succeeded."""
+        interface = _make_path_interface()
+        interface._path_service = _FakePathService(
+            current=PathOperationResult(success=True, path_entries=["/a"]),
+            setup=PathOperationResult(
+                success=True, path_modified=True, operation="add"
+            ),
+        )
+
+        assert interface.list_backups().backups == []
+
+        interface.add_to_path(_bin_dir(tmp_path))
+
+        assert len(interface.list_backups().backups) == 1
+
+    def test_add_to_path_refuses_a_missing_directory(self, tmp_path):
+        """A path that does not exist is a typo, not an entry to write."""
+        interface = _make_path_interface()
+        interface._path_service = _FakePathService(
+            current=PathOperationResult(success=True, path_entries=["/a"]),
+            setup=PathOperationResult(success=True, operation="add"),
+        )
+
+        result = interface.add_to_path(tmp_path / "nope")
+
+        assert result.success is False
+        assert result.error == "Directory does not exist"
+        assert interface.list_backups().backups == []
+
+    def test_add_to_path_refuses_a_file(self, tmp_path):
+        """PATH entries are directories; a file would never resolve anything."""
+        interface = _make_path_interface()
+        interface._path_service = _FakePathService(
+            current=PathOperationResult(success=True, path_entries=["/a"]),
+            setup=PathOperationResult(success=True, operation="add"),
+        )
+        target = tmp_path / "thing.exe"
+        target.write_text("")
+
+        result = interface.add_to_path(target)
+
+        assert result.success is False
+        assert result.error == "Not a directory"
+
+    def test_add_to_path_refuses_a_directory_without_executable(self, tmp_path):
+        """An entry resolving nothing is almost always the wrong nesting level."""
+        interface = _make_path_interface()
+        interface._path_service = _FakePathService(
+            current=PathOperationResult(success=True, path_entries=["/a"]),
+            setup=PathOperationResult(success=True, operation="add"),
+        )
+        empty = tmp_path / "empty"
+        empty.mkdir()
+
+        result = interface.add_to_path(empty)
+
+        assert result.success is False
+        assert "no executable" in result.error
+
+    def test_add_to_path_refuses_to_write_when_the_backup_fails(self, tmp_path):
+        """A PATH write we cannot undo is not one to attempt."""
+        interface = _make_path_interface()
+        interface._path_service = _FakePathService(
+            current=PathOperationResult(success=False, message="registry unreadable"),
+            setup=PathOperationResult(
+                success=True, path_modified=True, operation="add"
+            ),
+        )
+
+        result = interface.add_to_path(_bin_dir(tmp_path))
+
+        assert result.success is False
+        assert result.message == "Refused to modify PATH without a backup"
+        assert result.operation == "add"
 
     def test_add_to_path_service_error_is_translated_to_failure_result(self, tmp_path):
         """A SystemServiceError from get_current_system_path becomes a failed Result."""
@@ -277,39 +363,58 @@ class TestSystemPathInterfaceModify:
             error=SystemServiceError(operation="path_get", reason="boom")
         )
 
-        result = interface.add_to_path(tmp_path)
+        result = interface.add_to_path(_bin_dir(tmp_path))
 
         assert isinstance(result, PathOperationResult)
         assert result.success is False
         assert "boom" in result.error
         assert result.operation == "add"
 
-    def test_add_to_path_get_current_failure_short_circuits(self, tmp_path):
-        """A failed get_current_system_path Result is surfaced as an add failure."""
-        interface = _make_path_interface()
-        interface._path_service = _FakePathService(
-            current=PathOperationResult(success=False, message="registry unreadable")
-        )
-
-        result = interface.add_to_path(tmp_path)
-
-        assert result.success is False
-        assert result.message == "registry unreadable"
-        assert result.operation == "add"
-
     def test_remove_from_path_success_passes_result_through(self, tmp_path):
         """A successful removal result is returned unchanged."""
         interface = _make_path_interface()
         interface._path_service = _FakePathService(
+            current=PathOperationResult(success=True, path_entries=["/a"]),
             remove=PathOperationResult(
                 success=True, path_modified=True, operation="remove"
-            )
+            ),
         )
 
-        result = interface.remove_from_path(tmp_path)
+        result = interface.remove_from_path(_bin_dir(tmp_path))
 
         assert result.success is True
         assert result.path_modified is True
+
+    def test_remove_from_path_accepts_a_directory_that_no_longer_exists(self, tmp_path):
+        """Dropping the entry of an uninstalled tool is the main use case."""
+        interface = _make_path_interface()
+        interface._path_service = _FakePathService(
+            current=PathOperationResult(success=True, path_entries=["/a"]),
+            remove=PathOperationResult(
+                success=True, path_modified=True, operation="remove"
+            ),
+        )
+
+        result = interface.remove_from_path(tmp_path / "uninstalled")
+
+        assert result.success is True
+        assert result.path_modified is True
+
+    def test_remove_from_path_refuses_to_write_when_the_backup_fails(self, tmp_path):
+        """Removal is a PATH write too, and needs the same safety net."""
+        interface = _make_path_interface()
+        interface._path_service = _FakePathService(
+            current=PathOperationResult(success=False, message="registry unreadable"),
+            remove=PathOperationResult(
+                success=True, path_modified=True, operation="remove"
+            ),
+        )
+
+        result = interface.remove_from_path(tmp_path / "uninstalled")
+
+        assert result.success is False
+        assert result.message == "Refused to modify PATH without a backup"
+        assert result.operation == "remove"
 
     def test_remove_from_path_service_error_is_translated_to_failure_result(
         self, tmp_path
@@ -320,7 +425,7 @@ class TestSystemPathInterfaceModify:
             error=SystemServiceError(operation="path_get", reason="boom")
         )
 
-        result = interface.remove_from_path(tmp_path)
+        result = interface.remove_from_path(tmp_path / "uninstalled")
 
         assert result.success is False
         assert "boom" in result.error
