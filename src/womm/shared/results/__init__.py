@@ -41,7 +41,6 @@ from .dependency_results import (
     DependencyCheckResult,
     DependencyInventoryEntry,
     DependencyInventoryResult,
-    DependencyManagerStatus,
     DependencyProbe,
     DependencyStatusResult,
 )
@@ -102,7 +101,6 @@ __all__ = [
     "DependencyCheckResult",
     "DependencyInventoryEntry",
     "DependencyInventoryResult",
-    "DependencyManagerStatus",
     "DependencyProbe",
     "DependencyStatusResult",
     "DoctorResult",

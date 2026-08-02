@@ -99,26 +99,42 @@ class TestCheckAll:
         assert result.runtime, "runtimes are configured, so they must be reported"
 
     def test_missing_dependencies_are_data_not_failure(self, none_available):
-        """A missing tool is a finding; the check itself still succeeded."""
+        """A missing runtime is a finding; the check itself still succeeded."""
         result = DepsInterface().check_all()
 
         assert result.success is True
-        assert result.system_ok is False
         assert result.runtime_ok is False
-        assert all(entry.available is False for entry in result.tools)
+        assert result.package_managers_ok is False
+        assert all(entry.available is False for entry in result.package_managers)
 
     def test_availability_flags_reflect_the_probes(self, all_available):
         result = DepsInterface().check_all()
 
-        assert result.system_ok is True
         assert result.runtime_ok is True
+        assert result.package_managers_ok is True
 
     def test_versions_only_resolved_when_requested(self, all_available):
         without = DepsInterface().check_all(detect_versions=False)
         with_versions = DepsInterface().check_all(detect_versions=True)
 
-        assert all(entry.version is None for entry in without.system)
-        assert all(entry.version == "1.2.3" for entry in with_versions.system)
+        assert all(entry.version is None for entry in without.runtime)
+        assert all(entry.version == "1.2.3" for entry in with_versions.runtime)
+
+    def test_package_managers_are_reported(self, all_available):
+        """Strata 2 is part of the check, not an afterthought."""
+        result = DepsInterface().check_all()
+
+        names = {entry.name for entry in result.package_managers}
+        assert {"pip", "uv", "npm", "yarn"} == names
+
+    def test_system_package_managers_are_out_of_scope(self, all_available):
+        """winget / homebrew / apt were dropped from the model on 2026-08-02."""
+        result = DepsInterface().check_all()
+
+        probed = {entry.name for entry in result.runtime} | {
+            entry.name for entry in result.package_managers
+        }
+        assert probed.isdisjoint({"winget", "chocolatey", "homebrew", "apt"})
 
 
 # ///////////////////////////////////////////////////////////////
@@ -135,17 +151,16 @@ class TestShowStatus:
         assert isinstance(result, DependencyStatusResult)
         assert result.success is True
 
-    def test_reports_managers_unsupported_on_this_platform(self, all_available):
-        """Unlike check_all(), status covers every configured manager."""
+    def test_reports_both_strata(self, all_available):
         result = DepsInterface().show_status()
 
-        assert any(not m.supported_on_current_platform for m in result.system), (
-            "at least one configured manager targets another platform"
-        )
-        for manager in result.system:
-            if not manager.supported_on_current_platform:
-                assert manager.available is False
-                assert manager.version is None
+        assert {entry.name for entry in result.runtime} == {"python", "node", "git"}
+        assert {entry.name for entry in result.package_managers} == {
+            "pip",
+            "uv",
+            "npm",
+            "yarn",
+        }
 
 
 # ///////////////////////////////////////////////////////////////
@@ -168,6 +183,5 @@ class TestListAll:
 
         assert isinstance(result, DependencyInventoryResult)
         assert result.success is True
-        assert result.platform in {"windows", "darwin", "linux"}
         assert result.runtime, "runtimes are configured, so they must be listed"
-        assert result.tools, "dev tools are configured, so they must be listed"
+        assert result.package_managers, "package managers must be listed"

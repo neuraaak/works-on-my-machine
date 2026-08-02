@@ -20,9 +20,14 @@ from rich.panel import Panel
 from rich.table import Table
 
 # Local imports
+from ...shared.configs.dependencies import (
+    RuntimeConfig,
+    RuntimePackageManagerConfig,
+)
 from ...shared.results import (
     DependencyCheckResult,
     DependencyInventoryResult,
+    DependencyProbe,
     DependencyStatusResult,
     DoctorResult,
     EnvironmentRefreshResult,
@@ -324,12 +329,25 @@ def render_deps_check_result(
     verbose: bool = False,
 ) -> None:
     """
-    Render a dependency check Result (all strata).
+    Render a dependency check Result (both strata).
 
     Args:
         result: Probe results collected by ``DepsInterface.check_all()``
-        verbose: Whether to show additional details
+        verbose: Whether to also show the resolved path of each component
     """
+
+    def _render(entries: list[DependencyProbe]) -> None:
+        for entry in entries:
+            status = "✓" if entry.available else "✗"
+            version = f"v{entry.version}" if entry.version else "N/A"
+            msg = f"{status} {entry.name}: {version}"
+            if entry.available:
+                ezprinter.success(msg)
+                if verbose and entry.path:
+                    ezprinter.info(f"    {entry.path}")
+            else:
+                ezprinter.warning(msg)
+
     if not result.success:
         ezprinter.error(result.message or "Dependency check failed")
         if result.error:
@@ -338,7 +356,6 @@ def render_deps_check_result(
         _show_panel(
             """The dependency check could not complete.
 
-- Check that WOMM can probe your system package managers
 - Re-run with -v/--verbose for more detail
 - Use womm deps list to see the static inventory instead""",
             "Troubleshooting",
@@ -349,39 +366,27 @@ def render_deps_check_result(
     ezprinter.info("Checking all dependencies...\n")
 
     # Strata 1
-    ezprinter.info("\n=== System Package Managers (Strata 1) ===")
-    available = [entry for entry in result.system if entry.available]
-    if available:
-        ezprinter.success(f"Available: {', '.join(e.name for e in available)}")
-        if verbose:
-            for entry in available:
-                ezprinter.info(f"  • {entry.name}: v{entry.version}")
-    else:
-        ezprinter.warning("No system package managers available")
+    ezprinter.info("\n=== Runtimes (Strata 1) ===")
+    _render(result.runtime)
     ezconsole.print("")
 
     # Strata 2
-    ezprinter.info("\n=== Runtimes (Strata 2) ===")
-    for entry in result.runtime:
-        status = "✓" if entry.available else "✗"
-        version = f"v{entry.version}" if entry.version else "N/A"
-        msg = f"{status} {entry.name}: {version}"
-        if entry.available:
-            ezprinter.success(msg)
-        else:
-            ezprinter.warning(msg)
-    ezconsole.print("")
+    ezprinter.info("\n=== Runtime Package Managers (Strata 2) ===")
+    _render(result.package_managers)
 
-    # Strata 3
-    ezprinter.info("\n=== Development Tools (Strata 3) ===")
-    for entry in result.tools:
-        status = "✓" if entry.available else "✗"
-        prefix = "  " if verbose else ""
-        msg = f"{prefix}{status} {entry.name}"
-        if entry.available:
-            ezprinter.success(msg)
-        else:
-            ezprinter.warning(msg)
+    missing = [entry.name for entry in result.runtime if not entry.available]
+    if missing:
+        _show_panel(
+            f"""Missing runtimes: {", ".join(missing)}
+
+WOMM does not install runtimes for you. Install the missing ones with your
+usual tooling, then re-run womm deps check.
+
+If a runtime is already installed but not detected, it is probably absent from
+your PATH — womm path list shows the current entries.""",
+            "Missing Runtimes",
+            "yellow",
+        )
 
     _show_panel(
         """Dependency commands:
@@ -413,7 +418,6 @@ def render_deps_status_result(
         _show_panel(
             """The dependency status report could not be generated.
 
-- Check that WOMM can probe your system package managers
 - Re-run with -v/--verbose for more detail
 - Use womm deps list to see the static inventory instead""",
             "Troubleshooting",
@@ -431,19 +435,6 @@ def render_deps_status_result(
         table.add_column("Details", style="blue", width=30)
 
     # Strata 1
-    for manager in result.system:
-        if manager.supported_on_current_platform:
-            row = [
-                "System PKG MGR",
-                manager.name,
-                "✓" if manager.available else "✗",
-                manager.version or "N/A",
-            ]
-            if verbose:
-                row.append(f"Priority: {manager.priority}")
-            table.add_row(*row)
-
-    # Strata 2
     for entry in result.runtime:
         row = [
             "Runtime",
@@ -452,14 +443,22 @@ def render_deps_status_result(
             entry.version or "N/A",
         ]
         if verbose:
-            row.append("Min: Any")
+            row.append(f"Min: {RuntimeConfig.RUNTIMES.get(entry.name, 'Any')}")
         table.add_row(*row)
 
-    # Strata 3
-    for entry in result.tools:
-        row = ["DevTool", entry.name, "✓" if entry.available else "✗", "N/A"]
+    # Strata 2
+    for entry in result.package_managers:
+        row = [
+            "Runtime PKG MGR",
+            entry.name,
+            "✓" if entry.available else "✗",
+            entry.version or "N/A",
+        ]
         if verbose:
-            row.append("N/A")
+            requires = RuntimePackageManagerConfig.RUNTIME_PACKAGE_MANAGERS.get(
+                entry.name, "N/A"
+            )
+            row.append(f"Requires: {requires}")
         table.add_row(*row)
 
     ezconsole.print(table)
@@ -497,17 +496,13 @@ def render_deps_inventory_result(result: DependencyInventoryResult) -> None:
         )
         return
 
-    ezprinter.info("=== System Package Managers (Strata 1) ===")
-    for entry in result.system:
-        ezprinter.info(f"  • {entry.name} ({entry.detail})")
-
-    ezprinter.info("\n=== Runtimes (Strata 2) ===")
+    ezprinter.info("=== Runtimes (Strata 1) ===")
     for entry in result.runtime:
         ezprinter.info(f"  • {entry.name} ({entry.detail})")
 
-    ezprinter.info("\n=== Development Tools (Strata 3) ===")
-    for entry in result.tools:
-        ezprinter.info(f"  • {entry.name}: {entry.detail}")
+    ezprinter.info("\n=== Runtime Package Managers (Strata 2) ===")
+    for entry in result.package_managers:
+        ezprinter.info(f"  • {entry.name} ({entry.detail})")
 
     _show_panel(
         """Dependency commands:

@@ -8,7 +8,7 @@
 Dependency result classes for Works On My Machine.
 
 This module contains result classes for the read-only dependency diagnostic
-across the three strata (system package managers, runtimes, dev tools):
+across the two strata WOMM depends on (runtimes, runtime package managers):
 - Availability check
 - Status report
 - Static inventory
@@ -41,17 +41,6 @@ class DependencyProbe:
 
 
 @dataclass
-class DependencyManagerStatus:
-    """A system package manager's status on the current platform."""
-
-    name: str
-    supported_on_current_platform: bool
-    available: bool
-    version: str | None = None
-    priority: str = "N/A"
-
-
-@dataclass
 class DependencyInventoryEntry:
     """A statically configured dependency (no probing involved)."""
 
@@ -66,21 +55,20 @@ class DependencyInventoryEntry:
 
 @dataclass
 class DependencyCheckResult(BaseResult):
-    """Result for probing every dependency across all strata."""
+    """Result for probing every dependency across both strata."""
 
-    system: list[DependencyProbe] = field(default_factory=list)
     runtime: list[DependencyProbe] = field(default_factory=list)
-    tools: list[DependencyProbe] = field(default_factory=list)
-
-    @property
-    def system_ok(self) -> bool:
-        """At least one system package manager is available."""
-        return any(entry.available for entry in self.system)
+    package_managers: list[DependencyProbe] = field(default_factory=list)
 
     @property
     def runtime_ok(self) -> bool:
         """Every configured runtime is available."""
         return all(entry.available for entry in self.runtime)
+
+    @property
+    def package_managers_ok(self) -> bool:
+        """At least one runtime package manager is available."""
+        return any(entry.available for entry in self.package_managers)
 
 
 # ///////////////////////////////////////////////////////////////
@@ -92,9 +80,8 @@ class DependencyCheckResult(BaseResult):
 class DependencyStatusResult(BaseResult):
     """Result for the comprehensive dependency status report."""
 
-    system: list[DependencyManagerStatus] = field(default_factory=list)
     runtime: list[DependencyProbe] = field(default_factory=list)
-    tools: list[DependencyProbe] = field(default_factory=list)
+    package_managers: list[DependencyProbe] = field(default_factory=list)
 
 
 # ///////////////////////////////////////////////////////////////
@@ -106,10 +93,8 @@ class DependencyStatusResult(BaseResult):
 class DependencyInventoryResult(BaseResult):
     """Result for the static dependency inventory (no probing)."""
 
-    platform: str = ""
-    system: list[DependencyInventoryEntry] = field(default_factory=list)
     runtime: list[DependencyInventoryEntry] = field(default_factory=list)
-    tools: list[DependencyInventoryEntry] = field(default_factory=list)
+    package_managers: list[DependencyInventoryEntry] = field(default_factory=list)
 
 
 # ///////////////////////////////////////////////////////////////
@@ -120,7 +105,6 @@ __all__ = [
     "DependencyCheckResult",
     "DependencyInventoryEntry",
     "DependencyInventoryResult",
-    "DependencyManagerStatus",
     "DependencyProbe",
     "DependencyStatusResult",
 ]

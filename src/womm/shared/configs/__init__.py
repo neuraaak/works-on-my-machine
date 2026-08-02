@@ -8,7 +8,7 @@
 Configuration modules for Works On My Machine.
 
 This package contains configuration classes organized by domain:
-- dependencies: Package managers, runtimes, and dev tools
+- dependencies: Runtimes and runtime package managers
 - project: Project structure, types, and variants
 - system: System detection and environment
 - context: Context menu configuration
@@ -23,7 +23,7 @@ from __future__ import annotations
 # ///////////////////////////////////////////////////////////////
 # Local imports
 from .context import ContextConfig
-from .dependencies import DevToolsConfig, RuntimeConfig, SystemPackageManagerConfig
+from .dependencies import RuntimeConfig, RuntimePackageManagerConfig
 from .project import (
     JavaScriptProjectConfig,
     ProjectConfig,
@@ -40,7 +40,6 @@ from .system import PackageManagerConfig, SystemDetectorConfig, SystemEnvironmen
 
 __all__ = [
     "ContextConfig",
-    "DevToolsConfig",
     "FileScannerConfig",
     "JavaScriptProjectConfig",
     "PackageManagerConfig",
@@ -49,8 +48,8 @@ __all__ = [
     "ProjectVariantConfig",
     "PythonProjectConfig",
     "RuntimeConfig",
+    "RuntimePackageManagerConfig",
     "SecurityPatternsConfig",
     "SystemDetectorConfig",
     "SystemEnvironmentConfig",
-    "SystemPackageManagerConfig",
 ]

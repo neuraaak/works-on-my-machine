@@ -7,7 +7,13 @@
 """
 Runtime configuration for Works On My Machine.
 
-Defines runtime dependencies (Python, Node.js, Git) and their package manager mappings.
+Defines the runtimes (Strata 1) WOMM needs in order to run project setup and
+template scaffolding: Python, Node.js and Git.
+
+WOMM never installs a runtime. It reports what is present and, when a runtime
+is missing, tells the user to install it themselves. Installation mappings for
+system package managers were removed on 2026-08-02: managing winget / apt /
+homebrew is explicitly out of scope.
 """
 
 from __future__ import annotations
@@ -24,67 +30,17 @@ from typing import ClassVar
 
 
 class RuntimeConfig:
-    """Configuration for runtime dependencies."""
+    """Configuration for runtime dependencies (Strata 1)."""
 
-    RUNTIMES: ClassVar[dict[str, dict[str, str | int | list[str] | dict[str, str]]]] = {
-        "python": {
-            "version": "3.10+",
-            "priority": 1,
-            "package_managers": [
-                "winget",
-                "chocolatey",
-                "homebrew",
-                "apt",
-                "dnf",
-                "pacman",
-            ],
-            "package_names": {
-                "winget": "Python.Python.3.11",
-                "chocolatey": "python",
-                "homebrew": "python@3.11",
-                "apt": "python3",
-                "dnf": "python3",
-                "pacman": "python",
-            },
-        },
-        "node": {
-            "version": "18+",
-            "priority": 2,
-            "package_managers": [
-                "winget",
-                "chocolatey",
-                "homebrew",
-                "apt",
-                "dnf",
-                "pacman",
-            ],
-            "package_names": {
-                "winget": "OpenJS.NodeJS",
-                "chocolatey": "nodejs",
-                "homebrew": "node",
-                "apt": "nodejs",
-                "dnf": "nodejs",
-                "pacman": "nodejs",
-            },
-        },
-        "git": {
-            "version": "2.30+",
-            "priority": 3,
-            "package_managers": [
-                "winget",
-                "chocolatey",
-                "homebrew",
-                "apt",
-                "dnf",
-                "pacman",
-            ],
-            "package_names": {
-                "winget": "Git.Git",
-                "chocolatey": "git",
-                "homebrew": "git",
-                "apt": "git",
-                "dnf": "git",
-                "pacman": "git",
-            },
-        },
+    RUNTIMES: ClassVar[dict[str, str]] = {
+        "python": "3.13+",
+        "node": "18+",
+        "git": "2.30+",
     }
+
+
+# ///////////////////////////////////////////////////////////////
+# PUBLIC API
+# ///////////////////////////////////////////////////////////////
+
+__all__ = ["RuntimeConfig"]

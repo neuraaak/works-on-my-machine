@@ -7,13 +7,13 @@
 """
 Dependencies command for Works On My Machine.
 
-Read-only diagnostic across the 3-strata dependency model:
-- Strata 1: System Package Managers (winget, choco, homebrew, apt)
-- Strata 2: Runtimes (python, node, git)
-- Strata 3: DevTools (ruff, eslint, pytest)
+Read-only diagnostic across the 2-strata dependency model:
+- Strata 1: Runtimes (python, node, git)
+- Strata 2: Runtime package managers (pip, uv, npm, yarn)
 
 Installation is intentionally out of scope: WOMM reports what is present on the
-machine, it does not install runtimes or tools for you.
+machine, it does not install runtimes for you. System package managers (winget,
+homebrew, apt) and a project's own packages are out of scope too.
 """
 
 from __future__ import annotations
@@ -46,14 +46,13 @@ from ...ui.system import (
 @click.pass_context
 def deps_group(ctx: click.Context) -> None:
     """
-    Inspect dependencies across all strata (system, runtime, tools).
+    Inspect the runtimes and runtime package managers WOMM relies on.
 
-    The dependency model has 3 hierarchical strata:
+    The dependency model has 2 hierarchical strata:
 
     \b
-    Strata 1: System Package Managers (winget, chocolatey, homebrew, apt)
-    Strata 2: Runtimes (python, node, git)
-    Strata 3: Development Tools (ruff, eslint, pytest)
+    Strata 1: Runtimes (python, node, git)
+    Strata 2: Runtime package managers (pip, uv, npm, yarn)
 
     This command is read-only: it reports what is installed, it does not
     install anything. Use your OS package manager to install what is missing.
@@ -77,12 +76,11 @@ def deps_group(ctx: click.Context) -> None:
 )
 def deps_check(verbose: bool) -> None:
     """
-    🔍 Check availability of all dependencies across all strata.
+    🔍 Check availability of all dependencies across both strata.
 
-    Probes system package managers, runtimes, and development tools, then
-    reports which are present. Exit status is 0 when at least one system
-    package manager is available and every runtime is installed; development
-    tools are informational and never fail the check.
+    Probes the runtimes and the runtime package managers, then reports which
+    are present. Exit status is 0 when every runtime is installed and at least
+    one runtime package manager is available.
 
     \b
     Example:
@@ -98,7 +96,7 @@ def deps_check(verbose: bool) -> None:
     render_deps_check_result(result, verbose)
     if not result.success:
         sys.exit(1)
-    sys.exit(0 if (result.system_ok and result.runtime_ok) else 1)
+    sys.exit(0 if (result.runtime_ok and result.package_managers_ok) else 1)
 
 
 @deps_group.command(name="status")
@@ -113,7 +111,7 @@ def deps_status(verbose: bool) -> None:
     """
     📊 Show a comprehensive dependency status table.
 
-    Renders a table with the status of every component across the three
+    Renders a table with the status of every component across the two
     strata, including versions and availability.
 
     \b
@@ -143,8 +141,8 @@ def deps_list(verbose: bool) -> None:
     """
     📋 List the dependencies WOMM knows about (static inventory).
 
-    Shows the configured system package managers, runtimes, and development
-    tools for the current platform, without probing the machine.
+    Shows the configured runtimes and runtime package managers, without
+    probing the machine.
 
     \b
     Example:

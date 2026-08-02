@@ -7,11 +7,10 @@
 """
 Dependencies configuration modules for Works On My Machine.
 
-This package contains configuration classes for:
-- Base dependencies configuration
-- Package managers
-- Runtime dependencies
-- Development tools
+This package contains configuration classes for the two strata WOMM cares
+about:
+- Runtimes (python, node, git)
+- Runtime package managers (pip, uv, npm, yarn)
 """
 
 from __future__ import annotations
@@ -20,16 +19,14 @@ from __future__ import annotations
 # IMPORTS
 # ///////////////////////////////////////////////////////////////
 # Local imports
-from .devtools_config import DevToolsConfig
 from .runtime_config import RuntimeConfig
-from .system_package_manager_config import SystemPackageManagerConfig
+from .runtime_package_manager_config import RuntimePackageManagerConfig
 
 # ///////////////////////////////////////////////////////////////
 # PUBLIC API
 # ///////////////////////////////////////////////////////////////
 
 __all__ = [
-    "DevToolsConfig",
     "RuntimeConfig",
-    "SystemPackageManagerConfig",
+    "RuntimePackageManagerConfig",
 ]

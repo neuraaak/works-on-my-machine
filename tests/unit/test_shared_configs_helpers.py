@@ -26,9 +26,6 @@ from womm.shared.configs.context.context_file_types_config import (
 )
 from womm.shared.configs.context.context_limits_config import ContextLimitsConfig
 from womm.shared.configs.context.context_paths_config import ContextPathsConfig
-from womm.shared.configs.dependencies.system_package_manager_config import (
-    SystemPackageManagerConfig,
-)
 from womm.shared.configs.project.javascript_project_config import (
     JavaScriptProjectConfig,
 )
@@ -41,33 +38,6 @@ from womm.shared.configs.system.system_detector_config import (
 from womm.shared.configs.system.system_environment_config import (
     SystemEnvironmentConfig,
 )
-
-# ///////////////////////////////////////////////////////////////
-# SYSTEM PACKAGE MANAGER CONFIG
-# ///////////////////////////////////////////////////////////////
-
-
-def test_get_install_command_substitutes_package_name():
-    command = SystemPackageManagerConfig.get_install_command("winget", "ruff")
-
-    assert "ruff" in command
-
-
-def test_get_install_command_unknown_manager_raises():
-    with pytest.raises(KeyError):
-        SystemPackageManagerConfig.get_install_command("unknown", "ruff")
-
-
-def test_get_installation_instructions_unknown_platform_raises():
-    with pytest.raises(KeyError):
-        SystemPackageManagerConfig.get_installation_instructions("unknown")
-
-
-def test_get_installation_instructions_known_platform_returns_dict():
-    instructions = SystemPackageManagerConfig.get_installation_instructions("windows")
-
-    assert isinstance(instructions, dict)
-
 
 # ///////////////////////////////////////////////////////////////
 # VARIANT MAPPINGS CONFIG

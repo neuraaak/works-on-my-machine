@@ -35,7 +35,6 @@ from womm.shared.results import (
 )
 from womm.shared.results.dependency_results import (
     DependencyInventoryEntry,
-    DependencyManagerStatus,
     DependencyProbe,
 )
 from womm.ui.system import display as display_module
@@ -288,30 +287,55 @@ def test_render_environment_refresh_result_failure(monkeypatch):
 # ///////////////////////////////////////////////////////////////
 
 
-def test_render_deps_check_result_reports_all_strata(monkeypatch):
+def test_render_deps_check_result_reports_both_strata(monkeypatch):
     ezprinter, ezconsole, _ = _patch_ui(monkeypatch)
     result = DependencyCheckResult(
         success=True,
-        system=[DependencyProbe(name="winget", available=True, version="1.0")],
         runtime=[DependencyProbe(name="python", available=False)],
-        tools=[DependencyProbe(name="ruff", available=True)],
+        package_managers=[DependencyProbe(name="uv", available=True, version="1.0")],
     )
 
     display_module.render_deps_check_result(result, verbose=True)
 
-    ezprinter.success.assert_any_call("Available: winget")
     ezprinter.warning.assert_any_call("✗ python: N/A")
-    ezprinter.success.assert_any_call("  ✓ ruff")
+    ezprinter.success.assert_any_call("✓ uv: v1.0")
     ezconsole.print.assert_any_call("")
 
 
-def test_render_deps_check_result_no_system_managers(monkeypatch):
-    ezprinter, _, _ = _patch_ui(monkeypatch)
-    result = DependencyCheckResult(success=True, system=[], runtime=[], tools=[])
+def test_render_deps_check_result_missing_runtime_shows_panel(monkeypatch):
+    _, ezconsole, _ = _patch_ui(monkeypatch)
+    result = DependencyCheckResult(
+        success=True,
+        runtime=[DependencyProbe(name="node", available=False)],
+        package_managers=[DependencyProbe(name="uv", available=True)],
+    )
 
     display_module.render_deps_check_result(result)
 
-    ezprinter.warning.assert_any_call("No system package managers available")
+    panels = [
+        call.args[0]
+        for call in ezconsole.print.call_args_list
+        if call.args and hasattr(call.args[0], "title")
+    ]
+    assert any(panel.title == "Missing Runtimes" for panel in panels)
+
+
+def test_render_deps_check_result_all_present_hides_missing_panel(monkeypatch):
+    _, ezconsole, _ = _patch_ui(monkeypatch)
+    result = DependencyCheckResult(
+        success=True,
+        runtime=[DependencyProbe(name="python", available=True)],
+        package_managers=[DependencyProbe(name="uv", available=True)],
+    )
+
+    display_module.render_deps_check_result(result)
+
+    panels = [
+        call.args[0]
+        for call in ezconsole.print.call_args_list
+        if call.args and hasattr(call.args[0], "title")
+    ]
+    assert not any(panel.title == "Missing Runtimes" for panel in panels)
 
 
 def test_render_deps_check_result_failure_shows_troubleshooting(monkeypatch):
@@ -329,17 +353,8 @@ def test_render_deps_status_result_verbose(monkeypatch):
     _, ezconsole, _ = _patch_ui(monkeypatch)
     result = DependencyStatusResult(
         success=True,
-        system=[
-            DependencyManagerStatus(
-                name="winget",
-                supported_on_current_platform=True,
-                available=True,
-                version="1.0",
-                priority="1",
-            )
-        ],
         runtime=[DependencyProbe(name="python", available=True, version="3.13")],
-        tools=[DependencyProbe(name="ruff", available=False)],
+        package_managers=[DependencyProbe(name="uv", available=False)],
     )
 
     display_module.render_deps_status_result(result, verbose=True)
@@ -358,18 +373,20 @@ def test_render_deps_status_result_failure_shows_troubleshooting(monkeypatch):
     ezconsole.print.assert_called()
 
 
-def test_render_deps_inventory_result_lists_all_strata(monkeypatch):
+def test_render_deps_inventory_result_lists_both_strata(monkeypatch):
     ezprinter, _, _ = _patch_ui(monkeypatch)
     result = DependencyInventoryResult(
         success=True,
-        system=[DependencyInventoryEntry(name="winget", detail="Windows")],
-        runtime=[DependencyInventoryEntry(name="python", detail="3.13")],
-        tools=[DependencyInventoryEntry(name="ruff", detail="linter")],
+        runtime=[DependencyInventoryEntry(name="python", detail="3.13+")],
+        package_managers=[
+            DependencyInventoryEntry(name="uv", detail="requires python")
+        ],
     )
 
     display_module.render_deps_inventory_result(result)
 
-    ezprinter.info.assert_any_call("  • winget (Windows)")
+    ezprinter.info.assert_any_call("  • python (3.13+)")
+    ezprinter.info.assert_any_call("  • uv (requires python)")
 
 
 def test_render_deps_inventory_result_failure_shows_troubleshooting(monkeypatch):
