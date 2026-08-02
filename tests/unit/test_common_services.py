@@ -261,9 +261,13 @@ def test_check_command_available_marks_existing_unapproved_command_unsecure(
     assert result.security_validated is False
 
 
-def test_get_command_version_returns_first_output_line(
+def _version_service(
     monkeypatch: pytest.MonkeyPatch,
-) -> None:
+    *,
+    stdout: str = "",
+    stderr: str = "",
+) -> CommandRunnerService:
+    """Build a runner whose availability check and version call are stubbed."""
     service = CommandRunnerService()
     monkeypatch.setattr(
         service,
@@ -278,13 +282,53 @@ def test_get_command_version_returns_first_output_line(
     monkeypatch.setattr(
         service,
         "run_silent",
-        lambda *_args, **_kwargs: CommandResult(0, stdout="tool 1.2.3\nmore output"),
+        lambda *_args, **_kwargs: CommandResult(0, stdout=stdout, stderr=stderr),
     )
+    return service
+
+
+@pytest.mark.parametrize(
+    ("banner", "expected"),
+    [
+        ("Python 3.13.1", "3.13.1"),
+        ("git version 2.47.1.windows.1", "2.47.1"),
+        ("pip 24.0 from C:\\tools\\pip (python 3.13)", "24.0"),
+        ("v22.11.0", "22.11.0"),
+        ("uv 0.5.1 (abc1234 2024-11-01)", "0.5.1"),
+        ("tool 1.2.3\nmore output", "1.2.3"),
+    ],
+)
+def test_get_command_version_extracts_the_version_number(
+    monkeypatch: pytest.MonkeyPatch, banner: str, expected: str
+) -> None:
+    service = _version_service(monkeypatch, stdout=banner)
 
     result = service.get_command_version("tool")
 
     assert result.success
-    assert result.version == "tool 1.2.3"
+    assert result.version == expected
+
+
+def test_get_command_version_falls_back_to_stderr(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    service = _version_service(monkeypatch, stderr="openjdk version 21.0.2")
+
+    result = service.get_command_version("tool")
+
+    assert result.success
+    assert result.version == "21.0.2"
+
+
+def test_get_command_version_reports_failure_when_no_number_is_found(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    service = _version_service(monkeypatch, stdout="tool (no version available)")
+
+    result = service.get_command_version("tool")
+
+    assert not result.success
+    assert result.version == ""
 
 
 def test_base_validation_converts_invalid_regex_to_failure_result() -> None:

@@ -20,6 +20,7 @@ from __future__ import annotations
 # ///////////////////////////////////////////////////////////////
 # Standard library imports
 import logging
+import re
 import subprocess
 import time
 from pathlib import Path
@@ -39,6 +40,36 @@ from ...shared.results import (
     CommandResult,
     CommandVersionResult,
 )
+
+# ///////////////////////////////////////////////////////////////
+# VERSION PARSING
+# ///////////////////////////////////////////////////////////////
+
+# Two dotted components at least: a lone integer is far more often a word
+# fragment ("python3") than a version, and reporting it would be worse than
+# reporting nothing.
+_VERSION_PATTERN = re.compile(r"\d+\.\d+(?:\.\d+)*")
+
+
+def _extract_version_number(output: str) -> str:
+    """Extract a version number from a ``--version`` banner.
+
+    Tools format that banner freely — ``Python 3.13.1``, ``git version
+    2.47.1.windows.1``, ``pip 24.0 from C:\\...\\pip (python 3.13)``,
+    ``v22.11.0``. Only the number is meaningful, so the first dotted number
+    of the first line is taken and everything around it dropped.
+
+    Args:
+        output: Raw command output (stdout, or stderr as a fallback).
+
+    Returns:
+        The version number, or an empty string when the output carries none —
+        callers must then report the version as unknown, never a raw fragment.
+    """
+    first_line = output.strip().split("\n")[0]
+    match = _VERSION_PATTERN.search(first_line)
+    return match.group(0) if match else ""
+
 
 # ///////////////////////////////////////////////////////////////
 # COMMAND RUNNER SERVICE CLASS
@@ -484,19 +515,29 @@ class CommandRunnerService:
                 )
 
             result = self.run_silent([command, version_flag])
-            if bool(result) and result.stdout.strip():
-                # Extract version from output
-                output = result.stdout.strip()
-                if output:
-                    # Take first line which probably contains version
-                    first_line = output.split("\n")[0]
+            # Some tools print their version banner on stderr (java, older
+            # pythons), so stdout alone is not a reliable source.
+            output = result.stdout.strip() or result.stderr.strip()
+            if bool(result) and output:
+                version = _extract_version_number(output)
+                if version:
                     return CommandVersionResult(
                         success=True,
                         message=f"Version retrieved for '{command}'",
                         command_name=command,
-                        version=first_line,
+                        version=version,
                         version_flag=version_flag,
                     )
+
+                return CommandVersionResult(
+                    success=False,
+                    message=(
+                        f"No version number in the output of '{command} {version_flag}'"
+                    ),
+                    command_name=command,
+                    version="",
+                    version_flag=version_flag,
+                )
 
             return CommandVersionResult(
                 success=False,

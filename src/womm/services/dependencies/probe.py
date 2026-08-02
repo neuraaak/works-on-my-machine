@@ -73,16 +73,24 @@ def probe(
     if not availability.is_available:
         return ProbeResult(name=executable, available=False)
 
+    resolved = shutil.which(executable)
+
     version: str | None = None
     if detect_version:
-        version_result = runner.get_command_version(executable, version_flag)
+        # The version call goes through the resolved path: on Windows, npm and
+        # yarn are ``.CMD`` shims that a bare-name, shell-less subprocess cannot
+        # launch at all (WinError 2), which would report every one of them as an
+        # unknown version.
+        version_result = runner.get_command_version(
+            resolved or executable, version_flag
+        )
         if version_result.success and version_result.version:
             version = version_result.version
 
     return ProbeResult(
         name=executable,
         available=True,
-        path=shutil.which(executable),
+        path=resolved,
         version=version,
     )
 

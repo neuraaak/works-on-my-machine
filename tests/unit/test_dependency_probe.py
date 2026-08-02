@@ -117,3 +117,29 @@ def test_probe_available_command_with_failed_version_lookup_leaves_version_none(
     result = probe("ruff")
 
     assert result.version is None
+
+
+def test_probe_queries_the_version_through_the_resolved_path(monkeypatch, tmp_path):
+    """A bare name cannot launch a Windows ``.CMD`` shim (npm, yarn)."""
+    shim = tmp_path / "npm.CMD"
+    shim.write_text("")
+    queried: list[str] = []
+
+    runner = CommandRunnerService()
+    monkeypatch.setattr(
+        runner,
+        "check_command_available",
+        lambda _command: CommandAvailabilityResult(success=True, is_available=True),
+    )
+
+    def _record(command, _flag):
+        queried.append(command)
+        return CommandVersionResult(success=True, version="10.4.0")
+
+    monkeypatch.setattr(runner, "get_command_version", _record)
+    monkeypatch.setattr(shutil, "which", lambda _cmd: str(shim))
+
+    result = probe("npm")
+
+    assert queried == [str(shim)]
+    assert result.version == "10.4.0"
