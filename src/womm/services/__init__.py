@@ -35,9 +35,11 @@ from .context import (
 # Local imports - Project services
 from .project import (
     ConflictResolutionService,
+    JavaScriptEnvironmentService,
     JavaScriptProjectCreationService,
     ProjectDetectionService,
     ProjectValidationService,
+    PythonEnvironmentService,
     PythonProjectCreationService,
     TemplateService,
 )
@@ -62,9 +64,11 @@ __all__ = [  # noqa: RUF022
     "ContextValidationService",
     # Project services
     "ConflictResolutionService",
+    "JavaScriptEnvironmentService",
     "JavaScriptProjectCreationService",
     "ProjectDetectionService",
     "ProjectValidationService",
+    "PythonEnvironmentService",
     "PythonProjectCreationService",
     "TemplateService",
     # System services

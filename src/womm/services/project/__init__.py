@@ -27,7 +27,9 @@ from .env_utils import (
     install_npm_dev_dependencies,
     install_python_dependencies,
 )
+from .javascript_environment_service import JavaScriptEnvironmentService
 from .javascript_project_creation_service import JavaScriptProjectCreationService
+from .python_environment_service import PythonEnvironmentService
 from .python_project_creation_service import PythonProjectCreationService
 from .template_service import TemplateService
 from .validation_service import ProjectValidationService
@@ -38,9 +40,11 @@ from .validation_service import ProjectValidationService
 
 __all__ = [
     "ConflictResolutionService",
+    "JavaScriptEnvironmentService",
     "JavaScriptProjectCreationService",
     "ProjectDetectionService",
     "ProjectValidationService",
+    "PythonEnvironmentService",
     "PythonProjectCreationService",
     "TemplateService",
     "check_npm_available",

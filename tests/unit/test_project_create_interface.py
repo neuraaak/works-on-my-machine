@@ -193,16 +193,20 @@ def test_create_python_installs_dependencies_once(
 
     monkeypatch.setattr(interface._python_service, "create_project_structure", success)
     monkeypatch.setattr(interface._python_service, "create_project_files", create_files)
-    monkeypatch.setattr(interface._python_service, "setup_virtual_environment", success)
     monkeypatch.setattr(
-        interface._python_service,
+        interface._python_environment_service, "setup_virtual_environment", success
+    )
+    monkeypatch.setattr(
+        interface._python_environment_service,
         "install_dev_dependencies",
         install_dependencies,
     )
-    monkeypatch.setattr(interface._python_service, "setup_git_repository", success)
+    monkeypatch.setattr(
+        interface._python_environment_service, "setup_git_repository", success
+    )
     monkeypatch.setattr(interface, "_get_configured_tools", lambda *_args: ["Git"])
     monkeypatch.setattr(
-        "womm.services.project.python_project_creation_service.create_python_dev_config_files",
+        "womm.services.project.python_environment_service.create_python_dev_config_files",
         lambda _path: [],
     )
 
@@ -238,17 +242,17 @@ def test_create_python_minimal_skips_environment_setup(
         ),
     )
     monkeypatch.setattr(
-        interface._python_service,
+        interface._python_environment_service,
         "setup_virtual_environment",
         lambda *_args: environment_calls.append("venv"),
     )
     monkeypatch.setattr(
-        interface._python_service,
+        interface._python_environment_service,
         "setup_dev_tools",
         lambda *_args: environment_calls.append("tools"),
     )
     monkeypatch.setattr(
-        interface._python_service,
+        interface._python_environment_service,
         "setup_git_repository",
         lambda *_args: environment_calls.append("git"),
     )
@@ -282,17 +286,17 @@ def test_create_python_reports_git_setup_failure(
         lambda *_args, **_kwargs: ProjectCreationResult(success=True),
     )
     monkeypatch.setattr(
-        interface._python_service,
+        interface._python_environment_service,
         "setup_virtual_environment",
         lambda *_args: ProjectCreationResult(success=True),
     )
     monkeypatch.setattr(
-        interface._python_service,
+        interface._python_environment_service,
         "setup_dev_tools",
         lambda *_args: ProjectCreationResult(success=True),
     )
     monkeypatch.setattr(
-        interface._python_service,
+        interface._python_environment_service,
         "setup_git_repository",
         lambda *_args: ProjectCreationResult(success=False),
     )
@@ -342,17 +346,17 @@ def test_create_javascript_runs_full_workflow_once(
         succeed("npm"),
     )
     monkeypatch.setattr(
-        interface._javascript_service,
+        interface._javascript_environment_service,
         "install_dependencies",
         succeed("dependencies"),
     )
     monkeypatch.setattr(
-        interface._javascript_service,
+        interface._javascript_environment_service,
         "setup_dev_tools",
         succeed("tools"),
     )
     monkeypatch.setattr(
-        interface._javascript_service,
+        interface._javascript_environment_service,
         "setup_git_repository",
         succeed("git"),
     )
@@ -408,17 +412,17 @@ def test_create_javascript_minimal_skips_environment_setup(
         lambda *_args, **_kwargs: environment_calls.append("npm"),
     )
     monkeypatch.setattr(
-        interface._javascript_service,
+        interface._javascript_environment_service,
         "install_dependencies",
         lambda *_args: environment_calls.append("dependencies"),
     )
     monkeypatch.setattr(
-        interface._javascript_service,
+        interface._javascript_environment_service,
         "setup_dev_tools",
         lambda *_args: environment_calls.append("tools"),
     )
     monkeypatch.setattr(
-        interface._javascript_service,
+        interface._javascript_environment_service,
         "setup_git_repository",
         lambda *_args: environment_calls.append("git"),
     )
@@ -452,10 +456,14 @@ def test_create_javascript_reports_git_setup_failure(
     monkeypatch.setattr(
         interface._javascript_service, "initialize_npm_project", success
     )
-    monkeypatch.setattr(interface._javascript_service, "install_dependencies", success)
-    monkeypatch.setattr(interface._javascript_service, "setup_dev_tools", success)
     monkeypatch.setattr(
-        interface._javascript_service,
+        interface._javascript_environment_service, "install_dependencies", success
+    )
+    monkeypatch.setattr(
+        interface._javascript_environment_service, "setup_dev_tools", success
+    )
+    monkeypatch.setattr(
+        interface._javascript_environment_service,
         "setup_git_repository",
         lambda *_args: ProjectCreationResult(success=False),
     )

@@ -29,8 +29,10 @@ from ...exceptions.project import ProjectServiceError
 from ...services import (
     CommandRunnerService,
     ConflictResolutionService,
+    JavaScriptEnvironmentService,
     JavaScriptProjectCreationService,
     ProjectDetectionService,
+    PythonEnvironmentService,
     PythonProjectCreationService,
     TemplateService,
 )
@@ -67,6 +69,8 @@ class ProjectCreateInterface:
         self._command_runner = CommandRunnerService()
         self._python_service = PythonProjectCreationService()
         self._javascript_service = JavaScriptProjectCreationService()
+        self._python_environment_service = PythonEnvironmentService()
+        self._javascript_environment_service = JavaScriptEnvironmentService()
         self.logger = logging.getLogger(__name__)
 
     # ///////////////////////////////////////////////////////////////
@@ -251,8 +255,10 @@ class ProjectCreateInterface:
             # Skip environment setup, dependencies, and tools in minimal mode
             if not minimal:
                 # Setup virtual environment
-                venv_result = self._python_service.setup_virtual_environment(
-                    project_path
+                venv_result = (
+                    self._python_environment_service.setup_virtual_environment(
+                        project_path
+                    )
                 )
                 if not venv_result.success:
                     return ProjectCreationResult(
@@ -263,7 +269,9 @@ class ProjectCreateInterface:
                     )
 
                 # Setup development tools and install development dependencies
-                tools_result = self._python_service.setup_dev_tools(project_path)
+                tools_result = self._python_environment_service.setup_dev_tools(
+                    project_path
+                )
                 if not tools_result.success:
                     return ProjectCreationResult(
                         success=False,
@@ -273,7 +281,9 @@ class ProjectCreateInterface:
                     )
 
                 # Setup Git repository
-                git_result = self._python_service.setup_git_repository(project_path)
+                git_result = self._python_environment_service.setup_git_repository(
+                    project_path
+                )
                 if not git_result.success:
                     return ProjectCreationResult(
                         success=False,
@@ -376,7 +386,7 @@ class ProjectCreateInterface:
                     )
 
                 # Install dependencies
-                deps_result = self._javascript_service.install_dependencies(
+                deps_result = self._javascript_environment_service.install_dependencies(
                     project_path, project_type
                 )
                 if not deps_result.success:
@@ -388,7 +398,7 @@ class ProjectCreateInterface:
                     )
 
                 # Setup development tools
-                tools_result = self._javascript_service.setup_dev_tools(
+                tools_result = self._javascript_environment_service.setup_dev_tools(
                     project_path, project_type
                 )
                 if not tools_result.success:
@@ -400,7 +410,9 @@ class ProjectCreateInterface:
                     )
 
                 # Setup Git repository
-                git_result = self._javascript_service.setup_git_repository(project_path)
+                git_result = self._javascript_environment_service.setup_git_repository(
+                    project_path
+                )
                 if not git_result.success:
                     return ProjectCreationResult(
                         success=False,

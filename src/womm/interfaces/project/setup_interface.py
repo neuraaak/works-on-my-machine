@@ -27,9 +27,9 @@ from pathlib import Path
 from ...exceptions.common import ValidationServiceError
 from ...exceptions.project import ProjectServiceError
 from ...services import (
-    JavaScriptProjectCreationService,
+    JavaScriptEnvironmentService,
     ProjectDetectionService,
-    PythonProjectCreationService,
+    PythonEnvironmentService,
 )
 from ...services.dependencies import probe
 from ...shared.results import ProjectSetupResult
@@ -61,8 +61,8 @@ class ProjectSetupInterface:
     def __init__(self):
         """Initialize the project setup interface."""
         self._detection_service = ProjectDetectionService()
-        self._python_service = PythonProjectCreationService()
-        self._javascript_service = JavaScriptProjectCreationService()
+        self._python_service = PythonEnvironmentService()
+        self._javascript_service = JavaScriptEnvironmentService()
         self.logger = logging.getLogger(__name__)
 
     # ///////////////////////////////////////////////////////////////
