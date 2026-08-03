@@ -74,6 +74,10 @@ from .system_results import (
     SystemDetectionResult,
     SystemInfoResult,
 )
+from .template_results import (
+    TemplateListResult,
+    TemplateStoreResult,
+)
 
 # ///////////////////////////////////////////////////////////////
 # PUBLIC API
@@ -129,6 +133,8 @@ __all__ = [
     "SetupResult",
     "SystemDetectionResult",
     "SystemInfoResult",
+    "TemplateListResult",
     "TemplateResult",
+    "TemplateStoreResult",
     "ValidationResult",
 ]
