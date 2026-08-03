@@ -59,6 +59,14 @@ STATE_FILENAME = "state.json"
 # Package subdirectory holding the shipped, read-only assets.
 ASSETS_DIRNAME = "assets"
 
+# Sub-paths of the shipped assets tree holding Copier templates.
+COPIER_DIRNAME = "copier"
+COPIER_OFFICIAL_DIRNAME = "official"
+COPIER_META_DIRNAME = "meta"
+
+# Sub-paths of the user templates directory.
+TEMPLATE_CATALOG_FILENAME = "catalog.json"
+
 # ///////////////////////////////////////////////////////////////
 # INTERNAL HELPERS
 # ///////////////////////////////////////////////////////////////
@@ -112,6 +120,15 @@ def user_templates_dir() -> Path:
     return _data_subdir(TEMPLATES_DIRNAME)
 
 
+def template_catalog_file() -> Path:
+    """Get the user template catalog path (not created).
+
+    Holds only user-registered templates; official templates shipped in the
+    wheel are discovered at read time and never persisted here.
+    """
+    return user_templates_dir() / TEMPLATE_CATALOG_FILENAME
+
+
 def path_backups_dir() -> Path:
     """Get the directory holding system ``PATH`` backups (``womm path``)."""
     return _data_subdir(BACKUPS_DIRNAME, PATH_BACKUPS_DIRNAME)
@@ -152,6 +169,16 @@ def packaged_assets() -> Traversable:
     return files("womm") / ASSETS_DIRNAME
 
 
+def packaged_copier_official() -> Traversable:
+    """Get the shipped official Copier templates tree, read-only."""
+    return packaged_assets() / COPIER_DIRNAME / COPIER_OFFICIAL_DIRNAME
+
+
+def packaged_copier_meta() -> Traversable:
+    """Get the shipped meta-template used by ``womm template init``."""
+    return packaged_assets() / COPIER_DIRNAME / COPIER_META_DIRNAME
+
+
 # ///////////////////////////////////////////////////////////////
 # EXPORTS
 # ///////////////////////////////////////////////////////////////
@@ -161,9 +188,12 @@ __all__ = [
     "config_file",
     "logs_dir",
     "packaged_assets",
+    "packaged_copier_official",
+    "packaged_copier_meta",
     "path_backups_dir",
     "registry_backups_dir",
     "state_file",
+    "template_catalog_file",
     "user_templates_dir",
     "womm_data_path",
     "womm_data_dir",

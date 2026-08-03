@@ -1,0 +1,7 @@
+_womm:
+  description: "Python project"
+  version: "1.0.0"
+
+project_name:
+  type: str
+  help: "Project name"

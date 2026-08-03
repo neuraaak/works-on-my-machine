@@ -182,3 +182,27 @@ def test_packaged_assets_is_independent_of_womm_home(womm_home):
     assets = packaged_assets()
 
     assert not str(assets).startswith(str(womm_home))
+
+
+def test_packaged_copier_official_contains_language_dirs():
+    from womm.shared.paths import packaged_copier_official
+
+    official = packaged_copier_official()
+    names = {entry.name for entry in official.iterdir()}
+    assert "python" in names
+
+
+def test_template_catalog_file_is_under_womm_home(tmp_path, monkeypatch):
+    monkeypatch.setenv("WOMM_HOME", str(tmp_path))
+    from womm.shared.paths import template_catalog_file
+
+    catalog = template_catalog_file()
+    assert catalog.parent == tmp_path / "templates"
+    assert catalog.name == "catalog.json"
+    assert not catalog.exists()
+
+
+def test_packaged_copier_meta_exists():
+    from womm.shared.paths import packaged_copier_meta
+
+    assert packaged_copier_meta().name == "meta"
