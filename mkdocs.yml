@@ -69,14 +69,13 @@ nav:
       - api/index.md
       - Architecture: api/architecture.md
       - CLI Architecture: api/cli-architecture.md
-      - Templates: api/templates.md
       - Exceptions: api/exceptions.md
       - Logging: api/logging.md
   - CLI Reference:
       - cli/index.md
       - Commands: cli/commands.md
       - Install: cli/install.md
-      - New: cli/new.md
+      - Create: cli/create.md
       - Setup: cli/setup.md
       - Lint: cli/lint.md
       - Spell: cli/spell.md
