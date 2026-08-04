@@ -79,3 +79,17 @@ def test_rendered_package_json_is_valid_json(tmp_path: Path):
     out = render(tmp_path / "p", framework="react", typescript=True)
 
     json.loads((out / "package.json").read_text(encoding="utf-8"))
+
+
+def test_react_dev_script_dependency_is_declared(tmp_path: Path):
+    out = render(tmp_path / "p", framework="react")
+
+    manifest = json.loads((out / "package.json").read_text(encoding="utf-8"))
+    assert "react-scripts" in manifest["devDependencies"]
+
+
+def test_vue_dev_script_dependency_is_declared(tmp_path: Path):
+    out = render(tmp_path / "p", framework="vue")
+
+    manifest = json.loads((out / "package.json").read_text(encoding="utf-8"))
+    assert "@vue/cli-service" in manifest["devDependencies"]

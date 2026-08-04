@@ -1,5 +1,6 @@
 """Tests for the Copier-backed project creation service."""
 
+import sys
 from pathlib import Path
 
 import pytest
@@ -153,6 +154,38 @@ def test_missing_template_raises_a_service_error(tmp_path: Path):
         )
 
     assert excinfo.value.operation == "create_project"
+
+
+def test_tasks_are_skipped_for_security(tmp_path: Path):
+    """``skip_tasks=True`` is what makes rendering arbitrary user templates
+    safe: a Copier ``_tasks`` entry must never execute."""
+    root = tmp_path / "tasked"
+    (root / "template").mkdir(parents=True)
+    marker = tmp_path / "marker.txt"
+    python = Path(sys.executable).as_posix()
+    marker_posix = marker.as_posix()
+    (root / "copier.yml").write_text(
+        TEMPLATE_YML
+        + "_subdirectory: template\n"
+        + f'_tasks:\n  - ["{python}", "-c", "open(\'{marker_posix}\', \'w\').close()"]\n',
+        encoding="utf-8",
+    )
+    (root / "template" / "README.md.jinja").write_text(
+        "# {{ project_name }}\n", encoding="utf-8"
+    )
+    destination = tmp_path / "out"
+    service = CopierProjectCreationService()
+
+    service.create(
+        ProjectCreationRequest(
+            template_source=root,
+            destination=destination,
+            answers={"project_name": "acme"},
+            defaults=True,
+        )
+    )
+
+    assert not marker.exists()
 
 
 def test_render_error_raises_a_service_error(tmp_path: Path):

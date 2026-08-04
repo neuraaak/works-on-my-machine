@@ -9,7 +9,7 @@ Template catalog commands for WOMM CLI.
 
 This module manages the Copier template catalog: listing, showing, adding,
 removing and updating entries. Rendering is delegated to Copier itself
-(see ``womm project create``) — this vertical is catalog CRUD only.
+(see ``womm create``) — this vertical is catalog CRUD only.
 """
 
 from __future__ import annotations

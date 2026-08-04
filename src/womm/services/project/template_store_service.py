@@ -238,22 +238,22 @@ class TemplateStoreService:
         try:
             payload = json.loads(catalog.read_text(encoding="utf-8"))
             items = payload["templates"]
+            return [
+                TemplateEntry(
+                    id=item["id"],
+                    origin=TemplateOrigin.USER,
+                    source=Path(item["source"]),
+                    version=item.get("version", ""),
+                    description=item.get("description", ""),
+                )
+                for item in items
+            ]
         except (OSError, json.JSONDecodeError, KeyError, TypeError) as exc:
             raise ProjectServiceError(
                 operation="load_catalog",
                 reason=f"Template catalog is unreadable: {catalog}",
                 details=str(exc),
             ) from exc
-        return [
-            TemplateEntry(
-                id=item["id"],
-                origin=TemplateOrigin.USER,
-                source=Path(item["source"]),
-                version=item.get("version", ""),
-                description=item.get("description", ""),
-            )
-            for item in items
-        ]
 
     def _save_user_entries(self, entries: list[TemplateEntry]) -> None:
         """Write the user catalog atomically."""

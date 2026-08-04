@@ -7,7 +7,7 @@
 To create a project from this template:
 
 ```bash
-womm project create user/{{ template_name | replace(' ', '-') | lower }} <destination>
+womm create user/{{ template_name | replace(' ', '-') | lower }} <destination>
 ```
 
 ## Registering this template
@@ -21,7 +21,7 @@ womm template add {{ template_name | replace(' ', '-') | lower }} /path/to/this/
 After that, you can use the short name:
 
 ```bash
-womm project create {{ template_name | replace(' ', '-') | lower }} <destination>
+womm create {{ template_name | replace(' ', '-') | lower }} <destination>
 ```
 
 ## Modifying the template
