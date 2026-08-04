@@ -21,7 +21,7 @@ from .create_interface import ProjectCreateInterface
 from .detection_interface import ProjectDetectionInterface
 from .manager_interface import ProjectManagerInterface
 from .setup_interface import ProjectSetupInterface
-from .template_interface import TemplateInterface
+from .template_store_interface import TemplateStoreInterface
 
 # ///////////////////////////////////////////////////////////////
 # PUBLIC API
@@ -32,5 +32,5 @@ __all__ = [
     "ProjectDetectionInterface",
     "ProjectManagerInterface",
     "ProjectSetupInterface",
-    "TemplateInterface",
+    "TemplateStoreInterface",
 ]

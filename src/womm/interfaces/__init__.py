@@ -35,7 +35,7 @@ from .project import (
     ProjectDetectionInterface,
     ProjectManagerInterface,
     ProjectSetupInterface,
-    TemplateInterface,
+    TemplateStoreInterface,
 )
 
 # Local imports - System interfaces
@@ -63,9 +63,9 @@ __all__ = [
     "ProjectDetectionInterface",
     "ProjectManagerInterface",
     "ProjectSetupInterface",
+    "TemplateStoreInterface",
     # System interfaces
     "SystemDetectorInterface",
     "SystemEnvironmentInterface",
     "SystemPathInterface",
-    "TemplateInterface",
 ]

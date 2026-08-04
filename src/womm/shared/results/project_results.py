@@ -130,30 +130,6 @@ class ProjectSetupResult(BaseResult):
 
 
 # ///////////////////////////////////////////////////////////////
-# TEMPLATE RESULT
-# ///////////////////////////////////////////////////////////////
-
-
-@dataclass
-class TemplateResult(BaseResult):
-    """Result for template operations."""
-
-    template_name: str = ""
-    template_path: Path | None = None
-    project_type: str = ""
-    files_processed: int = 0
-    files_created: list[str] | None = None
-    metadata: dict[str, Any] | None = None
-
-    def __post_init__(self) -> None:
-        """Initialize derived fields."""
-        if self.files_created is None:
-            self.files_created = []
-        if self.metadata is None:
-            self.metadata = {}
-
-
-# ///////////////////////////////////////////////////////////////
 # CONFIGURATION RESULT
 # ///////////////////////////////////////////////////////////////
 
@@ -184,5 +160,4 @@ __all__ = [
     "ProjectDetectionResult",
     "ProjectSetupResult",
     "SetupResult",
-    "TemplateResult",
 ]

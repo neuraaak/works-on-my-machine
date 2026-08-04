@@ -8,12 +8,12 @@
 Boundary tests for the ``interfaces/project`` package.
 
 These verify the exception-rework contract: every public method of
-``ProjectDetectionInterface``, ``ProjectCreateInterface``, ``ProjectSetupInterface``,
-``TemplateInterface`` and ``ProjectManagerInterface`` translates its
-collaborators' outcomes (service exceptions, Result objects) into a typed
-Result and never raises. Fake services are injected directly (post-construction,
-mirroring the pattern used for ``ContextMenuInterface``) so the tests exercise
-only the interface's translation logic.
+``ProjectDetectionInterface``, ``ProjectCreateInterface``, ``ProjectSetupInterface``
+and ``ProjectManagerInterface`` translates its collaborators' outcomes (service
+exceptions, Result objects) into a typed Result and never raises. Fake services
+are injected directly (post-construction, mirroring the pattern used for
+``ContextMenuInterface``) so the tests exercise only the interface's
+translation logic.
 """
 
 from __future__ import annotations
@@ -37,8 +37,6 @@ from womm.commands.project.setup import setup_group
 from womm.exceptions.project import ProjectServiceError
 from womm.interfaces.project.detection_interface import ProjectDetectionInterface
 from womm.interfaces.project.setup_interface import ProjectSetupInterface
-from womm.interfaces.project.template_interface import TemplateInterface
-from womm.shared.paths import WOMM_HOME_ENV, user_templates_dir
 from womm.shared.results.project_results import (
     ProjectCreationResult,
     ProjectDetectionResult,
@@ -287,108 +285,6 @@ def test_setup_project_unsupported_type_returns_failed_result(tmp_path: Path):
 
     assert not result.success
     assert "Unsupported project type" in result.error
-
-
-# ///////////////////////////////////////////////////////////////
-# TEMPLATE INTERFACE
-# ///////////////////////////////////////////////////////////////
-
-
-@pytest.fixture
-def template_interface(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setenv(WOMM_HOME_ENV, str(tmp_path))
-    return TemplateInterface()
-
-
-def test_templates_live_in_the_data_directory(
-    template_interface: TemplateInterface, tmp_path: Path
-):
-    """User templates are data: they follow ``~/.womm``, not the code."""
-    assert template_interface._templates_dir == tmp_path / "templates"
-    assert template_interface._templates_dir == user_templates_dir()
-
-
-def test_templates_dir_exists_after_construction(
-    template_interface: TemplateInterface,
-):
-    assert template_interface._templates_dir.is_dir()
-
-
-def test_list_templates_empty_by_default(template_interface: TemplateInterface):
-    assert template_interface.list_templates() == {}
-
-
-def test_get_template_info_missing_returns_none(
-    template_interface: TemplateInterface,
-):
-    assert template_interface.get_template_info("does-not-exist") is None
-
-
-def test_delete_template_missing_returns_failed_result(
-    template_interface: TemplateInterface,
-):
-    result = template_interface.delete_template("does-not-exist")
-
-    assert not result.success
-    assert "not found" in result.error
-
-
-def test_create_template_from_project_missing_source_returns_failed_result(
-    template_interface: TemplateInterface, tmp_path: Path
-):
-    result = template_interface.create_template_from_project(
-        source_project_path=tmp_path / "missing-source",
-        template_name="demo-template",
-    )
-
-    assert not result.success
-    assert "does not exist" in result.error
-
-
-def test_create_template_from_project_dry_run_reports_success(
-    template_interface: TemplateInterface, tmp_path: Path
-):
-    source = tmp_path / "source-project"
-    source.mkdir()
-
-    result = template_interface.create_template_from_project(
-        source_project_path=source,
-        template_name="demo-template",
-        dry_run=True,
-    )
-
-    assert result.success
-
-
-def test_create_template_from_project_duplicate_name_returns_failed_result(
-    template_interface: TemplateInterface, tmp_path: Path
-):
-    source = tmp_path / "source-project"
-    source.mkdir()
-    (source / "main.py").write_text("print('hi')", encoding="utf-8")
-
-    first = template_interface.create_template_from_project(
-        source_project_path=source, template_name="demo-template"
-    )
-    assert first.success
-
-    second = template_interface.create_template_from_project(
-        source_project_path=source, template_name="demo-template"
-    )
-
-    assert not second.success
-    assert "already exists" in second.error
-
-
-def test_generate_from_template_missing_template_returns_failed_result(
-    template_interface: TemplateInterface, tmp_path: Path
-):
-    result = template_interface.generate_from_template(
-        template_name="does-not-exist", target_path=tmp_path / "out"
-    )
-
-    assert not result.success
-    assert "not found" in result.error
 
 
 # ///////////////////////////////////////////////////////////////

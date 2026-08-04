@@ -29,7 +29,6 @@ from .env_utils import (
 )
 from .javascript_environment_service import JavaScriptEnvironmentService
 from .python_environment_service import PythonEnvironmentService
-from .template_service import TemplateService
 from .validation_service import ProjectValidationService
 
 # ///////////////////////////////////////////////////////////////
@@ -42,7 +41,6 @@ __all__ = [
     "ProjectDetectionService",
     "ProjectValidationService",
     "PythonEnvironmentService",
-    "TemplateService",
     "check_npm_available",
     "create_virtual_environment",
     "find_pip_executable",

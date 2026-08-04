@@ -106,7 +106,7 @@ def test_setup_project_delegates_to_setup_interface(
 
 
 # ///////////////////////////////////////////////////////////////
-# PROJECT TYPES AND TEMPLATES
+# PROJECT TYPES
 # ///////////////////////////////////////////////////////////////
 
 
@@ -117,17 +117,3 @@ def test_get_available_project_types_returns_configured_types() -> None:
 
     assert ("python", "Python") in types or any(t[0] == "python" for t in types)
     assert all(isinstance(entry, tuple) and len(entry) == 2 for entry in types)
-
-
-def test_get_project_templates_filters_by_project_type(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    manager = ProjectManagerInterface()
-    monkeypatch.setattr(
-        manager.template_manager,
-        "list_templates",
-        lambda: {"python": ["basic", "fastapi"], "javascript": ["react"]},
-    )
-
-    assert manager.get_project_templates("python") == ["basic", "fastapi"]
-    assert manager.get_project_templates("rust") == []

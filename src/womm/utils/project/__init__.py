@@ -57,11 +57,6 @@ from .platform_utils import (
     get_python_paths,
     get_shell_commands,
 )
-from .template_utils import (
-    generate_cross_platform_template,
-    replace_platform_placeholders,
-    validate_template_placeholders,
-)
 from .validation_utils import (
     check_project_name,
     get_validation_summary,
@@ -102,7 +97,6 @@ __all__ = [
     "create_python_test_file",
     "create_react_main_files",
     "create_vue_main_files",
-    "generate_cross_platform_template",
     "get_assets_path",
     "get_node_paths",
     "get_platform_info",
@@ -110,11 +104,9 @@ __all__ = [
     "get_shell_commands",
     "get_validation_summary",
     "matches_project_type",
-    "replace_platform_placeholders",
     "suggest_project_name",
     "validate_project_config",
     "validate_project_name",
     "validate_project_path",
     "validate_project_type",
-    "validate_template_placeholders",
 ]

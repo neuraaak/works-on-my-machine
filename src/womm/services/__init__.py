@@ -39,7 +39,6 @@ from .project import (
     ProjectDetectionService,
     ProjectValidationService,
     PythonEnvironmentService,
-    TemplateService,
 )
 
 # Local imports - System services
@@ -66,7 +65,6 @@ __all__ = [  # noqa: RUF022
     "ProjectDetectionService",
     "ProjectValidationService",
     "PythonEnvironmentService",
-    "TemplateService",
     # System services
     "SystemDetectorService",
     "SystemEnvironmentService",

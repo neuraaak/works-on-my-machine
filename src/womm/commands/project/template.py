@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 # ///////////////////////////////////////////////////////////////
-# TEMPLATE - Template Commands
+# TEMPLATE - Template Catalog Commands
 # Project: works-on-my-machine
 # ///////////////////////////////////////////////////////////////
 
 """
-Template commands for WOMM CLI.
+Template catalog commands for WOMM CLI.
 
-This module handles template generation from existing projects and template management.
-Provides commands for creating, listing, using, and deleting project templates.
+This module manages the Copier template catalog: listing, showing, adding,
+removing and updating entries. Rendering is delegated to Copier itself
+(see ``womm project create``) — this vertical is catalog CRUD only.
 """
 
 from __future__ import annotations
@@ -17,479 +18,97 @@ from __future__ import annotations
 # IMPORTS
 # ///////////////////////////////////////////////////////////////
 # Standard library imports
-import re
-import sys
 from pathlib import Path
-from typing import cast
 
 # Third-party imports
 import click
-from ezpl import LogLevel
 
 # Local imports
-from ...interfaces import ProjectManagerInterface
-from ...ui.common import ezpl_bridge, ezprinter
-from ...ui.project import (
-    interactive_template_create,
-    interactive_template_delete,
-    print_template_deletion_summary_multiple,
-    print_template_info,
-    print_template_list,
-)
+from ...interfaces.project.template_store_interface import TemplateStoreInterface
+from ...ui.project import render_template_list, render_template_result
 
 # ///////////////////////////////////////////////////////////////
-# COMMAND GROUPS
+# COMMAND GROUP
 # ///////////////////////////////////////////////////////////////
 
 
 @click.group(invoke_without_command=True)
 @click.help_option("-h", "--help")
-@click.option(
-    "-v",
-    "--verbose",
-    is_flag=True,
-    help="Enable verbose output (DEBUG level)",
-)
 @click.pass_context
-def template_group(ctx: click.Context, verbose: bool) -> None:
-    """📋 Generate and manage project templates from existing projects."""
-    # Configure verbose mode if requested
-    if verbose:
-        ezpl_bridge.set_level(LogLevel.DEBUG.label)
-
+def template_group(ctx: click.Context) -> None:
+    """Manage the Copier template catalog."""
     if ctx.invoked_subcommand is None:
         click.echo(ctx.get_help())
 
 
 # ///////////////////////////////////////////////////////////////
-# TEMPLATE LISTING COMMANDS
+# COMMANDS
 # ///////////////////////////////////////////////////////////////
 
 
 @template_group.command("list")
 @click.help_option("-h", "--help")
-@click.option(
-    "-v",
-    "--verbose",
-    is_flag=True,
-    help="Enable verbose output (DEBUG level)",
-)
+@click.option("-v", "--verbose", is_flag=True, help="Show detailed output.")
 def template_list(verbose: bool) -> None:
-    """📋 List available project templates."""
-    # Configure verbose mode if requested
-    if verbose:
-        ezpl_bridge.set_level(LogLevel.DEBUG.label)
-
-    # Initialize project manager (lazy loading)
-    project_manager = ProjectManagerInterface()
-
-    try:
-        ezprinter.print_header("📋 Template List")
-        success = _list_templates(project_manager)
-        if not success:
-            sys.exit(1)
-        return
-
-    except Exception as e:
-        ezprinter.error(f"Error listing templates: {e}")
-        sys.exit(1)
-
-
-# ///////////////////////////////////////////////////////////////
-# TEMPLATE CREATION COMMANDS
-# ///////////////////////////////////////////////////////////////
-
-
-@template_group.command("create")
-@click.help_option("-h", "--help")
-@click.argument("template_name", required=False)
-@click.option(
-    "--from-project",
-    "source_project_path",
-    type=click.Path(exists=True, file_okay=False, dir_okay=True, path_type=Path),
-    help="Path to the existing project to create template from",
-)
-@click.option(
-    "--description",
-    help="Description for the template",
-)
-@click.option(
-    "--interactive",
-    "-I",
-    is_flag=True,
-    help="Use interactive mode to create template",
-)
-@click.option(
-    "-v",
-    "--verbose",
-    is_flag=True,
-    help="Enable verbose output (DEBUG level)",
-)
-def template_create(
-    template_name: str | None,
-    source_project_path: Path | None,
-    description: str | None,
-    interactive: bool,
-    _verbose: bool,
-) -> None:
-    """🚀 Create a new template from an existing project.
-
-    If TEMPLATE_NAME is not provided, it will be automatically generated
-    based on the project type and name.
-
-    Use --interactive for guided template creation.
-    """
-
-    # Initialize project manager
-    project_manager = ProjectManagerInterface()
-
-    try:
-        if interactive:
-            ezprinter.print_header("🚀 Interactive Template Creation")
-            success = _create_template_interactive(project_manager)
-            if not success:
-                sys.exit(1)
-            return
-        else:
-            ezprinter.print_header("🚀 Template Creation")
-            success = _create_template_direct(
-                project_manager,
-                template_name,
-                source_project_path,
-                description,
-            )
-            if not success:
-                sys.exit(1)
-            return
-
-    except Exception as e:
-        ezprinter.error(f"Error creating template: {e}")
-        sys.exit(1)
-
-
-# ///////////////////////////////////////////////////////////////
-# TEMPLATE USAGE COMMANDS
-# ///////////////////////////////////////////////////////////////
-
-
-@template_group.command("use")
-@click.help_option("-h", "--help")
-@click.argument("template_name")
-@click.option(
-    "-p",
-    "--path",
-    "target_path",
-    type=click.Path(file_okay=False, dir_okay=True, path_type=Path),
-    default=".",
-    help="Target directory for the generated project",
-)
-@click.option(
-    "--project-name",
-    help="Project name for the generated project",
-)
-@click.option(
-    "--author-name",
-    help="Author name for the project",
-)
-@click.option(
-    "--author-email",
-    help="Author email for the project",
-)
-@click.option(
-    "--project-url",
-    help="Project URL",
-)
-@click.option(
-    "--project-repository",
-    help="Project repository URL",
-)
-def template_use(
-    template_name: str,
-    target_path: Path,
-    project_name: str | None,
-    author_name: str | None,
-    author_email: str | None,
-    project_url: str | None,
-    project_repository: str | None,
-) -> None:
-    """🎯 Use a template to create a new project."""
-
-    # Initialize project manager
-    project_manager = ProjectManagerInterface()
-
-    try:
-        # Prepare template variables
-        template_vars = {}
-        if project_name:
-            template_vars["PROJECT_NAME"] = project_name
-        if author_name:
-            template_vars["AUTHOR_NAME"] = author_name
-        if author_email:
-            template_vars["AUTHOR_EMAIL"] = author_email
-        if project_url:
-            template_vars["PROJECT_URL"] = project_url
-        if project_repository:
-            template_vars["PROJECT_REPOSITORY"] = project_repository
-
-        # Generate project from template
-        result = project_manager.template_manager.generate_from_template(
-            template_name=template_name,
-            target_path=target_path,
-            template_vars=template_vars,
-        )
-
-        if not result.success:
-            ezprinter.error(f"Error using template: {result.error}")
-            sys.exit(1)
-        return
-
-    except Exception as e:
-        ezprinter.error(f"Error using template: {e}")
-        sys.exit(1)
-
-
-# ///////////////////////////////////////////////////////////////
-# TEMPLATE MANAGEMENT COMMANDS
-# ///////////////////////////////////////////////////////////////
-
-
-@template_group.command("delete")
-@click.help_option("-h", "--help")
-@click.argument("template_name", required=False)
-@click.option(
-    "--interactive",
-    "-I",
-    is_flag=True,
-    help="Use interactive mode to delete templates",
-)
-def template_delete(template_name: str | None, interactive: bool) -> None:
-    """🗑️ Delete a template.
-
-    Use --interactive for guided template deletion with multiple selection.
-    """
-    # Initialize project manager
-    project_manager = ProjectManagerInterface()
-
-    try:
-        if interactive:
-            ezprinter.print_header("🗑️ Interactive Template Deletion")
-            success = _delete_template_interactive(project_manager)
-            if not success:
-                sys.exit(1)
-            return
-        else:
-            ezprinter.print_header("🗑️ Template Deletion")
-            if not template_name:
-                ezprinter.error(
-                    "Template name is required when not using interactive mode"
-                )
-                sys.exit(1)
-            template_name_value = cast(str, template_name)
-            success = _delete_template(project_manager, template_name_value)
-            if not success:
-                sys.exit(1)
-            return
-
-    except Exception as e:
-        ezprinter.error(f"Error deleting template: {e}")
-        sys.exit(1)
-
-
-@template_group.command("info")
-@click.help_option("-h", "--help")
-@click.argument("template_name")
-def template_info(template_name: str) -> None:
-    """ℹ️ Show information about a template."""  # noqa: RUF002
-
-    # Initialize project manager
-    project_manager = ProjectManagerInterface()
-
-    try:
-        ezprinter.print_header(f"ℹ️ Template Info: {template_name}")
-        success = _show_template_info(project_manager, template_name)
-        if not success:
-            sys.exit(1)
-        return
-
-    except Exception as e:
-        ezprinter.error(f"Error getting template info: {e}")
-        sys.exit(1)
-
-
-# ///////////////////////////////////////////////////////////////
-# HELPER FUNCTIONS - TEMPLATE UTILITIES
-# ///////////////////////////////////////////////////////////////
-
-
-def _generate_template_name(
-    source_project_path: Path, project_manager: ProjectManagerInterface
-) -> str:
-    """
-    Generate a template name based on the source project.
-
-    Args:
-        source_project_path: Path to the source project
-        project_manager: Project manager instance
-
-    Returns:
-        Generated template name
-    """
-    # Get project name from path
-    project_name = source_project_path.name.lower()
-
-    # Clean project name (remove special characters, replace spaces with hyphens)
-    clean_name = re.sub(r"[^a-zA-Z0-9_-]", "-", project_name)
-    clean_name = re.sub(r"-+", "-", clean_name)  # Replace multiple hyphens with single
-    clean_name = clean_name.strip("-")  # Remove leading/trailing hyphens
-
-    # Detect project type
-    detection_result = project_manager.detect_project_type(source_project_path)
-    project_type = detection_result.project_type
-
-    # Generate template name
-    if project_type != "unknown":
-        template_name = f"{project_type}-{clean_name}"
-    else:
-        template_name = clean_name
-
-    # Ensure uniqueness
-    existing_templates = project_manager.template_manager.list_templates()
-    all_template_names = []
-    for templates in existing_templates.values():
-        all_template_names.extend(templates)
-
-    base_name = template_name
-    counter = 1
-    while template_name in all_template_names:
-        template_name = f"{base_name}-{counter}"
-        counter += 1
-
-    return template_name
-
-
-# ///////////////////////////////////////////////////////////////
-# HELPER FUNCTIONS - TEMPLATE OPERATIONS
-# ///////////////////////////////////////////////////////////////
-
-
-def _list_templates(project_manager: ProjectManagerInterface) -> bool:
-    """List available templates."""
-    all_templates = project_manager.template_manager.list_templates()
-    print_template_list(all_templates)
-    return True
-
-
-def _show_template_info(
-    project_manager: ProjectManagerInterface, template_name: str
-) -> bool:
-    """Show detailed information about a template."""
-    template_info = project_manager.template_manager.get_template_info(template_name)
-
-    if not template_info:
-        ezprinter.error(f"Template '{template_name}' not found")
-        return False
-
-    print_template_info(template_name, template_info)
-    return True
-
-
-def _create_template_interactive(project_manager: ProjectManagerInterface) -> bool:
-    """Create template using interactive form."""
-
-    # Get user input through interactive form
-    answers = interactive_template_create()
-
-    if not answers:
-        ezprinter.info("Template creation cancelled.")
-        return True
-
-    # Validate template name
-    if not answers["template_name"] or not answers["template_name"].strip():
-        ezprinter.error("Template name cannot be empty")
-        return False
-
-    # Create template from project
-    result = project_manager.template_manager.create_template_from_project(
-        source_project_path=Path(answers["source_project"]),
-        template_name=answers["template_name"],
-        description=answers["description"],
-    )
-
+    """List every known template."""
+    result = TemplateStoreInterface().list_templates()
+    render_template_list(result, verbose=verbose)
     if not result.success:
-        ezprinter.error(f"Error creating template: {result.error}")
-    return bool(result)
+        raise SystemExit(1)
 
 
-def _create_template_direct(
-    project_manager: ProjectManagerInterface,
-    template_name: str | None,
-    source_project_path: Path | None,
-    description: str | None,
-) -> bool:
-    """Create template using direct parameters."""
-    if not source_project_path:
-        ezprinter.error(
-            "Source project path is required when not using interactive mode"
-        )
-        return False
-
-    # Generate template name if not provided
-    if not template_name:
-        template_name = _generate_template_name(source_project_path, project_manager)
-        ezprinter.info(f"Generated template name: {template_name}")
-
-    # Validate template name
-    if not template_name or not template_name.strip():
-        ezprinter.error("Template name cannot be empty")
-        return False
-
-    # Create template from project
-    result = project_manager.template_manager.create_template_from_project(
-        source_project_path=source_project_path,
-        template_name=template_name,
-        description=description,
-    )
-
+@template_group.command("show")
+@click.help_option("-h", "--help")
+@click.argument("identifier")
+@click.option("-v", "--verbose", is_flag=True, help="Show detailed output.")
+def template_show(identifier: str, verbose: bool) -> None:
+    """Show a single catalog entry."""
+    result = TemplateStoreInterface().show_template(identifier)
+    render_template_result(result, verbose=verbose)
     if not result.success:
-        ezprinter.error(f"Error creating template: {result.error}")
-    return bool(result)
+        raise SystemExit(1)
 
 
-def _delete_template_interactive(project_manager: ProjectManagerInterface) -> bool:
-    """Delete templates using interactive form."""
-
-    # Get available templates
-    all_templates = project_manager.template_manager.list_templates()
-
-    # Get user input through interactive form
-    selected_templates = interactive_template_delete(all_templates)
-
-    if not selected_templates:
-        ezprinter.info("Template deletion cancelled.")
-        return True
-
-    # Delete selected templates
-    success_count = 0
-    failed_templates = []
-
-    for template_name in selected_templates:
-        result = project_manager.template_manager.delete_template(template_name)
-        if result.success:
-            success_count += 1
-        else:
-            failed_templates.append(template_name)
-
-    # Display summary using Rich panel
-    print_template_deletion_summary_multiple(selected_templates, failed_templates)
-
-    return success_count == len(selected_templates)
-
-
-def _delete_template(
-    project_manager: ProjectManagerInterface, template_name: str
-) -> bool:
-    """Delete a single template."""
-    result = project_manager.template_manager.delete_template(template_name)
+@template_group.command("add")
+@click.help_option("-h", "--help")
+@click.argument("identifier")
+@click.argument("source", type=click.Path(path_type=Path))
+@click.option("-v", "--verbose", is_flag=True, help="Show detailed output.")
+def template_add(identifier: str, source: Path, verbose: bool) -> None:
+    """Register a local template under the user namespace."""
+    result = TemplateStoreInterface().add_template(identifier, source)
+    render_template_result(result, verbose=verbose)
     if not result.success:
-        ezprinter.error(f"Error deleting template: {result.error}")
-    return result.success
+        raise SystemExit(1)
+
+
+@template_group.command("remove")
+@click.help_option("-h", "--help")
+@click.argument("identifier")
+@click.option("-v", "--verbose", is_flag=True, help="Show detailed output.")
+def template_remove(identifier: str, verbose: bool) -> None:
+    """Unregister a user template."""
+    result = TemplateStoreInterface().remove_template(identifier)
+    render_template_result(result, verbose=verbose)
+    if not result.success:
+        raise SystemExit(1)
+
+
+@template_group.command("update")
+@click.help_option("-h", "--help")
+@click.argument("identifier")
+@click.argument("source", type=click.Path(path_type=Path))
+@click.option("-v", "--verbose", is_flag=True, help="Show detailed output.")
+def template_update(identifier: str, source: Path, verbose: bool) -> None:
+    """Point an existing user template at a new source."""
+    result = TemplateStoreInterface().update_template(identifier, source)
+    render_template_result(result, verbose=verbose)
+    if not result.success:
+        raise SystemExit(1)
+
+
+# ///////////////////////////////////////////////////////////////
+# PUBLIC API
+# ///////////////////////////////////////////////////////////////
+
+__all__ = ["template_group"]

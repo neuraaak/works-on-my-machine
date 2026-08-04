@@ -31,7 +31,6 @@ from ...shared.results import (
 )
 from .detection_interface import ProjectDetectionInterface
 from .setup_interface import ProjectSetupInterface
-from .template_interface import TemplateInterface
 
 # ///////////////////////////////////////////////////////////////
 # MAIN CLASS
@@ -45,7 +44,6 @@ class ProjectManagerInterface:
         """Initialize the project manager."""
         self._setup_interface = ProjectSetupInterface()
         self._detection_interface = ProjectDetectionInterface()
-        self.template_manager = TemplateInterface()
         self.logger = logging.getLogger(__name__)
 
     # ///////////////////////////////////////////////////////////////
@@ -90,13 +88,6 @@ class ProjectManagerInterface:
             List of tuples (project_type, description) from ProjectConfig
         """
         return ProjectConfig.get_project_types_for_ui()
-
-    def get_project_templates(self, project_type: str) -> list[str]:
-        """Get available templates for a project type."""
-        result = self.template_manager.list_templates()
-        if isinstance(result, dict):
-            return result.get(project_type, [])
-        return []
 
     def setup_project(
         self,

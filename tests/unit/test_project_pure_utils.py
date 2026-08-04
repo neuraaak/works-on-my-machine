@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from womm.utils.project import platform_utils, template_utils, validation_utils
+from womm.utils.project import platform_utils, validation_utils
 
 
 @pytest.mark.parametrize(
@@ -22,77 +22,6 @@ def test_platform_helpers_select_expected_commands(
     assert platform_utils.get_python_paths()["python_executable"] == python
     assert platform_utils.get_node_paths()["npm_executable"] == npm
     assert platform_utils.get_shell_commands()["shell"] == shell
-
-
-def test_replace_platform_placeholders_accepts_extra_variables(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setattr(
-        template_utils,
-        "get_platform_info",
-        lambda: {
-            "system": "Linux",
-            "system_lower": "linux",
-            "is_windows": False,
-            "is_linux": True,
-            "is_macos": False,
-            "path_separator": "/",
-            "line_ending": "\n",
-        },
-    )
-    monkeypatch.setattr(
-        template_utils,
-        "get_python_paths",
-        lambda: {
-            "venv_python": "python",
-            "venv_activate": "activate",
-            "venv_pip": "pip",
-            "python_executable": "python3",
-        },
-    )
-    monkeypatch.setattr(
-        template_utils,
-        "get_node_paths",
-        lambda: {
-            "npm_executable": "npm",
-            "node_executable": "node",
-            "npx_executable": "npx",
-        },
-    )
-    monkeypatch.setattr(
-        template_utils,
-        "get_shell_commands",
-        lambda: {
-            "shell": "bash",
-            "shell_extension": ".sh",
-            "remove_dir": "rm",
-            "copy_file": "cp",
-            "move_file": "mv",
-            "make_executable": "chmod",
-            "which": "which",
-        },
-    )
-
-    assert (
-        template_utils.replace_platform_placeholders(
-            "{{PROJECT_NAME}} {{PYTHON_PATH}} {{SHELL_EXT}}", PROJECT_NAME="demo"
-        )
-        == "demo python .sh"
-    )
-
-
-def test_template_validation_and_generation(tmp_path: Path) -> None:
-    source = tmp_path / "template.txt"
-    source.write_text("{{PROJECT_NAME}} {{UNKNOWN}}", encoding="utf-8")
-    report = template_utils.validate_template_placeholders(source)
-    assert not report["is_valid"]
-    assert report["unsupported_placeholders"] == ["UNKNOWN"]
-
-    output = tmp_path / "nested" / "output.txt"
-    template_utils.generate_cross_platform_template(
-        source, output, {"PROJECT_NAME": "demo"}
-    )
-    assert output.read_text(encoding="utf-8").startswith("demo")
 
 
 @pytest.mark.parametrize(

@@ -52,7 +52,6 @@ from .project_results import (
     ProjectDetectionResult,
     ProjectSetupResult,
     SetupResult,
-    TemplateResult,
 )
 from .security_results import (
     CommandValidationResult,
@@ -134,7 +133,6 @@ __all__ = [
     "SystemDetectionResult",
     "SystemInfoResult",
     "TemplateListResult",
-    "TemplateResult",
     "TemplateStoreResult",
     "ValidationResult",
 ]
