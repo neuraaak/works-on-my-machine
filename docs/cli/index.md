@@ -31,16 +31,16 @@ python womm.py --help
 
 1. **Check system compatibility**: `womm system`
 2. **Install prerequisites**: `womm install`
-3. **Create your first project**: `womm new python my-project`
-4. **Explore templates**: `womm template list`
+3. **Explore templates**: `womm template list`
+4. **Create your first project**: `womm create official/python my-project`
 
 ## 📁 Command Categories
 
 ### **🏗️ Project Management**
 
-- **[NEW](new.md)** - Create new projects (Python, JavaScript with React/Vue support)
+- **[CREATE](create.md)** - Create new projects from a Copier template (Python, JavaScript with React/Vue support)
 - **[SETUP](setup.md)** - Configure existing projects
-- **[TEMPLATES](templates.md)** - Manage project templates
+- **[TEMPLATES](templates.md)** - Manage the Copier template catalog
 
 ### **🔧 Development Tools**
 
@@ -58,39 +58,36 @@ python womm.py --help
 ### **Project Creation**
 
 ```bash
-# Create Python project
-womm new python my-project
+# Create Python project (interactive prompts)
+womm create official/python my-project
 
-# Create JavaScript project
-womm new javascript my-app
+# Create JavaScript project with defaults
+womm create official/javascript my-app --defaults --data project_name=my-app
 
-# Create React project
-womm new javascript my-react-app --type react
+# Pre-fill an answer (e.g. React framework) and prompt for the rest
+womm create official/javascript my-react-app --data framework=react
 
-# Create Vue project
-womm new javascript my-vue-app --type vue
+# Preview creation without writing anything
+womm create official/python my-project --pretend
 
-# Interactive mode
-womm new --interactive
-
-# Preview creation (dry-run)
-womm new python my-project --dry-run
+# Render and prepare the dev environment (venv, deps, git)
+womm create official/python my-project --defaults --data project_name=my-project --setup
 ```
 
 ### **Template Management**
 
 ```bash
-# List templates
+# List catalog templates
 womm template list
 
-# Create template from project
-womm template create --from-project ./my-project
+# Show a single catalog entry
+womm template show official/python
 
-# Use template
-womm template use my-template --project-name new-project
+# Register a local template under the user namespace
+womm template add my-template ./path/to/template
 
-# Interactive template creation
-womm template create --interactive
+# Scaffold a new Copier template skeleton
+womm template init ./my-new-template
 ```
 
 ### **Project Setup**
@@ -112,7 +109,7 @@ womm setup python --dry-run
 
 ## 📚 Detailed Guides
 
-### **🚀 [Project Creation Guide](new.md)**
+### **🚀 [Project Creation Guide](create.md)**
 
 Complete guide to creating new projects with different frameworks and configurations.
 

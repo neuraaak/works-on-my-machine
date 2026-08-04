@@ -12,14 +12,15 @@
 ### 🆕 **Project Creation**
 
 ```bash
-# Create new projects
-womm new python my-project
-womm new javascript my-project
-womm new detect my-project  # Auto-detect type
+# Create new projects from a catalog template
+womm create official/python my-project
+womm create official/javascript my-project
 
-# Configure existing projects
-womm new python --current-dir
-womm new javascript --current-dir
+# Non-interactive, using template defaults
+womm create official/python my-project --defaults --data project_name=my-project
+
+# Configure an existing project (auto-detected type)
+womm setup detect
 ```
 
 ### 🔍 **Linting and Quality**
@@ -97,8 +98,8 @@ jest
 
 ### 🆕 **New Project Setup**
 
-1. **Create project**: `womm new [language] [name]`
-2. **Navigate**: `cd [name]`
+1. **Create project**: `womm create [template] [destination]`
+2. **Navigate**: `cd [destination]`
 3. **Install dependencies**: Language-specific install command
 4. **Start development**: Language-specific dev command
 
@@ -126,7 +127,8 @@ womm lint all
 
 ### 🆕 **Project Management**
 
-- `womm new` - Create new projects
+- `womm create` - Create new projects from a Copier template
+- `womm template` - Manage the Copier template catalog
 - `womm install` - Install WOMM globally
 - `womm uninstall` - Remove WOMM
 

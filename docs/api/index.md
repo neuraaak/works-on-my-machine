@@ -18,7 +18,7 @@ WOMM's API is built around a modular architecture with clear separation of conce
 ### 🔄 **Component Flow**
 
 ```text
-CLI Commands → Project Manager → Language Managers → Template Manager → File System
+CLI Commands → Project Manager → Template Store → Copier Rendering → File System
      ↓              ↓                ↓                ↓              ↓
 UI Components → Validation → Security → Progress → Rich Output
 ```
@@ -30,9 +30,9 @@ UI Components → Validation → Security → Progress → Rich Output
 ```text
 womm/
 ├── commands/           # CLI entry points
-│   ├── new.py         # Project creation
+│   ├── create.py      # Project creation (Copier-backed)
 │   ├── setup.py       # Project setup
-│   ├── template.py    # Template management
+│   ├── template.py    # Template catalog management
 │   └── ...
 ├── core/
 │   ├── managers/      # Business logic managers
@@ -44,16 +44,15 @@ womm/
 │   └── utils/        # Utility functions
 │       ├── security/ # Security validation
 │       └── project/  # Project utilities
-└── languages/        # Language-specific templates
+└── copier/            # Copier templates (official catalog + meta-template)
 ```
 
 ### **Manager Hierarchy**
 
 ```text
 ProjectManager (Main Orchestrator)
-├── PythonProjectManager
-├── JavaScriptProjectManager
-├── TemplateManager
+├── TemplateStoreInterface   # Catalog CRUD (list, show, add, remove, update, init)
+├── CopierProjectCreationService   # Renders a template via Copier
 └── ProjectDetector
 ```
 
@@ -73,23 +72,28 @@ Central orchestrator for all project operations.
 
 **Dependencies:**
 
-- `PythonProjectManager`
-- `JavaScriptProjectManager`
-- `TemplateManager`
+- `TemplateStoreInterface`
+- `CopierProjectCreationService`
 - `ProjectDetector`
 
-### **TemplateManager**
+### **TemplateStoreInterface / CopierProjectCreationService**
 
-Handles template creation, storage, and generation.
+Project rendering is delegated entirely to [Copier](https://copier.readthedocs.io/).
+`TemplateStoreInterface` manages the template *catalog* (list, show, add,
+remove, update, init); `CopierProjectCreationService` renders a template
+into a destination directory via `copier.run_copy`. No language, framework,
+or variant mapping lives in Python code — those choices are declared in
+each template's `copier.yml`.
 
-**Location:** `womm/core/managers/project/templates/template_manager.py`
+**Location:** `womm/interfaces/project/template_store_interface.py`,
+`womm/services/project/copier_project_creation_service.py`
 
 **Key Methods:**
 
-- `create_template_from_project()` - Generate template from project
-- `generate_from_template()` - Create project from template
-- `list_templates()` - List available templates
-- `delete_template()` - Remove template
+- `TemplateStoreInterface.list_templates()` - List catalog entries
+- `TemplateStoreInterface.show_template()` - Show one catalog entry
+- `TemplateStoreInterface.add_template()` / `remove_template()` / `update_template()` - Manage user templates
+- `CopierProjectCreationService.create_project()` - Render a project from a template
 
 ### **ProjectDetector**
 
@@ -106,100 +110,35 @@ Auto-detects project types based on file signatures.
 
 ## 📋 Template System
 
-### **Template Architecture**
+Templates are standard [Copier](https://copier.readthedocs.io/) templates:
+a `copier.yml` declaring the questions (name, type, choices, defaults) plus
+a `template/` directory of Jinja-rendered files. WOMM does not implement its
+own variable-substitution or content-generalization engine — Copier owns
+that entirely, and no per-language/framework mapping lives in WOMM's Python
+code.
 
-#### **Storage Structure**
+### **Official Catalog**
 
-```text
-~/.womm/templates/
-├── template-name/
-│   ├── template.json          # Metadata
-│   ├── file1.py.template      # Template files
-│   ├── file2.txt.template
-│   └── src/
-│       └── {{PROJECT_NAME}}/
-│           └── main.py.template
-```
+- `official/python` — `src/womm/assets/copier/official/python/`
+- `official/javascript` — `src/womm/assets/copier/official/javascript/`
+- Meta-template used by `womm template init` — `src/womm/assets/copier/meta/`
 
-#### **Template Metadata Format**
+### **User Templates**
 
-```json
-{
-  "name": "template-name",
-  "description": "Template description",
-  "version": "1.0.0",
-  "author": "WOMM CLI",
-  "project_type": "python",
-  "source_project": "/path/to/original",
-  "created": "2024-01-15T10:30:00Z",
-  "variables": {
-    "PROJECT_NAME": "Project name",
-    "AUTHOR_NAME": "Author name",
-    "AUTHOR_EMAIL": "Author email"
-  },
-  "files": ["pyproject.toml", "src/{{PROJECT_NAME}}/main.py"]
-}
-```
+Registered with `womm template add <identifier> <source>`; recorded under
+`~/.womm/templates/` (or `%WOMM_HOME%` if set). See
+[Template Management](../cli/templates.md) for the full CLI surface.
 
-### **Content Generalization**
-
-#### **Variable Substitution**
-
-Templates use `{{VARIABLE_NAME}}` syntax for dynamic content:
-
-| Variable                 | Description     | Example                        |
-| ------------------------ | --------------- | ------------------------------ |
-| `{{PROJECT_NAME}}`       | Project name    | `my-awesome-app`               |
-| `{{AUTHOR_NAME}}`        | Author name     | `John Doe`                     |
-| `{{AUTHOR_EMAIL}}`       | Author email    | `john@example.com`             |
-| `{{PROJECT_VERSION}}`    | Project version | `0.1.0`                        |
-| `{{PROJECT_URL}}`        | Project URL     | `https://example.com`          |
-| `{{PROJECT_REPOSITORY}}` | Repository URL  | `https://github.com/user/repo` |
-
-#### **Generalization Patterns**
-
-```python
-# Original content
-project_name = "my-awesome-blog"
-author = "John Doe"
-email = "john@example.com"
-
-# Generalized content
-project_name = "{{PROJECT_NAME}}"
-author = "{{AUTHOR_NAME}}"
-email = "{{AUTHOR_EMAIL}}"
-```
-
-### **Template Processing Pipeline**
-
-#### **Creation Pipeline**
+### **Rendering Pipeline**
 
 ```text
-1. Source Project Scan
+1. Resolve template identifier → catalog entry (source path)
    ↓
-2. File Filtering (ignore patterns)
+2. copier.run_copy(source, destination, data=answers, defaults=..., overwrite=...)
    ↓
-3. Content Generalization
+3. Copier prompts for/consumes answers per copier.yml
    ↓
-4. Path Generalization
-   ↓
-5. Template Storage
-   ↓
-6. Metadata Generation
-```
-
-#### **Usage Pipeline**
-
-```text
-1. Template Validation
-   ↓
-2. Variable Substitution
-   ↓
-3. File Generation
-   ↓
-4. Path Substitution
-   ↓
-5. Project Creation
+4. Files rendered into destination
 ```
 
 ## 🎨 UI Components
@@ -280,24 +219,20 @@ def validate_user_input(input_str: str, input_type: str) -> Tuple[bool, str]
 
 ## 📊 Data Flow
 
-### **Template Creation Flow**
+### **Template Catalog Flow**
 
 ```text
-User Input → CLI Command → ProjectManager → TemplateManager
-     ↓              ↓              ↓              ↓
-Validation → Project Detection → File Scanning → Generalization
-     ↓              ↓              ↓              ↓
-UI Feedback → Progress Tracking → Content Processing → Storage
+User Input → CLI Command → TemplateStoreInterface → TemplateStoreService
+     ↓              ↓                ↓                       ↓
+Validation → Identifier Lookup → Catalog Read/Write → Result
 ```
 
-### **Template Usage Flow**
+### **Project Creation Flow**
 
 ```text
-User Input → CLI Command → TemplateManager → File Generation
-     ↓              ↓              ↓              ↓
-Validation → Template Loading → Variable Substitution → File Creation
-     ↓              ↓              ↓              ↓
-UI Feedback → Progress Tracking → Path Processing → Project Setup
+User Input → CLI Command → CopierProjectCreationService → copier.run_copy()
+     ↓              ↓                    ↓                        ↓
+Validation → Template Resolution → Answer Collection → File Rendering
 ```
 
 ### **Enhanced Error Handling Flow**
@@ -378,27 +313,21 @@ def __init__(self):
     }
 ```
 
-### **Adding New Template Variables**
+### **Adding a New Template Question**
 
-#### **1. Update Generalization Patterns**
+Template variables are Copier questions declared directly in the template's
+`copier.yml` — no Python code changes are needed:
 
-```python
-def _generalize_content(self, content: str, source_project_name: str) -> str:
-    generalizations = [
-        # Add new patterns
-        (r"custom-pattern", "{{CUSTOM_VARIABLE}}"),
-    ]
+```yaml
+# src/womm/assets/copier/official/<template>/copier.yml
+custom_variable:
+  type: str
+  help: "Custom variable description"
+  default: ""
 ```
 
-#### **2. Update Variable Extraction**
-
-```python
-def _extract_template_variables(self, template_dir: Path) -> Dict[str, str]:
-    default_vars = {
-        # Add new variables
-        "CUSTOM_VARIABLE": "Custom variable description",
-    }
-```
+Reference it from any file under `template/` using Jinja syntax
+(`{{ custom_variable }}`), or in the template's filenames themselves.
 
 ### **Adding New UI Components**
 

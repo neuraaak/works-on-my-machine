@@ -4,6 +4,12 @@ All notable changes to this project are documented here.
 
 This changelog is automatically generated from [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [Unreleased]
+
+### Breaking Changes
+
+- **`womm create <language>` is replaced by `womm create <template>`, with no compatibility alias.** Project scaffolding now renders through [Copier](https://copier.readthedocs.io/) exclusively: `womm create official/python <destination>` and `womm create official/javascript <destination>` replace the old `womm create python`/`womm create javascript`/`womm create react-ts` subcommands. The legacy `.template`-file engine, its `template_utils` helpers, and the `src/womm/assets/languages/**/templates/` assets have been removed entirely. Use `womm template list` to discover available catalog templates.
+
 ## [3.0.0](https://github.com/neuraaak/works-on-my-machine/releases/tag/v3.0.0) — 2026-01-12
 
 ### Security

@@ -4,31 +4,29 @@ Learn how to configure WOMM for your development workflow.
 
 ## Command-Line Options
 
-### New Command
+### Create Command
 
 ```bash
-womm new <language> <name> [OPTIONS]
+womm create <template> <destination> [OPTIONS]
 ```
 
 **Options:**
 
-- `--type TEXT` - Project type (react, vue, django, flask)
-- `--interactive` - Interactive mode with prompts
-- `--template TEXT` - Use specific template
-- `--force` - Overwrite existing files
+- `--data KEY=VALUE` - Pre-fill a template answer (repeatable)
+- `--defaults` - Use template defaults instead of prompting
+- `--force` - Render into a non-empty destination
+- `--pretend` - Simulate the rendering without writing anything
+- `--setup` - Prepare the environment after rendering
 - `--help` - Show help message
 
 **Examples:**
 
 ```bash
-# React project
-womm new javascript my-app --type react
+# React-flavored JavaScript project
+womm create official/javascript my-app --data framework=react
 
-# Interactive mode
-womm new --interactive
-
-# Use template
-womm new python my-api --template fastapi-template
+# Non-interactive, using template defaults
+womm create official/python my-api --defaults --data project_name=my-api
 ```
 
 ### Setup Command
@@ -69,59 +67,43 @@ womm lint [path] [OPTIONS]
 - `--verbose` - Verbose output
 - `--help` - Show help
 
-### Templates Command
+### Template Command
 
 ```bash
-womm templates <action> [OPTIONS]
+womm template <action> [OPTIONS]
 ```
 
 **Actions:**
 
-- `list` - List available templates
-- `create <name>` - Create template from project
-- `use <name> <output>` - Use template
-- `delete <name>` - Delete template
+- `list` - List catalog templates
+- `show <identifier>` - Show a single catalog entry
+- `add <identifier> <source>` - Register a local Copier template
+- `remove <identifier>` - Unregister a user template
+- `update <identifier> <source>` - Point a user template at a new source
+- `init <destination>` - Scaffold a new Copier template skeleton
 
 ## Template Configuration
 
-Templates are stored in `~/.womm/templates/` and include:
+Templates are standard [Copier](https://copier.readthedocs.io/) templates: a
+`copier.yml` declaring the questions plus a `template/` directory of
+Jinja-rendered files. User-registered templates are recorded under
+`~/.womm/templates/` (or `%WOMM_HOME%` if set). See
+[Template Management](../cli/templates.md) for the full CLI reference.
 
-### Template Metadata
-
-`.womm-template.json`:
-
-```json
-{
-  "name": "my-template",
-  "description": "My custom template",
-  "language": "python",
-  "version": "1.0.0",
-  "author": "Your Name",
-  "variables": {
-    "PROJECT_NAME": "{{project_name}}",
-    "VERSION": "{{version}}"
-  }
-}
-```
-
-### Creating Templates
+### Registering a Template
 
 ```bash
-# Create from current project
-cd my-configured-project
-womm templates create my-template
-
-# Template is saved to ~/.womm/templates/my-template/
+womm template add my-template ./path/to/my-copier-template
 ```
 
-### Using Templates
+### Listing and Rendering
 
 ```bash
 # List templates
-womm templates list
+womm template list
 
-# Use template
-womm templates use my-template new-project
+# Render a project from a template (rendering is `womm create`, not `womm template`)
+womm create my-template ./new-project
 ```
 
 ## Platform-Specific Configuration

@@ -165,10 +165,10 @@ womm context add --submenu "Advanced" "womm advanced-command"
 
 ```bash
 # Create submenus
-womm context add --submenu "Projects" "womm new"
+womm context add --submenu "Projects" "womm create official/python"
 womm context add --submenu "Projects" "womm setup"
-womm context add --submenu "Templates" "womm template create"
-womm context add --submenu "Templates" "womm template use"
+womm context add --submenu "Templates" "womm template list"
+womm context add --submenu "Templates" "womm template show"
 ```
 
 ### **Icon Customization**
@@ -194,7 +194,7 @@ womm context add --script "custom-script.bat"
 womm context add --powershell "Get-WOMMStatus"
 
 # Add with parameters
-womm context add "Python Project" "womm new python --interactive"
+womm context add "Python Project" "womm create official/python"
 ```
 
 ## 🔍 Troubleshooting

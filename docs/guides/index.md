@@ -71,7 +71,7 @@ System requirements and prerequisite tools needed for WOMM and project developme
 
 - Explore [Configuration Guide](configuration.md)
 - Study [CLI Architecture](../api/cli-architecture.md)
-- Review [Template System](../api/templates.md)
+- Review [Template Management](../cli/templates.md)
 
 ## Common Topics
 
