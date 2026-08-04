@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 # ///////////////////////////////////////////////////////////////
-# CREATE - Create Project Commands
+# CREATE - Create Project Command
 # Project: works-on-my-machine
 # ///////////////////////////////////////////////////////////////
 
 """
-Create project commands for WOMM CLI.
+Create project command for WOMM CLI.
 
-This module handles creation of new Python and JavaScript projects using the modular architecture.
-Provides interactive and direct modes for project creation with comprehensive setup.
-Supports minimal mode for creating only basic structure and files.
+Renders a project from a catalog template (Copier-backed). Language and
+framework choices live entirely in the template's ``copier.yml`` — this
+command only forwards generic arguments.
 """
 
 from __future__ import annotations
@@ -18,507 +18,111 @@ from __future__ import annotations
 # IMPORTS
 # ///////////////////////////////////////////////////////////////
 # Standard library imports
-import sys
 from pathlib import Path
-from typing import Any
 
 # Third-party imports
 import click
-from ezpl import LogLevel
 
 # Local imports
-from ...interfaces import ProjectManagerInterface
-from ...ui.common import ezpl_bridge, ezprinter
-from ...ui.project import ProjectWizard, print_project_creation_result
+from ...interfaces.project.create_interface import ProjectCreateInterface
+from ...ui.project import render_project_creation_result
 
 # ///////////////////////////////////////////////////////////////
-# COMMAND GROUPS
+# HELPERS
 # ///////////////////////////////////////////////////////////////
 
 
-@click.group(invoke_without_command=True)
-@click.help_option("-h", "--help")
-@click.option(
-    "-v",
-    "--verbose",
-    is_flag=True,
-    help="Enable verbose output (DEBUG level)",
-)
-@click.pass_context
-def create_group(ctx: click.Context, verbose: bool) -> None:
-    """🆕 Create new projects with modern development setup."""
-    # Configure verbose mode if requested
-    if verbose:
-        ezpl_bridge.set_level(LogLevel.DEBUG.label)
+def parse_data_options(values: tuple[str, ...]) -> dict[str, str]:
+    """Parse repeated ``--data KEY=VALUE`` options.
 
-    if ctx.invoked_subcommand is None:
-        # Auto-detect project type if no subcommand specified
-        detection_result = ProjectManagerInterface().detect_project_type(Path.cwd())
-        detected_type = detection_result.project_type
-        if detection_result.success and detected_type and detected_type != "unknown":
-            ezprinter.success(
-                f"Detected project type: {detected_type} "
-                f"(confidence: {detection_result.confidence}%)"
+    Values stay raw strings: casting is delegated to the declared Copier
+    question type.
+
+    Args:
+        values: Raw option values.
+
+    Returns:
+        dict[str, str]: Answers keyed by question name.
+
+    Raises:
+        click.BadParameter: If an entry has no "=" separator.
+    """
+    answers: dict[str, str] = {}
+    for item in values:
+        key, separator, value = item.partition("=")
+        if not separator or not key:
+            raise click.BadParameter(
+                f"Expected KEY=VALUE, got: {item}", param_hint="--data"
             )
-            ezprinter.info(
-                f"Use 'womm create {detected_type} <project_name>' to create a project"
-            )
-        else:
-            click.echo(ctx.get_help())
+        answers[key] = value
+    return answers
 
 
 # ///////////////////////////////////////////////////////////////
-# PYTHON PROJECT COMMANDS
+# COMMAND
 # ///////////////////////////////////////////////////////////////
 
 
-@create_group.command("python")
+@click.command("create")
 @click.help_option("-h", "--help")
-@click.argument("project_name", required=False)
+@click.argument("template")
+@click.argument("destination", type=click.Path(path_type=Path))
 @click.option(
-    "-c",
-    "--current-dir",
+    "--data",
+    "data",
+    multiple=True,
+    metavar="KEY=VALUE",
+    help="Pre-fill a template answer. Repeatable.",
+)
+@click.option(
+    "--defaults",
     is_flag=True,
-    help="Use current directory instead of creating a new one",
-)
-@click.option(
-    "--target",
-    help="Target directory where to create the project (default: current directory)",
-)
-@click.option(
-    "-I",
-    "--interactive",
-    is_flag=True,
-    help="Run in interactive mode with guided setup",
-)
-@click.option(
-    "--author-name",
-    help="Author name for the project",
-)
-@click.option(
-    "--author-email",
-    help="Author email for the project",
-)
-@click.option(
-    "--project-url",
-    help="Project URL",
-)
-@click.option(
-    "--project-repository",
-    help="Project repository URL",
-)
-@click.option(
-    "--type",
-    "project_type",
-    type=click.Choice(["py", "django"]),
-    help="Python project type (py, django). Auto-detected if not specified.",
+    help="Use template defaults instead of prompting.",
 )
 @click.option(
     "--force",
     is_flag=True,
-    help="Force overwrite existing files without prompting",
+    help="Render into a non-empty destination.",
 )
 @click.option(
-    "--minimal",
+    "--pretend",
     is_flag=True,
-    help="Create only basic structure and files (no dependencies, no dev tools, no configs)",
+    help="Simulate the rendering without writing anything.",
 )
 @click.option(
-    "-v",
-    "--verbose",
+    "--setup",
     is_flag=True,
-    help="Enable verbose output (DEBUG level)",
+    help="Prepare the environment after rendering (virtualenv, dependencies, git).",
 )
-def create_python(
-    project_name: str | None,
-    current_dir: bool,
-    target: str | None,
-    interactive: bool,
-    author_name: str | None,
-    author_email: str | None,
-    project_url: str | None,
-    project_repository: str | None,
-    project_type: str | None,
+@click.option("-v", "--verbose", is_flag=True, help="Show detailed output.")
+def create_command(
+    template: str,
+    destination: Path,
+    data: tuple[str, ...],
+    defaults: bool,
     force: bool,
-    minimal: bool,
+    pretend: bool,
+    setup: bool,
     verbose: bool,
 ) -> None:
-    """🐍 Create a new Python project with full development environment."""
-    # Configure verbose mode if requested
-    if verbose:
-        ezpl_bridge.set_level(LogLevel.DEBUG.label)
-
-    # Initialize project manager (lazy loading)
-    project_manager = ProjectManagerInterface()
-
-    try:
-        # Interactive mode
-        if interactive:
-            success = _run_interactive_python_setup(project_manager, minimal)
-            if not success:
-                sys.exit(1)
-            return
-
-        # Non-interactive mode
-        success = _run_direct_python_setup(
-            project_manager,
-            project_name,
-            current_dir,
-            target,
-            author_name,
-            author_email,
-            project_url,
-            project_repository,
-            project_type,
-            force,
-            minimal=minimal,
-        )
-        if not success:
-            sys.exit(1)
-        return
-
-    except Exception as e:
-        ezprinter.error(f"Error creating Python project: {e}")
-        sys.exit(1)
-
-
-# ///////////////////////////////////////////////////////////////
-# JAVASCRIPT PROJECT COMMANDS
-# ///////////////////////////////////////////////////////////////
-
-
-@create_group.command("javascript")
-@click.help_option("-h", "--help")
-@click.argument("project_name", required=False)
-@click.option(
-    "-c",
-    "--current-dir",
-    is_flag=True,
-    help="Use current directory instead of creating a new one",
-)
-@click.option(
-    "--target",
-    help="Target directory where to create the project (default: current directory)",
-)
-@click.option(
-    "--type",
-    "project_type",
-    type=click.Choice(["js", "ts", "react", "vue", "react-ts", "vue-ts", "node"]),
-    help="JavaScript project type. Auto-detected if not specified.",
-)
-@click.option(
-    "-I",
-    "--interactive",
-    is_flag=True,
-    help="Run in interactive mode with guided setup",
-)
-@click.option(
-    "--author-name",
-    help="Author name for the project",
-)
-@click.option(
-    "--author-email",
-    help="Author email for the project",
-)
-@click.option(
-    "--project-url",
-    help="Project URL",
-)
-@click.option(
-    "--project-repository",
-    help="Project repository URL",
-)
-@click.option(
-    "--force",
-    is_flag=True,
-    help="Force overwrite existing files without prompting",
-)
-@click.option(
-    "--minimal",
-    is_flag=True,
-    help="Create only basic structure and files (no dependencies, no dev tools, no configs)",
-)
-def create_javascript(
-    project_name: str | None,
-    current_dir: bool,
-    target: str | None,
-    project_type: str | None,
-    interactive: bool,
-    author_name: str | None,
-    author_email: str | None,
-    project_url: str | None,
-    project_repository: str | None,
-    force: bool,
-    minimal: bool,
-) -> None:
-    """🟨 Create a new JavaScript/Node.js project with development tools."""
-
-    # Initialize project manager
-    project_manager = ProjectManagerInterface()
-
-    try:
-        # Interactive mode
-        if interactive:
-            success = _run_interactive_javascript_setup(project_manager, minimal)
-            if not success:
-                sys.exit(1)
-            return
-
-        # Non-interactive mode
-        # Map "node" to "js" for backward compatibility
-        if project_type == "node":
-            project_type = "js"
-
-        success = _run_direct_javascript_setup(
-            project_manager,
-            project_name,
-            current_dir,
-            target,
-            project_type,
-            author_name,
-            author_email,
-            project_url,
-            project_repository,
-            force,
-            minimal=minimal,
-        )
-        if not success:
-            sys.exit(1)
-        return
-
-    except Exception as e:
-        ezprinter.error(f"Error creating JavaScript project: {e}")
-        sys.exit(1)
-
-
-# ///////////////////////////////////////////////////////////////
-# HELPER FUNCTIONS - INTERACTIVE MODES
-# ///////////////////////////////////////////////////////////////
-
-
-def _run_interactive_python_setup(
-    project_manager: ProjectManagerInterface, minimal: bool
-) -> bool:
-    """Run interactive Python project setup."""
-    ezprinter.print_header("🐍 Interactive Python Project Setup")
-
-    # Get project configuration
-    config = ProjectWizard.run_interactive_setup()
-    if not config:
-        ezprinter.error("Project setup cancelled")
-        return False
-
-    project_path = config.get("project_path")
-    if not isinstance(project_path, Path):
-        ezprinter.error("Invalid project path returned by wizard")
-        return False
-
-    project_name = config.get("project_name")
-    if project_name is not None and not isinstance(project_name, str):
-        ezprinter.error("Invalid project name returned by wizard")
-        return False
-
-    # Create project
-    options: dict[str, Any] = {
-        key: value
-        for key, value in config.items()
-        if key not in {"project_type", "project_name", "project_path", "current_dir"}
-    }
-    options["minimal"] = minimal
-    result = project_manager.create_project(
-        project_type="python",
-        project_name=project_name,
-        target=str(project_path.parent),
-        **options,
+    """Create a project from a catalog template."""
+    answers = parse_data_options(data)
+    result = ProjectCreateInterface().create_project(
+        template=template,
+        destination=destination,
+        answers=answers,
+        force=force,
+        pretend=pretend,
+        defaults=defaults,
+        setup=setup,
     )
-
+    render_project_creation_result(result, verbose=verbose)
     if not result.success:
-        ezprinter.error(f"Error creating Python project: {result.error}")
-    else:
-        print_project_creation_result(result)
-    return bool(result)
-
-
-def _run_interactive_javascript_setup(
-    project_manager: ProjectManagerInterface, minimal: bool
-) -> bool:
-    """Run interactive JavaScript project setup."""
-    ezprinter.print_header("🟨 Interactive JavaScript Project Setup")
-
-    # Get project configuration
-    config = ProjectWizard.run_interactive_setup()
-    if not config:
-        ezprinter.error("Project setup cancelled")
-        return False
-
-    project_path = config.get("project_path")
-    if not isinstance(project_path, Path):
-        ezprinter.error("Invalid project path returned by wizard")
-        return False
-
-    project_name = config.get("project_name")
-    if project_name is not None and not isinstance(project_name, str):
-        ezprinter.error("Invalid project name returned by wizard")
-        return False
-
-    # Determine the project type based on configuration
-    js_project_type = config.get("project_type", "node")
-    if not isinstance(js_project_type, str):
-        js_project_type = "node"
-
-    # Map the project type to the correct project type
-    if js_project_type in ["react", "vue"]:
-        pm_project_type = js_project_type  # Use directly: "react" or "vue"
-    else:
-        pm_project_type = "javascript"  # Use "javascript" for node, library, cli
-
-    # Prepare options
-    options: dict[str, Any] = {
-        key: value
-        for key, value in config.items()
-        if key not in {"project_type", "project_name", "project_path", "current_dir"}
-    }
-
-    # Map js_project_type to type for JavaScript projects
-    if pm_project_type == "javascript":
-        # Map project type to type
-        type_map = {
-            "node": "js",
-            "library": "js",
-            "cli": "js",
-            "react": "react",
-            "vue": "vue",
-        }
-        project_type = type_map.get(js_project_type, "js")
-        options["type"] = project_type
-
-    # Remove project_type from options to avoid conflict with create_project parameter
-    options["minimal"] = minimal
-
-    # Create project
-    result = project_manager.create_project(
-        project_type=pm_project_type,
-        project_name=project_name,
-        target=str(project_path.parent),
-        **options,
-    )
-
-    if not result.success:
-        ezprinter.error(f"Error creating JavaScript project: {result.error}")
-    else:
-        print_project_creation_result(result)
-    return bool(result)
+        raise SystemExit(1)
 
 
 # ///////////////////////////////////////////////////////////////
-# HELPER FUNCTIONS - DIRECT MODES
+# PUBLIC API
 # ///////////////////////////////////////////////////////////////
 
-
-def _run_direct_python_setup(
-    project_manager: ProjectManagerInterface,
-    project_name: str | None,
-    current_dir: bool,
-    target: str | None,
-    author_name: str | None,
-    author_email: str | None,
-    project_url: str | None,
-    project_repository: str | None,
-    project_type: str | None,
-    force: bool,
-    dry_run: bool = False,
-    minimal: bool = False,
-) -> bool:
-    """Run direct Python project setup."""
-
-    # Validate project name if provided
-    if project_name and not current_dir and not project_name.strip():
-        ezprinter.error("Project name cannot be empty")
-        return False
-
-    # Prepare options
-    options = {}
-    if author_name:
-        options["author_name"] = author_name
-    if author_email:
-        options["author_email"] = author_email
-    if project_url:
-        options["project_url"] = project_url
-    if project_repository:
-        options["project_repository"] = project_repository
-    if target:
-        options["target"] = target
-    if project_type:
-        options["type"] = project_type
-    options["force"] = force
-    options["minimal"] = minimal
-
-    # Create project
-    result = project_manager.create_project(
-        project_type="python",
-        project_name=project_name,
-        current_dir=current_dir,
-        dry_run=dry_run,
-        **options,
-    )
-
-    if not result.success:
-        ezprinter.error(f"Error creating Python project: {result.error}")
-    else:
-        print_project_creation_result(result)
-    return bool(result)
-
-
-def _run_direct_javascript_setup(
-    project_manager: ProjectManagerInterface,
-    project_name: str | None,
-    current_dir: bool,
-    target: str | None,
-    project_type: str | None,
-    author_name: str | None,
-    author_email: str | None,
-    project_url: str | None,
-    project_repository: str | None,
-    force: bool,
-    dry_run: bool = False,
-    minimal: bool = False,
-) -> bool:
-    """Run direct JavaScript project setup."""
-
-    # Validate project name if provided
-    if project_name and not current_dir and not project_name.strip():
-        ezprinter.error("Project name cannot be empty")
-        return False
-
-    # Prepare options
-    options = {}
-    if author_name:
-        options["author_name"] = author_name
-    if author_email:
-        options["author_email"] = author_email
-    if project_url:
-        options["project_url"] = project_url
-    if project_repository:
-        options["project_repository"] = project_repository
-    if target:
-        options["target"] = target
-    if project_type:
-        options["type"] = project_type
-    options["force"] = force
-    options["minimal"] = minimal
-
-    # Create project
-    # Use "javascript" as the base type, type will be handled by the manager
-    result = project_manager.create_project(
-        project_type="javascript",
-        project_name=project_name,
-        current_dir=current_dir,
-        dry_run=dry_run,
-        **options,
-    )
-
-    if not result.success:
-        ezprinter.error(f"Error creating JavaScript project: {result.error}")
-    else:
-        print_project_creation_result(result)
-    return bool(result)
+__all__ = ["create_command", "parse_data_options"]

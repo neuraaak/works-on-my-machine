@@ -1,0 +1,16 @@
+"""Smoke tests for {{ project_name }}."""
+
+from {{ package_name }} import __version__
+
+
+def test_version_is_defined():
+    """The package exposes a non-empty ``__version__`` string."""
+    assert __version__ is not None
+    assert isinstance(__version__, str)
+
+
+def test_package_is_importable():
+    """The package imports without raising."""
+    import {{ package_name }}
+
+    assert {{ package_name }} is not None

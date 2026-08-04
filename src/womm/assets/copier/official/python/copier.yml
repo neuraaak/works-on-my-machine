@@ -1,7 +1,56 @@
 _womm:
-  description: "Python project"
+  description: "Python project (optional Django)"
   version: "1.0.0"
+
+_subdirectory: template
 
 project_name:
   type: str
   help: "Project name"
+
+package_name:
+  type: str
+  help: "Importable package name"
+  default: "{{ project_name | lower | replace('-', '_') | replace(' ', '_') }}"
+
+description:
+  type: str
+  help: "One-line project description"
+  default: "A Python project"
+
+author_name:
+  type: str
+  help: "Author name"
+  default: ""
+
+framework:
+  type: str
+  help: "Framework"
+  choices:
+    - none
+    - django
+  default: none
+
+use_src_layout:
+  type: bool
+  help: "Use a src/ layout"
+  default: true
+
+with_tests:
+  type: bool
+  help: "Include a pytest setup"
+  default: true
+
+with_ci:
+  type: bool
+  help: "Include a GitHub Actions workflow"
+  default: true
+
+license:
+  type: str
+  help: "License"
+  choices:
+    - MIT
+    - Apache-2.0
+    - proprietary
+  default: MIT

@@ -17,10 +17,7 @@ from __future__ import annotations
 # IMPORTS
 # ///////////////////////////////////////////////////////////////
 # Local imports
-from .create.create_completion_summaries import (
-    print_new_project_summary,
-    print_project_creation_result,
-)
+from .create.create_completion_summaries import render_project_creation_result
 from .project_wizard import ProjectWizard
 from .setup.setup_completion_summaries import (
     print_project_setup_result,
@@ -48,8 +45,6 @@ __all__ = [
     "display_template_selection",
     "interactive_template_create",
     "interactive_template_delete",
-    "print_new_project_summary",
-    "print_project_creation_result",
     "print_project_setup_result",
     "print_setup_completion_summary",
     "print_template_creation_summary",
@@ -57,4 +52,5 @@ __all__ = [
     "print_template_deletion_summary_multiple",
     "print_template_info",
     "print_template_list",
+    "render_project_creation_result",
 ]

@@ -16,7 +16,7 @@ from __future__ import annotations
 # IMPORTS
 # ///////////////////////////////////////////////////////////////
 # Local imports
-from .create import create_group
+from .create import create_command
 from .setup import setup_group
 from .template import template_group
 
@@ -25,7 +25,7 @@ from .template import template_group
 # ///////////////////////////////////////////////////////////////
 
 __all__ = [
-    "create_group",
+    "create_command",
     "setup_group",
     "template_group",
 ]

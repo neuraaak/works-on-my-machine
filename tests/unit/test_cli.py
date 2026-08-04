@@ -91,3 +91,37 @@ def test_doctor_diagnose_reports_the_data_directory(tmp_path, monkeypatch) -> No
     assert result.data_dir == str(data_dir)
     assert result.context_menu_status == "0 entries"
     assert not data_dir.exists()
+
+
+def test_create_parses_repeated_data_options():
+    from womm.commands.project.create import parse_data_options
+
+    assert parse_data_options(("a=1", "b=two")) == {"a": "1", "b": "two"}
+
+
+def test_create_rejects_a_malformed_data_option():
+    import click
+    import pytest
+
+    from womm.commands.project.create import parse_data_options
+
+    with pytest.raises(click.BadParameter):
+        parse_data_options(("novalue",))
+
+
+def test_create_keeps_equals_signs_in_values():
+    from womm.commands.project.create import parse_data_options
+
+    assert parse_data_options(("k=a=b",)) == {"k": "a=b"}
+
+
+def test_create_help_lists_the_generic_arguments():
+    from click.testing import CliRunner
+
+    from womm.commands.project.create import create_command
+
+    result = CliRunner().invoke(create_command, ["--help"])
+
+    assert result.exit_code == 0
+    assert "TEMPLATE" in result.output
+    assert "--setup" in result.output

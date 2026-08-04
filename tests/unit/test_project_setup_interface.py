@@ -153,7 +153,7 @@ def test_setup_python_installs_dependencies_once_when_dev_tools_are_enabled(
         install_dependencies,
     )
     monkeypatch.setattr(
-        "womm.services.project.python_project_creation_service.create_python_dev_config_files",
+        "womm.services.project.python_environment_service.create_python_dev_config_files",
         lambda _path: [],
     )
 

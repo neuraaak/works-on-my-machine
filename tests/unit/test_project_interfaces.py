@@ -33,10 +33,8 @@ from click.testing import CliRunner
 # Local imports
 import womm.interfaces.project.create_interface as create_interface_module
 import womm.interfaces.project.setup_interface as setup_interface_module
-from womm.commands.project.create import create_group
 from womm.commands.project.setup import setup_group
 from womm.exceptions.project import ProjectServiceError
-from womm.interfaces.project.create_interface import ProjectCreateInterface
 from womm.interfaces.project.detection_interface import ProjectDetectionInterface
 from womm.interfaces.project.manager_interface import ProjectManagerInterface
 from womm.interfaces.project.setup_interface import ProjectSetupInterface
@@ -232,87 +230,6 @@ def test_detect_project_config_service_error_returns_failed_result(tmp_path: Pat
 
     assert not result.success
     assert "permission denied" in result.error
-
-
-# ///////////////////////////////////////////////////////////////
-# PROJECT CREATE INTERFACE
-# ///////////////////////////////////////////////////////////////
-
-
-def test_create_project_unsupported_type_returns_failed_result(tmp_path: Path):
-    interface = ProjectCreateInterface()
-
-    result = interface.create_project(
-        project_type="rust",
-        project_name="demo",
-        project_path=tmp_path / "demo",
-    )
-
-    assert isinstance(result, ProjectCreationResult)
-    assert not result.success
-    assert "Unsupported project type" in result.error
-
-
-def test_create_project_dry_run_reports_success(tmp_path: Path):
-    interface = ProjectCreateInterface()
-
-    result = interface.create_project(
-        project_type="python",
-        project_name="demo",
-        project_path=tmp_path / "demo",
-        dry_run=True,
-    )
-
-    assert result.success
-    assert result.warnings and "Dry-run" in result.warnings[0]
-
-
-def test_create_project_does_not_write_to_the_terminal(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
-):
-    interface = ProjectCreateInterface()
-
-    interface.create_project(
-        project_type="python",
-        project_name="demo",
-        project_path=tmp_path / "demo",
-        dry_run=True,
-    )
-
-    captured = capsys.readouterr()
-    assert captured.out == ""
-    assert captured.err == ""
-
-
-def test_create_project_invalid_name_never_raises(tmp_path: Path):
-    interface = ProjectCreateInterface()
-
-    result = interface.create_project(
-        project_type="python",
-        project_name="",
-        project_path=tmp_path / "demo",
-    )
-
-    assert not result.success
-    assert result.error
-
-
-@pytest.mark.parametrize("command", ["python", "javascript"])
-def test_create_minimal_command_forwards_minimal_mode(
-    command: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-):
-    _FakeProjectManager.instances.clear()
-    monkeypatch.setattr(
-        "womm.commands.project.create.ProjectManagerInterface", _FakeProjectManager
-    )
-
-    result = CliRunner().invoke(
-        create_group,
-        [command, "demo", "--minimal", "--target", str(tmp_path)],
-    )
-
-    assert result.exit_code == 0, result.output
-    assert _FakeProjectManager.instances[0].calls[0]["minimal"] is True
 
 
 # ///////////////////////////////////////////////////////////////

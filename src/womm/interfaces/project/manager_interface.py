@@ -164,13 +164,19 @@ class ProjectManagerInterface:
 
         resolved_project_name = project_name or project_path.name
         force = kwargs.pop("force", False)
+        # NOTE: `ProjectCreateInterface.create_project` now targets the
+        # Copier-backed Python vertical slice (Task 6) and no longer accepts
+        # this legacy signature. This JavaScript path is unreachable from the
+        # CLI (the `create` command only renders Python templates) until the
+        # JavaScript vertical slice migrates it too; kept for the JS-facing
+        # tests that stub `_create_interface.create_project` directly.
         return self._create_interface.create_project(
-            project_type=js_type,
-            project_name=resolved_project_name,
-            project_path=project_path,
-            dry_run=dry_run,
+            project_type=js_type,  # ty: ignore[unknown-argument]
+            project_name=resolved_project_name,  # ty: ignore[unknown-argument]
+            project_path=project_path,  # ty: ignore[unknown-argument]
+            dry_run=dry_run,  # ty: ignore[unknown-argument]
             force=force,
-            minimal=minimal,
+            minimal=minimal,  # ty: ignore[unknown-argument]
             **kwargs,
         )
 

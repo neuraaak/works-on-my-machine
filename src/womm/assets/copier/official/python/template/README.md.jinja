@@ -1,0 +1,58 @@
+# {{ project_name }}
+
+{{ description }}
+{%- if author_name %}
+
+Author: {{ author_name }}
+{%- endif %}
+
+## Installation
+
+```bash
+python -m venv .venv
+.venv/Scripts/activate   # Windows
+source .venv/bin/activate  # Linux and macOS
+pip install -e ".[dev]"
+```
+
+## Layout
+
+```text
+{%- if use_src_layout %}
+src/{{ package_name }}/   Package source
+{%- else %}
+{{ package_name }}/   Package source
+{%- endif %}
+{%- if with_tests %}
+tests/   Test suite
+{%- endif %}
+```
+{%- if with_tests %}
+
+## Tests
+
+```bash
+pytest
+```
+{%- endif %}
+
+## Quality
+
+```bash
+ruff check .
+mypy .
+```
+{%- if framework == "django" %}
+
+## Django
+
+This project depends on Django. Create the site layout with:
+
+```bash
+django-admin startproject {{ package_name }} .
+```
+{%- endif %}
+
+## License
+
+{{ license }}
