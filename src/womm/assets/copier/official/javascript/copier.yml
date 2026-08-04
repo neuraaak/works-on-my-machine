@@ -1,6 +1,6 @@
 _womm:
   description: "JavaScript or TypeScript project (optional React or Vue)"
-  version: "1.0.0"
+  version: "2.0.0"
 
 _subdirectory: template
 
@@ -43,7 +43,12 @@ package_manager:
 
 with_tests:
   type: bool
-  help: "Include a test setup"
+  help: "Include a Vitest setup"
+  default: true
+
+with_vscode:
+  type: bool
+  help: "Include shared VS Code settings"
   default: true
 
 license:
@@ -65,6 +70,8 @@ license:
 # file — this is the supported way to conditionally drop a rendered file.
 _exclude:
   - "{% if not typescript %}tsconfig.json{% endif %}"
+  - "{% if framework == 'none' %}index.html{% endif %}"
+  - "{% if framework == 'none' %}vite.config.mjs{% endif %}"
   - "{% if typescript or framework == 'react' %}src/main.js{% endif %}"
   - "{% if not typescript or framework == 'react' %}src/main.ts{% endif %}"
   - "{% if framework != 'react' or typescript %}src/index.jsx{% endif %}"

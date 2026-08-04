@@ -1,35 +1,32 @@
 {
-    "compilerOptions": {
-        "target": "ES2021",
-        "lib": ["ES2021"{% if framework in ("react", "vue") %}, "DOM", "DOM.Iterable"{% endif %}],
-        "module": "ESNext",
-        "moduleResolution": "node",
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022"{% if framework in ("react", "vue") %}, "DOM", "DOM.Iterable"{% endif %}],
+    "module": "{% if framework == 'none' %}NodeNext{% else %}ESNext{% endif %}",
+    "moduleResolution": "{% if framework == 'none' %}NodeNext{% else %}Bundler{% endif %}",
 {%- if framework == "react" %}
-        "jsx": "react-jsx",
+    "jsx": "react-jsx",
 {%- elif framework == "vue" %}
-        "jsx": "preserve",
+    "jsx": "preserve",
 {%- endif %}
-        "outDir": "./dist",
-        "rootDir": "./src",
-        "declaration": true,
-        "sourceMap": true,
-        "esModuleInterop": true,
-        "forceConsistentCasingInFileNames": true,
-        "isolatedModules": true,
-        "resolveJsonModule": true,
-        "strict": true,
-        "noImplicitAny": true,
-        "noUnusedLocals": true,
-        "noUnusedParameters": true,
-        "noImplicitReturns": true,
-        "skipLibCheck": true
-    },
-    "include": ["src/**/*"],
-    "exclude": ["node_modules", "dist", "build", "coverage"]
-{%- if framework == "vue" %},
-    "vueCompilerOptions": {
-        "target": 3
-    }
+{%- if framework == "none" %}
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "sourceMap": true,
+{%- else %}
+    "noEmit": true,
+    "types": ["vite/client"{% if with_tests %}, "vitest/globals"{% endif %}],
 {%- endif %}
-
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "isolatedModules": true,
+    "resolveJsonModule": true,
+    "strict": true,
+    "noImplicitReturns": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "skipLibCheck": true
+  },
+  "include": ["src/**/*"{% if with_tests and framework != "none" %}, "tests/**/*"{% endif %}{% if framework == "vue" %}, "src/**/*.vue"{% endif %}],
+  "exclude": ["coverage", "dist", "node_modules"]
 }

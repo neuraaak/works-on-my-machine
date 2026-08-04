@@ -24,16 +24,10 @@ htmlcov/
 
 # Editors
 .idea/
+{%- if not with_vscode %}
 .vscode/
+{%- endif %}
 
 # Environment files
 .env
 .env.local
-{%- if framework == "django" %}
-
-# Django
-*.sqlite3
-media/
-staticfiles/
-local_settings.py
-{%- endif %}

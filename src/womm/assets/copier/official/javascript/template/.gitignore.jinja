@@ -18,7 +18,9 @@ yarn-error.log*
 
 # Editors
 .idea/
+{%- if not with_vscode %}
 .vscode/
+{%- endif %}
 
 # OS generated files
 .DS_Store

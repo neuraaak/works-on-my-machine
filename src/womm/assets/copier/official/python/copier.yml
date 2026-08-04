@@ -1,6 +1,6 @@
 _womm:
-  description: "Python project (optional Django)"
-  version: "1.0.0"
+  description: "Python project"
+  version: "2.0.0"
 
 _subdirectory: template
 
@@ -23,14 +23,6 @@ author_name:
   help: "Author name"
   default: ""
 
-framework:
-  type: str
-  help: "Framework"
-  choices:
-    - none
-    - django
-  default: none
-
 use_src_layout:
   type: bool
   help: "Use a src/ layout"
@@ -44,6 +36,11 @@ with_tests:
 with_ci:
   type: bool
   help: "Include a GitHub Actions workflow"
+  default: true
+
+with_vscode:
+  type: bool
+  help: "Include shared VS Code settings"
   default: true
 
 license:

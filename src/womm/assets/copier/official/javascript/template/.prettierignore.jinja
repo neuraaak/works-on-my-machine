@@ -1,0 +1,10 @@
+coverage/
+dist/
+node_modules/
+{% if package_manager == "npm" -%}
+package-lock.json
+{% elif package_manager == "pnpm" -%}
+pnpm-lock.yaml
+{% else -%}
+yarn.lock
+{% endif %}

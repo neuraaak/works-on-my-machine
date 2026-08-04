@@ -3,13 +3,13 @@
 from {{ package_name }} import __version__
 
 
-def test_version_is_defined():
+def test_version_is_defined() -> None:
     """The package exposes a non-empty ``__version__`` string."""
     assert __version__ is not None
     assert isinstance(__version__, str)
 
 
-def test_package_is_importable():
+def test_package_is_importable() -> None:
     """The package imports without raising."""
     import {{ package_name }}
 

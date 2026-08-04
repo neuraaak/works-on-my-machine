@@ -40,18 +40,10 @@ pytest
 
 ```bash
 ruff check .
+ruff format --check .
 mypy .
+pre-commit install
 ```
-{%- if framework == "django" %}
-
-## Django
-
-This project depends on Django. Create the site layout with:
-
-```bash
-django-admin startproject {{ package_name }} .
-```
-{%- endif %}
 
 ## License
 

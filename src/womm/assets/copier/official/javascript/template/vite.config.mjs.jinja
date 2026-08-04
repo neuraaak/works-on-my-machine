@@ -1,0 +1,10 @@
+{% if framework == "react" -%}
+import react from "@vitejs/plugin-react";
+{% else -%}
+import vue from "@vitejs/plugin-vue";
+{% endif %}
+import { defineConfig } from "vite";
+
+export default defineConfig({
+  plugins: [{% if framework == "react" %}react{% else %}vue{% endif %}()],
+});

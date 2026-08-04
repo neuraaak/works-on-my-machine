@@ -37,13 +37,22 @@ def test_defaults_produce_a_coherent_project(tmp_path: Path):
 
     manifest = json.loads((out / "package.json").read_text(encoding="utf-8"))
     assert manifest["name"] == "acme-app"
+    assert manifest["type"] == "module"
+    assert "vitest" in manifest["devDependencies"]
+    assert (out / "eslint.config.mjs").is_file()
+    assert (out / "prettier.config.mjs").is_file()
+    assert (out / ".prettierignore").is_file()
+    assert (out / ".vscode" / "settings.json").is_file()
+    assert not (out / ".eslintrc.json").exists()
+    assert not (out / "index.html").exists()
+    assert not (out / "vite.config.mjs").exists()
     assert not (out / "tsconfig.json").exists()
 
 
 def test_typescript_adds_a_tsconfig(tmp_path: Path):
     out = render(tmp_path / "p", typescript=True)
 
-    assert (out / "tsconfig.json").is_file()
+    json.loads((out / "tsconfig.json").read_text(encoding="utf-8"))
 
 
 @pytest.mark.parametrize("framework", ["none", "react", "vue"])
@@ -60,6 +69,8 @@ def test_every_framework_renders_in_both_language_modes(
     manifest = json.loads((out / "package.json").read_text(encoding="utf-8"))
     assert manifest["name"] == "acme-app"
     assert (out / "tsconfig.json").is_file() is typescript
+    assert (out / "index.html").is_file() is (framework != "none")
+    assert (out / "vite.config.mjs").is_file() is (framework != "none")
 
 
 @pytest.mark.parametrize("manager", ["npm", "pnpm", "yarn"])
@@ -75,21 +86,32 @@ def test_tests_can_be_disabled(tmp_path: Path):
     assert not (out / "tests").exists()
 
 
+def test_vscode_files_can_be_disabled(tmp_path: Path):
+    out = render(tmp_path / "p", with_vscode=False)
+
+    assert not (out / ".vscode").exists()
+    assert ".vscode/" in (out / ".gitignore").read_text(encoding="utf-8")
+
+
 def test_rendered_package_json_is_valid_json(tmp_path: Path):
     out = render(tmp_path / "p", framework="react", typescript=True)
 
     json.loads((out / "package.json").read_text(encoding="utf-8"))
 
 
-def test_react_dev_script_dependency_is_declared(tmp_path: Path):
+def test_react_uses_vite_instead_of_react_scripts(tmp_path: Path):
     out = render(tmp_path / "p", framework="react")
 
     manifest = json.loads((out / "package.json").read_text(encoding="utf-8"))
-    assert "react-scripts" in manifest["devDependencies"]
+    assert "vite" in manifest["devDependencies"]
+    assert "@vitejs/plugin-react" in manifest["devDependencies"]
+    assert "react-scripts" not in manifest["devDependencies"]
 
 
-def test_vue_dev_script_dependency_is_declared(tmp_path: Path):
+def test_vue_uses_vite_instead_of_vue_cli(tmp_path: Path):
     out = render(tmp_path / "p", framework="vue")
 
     manifest = json.loads((out / "package.json").read_text(encoding="utf-8"))
-    assert "@vue/cli-service" in manifest["devDependencies"]
+    assert "vite" in manifest["devDependencies"]
+    assert "@vitejs/plugin-vue" in manifest["devDependencies"]
+    assert "@vue/cli-service" not in manifest["devDependencies"]

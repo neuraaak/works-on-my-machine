@@ -28,16 +28,10 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
-{%- if framework == "django" %}
-    "Framework :: Django",
-{%- endif %}
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 requires-python = ">=3.10"
 dependencies = [
-{%- if framework == "django" %}
-    "django>=5.0",
-{%- endif %}
 ]
 
 [project.optional-dependencies]
@@ -92,9 +86,4 @@ addopts = ["--strict-markers", "--strict-config"]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_functions = ["test_*"]
-{%- endif %}
-{%- if framework == "django" %}
-
-[tool.django]
-settings_module = "{{ package_name }}.settings"
 {%- endif %}

@@ -39,6 +39,8 @@ def test_defaults_produce_a_coherent_project(tmp_path: Path):
     assert (out / "README.md").is_file()
     assert (out / "src" / "acme_tool" / "__init__.py").is_file()
     assert (out / "tests").is_dir()
+    assert (out / ".pre-commit-config.yaml").is_file()
+    assert (out / ".vscode" / "settings.json").is_file()
 
 
 def test_flat_layout_places_the_package_at_the_root(tmp_path: Path):
@@ -60,10 +62,32 @@ def test_ci_can_be_disabled(tmp_path: Path):
     assert not (out / ".github").exists()
 
 
-def test_django_framework_is_rendered(tmp_path: Path):
-    out = render(tmp_path / "p", framework="django")
+def test_vscode_files_can_be_disabled(tmp_path: Path):
+    out = render(tmp_path / "p", with_vscode=False)
 
-    assert "django" in (out / "pyproject.toml").read_text(encoding="utf-8").lower()
+    assert not (out / ".vscode").exists()
+    assert ".vscode/" in (out / ".gitignore").read_text(encoding="utf-8")
+
+
+def test_template_does_not_offer_an_incomplete_framework_option():
+    manifest = Path("src/womm/assets/copier/official/python/copier.yml").read_text(
+        encoding="utf-8"
+    )
+
+    assert "framework:" not in manifest
+    assert "django" not in manifest.lower()
+
+
+def test_pre_commit_uses_the_project_quality_toolchain(tmp_path: Path):
+    out = render(tmp_path / "p")
+
+    config = (out / ".pre-commit-config.yaml").read_text(encoding="utf-8")
+    assert "ruff check --fix" in config
+    assert "ruff format" in config
+    assert "mypy" in config
+    assert "black" not in config
+    assert "flake8" not in config
+    assert "isort" not in config
 
 
 @pytest.mark.parametrize("license_id", ["MIT", "Apache-2.0", "proprietary"])

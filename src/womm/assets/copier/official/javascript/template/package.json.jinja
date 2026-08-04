@@ -1,92 +1,86 @@
-{%- set entry = ("src/index." if framework == "react" else "src/main.") + ("tsx" if (typescript and framework == "react") else "ts" if typescript else "jsx" if framework == "react" else "js") -%}
-{%- set lint_ext = "ts,tsx" if (typescript and framework == "react") else "ts,vue" if (typescript and framework == "vue") else "ts" if typescript else "js,jsx" if framework == "react" else "js,vue" if framework == "vue" else "js" -%}
+{%- set source_entry = ("src/index." if framework == "react" else "src/main.") + ("tsx" if (typescript and framework == "react") else "ts" if typescript else "jsx" if framework == "react" else "js") -%}
+{%- set runtime_entry = "dist/main.js" if typescript else source_entry -%}
 {%- set deps = [] -%}
+{%- set dev_deps = [
+  '"@eslint/js": "^10.0.0"',
+  '"eslint": "^10.7.0"',
+  '"eslint-config-prettier": "^10.1.0"',
+  '"globals": "^16.0.0"',
+  '"prettier": "3.9.0"'
+] -%}
 {%- if framework == "react" -%}
-{%- set _ = deps.append('"react": "^18.2.0"') -%}
-{%- set _ = deps.append('"react-dom": "^18.2.0"') -%}
+{%- set _ = deps.extend(['"react": "^19.2.0"', '"react-dom": "^19.2.0"']) -%}
+{%- set _ = dev_deps.extend([
+  '"@vitejs/plugin-react": "^6.0.0"',
+  '"eslint-plugin-react-hooks": "^7.1.0"',
+  '"vite": "^8.1.0"'
+]) -%}
 {%- elif framework == "vue" -%}
-{%- set _ = deps.append('"vue": "^3.3.0"') -%}
+{%- set _ = deps.append('"vue": "^3.5.0"') -%}
+{%- set _ = dev_deps.extend([
+  '"@vitejs/plugin-vue": "^6.0.0"',
+  '"eslint-plugin-vue": "^10.0.0"',
+  '"vite": "^8.1.0"',
+  '"vue-eslint-parser": "^10.0.0"'
+]) -%}
 {%- endif -%}
-{%- set dev_deps = ['"eslint": "^8.0.0"', '"eslint-config-prettier": "^9.0.0"', '"eslint-plugin-prettier": "^5.0.0"', '"prettier": "^3.0.0"'] -%}
 {%- if typescript -%}
-{%- set _ = dev_deps.extend(['"typescript": "^5.0.0"', '"@types/node": "^20.0.0"', '"@typescript-eslint/eslint-plugin": "^6.0.0"', '"@typescript-eslint/parser": "^6.0.0"']) -%}
-{%- endif -%}
+{%- set _ = dev_deps.extend([
+  '"@types/node": "^24.0.0"',
+  '"typescript": "^5.9.0"',
+  '"typescript-eslint": "^8.0.0"'
+]) -%}
 {%- if framework == "react" -%}
-{%- set _ = dev_deps.extend(['"react-scripts": "^5.0.1"', '"eslint-plugin-react": "^7.32.0"', '"eslint-plugin-react-hooks": "^4.6.0"']) -%}
-{%- if typescript -%}
-{%- set _ = dev_deps.extend(['"@types/react": "^18.2.0"', '"@types/react-dom": "^18.2.0"']) -%}
-{%- endif -%}
+{%- set _ = dev_deps.extend(['"@types/react": "^19.0.0"', '"@types/react-dom": "^19.0.0"']) -%}
 {%- elif framework == "vue" -%}
-{%- set _ = dev_deps.extend(['"@vue/cli-service": "^5.0.8"', '"eslint-plugin-vue": "^9.15.0"']) -%}
-{%- if typescript -%}
-{%- set _ = dev_deps.append('"vue-tsc": "^1.8.0"') -%}
+{%- set _ = dev_deps.append('"vue-tsc": "^3.0.0"') -%}
 {%- endif -%}
 {%- endif -%}
 {%- if with_tests -%}
-{%- set _ = dev_deps.extend(['"jest": "^29.0.0"']) -%}
-{%- if framework in ("react", "vue") -%}
-{%- set _ = dev_deps.append('"jest-environment-jsdom": "^29.0.0"') -%}
-{%- endif -%}
-{%- if typescript -%}
-{%- set _ = dev_deps.extend(['"ts-jest": "^29.1.0"', '"@types/jest": "^29.0.0"']) -%}
-{%- endif -%}
-{%- if framework == "react" -%}
-{%- set _ = dev_deps.extend(['"@testing-library/react": "^13.4.0"', '"@testing-library/jest-dom": "^5.16.5"']) -%}
-{%- elif framework == "vue" -%}
-{%- set _ = dev_deps.append('"@vue/test-utils": "^2.4.0"') -%}
-{%- endif -%}
+{%- set _ = dev_deps.append('"vitest": "^4.1.0"') -%}
 {%- endif -%}
 {
-    "name": "{{ project_name }}",
-    "version": "0.1.0",
-    "description": "{{ description }}",
-    "private": true,
+  "name": "{{ project_name }}",
+  "version": "0.1.0",
+  "description": "{{ description }}",
+  "private": true,
+  "type": "module",
 {%- if author_name %}
-    "author": "{{ author_name }}",
+  "author": "{{ author_name }}",
 {%- endif %}
-    "license": "{{ license }}",
-    "main": "{{ entry }}",
-    "scripts": {
-{%- if framework == "react" %}
-        "dev": "react-scripts start",
-        "build": "react-scripts build",
-        "start": "react-scripts start",
-{%- elif framework == "vue" %}
-        "dev": "vue-cli-service serve",
-        "build": "vue-cli-service build",
-        "start": "vue-cli-service serve",
+  "license": "{{ license }}",
+{%- if framework == "none" %}
+  "main": "{{ runtime_entry }}",
+{%- endif %}
+  "scripts": {
+{%- if framework in ("react", "vue") %}
+    "dev": "vite",
+    "build": "{% if typescript and framework == 'vue' %}vue-tsc --noEmit && {% elif typescript %}tsc --noEmit && {% endif %}vite build",
+    "preview": "vite preview",
 {%- else %}
-        "dev": "node {{ entry }}",
-        "build": "echo 'No build step required'",
-        "start": "node {{ entry }}",
+    "dev": "node {{ source_entry }}",
+    "build": "{% if typescript %}tsc -p tsconfig.json{% else %}node --check {{ source_entry }}{% endif %}",
+    "start": "node {{ runtime_entry }}",
 {%- endif %}
-        "lint": "eslint . --ext {{ lint_ext }}",
-        "lint:fix": "eslint . --ext {{ lint_ext }} --fix",
-        "format": "prettier --write .",
-        "format:check": "prettier --check ."
-{%- if typescript %},
-        "type-check": "tsc --noEmit"
-{%- endif %}
-{%- if with_tests %},
-        "test": "jest",
-        "test:watch": "jest --watch",
-        "test:coverage": "jest --coverage"
-{%- endif %}
-
-    },
-    "dependencies": {
-{%- for entry_dep in deps %}
-        {{ entry_dep }}{% if not loop.last %},{% endif %}
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."{% if typescript %},
+    "type-check": "{% if framework == 'vue' %}vue-tsc{% else %}tsc{% endif %} --noEmit"{% endif %}{% if with_tests %},
+    "test": "vitest run",
+    "test:watch": "vitest"{% endif %}
+  },
+  "dependencies": {% if deps %}{
+{%- for entry in deps %}
+    {{ entry }}{% if not loop.last %},{% endif %}
 {%- endfor %}
-
-    },
-    "devDependencies": {
-{%- for entry_dep in dev_deps %}
-        {{ entry_dep }}{% if not loop.last %},{% endif %}
+  }{% else %}{}{% endif %},
+  "devDependencies": {
+{%- for entry in dev_deps | sort %}
+    {{ entry }}{% if not loop.last %},{% endif %}
 {%- endfor %}
-
-    },
-    "engines": {
-        "node": ">=18.0.0"
-    }
+  },
+  "engines": {
+    "node": ">=24.0.0"
+  }
 }

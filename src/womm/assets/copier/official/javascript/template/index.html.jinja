@@ -1,0 +1,12 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{{ project_name }}</title>
+  </head>
+  <body>
+    <div id="{% if framework == 'react' %}root{% else %}app{% endif %}"></div>
+    <script type="module" src="/{% if framework == 'react' %}src/index.{% if typescript %}tsx{% else %}jsx{% endif %}{% else %}src/main.{% if typescript %}ts{% else %}js{% endif %}{% endif %}"></script>
+  </body>
+</html>

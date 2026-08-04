@@ -35,10 +35,18 @@ tests/   Test suite
 ```
 {%- endif %}
 
+## Development
+
+```bash
+{{ package_manager }} run dev
+{{ package_manager }} run build
+```
+
 ## Quality
 
 ```bash
 {{ package_manager }} run lint
+{{ package_manager }} run format:check
 {%- if typescript %}
 {{ package_manager }} run type-check
 {%- endif %}
