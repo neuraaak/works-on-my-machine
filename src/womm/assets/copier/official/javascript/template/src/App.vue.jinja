@@ -1,0 +1,17 @@
+<template>
+  <div id="app">
+    <h1>Welcome to {{ "{{" }} projectName {{ "}}" }}</h1>
+    <p>{{ description }}</p>
+  </div>
+</template>
+
+<script{% if typescript %} lang="ts"{% endif %}>
+export default {
+  name: "App",
+  data() {
+    return {
+      projectName: "{{ project_name }}",
+    };
+  },
+};
+</script>

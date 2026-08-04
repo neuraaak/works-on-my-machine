@@ -1,0 +1,21 @@
+{%- if framework == "vue" -%}
+import { createApp } from "vue";
+import App from "./App.vue";
+
+createApp(App).mount("#app");
+{%- else -%}
+/**
+ * Main entry point for {{ project_name }}.
+ */
+
+function main() {
+  console.log("Hello from {{ project_name }}!");
+  return 0;
+}
+
+if (require.main === module) {
+  process.exit(main());
+}
+
+module.exports = { main };
+{%- endif %}

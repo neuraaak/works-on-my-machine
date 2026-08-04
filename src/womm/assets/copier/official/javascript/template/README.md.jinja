@@ -1,0 +1,60 @@
+# {{ project_name }}
+
+{{ description }}
+{%- if author_name %}
+
+Author: {{ author_name }}
+{%- endif %}
+
+## Installation
+
+```bash
+{{ package_manager }} install
+```
+
+## Layout
+
+```text
+src/   {% if framework == "react" -%}
+React source (TypeScript){%- if not typescript %} (JavaScript){%- endif %}
+{%- elif framework == "vue" -%}
+Vue source (TypeScript){%- if not typescript %} (JavaScript){%- endif %}
+{%- else -%}
+Application source
+{%- endif %}
+{%- if with_tests %}
+tests/   Test suite
+{%- endif %}
+```
+{%- if with_tests %}
+
+## Tests
+
+```bash
+{{ package_manager }} test
+```
+{%- endif %}
+
+## Quality
+
+```bash
+{{ package_manager }} run lint
+{%- if typescript %}
+{{ package_manager }} run type-check
+{%- endif %}
+```
+{%- if framework == "react" %}
+
+## Framework
+
+This project uses React{% if typescript %} with TypeScript{% endif %}.
+{%- elif framework == "vue" %}
+
+## Framework
+
+This project uses Vue{% if typescript %} with TypeScript{% endif %}.
+{%- endif %}
+
+## License
+
+{{ license }}

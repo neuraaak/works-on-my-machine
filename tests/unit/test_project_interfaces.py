@@ -36,7 +36,6 @@ import womm.interfaces.project.setup_interface as setup_interface_module
 from womm.commands.project.setup import setup_group
 from womm.exceptions.project import ProjectServiceError
 from womm.interfaces.project.detection_interface import ProjectDetectionInterface
-from womm.interfaces.project.manager_interface import ProjectManagerInterface
 from womm.interfaces.project.setup_interface import ProjectSetupInterface
 from womm.interfaces.project.template_interface import TemplateInterface
 from womm.shared.paths import WOMM_HOME_ENV, user_templates_dir
@@ -395,56 +394,9 @@ def test_generate_from_template_missing_template_returns_failed_result(
 # ///////////////////////////////////////////////////////////////
 # PROJECT MANAGER INTERFACE
 # ///////////////////////////////////////////////////////////////
-
-
-def test_manager_create_project_requires_type():
-    manager = ProjectManagerInterface()
-
-    result = manager.create_project(project_type="")
-
-    assert not result.success
-    assert "Project type is required" in result.error
-
-
-def test_manager_create_project_requires_name_without_current_dir():
-    manager = ProjectManagerInterface()
-
-    result = manager.create_project(project_type="python")
-
-    assert not result.success
-    assert "Project name is required" in result.error
-
-
-def test_manager_create_project_unsupported_type():
-    manager = ProjectManagerInterface()
-
-    result = manager.create_project(project_type="rust", project_name="demo")
-
-    assert not result.success
-    assert "Unsupported project type" in result.error
-
-
-def test_manager_forwards_force_once_to_creation_interface(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-):
-    manager = ProjectManagerInterface()
-    captured: dict[str, object] = {}
-
-    def create_project(**kwargs: object) -> ProjectCreationResult:
-        captured.update(kwargs)
-        return ProjectCreationResult(success=True)
-
-    monkeypatch.setattr(manager, "_check_dependencies", lambda _type: "")
-    monkeypatch.setattr(manager._create_interface, "create_project", create_project)
-
-    result = manager.create_project(
-        project_type="python",
-        project_name="demo",
-        target=str(tmp_path),
-        force=True,
-        minimal=True,
-    )
-
-    assert result.success
-    assert captured["force"] is True
-    assert captured["minimal"] is True
+#
+# ``ProjectManagerInterface.create_project`` was removed (see
+# test_project_manager_interface.py for the rationale): it was dead code,
+# unreachable from any live CLI entry point, and its JavaScript type-mapping
+# logic violated the "no language/framework mapping in Python code" rule
+# enforced by the Copier migration.

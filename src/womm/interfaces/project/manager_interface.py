@@ -23,16 +23,12 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
-from ...services.dependencies import probe
-
 # Local imports
 from ...shared.configs.project import ProjectConfig
 from ...shared.results import (
-    ProjectCreationResult,
     ProjectDetectionResult,
     ProjectSetupResult,
 )
-from .create_interface import ProjectCreateInterface
 from .detection_interface import ProjectDetectionInterface
 from .setup_interface import ProjectSetupInterface
 from .template_interface import TemplateInterface
@@ -47,7 +43,6 @@ class ProjectManagerInterface:
 
     def __init__(self):
         """Initialize the project manager."""
-        self._create_interface = ProjectCreateInterface()
         self._setup_interface = ProjectSetupInterface()
         self._detection_interface = ProjectDetectionInterface()
         self.template_manager = TemplateInterface()
@@ -56,129 +51,6 @@ class ProjectManagerInterface:
     # ///////////////////////////////////////////////////////////////
     # PUBLIC METHODS
     # ///////////////////////////////////////////////////////////////
-
-    def create_project(
-        self,
-        project_type: str,
-        project_name: str | None = None,
-        current_dir: bool = False,
-        dry_run: bool = False,
-        minimal: bool = False,
-        **kwargs,
-    ) -> ProjectCreationResult:
-        """
-        Create a new project of the specified type.
-
-        Args:
-            project_type: Type of project to create (python, javascript, etc.)
-            project_name: Name of the project
-            current_dir: Whether to use current directory
-            **kwargs: Additional project-specific options including 'target'
-
-        Returns:
-            ProjectCreationResult: Result of project creation
-        """
-        # Input validation
-        if not project_type or not isinstance(project_type, str):
-            return ProjectCreationResult(
-                success=False,
-                error="Project type is required and must be a string",
-            )
-
-        # Determine project path
-        target = kwargs.get("target")
-
-        if current_dir:
-            project_path = Path.cwd()
-            project_name = project_path.name
-        elif target:
-            # Use specified target directory
-            target_path = Path(target)
-            if project_name:
-                project_path = target_path / project_name
-            else:
-                return ProjectCreationResult(
-                    success=False,
-                    project_type=project_type,
-                    error="Project name is required when using target directory",
-                )
-        elif project_name:
-            project_path = Path.cwd() / project_name
-        else:
-            return ProjectCreationResult(
-                success=False,
-                project_type=project_type,
-                error="Project name is required when not using current directory",
-            )
-
-        # Validate project type
-        type_error = self._validate_project_type(project_type)
-        if type_error:
-            return ProjectCreationResult(
-                success=False,
-                project_path=project_path,
-                project_type=project_type,
-                error=type_error,
-            )
-
-        # Check dependencies
-        deps_error = self._check_dependencies(project_type)
-        if deps_error:
-            return ProjectCreationResult(
-                success=False,
-                project_path=project_path,
-                project_type=project_type,
-                error=deps_error,
-            )
-
-        # Handle dry-run mode
-        if dry_run:
-            return ProjectCreationResult(
-                success=True,
-                project_path=Path.cwd(),
-                project_name=project_name or "<project>",
-                project_type=project_type,
-                files_created=[],
-                tools_configured=[],
-                warnings=["Dry-run mode: no actual changes were made"],
-            )
-
-        # Use new creation interface
-        # Map JavaScript types correctly
-        if project_type == "javascript":
-            # Get type from kwargs (e.g., "js", "react", "vue")
-            js_type_option = kwargs.get("type", "js")
-            # Map type to actual project type
-            type_map = {
-                "js": "node",
-                "ts": "node",
-                "react": "react",
-                "vue": "vue",
-                "react-ts": "react",
-                "vue-ts": "vue",
-                "node": "node",
-            }
-            js_type = type_map.get(js_type_option, "node")
-        else:
-            js_type = project_type
-
-        resolved_project_name = project_name or project_path.name
-        force = kwargs.pop("force", False)
-        # NOTE: `ProjectCreateInterface.create_project` now targets the
-        # Copier-backed Python vertical slice (Task 6) and no longer accepts
-        # this legacy signature. This JavaScript path is unreachable from the
-        # CLI (the `create` command only renders Python templates) until the
-        # JavaScript vertical slice migrates it too; kept for the JS-facing
-        # tests that stub `_create_interface.create_project` directly.
-        return self._create_interface.create_project(
-            project_type=js_type,  # ty: ignore[unknown-argument]
-            project_name=resolved_project_name,  # ty: ignore[unknown-argument]
-            project_path=project_path,  # ty: ignore[unknown-argument]
-            dry_run=dry_run,  # ty: ignore[unknown-argument]
-            force=force,
-            minimal=minimal,  # ty: ignore[unknown-argument]
-            **kwargs,
-        )
 
     def detect_project_type(
         self, project_path: Path | None = None
@@ -210,39 +82,6 @@ class ProjectManagerInterface:
         return self._setup_interface.setup_development_environment(
             project_path, project_type
         )
-
-    # ///////////////////////////////////////////////////////////////
-    # PRIVATE METHODS
-    # ///////////////////////////////////////////////////////////////
-
-    def _validate_project_type(self, project_type: str) -> str:
-        """Validate that the project type is supported.
-
-        Returns:
-            Empty string if valid, otherwise an error message.
-        """
-        supported_types = ["python", "javascript", "react", "vue"]
-        if project_type not in supported_types:
-            return f"Unsupported project type: {project_type}"
-        return ""
-
-    def _check_dependencies(self, project_type: str) -> str:
-        """Check if required dependencies are available.
-
-        Returns:
-            Empty string if dependencies are satisfied, otherwise an error message.
-        """
-        if project_type == "python":
-            result = probe("python")
-            if not result.success:
-                return "Python runtime not found, attempting to install..."
-
-        elif project_type in ["javascript", "react", "vue"]:
-            result = probe("node")
-            if not result.success:
-                return "Node.js runtime not found, attempting to install..."
-
-        return ""
 
     def get_available_project_types(self) -> list[tuple[str, str]]:
         """Get list of available project types with descriptions.

@@ -28,7 +28,6 @@ from .env_utils import (
     install_python_dependencies,
 )
 from .javascript_environment_service import JavaScriptEnvironmentService
-from .javascript_project_creation_service import JavaScriptProjectCreationService
 from .python_environment_service import PythonEnvironmentService
 from .template_service import TemplateService
 from .validation_service import ProjectValidationService
@@ -40,7 +39,6 @@ from .validation_service import ProjectValidationService
 __all__ = [
     "ConflictResolutionService",
     "JavaScriptEnvironmentService",
-    "JavaScriptProjectCreationService",
     "ProjectDetectionService",
     "ProjectValidationService",
     "PythonEnvironmentService",

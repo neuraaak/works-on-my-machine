@@ -1,0 +1,76 @@
+_womm:
+  description: "JavaScript or TypeScript project (optional React or Vue)"
+  version: "1.0.0"
+
+_subdirectory: template
+
+project_name:
+  type: str
+  help: "Project name"
+
+description:
+  type: str
+  help: "One-line project description"
+  default: "A JavaScript project"
+
+author_name:
+  type: str
+  help: "Author name"
+  default: ""
+
+framework:
+  type: str
+  help: "Framework"
+  choices:
+    - none
+    - react
+    - vue
+  default: none
+
+typescript:
+  type: bool
+  help: "Use TypeScript"
+  default: false
+
+package_manager:
+  type: str
+  help: "Package manager"
+  choices:
+    - npm
+    - pnpm
+    - yarn
+  default: npm
+
+with_tests:
+  type: bool
+  help: "Include a test setup"
+  default: true
+
+license:
+  type: str
+  help: "License"
+  choices:
+    - MIT
+    - Apache-2.0
+    - proprietary
+  default: MIT
+
+# A top-level file (e.g. tsconfig.json) cannot be gated by wrapping its own
+# filename in a Jinja {% if %} block: Copier decides whether to Jinja-render
+# and strip a file based on the *raw, literal* filename ending in ".jinja",
+# so an empty-string {% if %} around the whole name breaks that detection.
+# Exclusion patterns, on the other hand, are Jinja-rendered per answer set
+# (Copier renders each `_exclude` entry against the current answers before
+# matching), so a pattern that renders to an empty string simply matches no
+# file — this is the supported way to conditionally drop a rendered file.
+_exclude:
+  - "{% if not typescript %}tsconfig.json{% endif %}"
+  - "{% if typescript or framework == 'react' %}src/main.js{% endif %}"
+  - "{% if not typescript or framework == 'react' %}src/main.ts{% endif %}"
+  - "{% if framework != 'react' or typescript %}src/index.jsx{% endif %}"
+  - "{% if framework != 'react' or not typescript %}src/index.tsx{% endif %}"
+  - "{% if framework != 'react' or typescript %}src/App.jsx{% endif %}"
+  - "{% if framework != 'react' or not typescript %}src/App.tsx{% endif %}"
+  - "{% if framework != 'vue' %}src/App.vue{% endif %}"
+  - "{% if typescript %}tests/smoke.test.js{% endif %}"
+  - "{% if not typescript %}tests/smoke.test.ts{% endif %}"

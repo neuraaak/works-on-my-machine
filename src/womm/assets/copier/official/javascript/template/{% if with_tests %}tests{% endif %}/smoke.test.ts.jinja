@@ -1,0 +1,11 @@
+/**
+ * Smoke test for {{ project_name }}.
+ */
+
+import packageJson from "../package.json";
+
+describe("{{ project_name }}", () => {
+  it("has a name matching the package manifest", () => {
+    expect(packageJson.name).toBe("{{ project_name }}");
+  });
+});
