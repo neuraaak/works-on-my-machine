@@ -25,7 +25,12 @@ import click
 
 # Local imports
 from ...interfaces.project.template_store_interface import TemplateStoreInterface
-from ...ui.project import render_template_list, render_template_result
+from ...ui.project import (
+    render_project_creation_result,
+    render_template_list,
+    render_template_result,
+)
+from .create import parse_data_options
 
 # ///////////////////////////////////////////////////////////////
 # COMMAND GROUP
@@ -103,6 +108,47 @@ def template_update(identifier: str, source: Path, verbose: bool) -> None:
     """Point an existing user template at a new source."""
     result = TemplateStoreInterface().update_template(identifier, source)
     render_template_result(result, verbose=verbose)
+    if not result.success:
+        raise SystemExit(1)
+
+
+@template_group.command("init")
+@click.help_option("-h", "--help")
+@click.argument("destination", type=click.Path(path_type=Path))
+@click.option(
+    "--data",
+    "data",
+    multiple=True,
+    metavar="KEY=VALUE",
+    help="Pre-fill a meta-template answer. Repeatable.",
+)
+@click.option(
+    "--defaults",
+    is_flag=True,
+    help="Use meta-template defaults instead of prompting.",
+)
+@click.option(
+    "--force",
+    is_flag=True,
+    help="Scaffold into a non-empty destination.",
+)
+@click.option("-v", "--verbose", is_flag=True, help="Show detailed output.")
+def template_init(
+    destination: Path,
+    data: tuple[str, ...],
+    defaults: bool,
+    force: bool,
+    verbose: bool,
+) -> None:
+    """Scaffold a new Copier template skeleton."""
+    answers = parse_data_options(data)
+    result = TemplateStoreInterface().init_template(
+        destination,
+        answers=answers,
+        force=force,
+        defaults=defaults,
+    )
+    render_project_creation_result(result, verbose=verbose)
     if not result.success:
         raise SystemExit(1)
 

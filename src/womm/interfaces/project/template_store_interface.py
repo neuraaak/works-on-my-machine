@@ -19,14 +19,18 @@ from __future__ import annotations
 # IMPORTS
 # ///////////////////////////////////////////////////////////////
 # Standard library imports
+from collections.abc import Mapping
 from pathlib import Path
 
 # Local imports
 from ...exceptions.project import ProjectServiceError
 from ...services.project.copier_project_creation_service import (
     CopierProjectCreationService,
+    ProjectCreationRequest,
 )
 from ...services.project.template_store_service import TemplateStoreService
+from ...shared.paths import packaged_copier_meta
+from ...shared.results.project_results import ProjectCreationResult
 from ...shared.results.template_results import TemplateListResult, TemplateStoreResult
 
 # ///////////////////////////////////////////////////////////////
@@ -138,6 +142,50 @@ class TemplateStoreInterface:
             success=True,
             message=f"Template updated: {entry.qualified_id}",
             entry=entry,
+        )
+
+    def init_template(
+        self,
+        destination: Path,
+        *,
+        answers: Mapping[str, str],
+        force: bool = False,
+        defaults: bool = False,
+    ) -> ProjectCreationResult:
+        """Scaffold a new Copier template skeleton.
+
+        The skeleton is rendered by the same service as projects: WOMM has no
+        second rendering engine. It carries no inference — questions, conditions
+        and structure are the template author's responsibility.
+
+        Args:
+            destination: Directory to scaffold into.
+            answers: Pre-filled meta-template answers.
+            force: Allow a non-empty destination.
+            defaults: Use defaults instead of prompting.
+
+        Returns:
+            ProjectCreationResult: Typed outcome, never raises.
+        """
+        try:
+            self._creator.create(
+                ProjectCreationRequest(
+                    template_source=Path(str(packaged_copier_meta())),
+                    destination=destination,
+                    answers=dict(answers),
+                    force=force,
+                    defaults=defaults,
+                )
+            )
+        except ProjectServiceError as exc:
+            return ProjectCreationResult(
+                success=False, error=str(exc), project_path=destination
+            )
+        return ProjectCreationResult(
+            success=True,
+            message=f"Template skeleton created at {destination}",
+            project_path=destination,
+            project_name=destination.name,
         )
 
 

@@ -1,0 +1,32 @@
+# {{ template_name }}
+
+{{ template_description }}
+
+## Using this template
+
+To create a project from this template:
+
+```bash
+womm project create user/{{ template_name | replace(' ', '-') | lower }} <destination>
+```
+
+## Registering this template
+
+To register this template with WOMM:
+
+```bash
+womm template add {{ template_name | replace(' ', '-') | lower }} /path/to/this/template
+```
+
+After that, you can use the short name:
+
+```bash
+womm project create {{ template_name | replace(' ', '-') | lower }} <destination>
+```
+
+## Modifying the template
+
+This is your Copier template. Edit `copier.yml` to add questions, conditions, and content.
+Edit the `template/` directory to add files and structure that will be generated.
+
+Refer to the [Copier documentation](https://copier.readthedocs.io/) for more information.

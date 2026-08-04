@@ -1,0 +1,15 @@
+_womm:
+  description: "Skeleton for a new Copier template"
+  version: "1.0.0"
+
+_subdirectory: template
+
+template_name:
+  type: str
+  help: "Template name"
+  default: "my-template"
+
+template_description:
+  type: str
+  help: "One-line template description"
+  default: "A Copier template"

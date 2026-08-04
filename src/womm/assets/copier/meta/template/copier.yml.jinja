@@ -1,0 +1,13 @@
+_subdirectory: template
+
+project_name:
+  type: str
+  help: "Project name"
+  default: "my-project"
+
+{% raw %}
+project_description:
+  type: str
+  help: "One-line project description"
+  default: "A project created with {{ template_name }}"
+{% endraw %}
