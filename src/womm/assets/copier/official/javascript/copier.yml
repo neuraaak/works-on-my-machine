@@ -39,6 +39,7 @@ package_manager:
     - npm
     - pnpm
     - yarn
+    - bun
   default: npm
 
 with_tests:
@@ -72,6 +73,10 @@ _exclude:
   - "{% if not typescript %}tsconfig.json{% endif %}"
   - "{% if framework == 'none' %}index.html{% endif %}"
   - "{% if framework == 'none' %}vite.config.mjs{% endif %}"
+  - "{% if framework != 'vue' %}eslint.config.mjs{% endif %}"
+  - "{% if framework != 'vue' %}prettier.config.mjs{% endif %}"
+  - "{% if framework != 'vue' %}.prettierignore{% endif %}"
+  - "{% if framework == 'vue' %}biome.json{% endif %}"
   - "{% if typescript or framework == 'react' %}src/main.js{% endif %}"
   - "{% if not typescript or framework == 'react' %}src/main.ts{% endif %}"
   - "{% if framework != 'react' or typescript %}src/index.jsx{% endif %}"

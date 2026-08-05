@@ -1,3 +1,4 @@
+{%- set use_biome = framework != "vue" -%}
 {
-  "recommendations": ["dbaeumer.vscode-eslint", "esbenp.prettier-vscode"{% if framework == "vue" %}, "vue.volar"{% endif %}]
+  "recommendations": [{% if use_biome %}"biomejs.biome"{% else %}"dbaeumer.vscode-eslint", "esbenp.prettier-vscode"{% endif %}{% if framework == "vue" %}, "vue.volar"{% endif %}{% if with_tests %}, "vitest.explorer"{% endif %}]
 }

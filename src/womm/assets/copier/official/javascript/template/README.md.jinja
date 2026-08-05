@@ -31,7 +31,11 @@ tests/   Test suite
 ## Tests
 
 ```bash
+{% if package_manager == "bun" -%}
+bun run test
+{%- else -%}
 {{ package_manager }} test
+{%- endif %}
 ```
 {%- endif %}
 

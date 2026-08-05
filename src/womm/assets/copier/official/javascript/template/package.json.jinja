@@ -1,7 +1,8 @@
 {%- set source_entry = ("src/index." if framework == "react" else "src/main.") + ("tsx" if (typescript and framework == "react") else "ts" if typescript else "jsx" if framework == "react" else "js") -%}
 {%- set runtime_entry = "dist/main.js" if typescript else source_entry -%}
+{%- set use_biome = framework != "vue" -%}
 {%- set deps = [] -%}
-{%- set dev_deps = [
+{%- set dev_deps = ['"@biomejs/biome": "^2.5.0"'] if use_biome else [
   '"@eslint/js": "^10.0.0"',
   '"eslint": "^10.7.0"',
   '"eslint-config-prettier": "^10.1.0"',
@@ -10,11 +11,7 @@
 ] -%}
 {%- if framework == "react" -%}
 {%- set _ = deps.extend(['"react": "^19.2.0"', '"react-dom": "^19.2.0"']) -%}
-{%- set _ = dev_deps.extend([
-  '"@vitejs/plugin-react": "^6.0.0"',
-  '"eslint-plugin-react-hooks": "^7.1.0"',
-  '"vite": "^8.1.0"'
-]) -%}
+{%- set _ = dev_deps.extend(['"@vitejs/plugin-react": "^6.0.0"', '"vite": "^8.1.0"']) -%}
 {%- elif framework == "vue" -%}
 {%- set _ = deps.append('"vue": "^3.5.0"') -%}
 {%- set _ = dev_deps.extend([
@@ -25,11 +22,10 @@
 ]) -%}
 {%- endif -%}
 {%- if typescript -%}
-{%- set _ = dev_deps.extend([
-  '"@types/node": "^24.0.0"',
-  '"typescript": "^5.9.0"',
-  '"typescript-eslint": "^8.0.0"'
-]) -%}
+{%- set _ = dev_deps.extend(['"@types/node": "^24.0.0"', '"typescript": "^5.9.0"']) -%}
+{%- if not use_biome -%}
+{%- set _ = dev_deps.append('"typescript-eslint": "^8.0.0"') -%}
+{%- endif -%}
 {%- if framework == "react" -%}
 {%- set _ = dev_deps.extend(['"@types/react": "^19.0.0"', '"@types/react-dom": "^19.0.0"']) -%}
 {%- elif framework == "vue" -%}
@@ -49,6 +45,13 @@
   "author": "{{ author_name }}",
 {%- endif %}
   "license": "{{ license }}",
+{%- if package_manager == "pnpm" %}
+  "packageManager": "pnpm@10.0.0",
+{%- elif package_manager == "yarn" %}
+  "packageManager": "yarn@4.6.0",
+{%- elif package_manager == "bun" %}
+  "packageManager": "bun@1.2.0",
+{%- endif %}
 {%- if framework == "none" %}
   "main": "{{ runtime_entry }}",
 {%- endif %}
@@ -62,10 +65,10 @@
     "build": "{% if typescript %}tsc -p tsconfig.json{% else %}node --check {{ source_entry }}{% endif %}",
     "start": "node {{ runtime_entry }}",
 {%- endif %}
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
-    "format": "prettier --write .",
-    "format:check": "prettier --check ."{% if typescript %},
+    "lint": "{% if use_biome %}biome lint .{% else %}eslint .{% endif %}",
+    "lint:fix": "{% if use_biome %}biome lint --write .{% else %}eslint . --fix{% endif %}",
+    "format": "{% if use_biome %}biome format --write .{% else %}prettier --write .{% endif %}",
+    "format:check": "{% if use_biome %}biome format .{% else %}prettier --check .{% endif %}"{% if typescript %},
     "type-check": "{% if framework == 'vue' %}vue-tsc{% else %}tsc{% endif %} --noEmit"{% endif %}{% if with_tests %},
     "test": "vitest run",
     "test:watch": "vitest"{% endif %}
