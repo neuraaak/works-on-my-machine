@@ -1,7 +1,8 @@
 {
   "recommendations": [
     "charliermarsh.ruff",
-    "ms-python.mypy-type-checker",
-    "ms-python.python"
+    "astral-sh.ty",
+    "ms-python.python"{% if framework == "django" %},
+    "batisteo.vscode-django"{% endif %}
   ]
 }

@@ -69,6 +69,51 @@ def test_vscode_files_can_be_disabled(tmp_path: Path):
     assert ".vscode/" in (out / ".gitignore").read_text(encoding="utf-8")
 
 
+def test_vscode_settings_use_ruff_and_ty(tmp_path: Path):
+    import json
+
+    out = render(tmp_path / "p")
+
+    extensions = json.loads(
+        (out / ".vscode" / "extensions.json").read_text(encoding="utf-8")
+    )
+    assert "charliermarsh.ruff" in extensions["recommendations"]
+    assert "astral-sh.ty" in extensions["recommendations"]
+    assert not any(
+        rec.startswith("ms-python.mypy") for rec in extensions["recommendations"]
+    )
+
+    settings = json.loads(
+        (out / ".vscode" / "settings.json").read_text(encoding="utf-8")
+    )
+    assert settings["python.analysis.typeCheckingMode"] == "off"
+    assert "**/.mypy_cache" not in settings["files.exclude"]
+    assert settings["files.exclude"]["**/.ruff_cache"] is True
+    assert settings["python.testing.pytestEnabled"] is True
+
+
+def test_vscode_pytest_discovery_disabled_when_tests_disabled(tmp_path: Path):
+    import json
+
+    out = render(tmp_path / "p", with_tests=False)
+
+    settings = json.loads(
+        (out / ".vscode" / "settings.json").read_text(encoding="utf-8")
+    )
+    assert settings["python.testing.pytestEnabled"] is False
+
+
+def test_vscode_recommends_django_extension_for_django_framework(tmp_path: Path):
+    import json
+
+    out = render(tmp_path / "p", framework="django")
+
+    extensions = json.loads(
+        (out / ".vscode" / "extensions.json").read_text(encoding="utf-8")
+    )
+    assert "batisteo.vscode-django" in extensions["recommendations"]
+
+
 def test_pre_commit_uses_the_project_quality_toolchain(tmp_path: Path):
     out = render(tmp_path / "p")
 

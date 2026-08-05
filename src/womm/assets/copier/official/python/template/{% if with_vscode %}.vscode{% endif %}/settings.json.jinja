@@ -5,18 +5,24 @@
       "source.organizeImports.ruff": "explicit"
     },
     "editor.defaultFormatter": "charliermarsh.ruff",
-    "editor.formatOnSave": true
+    "editor.formatOnSave": true,
+    "editor.rulers": [88]
   },
   "files.exclude": {
-    "**/.mypy_cache": true,
+    "**/.pytest_cache": true,
+    "**/.ruff_cache": true,
+    "**/__pycache__": true,
+    "**/.venv": true
+  },
+  "search.exclude": {
     "**/.pytest_cache": true,
     "**/.ruff_cache": true,
     "**/__pycache__": true
   },
   "files.insertFinalNewline": true,
   "files.trimTrailingWhitespace": true,
-  "python.analysis.typeCheckingMode": "basic",
+  "python.analysis.typeCheckingMode": "off",
   "python.defaultInterpreterPath": "${workspaceFolder}/.venv",
-  "python.testing.pytestEnabled": true,
+  "python.testing.pytestEnabled": {{ "true" if with_tests else "false" }},
   "python.testing.unittestEnabled": false
 }
