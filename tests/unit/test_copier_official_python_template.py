@@ -75,7 +75,7 @@ def test_pre_commit_uses_the_project_quality_toolchain(tmp_path: Path):
     config = (out / ".pre-commit-config.yaml").read_text(encoding="utf-8")
     assert "ruff check --fix" in config
     assert "ruff format" in config
-    assert "mypy" in config
+    assert "ty check" in config
     assert "black" not in config
     assert "flake8" not in config
     assert "isort" not in config
@@ -135,8 +135,9 @@ def test_django_framework_renders_a_working_project(
 
     data = tomllib.loads((out / "pyproject.toml").read_text(encoding="utf-8"))
     assert any(dep.startswith("django") for dep in data["project"]["dependencies"])
-    dev_deps = data["project"]["optional-dependencies"]["dev"]
+    dev_deps = data["dependency-groups"]["dev"]
     assert any(dep.startswith("pytest-django") for dep in dev_deps)
+    assert any(dep.startswith("django-stubs") for dep in dev_deps)
 
 
 def test_django_ci_workflow_runs_manage_py_check(tmp_path: Path):
@@ -151,3 +152,47 @@ def test_django_pytest_ini_declares_settings_module(tmp_path: Path):
 
     data = (out / "pyproject.toml").read_text(encoding="utf-8")
     assert 'DJANGO_SETTINGS_MODULE = "acme_tool.settings"' in data
+
+
+def test_uv_workflow_uses_uv_commands(tmp_path: Path):
+    out = render(tmp_path / "p", framework="django")
+
+    readme = (out / "README.md").read_text(encoding="utf-8")
+    assert "uv sync --group dev" in readme
+    assert "uv run pytest" in readme
+    assert "uv run ruff check ." in readme
+    assert "uv run ty check ." in readme
+    assert "pip install" not in readme
+
+    workflow = (out / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    assert "astral-sh/setup-uv" in workflow
+    assert "uv sync --group dev" in workflow
+    assert "uv run ruff check ." in workflow
+    assert "uv run ty check ." in workflow
+    assert "uv run pytest" in workflow
+    assert "uv run python manage.py check" in workflow
+    assert "pip install" not in workflow
+
+    precommit = (out / ".pre-commit-config.yaml").read_text(encoding="utf-8")
+    assert "entry: uv run ruff check --fix" in precommit
+    assert "entry: uv run ruff format" in precommit
+    assert "entry: uv run ty check" in precommit
+
+
+def test_pip_workflow_used_when_uv_disabled(tmp_path: Path):
+    out = render(tmp_path / "p", framework="django", use_uv=False)
+
+    readme = (out / "README.md").read_text(encoding="utf-8")
+    assert "pip install -e . --group dev" in readme
+    assert "uv" not in readme.lower()
+
+    workflow = (out / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    assert "astral-sh/setup-uv" not in workflow
+    assert "pip install -e . --group dev" in workflow
+    assert "ruff check ." in workflow
+    assert "python manage.py check" in workflow
+    assert "uv run" not in workflow
+
+    precommit = (out / ".pre-commit-config.yaml").read_text(encoding="utf-8")
+    assert "entry: ruff check --fix" in precommit
+    assert "entry: uv run" not in precommit

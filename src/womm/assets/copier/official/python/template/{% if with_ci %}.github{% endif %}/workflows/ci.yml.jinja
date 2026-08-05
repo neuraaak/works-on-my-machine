@@ -10,19 +10,39 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.10", "3.11", "3.12", "3.13"]
+        python-version: [{% for v in ["3.10", "3.11", "3.12", "3.13"] %}{% if v.split('.')[1] | int >= python_version.split('.')[1] | int %}"{{ v }}"{% if not loop.last %}, {% endif %}{% endif %}{% endfor %}]
     steps:
       - uses: actions/checkout@v4
+{%- if use_uv %}
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          python-version: {% raw %}${{ matrix.python-version }}{% endraw %}
+      - name: Install dependencies
+        run: uv sync --group dev
+      - name: Lint
+        run: uv run ruff check .
+      - name: Type check
+        run: uv run ty check .
+{%- if with_tests %}
+      - name: Test
+        run: uv run pytest
+{%- endif %}
+{%- if framework == "django" %}
+      - name: Django check
+        run: uv run python manage.py check
+{%- endif %}
+{%- else %}
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: {% raw %}${{ matrix.python-version }}{% endraw %}
       - name: Install dependencies
-        run: pip install -e ".[dev]"
+        run: pip install -e . --group dev
       - name: Lint
         run: ruff check .
       - name: Type check
-        run: mypy .
+        run: ty check .
 {%- if with_tests %}
       - name: Test
         run: pytest
@@ -30,4 +50,5 @@ jobs:
 {%- if framework == "django" %}
       - name: Django check
         run: python manage.py check
+{%- endif %}
 {%- endif %}

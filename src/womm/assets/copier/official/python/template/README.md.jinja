@@ -8,12 +8,20 @@ Author: {{ author_name }}
 
 ## Installation
 
+{%- if use_uv %}
+
+```bash
+uv sync --group dev
+```
+{%- else %}
+
 ```bash
 python -m venv .venv
 .venv/Scripts/activate   # Windows
 source .venv/bin/activate  # Linux and macOS
-pip install -e ".[dev]"
+pip install -e . --group dev
 ```
+{%- endif %}
 
 ## Layout
 
@@ -32,17 +40,28 @@ tests/   Test suite
 ## Tests
 
 ```bash
+{%- if use_uv %}
+uv run pytest
+{%- else %}
 pytest
+{%- endif %}
 ```
 {%- endif %}
 
 ## Quality
 
 ```bash
+{%- if use_uv %}
+uv run ruff check .
+uv run ruff format --check .
+uv run ty check .
+uv run pre-commit install
+{%- else %}
 ruff check .
 ruff format --check .
-mypy .
+ty check .
 pre-commit install
+{%- endif %}
 ```
 
 ## License

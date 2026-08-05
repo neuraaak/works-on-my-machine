@@ -3,17 +3,17 @@ repos:
     hooks:
       - id: ruff-check
         name: ruff check
-        entry: ruff check --fix
+        entry: {% if use_uv %}uv run ruff check --fix{% else %}ruff check --fix{% endif %}
         language: system
         types: [python]
       - id: ruff-format
         name: ruff format
-        entry: ruff format
+        entry: {% if use_uv %}uv run ruff format{% else %}ruff format{% endif %}
         language: system
         types: [python]
-      - id: mypy
-        name: mypy
-        entry: mypy
+      - id: ty
+        name: ty check
+        entry: {% if use_uv %}uv run ty check{% else %}ty check{% endif %}
         language: system
         pass_filenames: false
         types: [python]

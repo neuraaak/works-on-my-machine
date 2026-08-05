@@ -28,6 +28,21 @@ use_src_layout:
   help: "Use a src/ layout"
   default: true
 
+python_version:
+  type: str
+  help: "Minimum Python version"
+  choices:
+    - "3.10"
+    - "3.11"
+    - "3.12"
+    - "3.13"
+  default: "3.12"
+
+use_uv:
+  type: bool
+  help: "Use uv for dependency management, venv and task running"
+  default: true
+
 framework:
   type: str
   help: "Framework"
