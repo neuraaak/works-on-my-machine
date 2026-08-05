@@ -69,15 +69,6 @@ def test_vscode_files_can_be_disabled(tmp_path: Path):
     assert ".vscode/" in (out / ".gitignore").read_text(encoding="utf-8")
 
 
-def test_template_does_not_offer_an_incomplete_framework_option():
-    manifest = Path("src/womm/assets/copier/official/python/copier.yml").read_text(
-        encoding="utf-8"
-    )
-
-    assert "framework:" not in manifest
-    assert "django" not in manifest.lower()
-
-
 def test_pre_commit_uses_the_project_quality_toolchain(tmp_path: Path):
     out = render(tmp_path / "p")
 
@@ -104,3 +95,59 @@ def test_rendered_pyproject_is_parseable(tmp_path: Path):
     data = tomllib.loads((out / "pyproject.toml").read_text(encoding="utf-8"))
 
     assert data["project"]["name"] == "acme-tool"
+
+
+def test_framework_none_renders_no_django_file(tmp_path: Path):
+    out = render(tmp_path / "p")
+
+    assert not (out / "manage.py").exists()
+    assert not (out / "src" / "acme_tool" / "settings.py").exists()
+
+    data = (out / "pyproject.toml").read_text(encoding="utf-8")
+    assert "django" not in data.lower()
+
+
+@pytest.mark.parametrize("use_src_layout", [True, False])
+def test_django_framework_renders_a_working_project(
+    tmp_path: Path, use_src_layout: bool
+):
+    out = render(
+        tmp_path / f"django-{use_src_layout}",
+        framework="django",
+        use_src_layout=use_src_layout,
+    )
+
+    package_dir = out / "src" / "acme_tool" if use_src_layout else out / "acme_tool"
+
+    assert (out / "manage.py").is_file()
+    assert (package_dir / "settings.py").is_file()
+    assert (package_dir / "urls.py").is_file()
+    assert (package_dir / "wsgi.py").is_file()
+    assert (package_dir / "asgi.py").is_file()
+    assert (package_dir / "core" / "__init__.py").is_file()
+    assert (package_dir / "core" / "apps.py").is_file()
+    assert (package_dir / "core" / "views.py").is_file()
+
+    settings = (package_dir / "settings.py").read_text(encoding="utf-8")
+    assert 'ROOT_URLCONF = "acme_tool.urls"' in settings
+
+    import tomllib
+
+    data = tomllib.loads((out / "pyproject.toml").read_text(encoding="utf-8"))
+    assert any(dep.startswith("django") for dep in data["project"]["dependencies"])
+    dev_deps = data["project"]["optional-dependencies"]["dev"]
+    assert any(dep.startswith("pytest-django") for dep in dev_deps)
+
+
+def test_django_ci_workflow_runs_manage_py_check(tmp_path: Path):
+    out = render(tmp_path / "p", framework="django")
+
+    workflow = (out / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    assert "python manage.py check" in workflow
+
+
+def test_django_pytest_ini_declares_settings_module(tmp_path: Path):
+    out = render(tmp_path / "p", framework="django")
+
+    data = (out / "pyproject.toml").read_text(encoding="utf-8")
+    assert 'DJANGO_SETTINGS_MODULE = "acme_tool.settings"' in data

@@ -27,3 +27,7 @@ jobs:
       - name: Test
         run: pytest
 {%- endif %}
+{%- if framework == "django" %}
+      - name: Django check
+        run: python manage.py check
+{%- endif %}

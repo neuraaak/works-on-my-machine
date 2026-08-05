@@ -32,6 +32,9 @@ classifiers = [
 ]
 requires-python = ">=3.10"
 dependencies = [
+{%- if framework == "django" %}
+    "django>=5.0",
+{%- endif %}
 ]
 
 [project.optional-dependencies]
@@ -43,11 +46,17 @@ dev = [
     "pytest>=7.0.0",
     "pytest-cov>=4.0.0",
 {%- endif %}
+{%- if with_tests and framework == "django" %}
+    "pytest-django>=4.8.0",
+{%- endif %}
 ]
 {%- if with_tests %}
 test = [
     "pytest>=7.0.0",
     "pytest-cov>=4.0.0",
+{%- if framework == "django" %}
+    "pytest-django>=4.8.0",
+{%- endif %}
 ]
 {%- endif %}
 
@@ -86,4 +95,7 @@ addopts = ["--strict-markers", "--strict-config"]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_functions = ["test_*"]
+{%- if framework == "django" %}
+DJANGO_SETTINGS_MODULE = "{{ package_name }}.settings"
+{%- endif %}
 {%- endif %}

@@ -1,5 +1,5 @@
 _womm:
-  description: "Python project"
+  description: "Python project (optional Django)"
   version: "2.0.0"
 
 _subdirectory: template
@@ -28,6 +28,14 @@ use_src_layout:
   help: "Use a src/ layout"
   default: true
 
+framework:
+  type: str
+  help: "Framework"
+  choices:
+    - none
+    - django
+  default: none
+
 with_tests:
   type: bool
   help: "Include a pytest setup"
@@ -51,3 +59,26 @@ license:
     - Apache-2.0
     - proprietary
   default: MIT
+
+# manage.py always sits at the project root, independent of use_src_layout.
+# The package-level Django files mirror both possible layout roots; only the
+# one matching use_src_layout ever exists at render time, so listing both is
+# harmless when the other one wasn't rendered in the first place.
+_exclude:
+  - "{% if framework != 'django' %}manage.py{% endif %}"
+  - "{% if framework != 'django' %}src/{{ package_name }}/settings.py{% endif %}"
+  - "{% if framework != 'django' %}src/{{ package_name }}/urls.py{% endif %}"
+  - "{% if framework != 'django' %}src/{{ package_name }}/wsgi.py{% endif %}"
+  - "{% if framework != 'django' %}src/{{ package_name }}/asgi.py{% endif %}"
+  - "{% if framework != 'django' %}src/{{ package_name }}/core/__init__.py{% endif %}"
+  - "{% if framework != 'django' %}src/{{ package_name }}/core/apps.py{% endif %}"
+  - "{% if framework != 'django' %}src/{{ package_name }}/core/models.py{% endif %}"
+  - "{% if framework != 'django' %}src/{{ package_name }}/core/views.py{% endif %}"
+  - "{% if framework != 'django' %}{{ package_name }}/settings.py{% endif %}"
+  - "{% if framework != 'django' %}{{ package_name }}/urls.py{% endif %}"
+  - "{% if framework != 'django' %}{{ package_name }}/wsgi.py{% endif %}"
+  - "{% if framework != 'django' %}{{ package_name }}/asgi.py{% endif %}"
+  - "{% if framework != 'django' %}{{ package_name }}/core/__init__.py{% endif %}"
+  - "{% if framework != 'django' %}{{ package_name }}/core/apps.py{% endif %}"
+  - "{% if framework != 'django' %}{{ package_name }}/core/models.py{% endif %}"
+  - "{% if framework != 'django' %}{{ package_name }}/core/views.py{% endif %}"

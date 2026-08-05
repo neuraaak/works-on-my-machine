@@ -1,0 +1,11 @@
+"""URL configuration for {{ project_name }}."""
+
+from django.contrib import admin
+from django.urls import path
+
+from {{ package_name }}.core.views import index
+
+urlpatterns = [
+    path("admin/", admin.site.urls),
+    path("", index, name="index"),
+]

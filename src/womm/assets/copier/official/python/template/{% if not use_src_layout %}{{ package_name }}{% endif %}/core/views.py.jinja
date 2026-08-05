@@ -1,0 +1,8 @@
+"""Views for the core starter app."""
+
+from django.http import HttpRequest, HttpResponse
+
+
+def index(request: HttpRequest) -> HttpResponse:
+    """Render a minimal landing page confirming the project is running."""
+    return HttpResponse("{{ project_name }} is running.")
