@@ -1,7 +1,7 @@
 # ///////////////////////////////////////////////////////////////
 # PRE-COMMIT CONFIGURATION
 # ///////////////////////////////////////////////////////////////
-# Mirrors the quality checks in .scripts/dev/lint.py (in order):
+# Quality checks run in this order:
 #   1. ruff format     — auto-format code
 #   2. ruff check      — lint with auto-fix
 #   3. ty check        — type checking
@@ -82,7 +82,7 @@ repos:
       - id: import-linter
         name: "Import Linter — layer contracts"
         language: system
-        entry: uv run --no-sync python .scripts/dev/check_imports.py
+        entry: uv run --no-sync lint-imports --config pyproject.toml
         pass_filenames: false
         always_run: true
 

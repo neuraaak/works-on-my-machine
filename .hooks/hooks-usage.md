@@ -10,16 +10,16 @@ via `.pre-commit-config.yaml` at the project root.
 git config --unset core.hooksPath
 
 # 2. Install the pre-commit library (already in dev deps)
-uv sync                # ensures the project venv is up to date
-uv run pre-commit install
+uv sync --extra dev --extra test
+uv run --no-sync pre-commit install
 ```
 
-`pre-commit install` writes `.git/hooks/pre-commit` and `.git/hooks/pre-push`
-automatically — no manual `git config` required.
+`pre-commit install` writes `.git/hooks/pre-commit` automatically — no manual
+`git config` required.
 
 ## What runs on each commit
 
-Defined in `.pre-commit-config.yaml`, mirroring `.scripts/dev/lint.py`:
+Defined in `.pre-commit-config.yaml` and exposed as development tasks through Poe:
 
 | Step         | Tool                | Action                                                      |
 | ------------ | ------------------- | ----------------------------------------------------------- |
@@ -48,14 +48,12 @@ git commit
 
 ```bash
 # all files
-pre-commit run --all-files
+uv run --no-sync poe pre-commit
 
 # specific hook
-pre-commit run ruff --all-files
-pre-commit run ty --all-files
+uv run --no-sync pre-commit run ruff --all-files
+uv run --no-sync pre-commit run ty --all-files
 
-# skip hooks for a one-off commit (use sparingly)
-git commit --no-verify
 ```
 
 ## Update hook versions

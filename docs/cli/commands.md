@@ -62,16 +62,16 @@ womm spell check
 ### 🐍 **Python Workflow**
 
 ```bash
-# Development
-make format         # Black + isort
-make lint           # Ruff quality check
-make test           # pytest
-make test-cov       # Tests with coverage
-make clean          # Cleanup
+# Development tasks
+uv run --no-sync poe format       # Ruff formatting
+uv run --no-sync poe lint         # Ruff quality check
+uv run --no-sync poe types        # Ty type checking
+uv run --no-sync poe imports      # Architecture contracts
+uv run --no-sync poe test         # pytest
+uv run --no-sync poe check        # Complete local quality gate
 
 # Direct tools
-black .
-isort .
+ruff format .
 ruff check .
 pytest
 ```
@@ -114,7 +114,7 @@ jest
 
 ```bash
 # Python CI
-make lint && make test
+uv run --no-sync poe check
 
 # JavaScript CI
 npm run lint && npm test

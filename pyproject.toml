@@ -61,12 +61,12 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     # Development tools
+    "poethepoet>=0.48.0",
     "ruff>=0.1.0",
     "ty>=0.0.13",
     "pyright>=1.1.0",
     "pre-commit>=3.0.0",
     "import-linter>=2.0.0",
-    "grimp>=2.3.0",
 
     # Security
     "bandit>=1.7.0",
@@ -119,6 +119,43 @@ PyPI = "https://pypi.org/project/works-on-my-machine/"
 [project.scripts]
 # Main CLI command
 womm = "womm.cli:main"
+
+# ///////////////////////////////////////////////////////////////
+# 🏃 DEVELOPMENT TASKS
+# Cross-platform command aliases executed through the existing uv environment
+# ///////////////////////////////////////////////////////////////
+
+[tool.poe.executor]
+type = "uv"
+no-sync = true
+
+[tool.poe.tasks]
+format = { cmd = "ruff format src tests .scripts", help = "Format code with Ruff" }
+format-check = { cmd = "ruff format --check src tests .scripts", help = "Check formatting without modifying files" }
+lint = { cmd = "ruff check src tests .scripts", help = "Check code with Ruff" }
+lint-fix = { cmd = "ruff check --fix src tests .scripts", help = "Fix Ruff issues automatically" }
+types = { cmd = "ty check --output-format=concise", help = "Check types with Ty" }
+imports = { cmd = "lint-imports --config pyproject.toml", help = "Check architecture contracts" }
+security = { cmd = "bandit -c pyproject.toml -r src/womm", help = "Scan source code with Bandit" }
+test = { cmd = "pytest", help = "Run the test suite" }
+test-fast = { cmd = "pytest -m 'not slow'", help = "Run tests excluding slow tests" }
+test-parallel = { cmd = "pytest -n auto", help = "Run tests in parallel" }
+pre-commit = { cmd = "pre-commit run --all-files", help = "Run every pre-commit hook" }
+sync-version = { cmd = "python .scripts/dev/update_version.py", help = "Synchronize _version.py with pyproject.toml" }
+
+[tool.poe.tasks.fix]
+help = "Fix lint issues, then format the code"
+sequence = ["lint-fix", "format"]
+
+[tool.poe.tasks.check]
+help = "Run all local quality checks"
+sequence = [
+    "format-check",
+    "lint",
+    "types",
+    "imports",
+    "test",
+]
 
 # ///////////////////////////////////////////////////////////////
 # 📦 HATCHLING CONFIGURATION
